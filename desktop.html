@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.756</title>
+<title>WTUniverse · Buildert Editor v3.760</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.756</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.760</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -480,6 +480,7 @@
       <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9741; Node</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
+      <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares</button>
     </div>
     <div class="stats-bar" id="stats-bar"></div>
     <div class="sort-wrap">
@@ -771,6 +772,54 @@
       <button class="btn" style="background:rgba(255,77,77,.12);color:var(--danger);border-color:var(--danger);margin-right:auto;display:none"
         id="modal-delete-btn" onclick="modalDeleteDevice()">&#10005; Delete</button>
       <button class="btn btn-primary" onclick="saveDevice()">Save device</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Shares & Activity Panel -->
+<div id="shares-panel" style="display:none;padding:18px;max-width:900px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+
+    <!-- Left: Generate share link -->
+    <div>
+      <div class="modal-section" style="margin-top:0">Generate rigger link</div>
+      <label>Rigger name</label>
+      <input id="sp-rigger-name" type="text" placeholder="Jan"
+             oninput="spUpdateLink()" style="font-size:16px;font-family:var(--cond);font-weight:700;letter-spacing:2px">
+      <label>Mobile app URL <span style="color:var(--muted);font-size:10px">— GitHub Pages</span></label>
+      <input id="sp-app-url" type="url" placeholder="https://gerritnools.github.io/Buildert/"
+             oninput="spUpdateLink()">
+
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;
+           padding:10px 12px;margin-bottom:10px;min-height:42px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">LINK</div>
+        <div id="sp-link-preview" style="font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all">
+          Fill in rigger name above
+        </div>
+      </div>
+      <div id="sp-link-warn" style="font-size:11px;color:var(--warn);font-family:var(--mono);margin-bottom:8px;display:none"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="spCopyLink()">&#128203; Copy link</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="spNativeShare()">&#128228; Share&hellip;</button>
+      </div>
+
+      <!-- Active shares list -->
+      <div class="modal-section">Active shares</div>
+      <div id="sp-shares-list" style="font-family:var(--mono);font-size:12px"></div>
+    </div>
+
+    <!-- Right: Activity log -->
+    <div>
+      <div class="modal-section" style="margin-top:0;display:flex;align-items:center;gap:8px">
+        Activity log
+        <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;margin-left:auto" onclick="spClearLog()">Clear</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+        Auto-updates every 20s when Dropbox is connected
+      </div>
+      <div id="sp-activity-log" style="font-family:var(--mono);font-size:12px;
+           max-height:calc(100vh - 260px);overflow-y:auto;line-height:2"></div>
     </div>
   </div>
 </div>
@@ -1128,7 +1177,7 @@ function sourceOptions(type, excludeId) {
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
   currentTab = tab;
-  ['laser','smoke','distro','psu','all','node','pack','specs'].forEach(function(t) {
+  ['laser','smoke','distro','psu','all','node','pack','specs','shares'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-'+(t==='node'||t==='pack'||t==='specs'?'all':t) : '');
   });
@@ -1136,10 +1185,12 @@ function setTab(tab) {
   var ncw = document.getElementById('node-canvas-wrap');
   var pcw = document.getElementById('pack-panel');
   var sv  = document.getElementById('specs-view');
+  var shv = document.getElementById('shares-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
   if (sv)  sv.style.display  = 'none';
+  if (shv) shv.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
@@ -1152,7 +1203,8 @@ function setTab(tab) {
 
   if (tab === 'node')  { if (ncw) ncw.style.display='block'; renderNodeView(); }
   else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; renderPackList(); }
-  else if (tab === 'specs') { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
+  else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
+  else if (tab === 'shares') { if (shv) shv.style.display='block'; renderSharesPanel(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
 
@@ -2695,7 +2747,7 @@ async function dbxStartOAuth(){
     +'&code_challenge='+encodeURIComponent(challenge)
     +'&code_challenge_method=S256'
     +'&token_access_type=offline'
-    +'&scope=files.content.read+files.content.write+files.metadata.read';
+    +'&scope='+encodeURIComponent('files.content.read files.content.write');
   location.href=url;
 }
 
@@ -3269,15 +3321,9 @@ function nodeAutoLayout() {
   _nodePositions = {};
   var curY = 50;
 
-  // FOH at top centre if needed
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
-  if (needFoh) {
-    _nodePositions['FOH'] = {x: Math.max(40, (SVG_W - XGAP)/2), y: curY};
-    curY += YGAP;
-  }
-
-  // Layout order: PSU → Distro → Smoke → Laser (power chain top to bottom)
-  var TYPE_ORDER_LAYOUT = [TYPE_PSU, TYPE_DISTRO, TYPE_SMOKE, TYPE_LASER];
+  // Layout order: Lasers at top → Smoke → Distro → PSU → FOH at bottom
+  // First pass: calculate heights to place FOH at very bottom
+  var TYPE_ORDER_LAYOUT = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
   TYPE_ORDER_LAYOUT.forEach(function(type){
     var typeDevices = devices.filter(function(d){ return d.type===type && d.device_id; });
     if (!typeDevices.length) return;
@@ -3312,6 +3358,12 @@ function nodeAutoLayout() {
     });
     curY += TYPE_GAP; // extra gap between categories
   });
+
+  // FOH at bottom centre
+  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  if (needFoh) {
+    _nodePositions['FOH'] = {x: Math.max(40, (SVG_W - XGAP)/2), y: curY};
+  }
 
   _saveNodePositions();
   renderNodeView();
@@ -3711,9 +3763,11 @@ function nodeZoom(factor) {
 function _applyNodeTransform() {
   var g1 = document.getElementById('node-edges');
   var g2 = document.getElementById('node-nodes');
+  var g3 = document.getElementById('node-labels');
   var tr = 'translate('+_nodePanX+','+_nodePanY+') scale('+_nodeScale+')';
   if (g1) g1.setAttribute('transform', tr);
   if (g2) g2.setAttribute('transform', tr);
+  if (g3) g3.setAttribute('transform', tr);
 }
 
 // Scroll-to-zoom is attached to the SVG at init time (see Init section below)
@@ -4635,6 +4689,157 @@ function _renderActivityLog() {
 
 // Expose _projectLog for _applyProjectLoad to populate
 window._projectLog = [];
+
+
+// ── Shares & Activity Panel ───────────────────────────────────────────
+var _spLink = '';
+var _spShares = []; // [{name, created, url}] — stored in localStorage
+
+function renderSharesPanel() {
+  // Restore saved URL
+  var savedUrl = localStorage.getItem('wtu_share_app_url') || '';
+  var urlEl = document.getElementById('sp-app-url');
+  if (urlEl && savedUrl) urlEl.value = savedUrl;
+  spUpdateLink();
+  _spRenderShares();
+  _spRenderLog();
+}
+
+function spUpdateLink() {
+  var name   = (document.getElementById('sp-rigger-name').value || '').trim();
+  var appUrl = (document.getElementById('sp-app-url').value || '').trim();
+  var preview = document.getElementById('sp-link-preview');
+  var warn    = document.getElementById('sp-link-warn');
+  if (appUrl) localStorage.setItem('wtu_share_app_url', appUrl);
+  if (!name || !appUrl) {
+    preview.textContent = 'Fill in rigger name above';
+    preview.style.color = 'var(--muted)';
+    warn.style.display = 'none';
+    _spLink = ''; return;
+  }
+  if (!_dbxToken) {
+    preview.textContent = '⚠ Connect Dropbox first (Project settings)';
+    preview.style.color = 'var(--warn)';
+    _spLink = ''; return;
+  }
+  var base = appUrl.replace(/\/?$/, '/');
+  _spLink = base
+    + '?rigger=' + encodeURIComponent(name)
+    + '&dbx_token=' + encodeURIComponent(_dbxToken)
+    + '&dbx_path=' + encodeURIComponent(_dbxPath || '/current.json');
+  preview.textContent = _spLink;
+  preview.style.color = 'var(--accent)';
+  warn.style.display = _spLink.length > 8000 ? '' : 'none';
+  if (_spLink.length > 8000) warn.textContent = '⚠ Long link — use Copy button';
+}
+
+function spCopyLink() {
+  if (!_spLink) { showToast('Generate a link first', 'warn'); return; }
+  var name = (document.getElementById('sp-rigger-name').value || '').trim();
+  // Save to shares list
+  _spShares = _spShares.filter(function(s){ return s.name !== name; }); // replace if exists
+  _spShares.unshift({name: name, created: new Date().toISOString(), url: _spLink});
+  if (_spShares.length > 25) _spShares = _spShares.slice(0, 25);
+  try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
+  // Copy
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(_spLink).then(function(){
+      showToast('Link for ' + name + ' copied ✓', 'ok');
+      _spRenderShares();
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = _spLink; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('Link copied ✓', 'ok'); } catch(e) {}
+    document.body.removeChild(ta);
+    _spRenderShares();
+  }
+}
+
+function spNativeShare() {
+  if (!_spLink) { showToast('Generate a link first', 'warn'); return; }
+  var name = (document.getElementById('sp-rigger-name').value || 'rigger').trim();
+  if (navigator.share) {
+    navigator.share({title: 'Buildert — ' + (_projectMeta.name||'project') + ' (' + name + ')', url: _spLink})
+      .catch(function(e){ if (e.name !== 'AbortError') spCopyLink(); });
+  } else { spCopyLink(); }
+}
+
+function _spRenderShares() {
+  try { var s = localStorage.getItem('wtu_shares'); if (s) _spShares = JSON.parse(s); } catch(e) {}
+  var el = document.getElementById('sp-shares-list');
+  if (!el) return;
+  if (!_spShares.length) { el.innerHTML = '<div style="color:var(--muted);padding:8px 0">No links generated yet</div>'; return; }
+  el.innerHTML = _spShares.map(function(s) {
+    var d = new Date(s.created);
+    var ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    // Count their log entries
+    var count = (window._projectLog||[]).filter(function(e){ return e.by === s.name; }).length;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
+      + '<span style="color:var(--accent);font-weight:700;min-width:80px">' + s.name + '</span>'
+      + '<span style="color:var(--muted);font-size:10px;flex:1">' + ts + '</span>'
+      + (count ? '<span style="color:var(--ok);font-size:10px">' + count + ' actions</span>' : '')
+      + '<button onclick="spRecopyLink(this.dataset.name)" data-name="' + s.name + '" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">↻ Copy</button>'
+      + '<button onclick="spDeleteShare(this.dataset.name)" data-name="' + s.name + '" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'
+      + '</div>';
+  }).join('');
+}
+
+function spRecopyLink(name) {
+  var s = _spShares.find(function(x){ return x.name === name; });
+  if (!s) return;
+  // Regenerate with fresh token
+  if (_dbxToken) {
+    var base = s.url.split('?')[0];
+    s.url = base
+      + '?rigger=' + encodeURIComponent(name)
+      + '&dbx_token=' + encodeURIComponent(_dbxToken)
+      + '&dbx_path=' + encodeURIComponent(_dbxPath || '/current.json');
+    s.created = new Date().toISOString();
+    try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(s.url).then(function(){ showToast('Link for ' + name + ' refreshed & copied ✓', 'ok'); _spRenderShares(); });
+  }
+}
+
+function spDeleteShare(name) {
+  _spShares = _spShares.filter(function(s){ return s.name !== name; });
+  try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
+  _spRenderShares();
+}
+
+function _spRenderLog() {
+  var el = document.getElementById('sp-activity-log');
+  if (!el) return;
+  var log = (window._projectLog || []).slice().reverse();
+  if (!log.length) { el.innerHTML = '<div style="color:var(--muted)">No activity yet</div>'; return; }
+  el.innerHTML = log.slice(0, 100).map(function(e) {
+    var t = e.at ? new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div style="display:flex;gap:10px;align-items:baseline">'
+      + '<span style="color:var(--muted);font-size:10px;min-width:40px">' + t + '</span>'
+      + '<span style="color:var(--accent);min-width:70px">' + (e.by||'?') + '</span>'
+      + '<span style="color:var(--text)">' + (e.device||'') + '</span>'
+      + '<span style="color:var(--muted)">' + (e.action||'') + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function spClearLog() {
+  if (!confirm('Clear the activity log? This cannot be undone.')) return;
+  window._projectLog = [];
+  _spRenderLog();
+  // Push cleared log to Dropbox
+  autoSave();
+}
+
+// Refresh shares panel when Dropbox syncs
+var _origRenderLog = _renderActivityLog;
+_renderActivityLog = function() {
+  _origRenderLog();
+  if (currentTab === 'shares') _spRenderLog();
+};
 
 </script>
 </body>
