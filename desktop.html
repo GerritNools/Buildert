@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.761</title>
+<title>WTUniverse · Buildert Editor v3.763</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.761</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.763</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -478,6 +478,7 @@
       <button class="tab-btn"               id="tab-psu"    onclick="setTab('psu')">&#128267; PSU</button>
       <button class="tab-btn"               id="tab-all"    onclick="setTab('all')">All</button>
       <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9741; Node</button>
+      <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares</button>
@@ -502,10 +503,6 @@
       <label  class="btn btn-ghost"  style="cursor:pointer" title="Load project file">&#128194; Load project<input type="file" id="proj-load-input" accept=".json" style="display:none" onchange="loadProjectFile(this)"></label>
       <button class="btn btn-ghost"  onclick="shareToMobile()" title="Export mobile app with current data">&#128244; Share to mobile</button>
       <button class="btn btn-primary" onclick="openRiggerShare()" title="Generate live share link for rigger">&#128279; Share to rigger</button>
-      <button class="btn btn-laser"  id="qa-add-laser"  onclick="openAddModal('Laser projector')">+ Laser</button>
-      <button class="btn btn-smoke"  id="qa-add-smoke"  onclick="openAddModal('Smoke machine')">+ Smoke</button>
-      <button class="btn btn-distro" id="qa-add-distro" onclick="openAddModal('Distro')">+ Distro</button>
-      <button class="btn btn-psu"    id="qa-add-psu"    onclick="openAddModal('Power supply')">+ PSU</button>
     </div>
   </div>
 
@@ -523,7 +520,7 @@
       <option value="">&#8212; model &#8212;</option>
     </select>
     <span class="qa-id" id="qa-id-preview">—</span>
-    <input id="qa-location" type="text" placeholder="location (optional)"
+    <input id="qa-location" type="text" placeholder="stage 1 thru 12 or truss A"
       style="font-size:12px;width:150px;background:var(--bg);border:1px solid var(--border);
              color:var(--text);border-radius:4px;padding:4px 9px;font-family:var(--sans)"
       onkeydown="if(event.key==='Enter')quickAdd()">
@@ -649,6 +646,18 @@
 
   <!-- Specs View -->
   <div id="specs-view" style="display:none;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:300px;"></div>
+  <div id="diagram-wrap-desktop" style="display:none">
+    <div style="display:flex;align-items:center;gap:7px;padding:6px 0;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dFit()">&#8982; Fit</button>
+      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dZoom(1.25)">+</button>
+      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dZoom(0.8)">&minus;</button>
+      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dResetLayout()">&#8859; Reset</button>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Drag nodes &nbsp;&middot;&nbsp; Scroll to zoom &nbsp;&middot;&nbsp; Drag background to pan</span>
+    </div>
+    <div id="diagram-view" style="position:relative;overflow:hidden;background:var(--bg);border:1px solid var(--border);border-radius:8px;height:calc(100vh - 220px);user-select:none">
+      <div id="diagram-canvas" style="position:absolute;top:0;left:0;transform-origin:0 0"></div>
+    </div>
+  </div>
 
 </main>
 
@@ -778,49 +787,64 @@
 
 
 <!-- Shares & Activity Panel -->
-<div id="shares-panel" style="display:none;padding:18px;max-width:900px">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+<div id="shares-panel" style="display:none;padding:16px 18px;overflow-y:auto;height:calc(100vh - 180px)">
 
-    <!-- Left: Generate share link -->
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+    <span style="font-family:var(--cond);font-weight:900;font-size:18px;letter-spacing:2px;color:var(--accent)">&#128279; SHARES &amp; ACTIVITY</span>
+    <span id="sp-last-sync" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:4px"></span>
+    <button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="dbxSyncNow();setTimeout(renderSharesPanel,1500)">&#8645; Refresh</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start">
+
+    <!-- ── Left col: generate + active shares ── -->
     <div>
-      <div class="modal-section" style="margin-top:0">Generate rigger link</div>
-      <label>Rigger name</label>
-      <input id="sp-rigger-name" type="text" placeholder="Jan"
-             oninput="spUpdateLink()" style="font-size:16px;font-family:var(--cond);font-weight:700;letter-spacing:2px">
-      <label>Mobile app URL <span style="color:var(--muted);font-size:10px">— GitHub Pages</span></label>
-      <input id="sp-app-url" type="url" placeholder="https://gerritnools.github.io/Buildert/"
-             oninput="spUpdateLink()">
-
-      <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;
-           padding:10px 12px;margin-bottom:10px;min-height:42px">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">LINK</div>
-        <div id="sp-link-preview" style="font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:10px">GENERATE LINK</div>
+        <input id="sp-rigger-name" type="text" placeholder="Rigger name (e.g. Jan)"
+               oninput="spUpdateLink()"
+               style="font-size:15px;font-family:var(--cond);font-weight:700;letter-spacing:1px;margin-bottom:8px">
+        <input id="sp-app-url" type="url" placeholder="https://gerritnools.github.io/Buildert/"
+               oninput="spUpdateLink()" style="margin-bottom:8px">
+        <div id="sp-link-preview" style="font-family:var(--mono);font-size:10px;color:var(--accent);
+             word-break:break-all;background:var(--panel);border:1px solid var(--border);
+             border-radius:5px;padding:8px;margin-bottom:8px;min-height:32px;line-height:1.5">
           Fill in rigger name above
         </div>
-      </div>
-      <div id="sp-link-warn" style="font-size:11px;color:var(--warn);font-family:var(--mono);margin-bottom:8px;display:none"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" style="flex:1" onclick="spCopyLink()">&#128203; Copy link</button>
-        <button class="btn btn-ghost" style="flex:1" onclick="spNativeShare()">&#128228; Share&hellip;</button>
+        <div id="sp-link-warn" style="font-size:11px;color:var(--warn);font-family:var(--mono);margin-bottom:8px;display:none"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary" style="flex:1;font-size:12px" onclick="spCopyLink()">&#128203; Copy</button>
+          <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="spNativeShare()">&#128228; Share</button>
+        </div>
       </div>
 
-      <!-- Active shares list -->
-      <div class="modal-section">Active shares</div>
-      <div id="sp-shares-list" style="font-family:var(--mono);font-size:12px"></div>
+      <!-- Active shares -->
+      <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ACTIVE SHARES</div>
+      <div id="sp-shares-list"></div>
     </div>
 
-    <!-- Right: Activity log -->
+    <!-- ── Right col: activity log ── -->
     <div>
-      <div class="modal-section" style="margin-top:0;display:flex;align-items:center;gap:8px">
-        Activity log
-        <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;margin-left:auto" onclick="spClearLog()">Clear</button>
+      <!-- Filter bar -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted)">ACTIVITY LOG</div>
+        <div id="sp-filter-chips" style="display:flex;gap:5px;flex-wrap:wrap;flex:1"></div>
+        <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px" onclick="spClearLog()">Clear</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
-        Auto-updates every 20s when Dropbox is connected
+      <!-- Stats row -->
+      <div id="sp-stats-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
+      <!-- Log table -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:52px 80px 100px 1fr auto;
+             padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--border);
+             font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.2px;color:var(--muted)">
+          <span>TIME</span><span>WHO</span><span>DEVICE</span><span>ACTION</span><span></span>
+        </div>
+        <div id="sp-activity-log" style="max-height:calc(100vh - 290px);overflow-y:auto"></div>
       </div>
-      <div id="sp-activity-log" style="font-family:var(--mono);font-size:12px;
-           max-height:calc(100vh - 260px);overflow-y:auto;line-height:2"></div>
     </div>
+
   </div>
 </div>
 
@@ -1185,7 +1209,7 @@ function sourceOptions(type, excludeId) {
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
   currentTab = tab;
-  ['laser','smoke','distro','psu','all','node','pack','specs','shares'].forEach(function(t) {
+  ['laser','smoke','distro','psu','all','node','diagram','pack','specs','shares'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-'+(t==='node'||t==='pack'||t==='specs'?'all':t) : '');
   });
@@ -1194,25 +1218,25 @@ function setTab(tab) {
   var pcw = document.getElementById('pack-panel');
   var sv  = document.getElementById('specs-view');
   var shv = document.getElementById('shares-panel');
+  var dgw = document.getElementById('diagram-wrap-desktop');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
   if (sv)  sv.style.display  = 'none';
   if (shv) shv.style.display = 'none';
+  if (dgw) dgw.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
   var qaPanel = document.getElementById('qa-panel');
   if (qaPanel) qaPanel.style.display = isListTab ? '' : 'none';
-  ['qa-add-laser','qa-add-smoke','qa-add-distro','qa-add-psu'].forEach(function(id){
-    var btn = document.getElementById(id);
-    if (btn) btn.style.display = isListTab ? '' : 'none';
-  });
+
 
   if (tab === 'node')  { if (ncw) ncw.style.display='block'; renderNodeView(); }
   else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; renderPackList(); }
   else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
-  else if (tab === 'shares') { if (shv) shv.style.display='block'; renderSharesPanel(); }
+  else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
+  else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagram(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
 
@@ -2187,12 +2211,34 @@ function qaUpdatePreview() {
   prev.dataset.num = next;
 }
 
+function _parseLocationThru(locStr, count) {
+  // Parse "stage 1 thru 12" or "truss A pos 1 thru 6" etc.
+  // Returns array of location strings, or null if not a thru pattern
+  var m = locStr.match(/^(.+?)\s+(\d+)\s+thru\s+(\d+)\s*$/i);
+  if (!m) return null;
+  var prefix = m[1].trim();
+  var from   = parseInt(m[2], 10);
+  var to     = parseInt(m[3], 10);
+  if (to < from) { var tmp=from; from=to; to=tmp; }
+  var locs = [];
+  for (var n = from; n <= to; n++) locs.push(prefix + ' ' + n);
+  return locs;
+}
+
 function quickAdd() {
   var type     = document.getElementById('qa-type').value;
   var model    = document.getElementById('qa-model').value;
-  var location = document.getElementById('qa-location').value.trim();
+  var locRaw   = document.getElementById('qa-location').value.trim();
   var count    = Math.max(1, Math.min(99, parseInt(document.getElementById('qa-count').value||'1',10)));
   if (!model) { showToast('Pick a model first','warn'); return; }
+
+  // Parse thru pattern — overrides count if matched
+  var locations = _parseLocationThru(locRaw, count);
+  if (locations) {
+    count = locations.length;
+  } else {
+    locations = null; // plain location, repeated for all
+  }
 
   // Find starting unit number (skip already-taken numbers)
   var taken = {};
@@ -2207,10 +2253,11 @@ function quickAdd() {
   for (var i = 0; i < count; i++) {
     while (taken[next]) next++;
     var id = model.toUpperCase() + ' ' + next;
+    var loc = locations ? locations[i] : locRaw;
     var ch = checksFor(type); var checks = {};
-    ch.forEach(function(c){checks[c]=false;});
+    ch.forEach(function(ck){checks[ck]=false;});
     devices.push({
-      device_id:id, serial:'', type:type, location:location,
+      device_id:id, serial:'', type:type, location:loc,
       source:'', status:'Active', date:today(),
       checks:checks, note_opts:[], pointed:'', notes:'',
       connector_in:'', connector_out:'', cable_in:'', cable_out:''
@@ -3066,7 +3113,7 @@ document.getElementById('modal-specs').addEventListener('click',function(e){if(e
 // ── Size table-wrap to fill remaining viewport ────────────────────────
 function sizeTableWrap() {
   var pad = 24;
-  [document.querySelector('.table-wrap'), document.getElementById('diagram-view'), document.getElementById('specs-view')].forEach(function(el) {
+  [document.querySelector('.table-wrap'), document.getElementById('specs-view')].forEach(function(el) {
     if (!el || el.style.display === 'none') return;
     var r = el.getBoundingClientRect();
     el.style.height = Math.max(200, window.innerHeight - r.top - pad) + 'px';
@@ -4397,16 +4444,50 @@ _dbxHandleOAuthCallback().then(function(wasOAuth){
 });
 // Init Quick Add
 qaUpdateModel();
-// Attach scroll-to-zoom on the node SVG
+// Attach scroll-to-zoom and background pan on the node SVG
 (function(){
   var svg = document.getElementById('node-svg');
-  if (svg) {
-    svg.addEventListener('wheel', function(e){
-      if (currentTab !== 'node') return;
-      e.preventDefault();
-      nodeZoom(e.deltaY < 0 ? 1.12 : 0.89);
-    }, {passive:false});
-  }
+  if (!svg) return;
+  svg.addEventListener('wheel', function(e){
+    if (currentTab !== 'node') return;
+    e.preventDefault();
+    // Zoom toward cursor
+    var rect = svg.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    var factor = e.deltaY < 0 ? 1.12 : 0.89;
+    var cx = (mx - _nodePanX) / _nodeScale;
+    var cy = (my - _nodePanY) / _nodeScale;
+    _nodeScale = Math.max(0.2, Math.min(4.0, _nodeScale * factor));
+    _nodePanX = mx - cx * _nodeScale;
+    _nodePanY = my - cy * _nodeScale;
+    var lbl = document.getElementById('node-zoom-label');
+    if (lbl) lbl.textContent = Math.round(_nodeScale*100)+'%';
+    _applyNodeTransform();
+  }, {passive:false});
+
+  // Background pan — drag on empty SVG area
+  var _panDrag = false, _panSX = 0, _panSY = 0, _panPX0 = 0, _panPY0 = 0;
+  svg.addEventListener('mousedown', function(e){
+    if (currentTab !== 'node') return;
+    // Only pan on background (not on nodes)
+    if (e.target !== svg && e.target.closest('g') && e.target.closest('g').getAttribute('data-id')) return;
+    if (e.button !== 0) return;
+    _panDrag = true;
+    _panSX = e.clientX; _panSY = e.clientY;
+    _panPX0 = _nodePanX; _panPY0 = _nodePanY;
+    svg.classList.add('grabbing');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e){
+    if (!_panDrag) return;
+    _nodePanX = _panPX0 + (e.clientX - _panSX);
+    _nodePanY = _panPY0 + (e.clientY - _panSY);
+    _applyNodeTransform();
+  });
+  document.addEventListener('mouseup', function(){
+    if (_panDrag) { _panDrag = false; svg.classList.remove('grabbing'); }
+  });
 })();
 
 // ── Bulk selection & edit ────────────────────────────────────────────
@@ -4824,16 +4905,62 @@ function spDeleteShare(name) {
   _spRenderShares();
 }
 
+var _spFilterRigger = null;
+function _spSetFilter(r){ _spFilterRigger = r || null; _spRenderLog(); } // null = show all
+
 function _spRenderLog() {
   var el = document.getElementById('sp-activity-log');
-  if (!el) return;
+  var chips = document.getElementById('sp-filter-chips');
+  var stats = document.getElementById('sp-stats-row');
+  var syncEl = document.getElementById('sp-last-sync');
+  if (syncEl) syncEl.textContent = 'Last sync: ' + _hhmm();
+
   var log = (window._projectLog || []).slice().reverse();
-  if (!log.length) { el.innerHTML = '<div style="color:var(--muted)">No activity yet</div>'; return; }
-  el.innerHTML = log.slice(0, 100).map(function(e) {
+
+  // Build unique rigger list for filter chips
+  var riggers = [];
+  log.forEach(function(e){ if (e.by && riggers.indexOf(e.by) < 0) riggers.push(e.by); });
+
+  if (chips) {
+    chips.innerHTML = '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-right:4px">Filter:</span>'
+      + '<span class="tab-btn' + (!_spFilterRigger ? ' active-all' : '') + '" '
+      + 'onclick="_spSetFilter(null)" '
+      + 'style="padding:2px 10px;font-size:11px;cursor:pointer">All</span>'
+      + riggers.map(function(r) {
+          var active = _spFilterRigger === r;
+          var col = active ? 'var(--accent)' : 'var(--muted)';
+          return '<span style="padding:2px 10px;font-size:11px;cursor:pointer;font-family:var(--cond);font-weight:700;'
+            + 'border:1px solid ' + col + ';border-radius:4px;color:' + col + ';background:' + (active?'rgba(0,212,255,.1)':'none') + '"'
+            + ' onclick="_spSetFilter(this.dataset.r)" data-r="' + r + '">' + r + '</span>';
+        }).join('');
+  }
+
+  // Stats
+  if (stats) {
+    stats.innerHTML = riggers.map(function(r) {
+      var cnt = log.filter(function(e){ return e.by === r; }).length;
+      return '<span><span style="color:var(--accent)">' + r + '</span> &nbsp;' + cnt + ' actions</span>';
+    }).join(' &nbsp;&middot;&nbsp; ');
+  }
+
+  // Filter
+  var filtered = _spFilterRigger ? log.filter(function(e){ return e.by === _spFilterRigger; }) : log;
+
+  if (!el) return;
+  if (!filtered.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:16px 12px">No activity yet</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.slice(0, 200).map(function(e, i) {
     var t = e.at ? new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-    return '<div style="display:flex;gap:10px;align-items:baseline">'
-      + '<span style="color:var(--muted);font-size:10px;min-width:40px">' + t + '</span>'
-      + '<span style="color:var(--accent);min-width:70px">' + (e.by||'?') + '</span>'
+    var date = e.at ? new Date(e.at).toLocaleDateString([],{month:'short',day:'numeric'}) : '';
+    var bg = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.02)';
+    return '<div style="display:grid;grid-template-columns:52px 80px 100px 1fr;gap:0;'
+      + 'padding:7px 12px;background:' + bg + ';border-bottom:1px solid var(--border2);'
+      + 'font-family:var(--mono);font-size:12px;align-items:center">'
+      + '<span style="color:var(--muted);font-size:10px">' + t + '</span>'
+      + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700">' + (e.by||'?') + '</span>'
       + '<span style="color:var(--text)">' + (e.device||'') + '</span>'
       + '<span style="color:var(--muted)">' + (e.action||'') + '</span>'
       + '</div>';
@@ -4870,6 +4997,14 @@ function dbxApplyManualToken() {
   setTimeout(dbxStartPolling, 500);
   // Refresh shares panel if open
   if (currentTab === 'shares') renderSharesPanel();
+}
+
+function dResetLayout() {
+  // Clear saved diagram positions and re-render
+  try { localStorage.removeItem('buildert_diagram_pos'); } catch(e) {}
+  _dDiagPositions = {};
+  _dZ = 1; _dPX = 0; _dPY = 0; _dTx();
+  renderDiagram();
 }
 
 </script>
