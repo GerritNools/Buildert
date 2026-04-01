@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.751</title>
+<title>WTUniverse · Buildert Editor v3.752</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--muted);font-weight:400;letter-spacing:1px;margin-left:4px">v3.74</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.752</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1411,6 +1411,15 @@ function _cableOutDisplay(d) {
   if (!ch.length) return d.cable_out || '—';
   return ch.map(function(x){ return (x.cable_in || x.cable) + ' → ' + x.device_id; }).join(', ');
 }
+
+function editSpecField(k, f, val) {
+  if (!_specsOverrides[k]) _specsOverrides[k] = {};
+  _specsOverrides[k][f] = val;
+  saveSpecsToStorage();
+  autoSave();
+  showToast('Spec updated: ' + k + ' · ' + f, 'ok');
+}
+
 function renderTable() {
   if (currentTab === 'node') { renderNodeView(); return; }
   var head  = document.getElementById('table-head');
@@ -2934,7 +2943,7 @@ function autoSave(){
   try{localStorage.setItem('buildert_devices',JSON.stringify(devices));}catch(e){}
   if(_pollTimer){ _autoPush(); }
   // Push to Dropbox after a short debounce
-  if(_dbxToken){
+  if(_dbxToken||_dbxRefreshToken){
     clearTimeout(_dbxPushDebounce);
     _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
   }
