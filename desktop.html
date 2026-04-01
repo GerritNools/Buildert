@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.754</title>
+<title>WTUniverse · Buildert Editor v3.755</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.754</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.755</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1387,21 +1387,24 @@ function setCable(gi, val) {  // legacy shim kept for any old saved data
 }
 
 // Populate cable selects in modal
-function _populateCableSelects(cableIn, cableOut) {
-  function mkOpts(val) {
+function _populateCableSelects(cableIn, cableOut, inConnector) {
+  function mkOpts(val, reqConn) {
     var o = '<option value="">— none —</option>';
     CABLE_TYPES.forEach(function(ct) {
+      if (reqConn && ct.pwr_a !== reqConn && ct.pwr_b !== reqConn) return;
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
         o += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
       });
     });
+    // If nothing matched the filter, show all
+    if (o === '<option value="">— none —</option>' && reqConn) return mkOpts(val, '');
     return o;
   }
   var si = document.getElementById('m-cable-in');
   var so = document.getElementById('m-cable-out');
   if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'');
-  if (so) so.innerHTML = mkOpts(cableOut||'', '');  // out connector not filtered
+  if (so) so.innerHTML = mkOpts(cableOut||'', '');
 }
 
 
@@ -2918,7 +2921,8 @@ async function _dbxPush(silent){
       try{var info=JSON.parse(xhr.responseText);_dbxLastRev=info.rev||'';}catch(e){}
       if(!silent) _dbxSetStatus('Pushed v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
     } else {
-      if(!silent) _dbxSetStatus('Push error '+xhr.status,'var(--danger)');
+      console.error('Dropbox push error:', xhr.status, xhr.responseText);
+      if(!silent) _dbxSetStatus('Push error '+xhr.status+' — see console','var(--danger)');
     }
   };
   xhr.onerror=function(){ if(!silent) _dbxSetStatus('Push failed — offline?','var(--warn)'); };
