@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.760</title>
+<title>WTUniverse · Buildert Editor v3.761</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.760</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.761</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1005,11 +1005,19 @@
       <label>Dropbox App Key <span style="color:var(--muted);font-size:10px">— dropbox.com/developers/apps &#8594; your app &#8594; Settings</span></label>
       <input id="dbx-app-key" type="text" placeholder="abc123xyz" style="font-family:var(--mono);font-size:14px;letter-spacing:1px;margin-bottom:8px">
       <button class="btn btn-primary" onclick="dbxStartOAuth()" style="width:100%;margin-bottom:8px;font-size:13px;padding:10px">
-        &#128279; Connect Dropbox
+        &#128279; Connect Dropbox (via browser)
       </button>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:12px;line-height:1.7">
-        Opens Dropbox login in a new tab. Make sure your app&#8217;s Redirect URI includes this page&#8217;s URL.
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;line-height:1.7">
+        Requires HTTPS (GitHub Pages). For local use, paste a token below.
       </div>
+      <details style="margin-bottom:12px">
+        <summary style="font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:6px">
+          &#9654; Manual token (local / offline use)
+        </summary>
+        <label style="margin-top:8px">Access token <span style="color:var(--muted);font-size:10px">— get from dropbox.com/developers/apps &#8594; API Explorer or short-lived token</span></label>
+        <input id="dbx-manual-token" type="password" placeholder="sl.u.AB..." style="font-family:var(--mono);font-size:12px;margin-bottom:6px">
+        <button class="btn btn-ghost" onclick="dbxApplyManualToken()" style="width:100%;font-size:13px">Apply token</button>
+      </details>
     </div>
 
     <label>File path in Dropbox</label>
@@ -4379,6 +4387,12 @@ _dbxHandleOAuthCallback().then(function(wasOAuth){
       if(ok){ _dbxFetchAccountInfo(); setTimeout(dbxStartPolling,1500); }
       else  { _dbxUpdateUI(); }
     });
+  } else if(!wasOAuth) {
+    // Restore session manual token if present
+    try {
+      var mt = sessionStorage.getItem('dbx_manual_token');
+      if (mt) { _dbxToken=mt; _dbxTokenExpiry=Date.now()+4*3600*1000; _dbxUpdateUI(); setTimeout(dbxStartPolling,1500); }
+    } catch(e) {}
   }
 });
 // Init Quick Add
@@ -4840,6 +4854,23 @@ _renderActivityLog = function() {
   _origRenderLog();
   if (currentTab === 'shares') _spRenderLog();
 };
+
+
+function dbxApplyManualToken() {
+  var tok = (document.getElementById('dbx-manual-token').value || '').trim();
+  if (!tok) { showToast('Paste a token first', 'warn'); return; }
+  _dbxToken = tok;
+  _dbxTokenExpiry = Date.now() + 4 * 3600 * 1000; // assume 4hr
+  // Save for session
+  try { sessionStorage.setItem('dbx_manual_token', tok); } catch(e) {}
+  _dbxUpdateUI();
+  _dbxFetchAccountInfo();
+  _dbxSetStatus('Token applied – expires in ~4h', 'var(--ok)');
+  showToast('Dropbox token applied ✓', 'ok');
+  setTimeout(dbxStartPolling, 500);
+  // Refresh shares panel if open
+  if (currentTab === 'shares') renderSharesPanel();
+}
 
 </script>
 </body>
