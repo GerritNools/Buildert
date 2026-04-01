@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.763</title>
+<title>WTUniverse · Buildert Editor v3.764</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -431,7 +431,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.763</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.764</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -655,7 +655,11 @@
       <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Drag nodes &nbsp;&middot;&nbsp; Scroll to zoom &nbsp;&middot;&nbsp; Drag background to pan</span>
     </div>
     <div id="diagram-view" style="position:relative;overflow:hidden;background:var(--bg);border:1px solid var(--border);border-radius:8px;height:calc(100vh - 220px);user-select:none">
-      <div id="diagram-canvas" style="position:absolute;top:0;left:0;transform-origin:0 0"></div>
+      <div id="diagram-canvas" style="position:absolute;top:0;left:0;transform-origin:0 0">
+        <svg id="diagram-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible"></svg>
+        <div id="diagram-nodes" style="position:absolute;top:0;left:0"></div>
+        <div id="diagram-empty" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);font-family:var(--mono);font-size:13px;text-align:center">No devices with sources set.<br>Set sources on devices first.</div>
+      </div>
     </div>
   </div>
 
@@ -4791,6 +4795,7 @@ var _spLink = '';
 var _spShares = []; // [{name, created, url}] — stored in localStorage
 
 function renderSharesPanel() {
+  _spFilterRigger = null;  // reset filter on open
   // Restore saved URL
   var savedUrl = localStorage.getItem('wtu_share_app_url') || '';
   var urlEl = document.getElementById('sp-app-url');
