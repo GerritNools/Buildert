@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.757</title>
+<title>WTU · Buildert v3.758</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -343,12 +343,66 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .cable-none{color:var(--muted);}
 .ntab.active-pack{color:var(--distro);}
 .ntab.active-specs{color:var(--text);}
+
+/* ── Diagram tab ── */
+.ntab.active-diagram{color:var(--accent);}
+#diagram-wrap{padding:12px;overflow-y:auto;}
+.diag-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px;}
+.diag-row-label{font-family:var(--cond);font-weight:700;font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px;}
+.diag-connector{display:flex;flex-direction:column;align-items:center;margin-bottom:2px;}
+.diag-line{width:2px;height:16px;background:var(--border);margin:0 auto;}
+.diag-node{border-radius:8px;border:2px solid var(--border);background:var(--surface);
+  padding:8px 10px;min-width:80px;max-width:120px;text-align:center;cursor:pointer;
+  position:relative;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.diag-node:active{transform:scale(.94);}
+.diag-node.dn-ok{border-color:var(--ok);background:rgba(61,220,132,.08);}
+.diag-node.dn-amber{border-color:#f5a623;background:rgba(245,166,35,.08);}
+.diag-node.dn-foh{border-color:var(--accent);background:rgba(0,212,255,.08);}
+.dn-id{font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dn-model{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:1px;}
+.dn-serial{font-family:var(--mono);font-size:9px;margin-top:2px;font-weight:700;}
+.dn-serial.sn-ok{color:var(--ok);}
+.dn-serial.sn-miss{color:var(--muted);}
+.dn-loc{font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.diag-section{margin-bottom:14px;}
+
+/* ── Serial assign sheet ── */
+.sn-sheet{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);
+  display:none;align-items:flex-end;}
+.sn-sheet.open{display:flex;}
+.sn-panel{background:var(--surface);border-radius:16px 16px 0 0;padding:20px 16px;
+  padding-bottom:calc(20px + var(--sb));width:100%;max-height:80vh;overflow-y:auto;}
+.sn-title{font-family:var(--cond);font-weight:900;font-size:20px;letter-spacing:2px;
+  color:var(--accent);margin-bottom:4px;}
+.sn-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;}
+.sn-input{width:100%;background:var(--panel);border:2px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:22px;letter-spacing:3px;
+  padding:14px;border-radius:8px;outline:none;text-align:center;margin-bottom:12px;}
+.sn-input:focus{border-color:var(--accent);}
+.sn-cam-btn{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);font-family:var(--cond);font-weight:700;
+  font-size:14px;letter-spacing:1px;margin-bottom:10px;cursor:pointer;}
+.sn-cam-btn:active{background:var(--border);}
+.sn-confirm{width:100%;padding:16px;border-radius:10px;border:none;
+  background:var(--ok);color:#000;font-family:var(--cond);font-weight:900;
+  font-size:18px;letter-spacing:2px;cursor:pointer;}
+.sn-confirm:active{opacity:.85;}
+.sn-checks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.sn-check{padding:7px 12px;border-radius:16px;border:1px solid var(--border);
+  background:var(--panel);color:var(--muted);font-size:12px;font-family:var(--cond);
+  font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sn-check.ck-on{border-color:var(--ok);background:rgba(61,220,132,.12);color:var(--ok);}
+.sn-check:active{opacity:.7;}
+
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.757</small></div>
+  <div class="logo">WTU <small>v3.758</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -374,6 +428,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <div id="scroll">
   <div class="chips" id="filter-chips"></div>
   <div id="card-list"></div>
+  <div id="diagram-wrap" style="display:none"></div>
   <div class="empty" id="empty-state" style="display:none">
     <div class="big">🔧</div>
     <p>No devices.<br>Tap + to add one.</p>
@@ -594,6 +649,23 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   </div>
 </div>
 
+
+<!-- Serial assign sheet -->
+<div class="sn-sheet" id="sn-sheet" onclick="if(event.target===this)closeSNSheet()">
+  <div class="sn-panel">
+    <div class="sn-title" id="sn-dev-id">—</div>
+    <div class="sn-sub" id="sn-dev-sub">tap below to assign serial</div>
+    <input class="sn-input" id="sn-input" type="text" placeholder="SERIAL"
+           autocomplete="off" autocorrect="off" autocapitalize="characters"
+           oninput="this.value=this.value.toUpperCase()">
+    <button class="sn-cam-btn" id="sn-cam-btn" onclick="snToggleCamera()">📷 Scan with camera</button>
+    <video id="sn-video" autoplay playsinline muted
+           style="width:100%;border-radius:8px;margin-bottom:10px;display:none;max-height:200px;object-fit:cover"></video>
+    <div class="sn-checks" id="sn-checks"></div>
+    <button class="sn-confirm" onclick="snConfirm()">✓ CONFIRM</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 <a id="dl-link" style="display:none"></a>
 
@@ -713,6 +785,7 @@ function updateLocDl(){
 
 // ── Nav ──────────────────────────────────────────────────────────
 var TABS=[
+  {k:'diagram', icon:'🗺', label:'Setup'},
   {k:'laser', icon:'💡', label:'Lasers'},
   {k:'smoke', icon:'💨', label:'Smoke'},
   {k:'distro',icon:'⚡', label:'Distros'},
@@ -738,12 +811,19 @@ function setTab(tab){
   });
   var fab=document.getElementById('fab');
   if(fab) fab.style.display=['laser','smoke','distro','psu','all'].indexOf(tab)>=0?'':'none';
+  // Toggle diagram vs card view
+  var dw=document.getElementById('diagram-wrap');
+  var cl=document.getElementById('card-list');
+  if(dw) dw.style.display=tab==='diagram'?'':'none';
+  if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
+  if(tab==='diagram'){ renderDiagram(); return; }
   renderMain();
 }
 
 // ── Render ─────────────────────────────────────────────────────────
 function renderMain(){
+  if(currentTab==='diagram'){ renderDiagram(); return; }
   if(currentTab==='power'){ renderPower(); return; }
   if(currentTab==='pack'){  renderPack();  return; }
   if(currentTab==='specs'){ renderSpecs(); return; }
@@ -2191,7 +2271,7 @@ if(_dbxRefreshToken){ setTimeout(dbxStartPolling, 1500); }
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){localStorage.setItem('wtu_ip',params.get('ip'));startPolling();}
 
-buildNav(); setTab('laser');
+buildNav(); setTab('diagram');
 _updateMobileProjectBadge();
 
 // ── Dropbox OAuth (PKCE) ──────────────────────────────────────────
@@ -2380,6 +2460,264 @@ _dbxHandleOAuthCallback().then(function(wasOAuth){
 _dbxUpdateUI();
 _handleRiggerParam();
 _handleShareParam();
+
+
+// ── Diagram view ──────────────────────────────────────────────────────
+function renderDiagram() {
+  updateBanner(); buildChips();
+  var wrap = document.getElementById('diagram-wrap');
+  var cardList = document.getElementById('card-list');
+  var chips = document.querySelector('.chips');
+  if (wrap) wrap.style.display = '';
+  if (cardList) cardList.style.display = 'none';
+  if (chips) chips.style.display = 'none';
+
+  if (!devices.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--mono);font-size:13px">'
+      + 'No devices in project.<br>Load a project first.</div>';
+    return;
+  }
+
+  // Build signal chain tree
+  // FOH → distros → lasers/smoke
+  // Layout: distros row, then per-distro: their connected devices
+  // FOH at bottom
+
+  var html = '';
+
+  // Find all source IDs
+  var allSources = {};
+  devices.forEach(function(d) { if (d.source) allSources[d.source] = true; });
+
+  // Group by source
+  function getChildren(parentId) {
+    return devices.filter(function(d){ return d.source === parentId && d.device_id; });
+  }
+
+  // Top level: devices sourced from FOH
+  var fromFOH = getChildren('FOH');
+  // Devices with no source that aren't FOH
+  var orphans = devices.filter(function(d){ return !d.source && d.device_id; });
+
+  function nodeHtml(d, gi) {
+    var hasSn = d.serial && d.serial.replace(/-/g,'').trim();
+    var checks = checksFor(d.type);
+    var done = checks.filter(function(ch){ return d.checks && d.checks[ch]; }).length;
+    var allDone = done === checks.length && checks.length > 0 && hasSn;
+    var cls = 'diag-node' + (allDone ? ' dn-ok' : hasSn ? ' dn-amber' : '');
+    var tk = TKEY[d.type] || 'laser';
+    var colMap = {laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
+    var col = colMap[tk] || 'var(--accent)';
+    var snText = hasSn ? d.serial : 'NO SN';
+    var snCls = hasSn ? 'sn-ok' : 'sn-miss';
+    return '<div class="' + cls + '" style="border-color:' + col + '" onclick="openSNSheet(' + gi + ')">'
+      + '<div class="dn-id" style="color:' + col + '">' + (d.device_id || '?') + '</div>'
+      + (d.model ? '<div class="dn-model">' + (d.model || '') + '</div>' : '')
+      + (d.location ? '<div class="dn-loc">' + d.location + '</div>' : '')
+      + '<div class="dn-serial ' + snCls + '">' + snText + '</div>'
+      + '</div>';
+  }
+
+  function fohNodeHtml() {
+    return '<div class="diag-node dn-foh" style="min-width:100px">'
+      + '<div class="dn-id" style="color:var(--accent)">FOH</div>'
+      + '<div class="dn-model">Controller</div>'
+      + '</div>';
+  }
+
+  // Render: sources from FOH at top, then FOH at bottom
+  // For each top-level device, show its children below it
+
+  // Collect all top-level nodes (direct from FOH or no source)
+  var topLevel = fromFOH.concat(orphans);
+
+  // Render each top-level group with its children
+  topLevel.forEach(function(parent) {
+    var pgi = devices.indexOf(parent);
+    var children = getChildren(parent.device_id);
+
+    html += '<div class="diag-section">';
+
+    // Children first (they're "higher up" in signal chain - closer to stage)
+    if (children.length) {
+      // Group children by type
+      var laserChildren = children.filter(function(d){ return d.type === TL; });
+      var smokeChildren = children.filter(function(d){ return d.type === TS; });
+      var otherChildren = children.filter(function(d){ return d.type !== TL && d.type !== TS; });
+
+      var childGroups = [];
+      if (laserChildren.length) childGroups.push({label: 'LASERS', items: laserChildren});
+      if (smokeChildren.length) childGroups.push({label: 'SMOKE', items: smokeChildren});
+      if (otherChildren.length) childGroups.push({label: 'OTHER', items: otherChildren});
+
+      childGroups.forEach(function(grp) {
+        html += '<div class="diag-row-label">' + grp.label + '</div>';
+        html += '<div class="diag-row">';
+        grp.items.forEach(function(d) {
+          var gi = devices.indexOf(d);
+          html += nodeHtml(d, gi);
+        });
+        html += '</div>';
+        html += '<div class="diag-connector"><div class="diag-line"></div></div>';
+      });
+    }
+
+    // Parent node (distro/PSU)
+    html += '<div class="diag-row">' + nodeHtml(parent, pgi) + '</div>';
+    html += '<div class="diag-connector"><div class="diag-line"></div></div>';
+    html += '</div>';
+  });
+
+  // FOH at bottom
+  if (fromFOH.length || devices.some(function(d){ return d.source === 'FOH'; })) {
+    html += '<div class="diag-row">' + fohNodeHtml() + '</div>';
+  }
+
+  wrap.innerHTML = html || '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;font-family:var(--mono)">No signal chain set up yet.<br>Set sources on devices in desktop app.</div>';
+}
+
+// ── Serial assign sheet ───────────────────────────────────────────────
+var _snGi = -1;
+var _snCamStream = null;
+var _snCamActive = false;
+var _snDetector = null;
+
+function openSNSheet(gi) {
+  _snGi = gi;
+  var d = devices[gi];
+  if (!d) return;
+  var tk = TKEY[d.type] || 'laser';
+  var colMap = {laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
+  var col = colMap[tk] || 'var(--accent)';
+
+  var idEl = document.getElementById('sn-dev-id');
+  var subEl = document.getElementById('sn-dev-sub');
+  var inp = document.getElementById('sn-input');
+  if (idEl) { idEl.textContent = d.device_id || '?'; idEl.style.color = col; }
+  if (subEl) subEl.textContent = (d.location || '') + (d.model ? ' · ' + d.model : '');
+  if (inp) { inp.value = d.serial || ''; }
+
+  // Build check pills
+  var checks = checksFor(d.type);
+  var chkEl = document.getElementById('sn-checks');
+  if (chkEl) {
+    chkEl.innerHTML = checks.map(function(ch) {
+      var on = d.checks && d.checks[ch];
+      return '<div class="sn-check' + (on ? ' ck-on' : '') + '" onclick="snToggleCheck(this.dataset.ch)" data-ch="' + ch + '">'
+        + (on ? '✓ ' : '') + ch + '</div>';
+    }).join('');
+  }
+
+  document.getElementById('sn-sheet').classList.add('open');
+  setTimeout(function(){ var inp = document.getElementById('sn-input'); if(inp) inp.focus(); }, 200);
+}
+
+function closeSNSheet() {
+  document.getElementById('sn-sheet').classList.remove('open');
+  snStopCamera();
+  _snGi = -1;
+}
+
+function snToggleCheck(ch) {
+  if (_snGi < 0) return;
+  var d = devices[_snGi];
+  if (!d.checks) d.checks = {};
+  d.checks[ch] = !d.checks[ch];
+  // Update pill
+  var chkEl = document.getElementById('sn-checks');
+  var checks = checksFor(d.type);
+  if (chkEl) {
+    chkEl.innerHTML = checks.map(function(c) {
+      var on = d.checks && d.checks[c];
+      return '<div class="sn-check' + (on ? ' ck-on' : '') + '" onclick="snToggleCheck(this.dataset.ch)" data-ch="' + c + '">'
+        + (on ? '✓ ' : '') + c + '</div>';
+    }).join('');
+  }
+}
+
+function snConfirm() {
+  if (_snGi < 0) return;
+  var d = devices[_snGi];
+  var inp = document.getElementById('sn-input');
+  var val = (inp ? inp.value.trim().toUpperCase() : '');
+  if (val) {
+    d.serial = val;
+    // Log activity
+    _logActivity(d.device_id, 'Serial assigned: ' + val);
+  }
+  // Save checks state (already toggled live)
+  if (d.type === TL && d.checks && d.checks['Mounted']) {
+    var n = new Date(), pad = function(v){return v<10?'0'+v:''+v;};
+    d.mounted_at = pad(n.getHours()) + ':' + pad(n.getMinutes());
+  }
+  autoSave();
+  showToast((d.device_id||'Device') + ' updated ✓', 'ok');
+  closeSNSheet();
+  renderDiagram();
+}
+
+function snToggleCamera() {
+  if (_snCamActive) { snStopCamera(); return; }
+  var video = document.getElementById('sn-video');
+  var btn = document.getElementById('sn-cam-btn');
+  if (!video) return;
+  if (typeof BarcodeDetector === 'undefined') {
+    showToast('Camera scan not supported on this device', 'warn'); return;
+  }
+  if (!_snDetector) {
+    _snDetector = new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','data_matrix']});
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream) {
+    _snCamStream = stream; _snCamActive = true;
+    video.srcObject = stream; video.style.display = 'block';
+    if (btn) btn.textContent = '⏹ Stop camera';
+    video.play().then(function(){ _snScanTick(); });
+  }).catch(function(e){ showToast('Camera error: ' + e.message, 'err'); });
+}
+
+function snStopCamera() {
+  _snCamActive = false;
+  if (_snCamStream) { _snCamStream.getTracks().forEach(function(t){t.stop();}); _snCamStream = null; }
+  var video = document.getElementById('sn-video');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+  var btn = document.getElementById('sn-cam-btn');
+  if (btn) btn.textContent = '📷 Scan with camera';
+}
+
+function _snScanTick() {
+  if (!_snCamActive || !_snDetector) return;
+  var video = document.getElementById('sn-video');
+  if (!video || video.readyState < 2) { setTimeout(_snScanTick, 200); return; }
+  _snDetector.detect(video).then(function(codes) {
+    if (codes.length) {
+      var raw = codes[0].rawValue || '';
+      // If it looks like a device URL with ?device= param, extract it
+      var devMatch = raw.match(/[?&]device=([^&]+)/);
+      if (devMatch) {
+        // QR from device label — find device and assign
+        var devId = decodeURIComponent(devMatch[1]).toUpperCase();
+        var found = devices.findIndex(function(d){ return d.device_id === devId; });
+        if (found >= 0) {
+          _snGi = found;
+          openSNSheet(found);
+          snStopCamera();
+          if (navigator.vibrate) navigator.vibrate(60);
+          return;
+        }
+      }
+      // Otherwise treat as serial number
+      var sn = raw.replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,20);
+      if (sn) {
+        var inp = document.getElementById('sn-input');
+        if (inp) inp.value = sn;
+        if (navigator.vibrate) navigator.vibrate(60);
+        snStopCamera();
+        return;
+      }
+    }
+    if (_snCamActive) setTimeout(_snScanTick, 200);
+  }).catch(function(){ if (_snCamActive) setTimeout(_snScanTick, 300); });
+}
 
 </script>
 </body>
