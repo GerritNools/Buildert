@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.756</title>
+<title>WTU · Buildert v3.757</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -343,98 +343,12 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .cable-none{color:var(--muted);}
 .ntab.active-pack{color:var(--distro);}
 .ntab.active-specs{color:var(--text);}
-
-/* ── Device Action Screen (QR scan landing) ── */
-#device-action-screen{display:none;position:fixed;inset:0;z-index:600;
-  background:var(--bg);flex-direction:column;overflow-y:auto;}
-#device-action-screen.open{display:flex;}
-.das-header{background:var(--surface);border-bottom:2px solid var(--border);
-  padding:16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
-.das-back{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);
-  background:var(--panel);color:var(--text);font-size:18px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.das-back:active{background:var(--border2);}
-.das-device-id{font-family:var(--cond);font-weight:900;font-size:26px;letter-spacing:2px;}
-.das-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
-.das-body{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;}
-.das-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.das-action-btn{padding:22px 10px;border-radius:10px;border:2px solid var(--border);
-  background:var(--surface);color:var(--text);cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px;
-  text-transform:uppercase;transition:all .15s;-webkit-tap-highlight-color:transparent;}
-.das-action-btn:active{transform:scale(.96);}
-.das-action-btn .dai{font-size:28px;line-height:1;}
-.das-action-btn.mount{border-color:var(--ok);color:var(--ok);background:rgba(61,220,132,.07);}
-.das-action-btn.specs{border-color:var(--laser);color:var(--laser);background:rgba(91,143,255,.07);}
-.das-action-btn.note{border-color:var(--warn);color:var(--warn);background:rgba(245,166,35,.07);}
-.das-action-btn.load{border-color:var(--muted);color:var(--muted);}
-.das-status-row{display:flex;gap:6px;flex-wrap:wrap;}
-
-/* ── MOUNT flow ── */
-.mount-screen{display:none;flex-direction:column;gap:0;}
-.mount-screen.open{display:flex;}
-.mount-section{font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;
-  text-transform:uppercase;color:var(--muted);margin:14px 0 7px;padding-bottom:4px;
-  border-bottom:1px solid var(--border);}
-.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:8px;}
-.pos-card{padding:10px 8px;border-radius:8px;border:2px solid var(--border);
-  background:var(--surface);cursor:pointer;text-align:center;
-  font-family:var(--cond);font-weight:700;font-size:13px;
-  transition:all .15s;-webkit-tap-highlight-color:transparent;position:relative;}
-.pos-card:active{transform:scale(.95);}
-.pos-card.taken{border-color:var(--ok);background:rgba(61,220,132,.09);color:var(--ok);}
-.pos-card.selected{border-color:var(--accent);background:rgba(0,212,255,.1);color:var(--accent);}
-.pos-card .pos-did{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono);}
-.pos-card .pos-tick{position:absolute;top:4px;right:5px;font-size:10px;color:var(--ok);}
-.cable-confirm-box{background:var(--surface);border:1px solid var(--border);
-  border-radius:8px;padding:14px;margin-bottom:12px;}
-.cable-confirm-label{font-family:var(--cond);font-weight:700;font-size:10px;
-  letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.cable-confirm-val{font-family:var(--mono);font-size:15px;color:var(--accent);
-  font-weight:700;margin-bottom:8px;}
-.cable-select{width:100%;background:var(--panel);border:1px solid var(--border);
-  color:var(--text);font-family:var(--mono);font-size:14px;
-  padding:10px;border-radius:6px;outline:none;}
-.cable-select:focus{border-color:var(--accent);}
-.confirm-big-btn{width:100%;padding:18px;border-radius:10px;border:none;
-  background:var(--ok);color:#000;font-family:var(--cond);font-weight:900;
-  font-size:20px;letter-spacing:2px;cursor:pointer;transition:all .15s;margin-top:4px;}
-.confirm-big-btn:active{transform:scale(.97);opacity:.9;}
-.confirm-big-btn:disabled{background:var(--border);color:var(--muted);cursor:default;}
-
-/* ── SPECS panel ── */
-.specs-panel{display:none;flex-direction:column;gap:8px;}
-.specs-panel.open{display:flex;}
-.spec-row{display:flex;justify-content:space-between;align-items:center;
-  padding:9px 0;border-bottom:1px solid var(--border2);}
-.spec-key{font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;
-  text-transform:uppercase;color:var(--muted);}
-.spec-val{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right;}
-
-/* ── NOTE panel ── */
-.note-panel{display:none;flex-direction:column;gap:10px;}
-.note-panel.open{display:flex;}
-.note-ta{width:100%;background:var(--panel);border:1px solid var(--border);
-  color:var(--text);font-family:var(--sans);font-size:15px;
-  padding:12px;border-radius:8px;outline:none;resize:none;min-height:100px;}
-.note-ta:focus{border-color:var(--warn);}
-.note-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
-.note-preset{padding:6px 12px;border-radius:16px;border:1px solid var(--border);
-  background:var(--panel);color:var(--muted);font-size:12px;font-family:var(--cond);
-  font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.note-preset:active{border-color:var(--warn);color:var(--warn);}
-.note-submit-btn{width:100%;padding:15px;border-radius:10px;border:none;
-  background:var(--warn);color:#000;font-family:var(--cond);font-weight:900;
-  font-size:18px;letter-spacing:2px;cursor:pointer;}
-.note-submit-btn:active{opacity:.85;}
-
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.756</small></div>
+  <div class="logo">WTU <small>v3.757</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -506,7 +420,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   </div>
 </div>
 
-<button class="fab" id="fab" onclick="openSheet('fab')" style="font-size:11px;letter-spacing:0.5px;font-family:var(--cond);font-weight:900;width:56px;height:56px">PLACE</button>
+<button class="fab" id="fab" onclick="openSheet('fab')">+</button>
 <nav id="bottom-nav"></nav>
 
 <!-- Overlays -->
@@ -525,36 +439,23 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <input id="proj-venue" type="text" placeholder="Venue name">
 
     <div class="m-sec" style="margin-top:4px">Dropbox sync</div>
-
-    <!-- Connected state -->
     <div id="dbx-connected-row" style="display:none;background:rgba(61,220,132,.08);border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="color:var(--ok);font-size:16px">✓</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="color:var(--ok)">&#10003;</span>
         <span style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--ok)">Dropbox connected</span>
-        <button onclick="dbxDisconnect()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">Disconnect</button>
+        <button onclick="dbxDisconnect()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">Disconnect</button>
       </div>
       <div id="dbx-account-name" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
     </div>
-
-    <!-- Disconnected state -->
     <div id="dbx-disconnected-row">
-      <label>Dropbox App Key <span style="color:var(--muted);font-size:10px">— from dropbox.com/developers/apps → Settings</span></label>
+      <label>Dropbox App Key</label>
       <input id="dbx-app-key" type="text" placeholder="abc123xyz" style="font-family:var(--mono);font-size:14px;letter-spacing:1px;margin-bottom:8px">
-      <button class="sb" id="dbx-connect-btn" onclick="dbxStartOAuth()"
-        style="width:100%;background:rgba(0,100,255,.15);color:#4a9fff;border:1px solid #4a9fff;
-               font-size:14px;padding:13px;margin-bottom:10px">
-        🔗 Connect Dropbox
-      </button>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;line-height:1.6">
-        You'll be redirected to Dropbox to approve access.<br>
-        Make sure your app's redirect URI includes this page's URL.
-      </div>
+      <button class="sb sb-primary" onclick="dbxStartOAuth()" style="width:100%;margin-bottom:8px">&#128279; Connect Dropbox</button>
     </div>
-
     <label>File path in Dropbox</label>
-    <input id="dbx-path" type="text" placeholder="/buildert/current.json" style="font-family:var(--mono);font-size:13px">
+    <input id="dbx-path" type="text" placeholder="/current.json" style="font-family:var(--mono);font-size:13px">
     <div style="display:flex;gap:7px;margin-bottom:12px">
-      <button class="sb sb-primary" style="flex:1" onclick="dbxSyncNow()">↕ Sync now</button>
+      <button class="sb sb-primary" style="flex:1" onclick="dbxSyncNow()">&#8645; Sync now</button>
       <div id="dbx-status" style="flex:2;font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;padding-left:4px"></div>
     </div>
 
@@ -693,146 +594,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   </div>
 </div>
 
-
-<!-- Share Sheet -->
-<div class="ovl" id="ovl-share" onclick="closeSheet('share')" style="display:none"></div>
-<div class="sheet" id="sheet-share" style="max-height:85vh;overflow-y:auto">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <span style="font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1px">SHARE PROJECT</span>
-    <button class="hbtn" onclick="closeSheet('share')">✕</button>
-  </div>
-
-  <div id="share-project-info" style="background:var(--panel);border:1px solid var(--border);
-       border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
-    <div style="font-family:var(--cond);font-weight:700;font-size:15px;color:var(--accent)" id="share-proj-label">—</div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px" id="share-data-info">—</div>
-  </div>
-
-  <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;
-       text-transform:uppercase;color:var(--muted);margin-bottom:6px">App URL (GitHub Pages)</div>
-  <input id="share-base-url" type="url"
-    placeholder="https://yourusername.github.io/buildert/"
-    style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);
-           font-family:var(--mono);font-size:13px;padding:10px;border-radius:6px;outline:none;margin-bottom:10px"
-    oninput="updateShareLink()">
-  <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:14px">
-    Set once — saved on this device
-  </div>
-
-  <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;
-       text-transform:uppercase;color:var(--muted);margin-bottom:6px">Generated link</div>
-  <div id="share-link-preview" style="background:var(--panel);border:1px solid var(--border);
-       border-radius:6px;padding:10px;font-family:var(--mono);font-size:11px;
-       color:var(--muted);word-break:break-all;margin-bottom:10px;min-height:44px">
-    Enter app URL above to generate link
-  </div>
-  <div id="share-link-warn" style="font-size:11px;color:var(--warn);font-family:var(--mono);
-       margin-bottom:10px;display:none"></div>
-
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="sb sb-primary" style="flex:1" onclick="copyShareLink()">📋 Copy link</button>
-    <button class="sb" style="flex:1;background:rgba(0,212,255,.1);color:var(--accent);border:1px solid var(--accent)"
-            onclick="nativeShare()">📤 Share…</button>
-  </div>
-
-  <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
-    <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;
-         text-transform:uppercase;color:var(--muted);margin-bottom:8px">What riggers see</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.7">
-      ✓ All devices, locations and status<br>
-      ✓ Checklist progress<br>
-      ✓ Cable and source info<br>
-      ✗ Your Dropbox credentials<br>
-      ✗ Your controller IP<br>
-      ✗ Spec overrides
-    </div>
-  </div>
-</div>
-
 <div id="toast"></div>
-
-<!-- Device Action Screen — shown when opened via QR code ?device=XXX -->
-<div id="device-action-screen">
-  <div class="das-header">
-    <button class="das-back" onclick="closeDAS()">←</button>
-    <div style="flex:1;min-width:0">
-      <div class="das-device-id" id="das-device-id">—</div>
-      <div class="das-sub" id="das-sub">tap an action below</div>
-    </div>
-    <div id="das-pct-badge" style="font-family:var(--cond);font-weight:900;font-size:18px;color:var(--muted)"></div>
-  </div>
-
-  <div class="das-body">
-    <!-- Status chips row -->
-    <div class="das-status-row" id="das-status-row"></div>
-
-    <!-- Action buttons — shown by default -->
-    <div id="das-actions" class="das-action-grid">
-      <button class="das-action-btn mount" onclick="dasShowPanel('mount')">
-        <span class="dai">📍</span>MOUNT
-      </button>
-      <button class="das-action-btn specs" onclick="dasShowPanel('specs')">
-        <span class="dai">📋</span>SPECS
-      </button>
-      <button class="das-action-btn note" onclick="dasShowPanel('note')">
-        <span class="dai">⚠️</span>NOTE
-      </button>
-      <button class="das-action-btn load" onclick="showToast('LOAD workflow coming soon','warn')">
-        <span class="dai">📦</span>LOAD
-      </button>
-    </div>
-
-    <!-- ── MOUNT panel ── -->
-    <div class="mount-screen" id="das-mount">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <button class="das-back" style="width:30px;height:30px;font-size:14px" onclick="dasShowPanel('actions')">←</button>
-        <span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px">MOUNT POSITION</span>
-      </div>
-      <div class="mount-section">Choose position for this device</div>
-      <div class="pos-grid" id="das-pos-grid"></div>
-
-      <div id="das-cable-section" style="display:none">
-        <div class="mount-section">Cable IN</div>
-        <div class="cable-confirm-box">
-          <div class="cable-confirm-label">Suggested cable</div>
-          <div class="cable-confirm-val" id="das-cable-suggested">—</div>
-          <div class="cable-confirm-label" style="margin-top:8px">Change if needed</div>
-          <select class="cable-select" id="das-cable-select"></select>
-        </div>
-
-        <div class="cable-confirm-box" id="das-source-box" style="display:none">
-          <div class="cable-confirm-label">Source (upstream)</div>
-          <div style="font-family:var(--mono);font-size:14px;color:var(--accent)" id="das-source-val">—</div>
-        </div>
-
-        <button class="confirm-big-btn" id="das-confirm-btn" onclick="dasConfirmMount()">
-          ✓ CONFIRM MOUNTED
-        </button>
-      </div>
-    </div>
-
-    <!-- ── SPECS panel ── -->
-    <div class="specs-panel" id="das-specs">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <button class="das-back" style="width:30px;height:30px;font-size:14px" onclick="dasShowPanel('actions')">←</button>
-        <span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px">SPECS</span>
-      </div>
-      <div id="das-specs-content"></div>
-    </div>
-
-    <!-- ── NOTE panel ── -->
-    <div class="note-panel" id="das-note">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <button class="das-back" style="width:30px;height:30px;font-size:14px" onclick="dasShowPanel('actions')">←</button>
-        <span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px">ADD NOTE / REPORT ISSUE</span>
-      </div>
-      <div class="note-presets" id="das-note-presets"></div>
-      <textarea class="note-ta" id="das-note-ta" placeholder="Describe the issue or note…" rows="4"></textarea>
-      <button class="note-submit-btn" onclick="dasSubmitNote()">⚠ SAVE NOTE</button>
-    </div>
-  </div>
-</div>
-
 <a id="dl-link" style="display:none"></a>
 
 <script>
@@ -1777,7 +1539,12 @@ function saveProject(){
   _updateMobileProjectBadge();
 }
 
-function shareApp(){ openShare(); }
+function shareApp(){
+  // Save the project JSON — simplest reliable share method.
+  // Colleague needs: this JSON file + the buildert_mobile HTML file.
+  saveProject();
+  showToast('Send the .json + buildert_mobile.html to your colleague','ok');
+}
 
 function _getSpecOverrides(){
   try{var s=localStorage.getItem('buildert_specs_overrides');return s?JSON.parse(s):{};}catch(e){return {};}
@@ -2234,13 +2001,9 @@ function _nodeStopScan(){
   if(btn)btn.textContent='📷';
 }
 
-// ── Dropbox OAuth + sync ─────────────────────────────────────────────
-// Uses PKCE (no client secret needed). Stores refresh_token permanently.
-var _dbxToken='';         // current short-lived access token (in memory only)
-var _dbxRefreshToken='';  // permanent — stored in localStorage
-var _dbxAppKey='';        // user's Dropbox app key
-var _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
-var _dbxTokenExpiry=0;    // unix ms when current access token expires
+// ── Dropbox sync (OAuth + PKCE) ──────────────────────────────────
+var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
+var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 
 function _dbxSetStatus(msg,col){
   var el=document.getElementById('dbx-status');
@@ -2253,172 +2016,31 @@ function _dbxNormPath(p){
   return p;
 }
 
-// ── PKCE helpers ─────────────────────────────────────────────────────
-function _pkceVerifier(){
-  var arr=new Uint8Array(48);
-  crypto.getRandomValues(arr);
-  return btoa(String.fromCharCode.apply(null,arr))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-async function _pkceChallenge(verifier){
-  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));
-  return btoa(String.fromCharCode.apply(null,new Uint8Array(buf)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-
-// ── OAuth start ───────────────────────────────────────────────────────
-async function dbxStartOAuth(){
-  var appKey=(document.getElementById('dbx-app-key').value||'').trim();
-  if(!appKey){showToast('Enter your Dropbox App Key first','warn');return;}
-  try{localStorage.setItem('wtu_dbx_app_key',appKey);}catch(e){}
-  _dbxAppKey=appKey;
-
-  var verifier=_pkceVerifier();
-  var challenge=await _pkceChallenge(verifier);
-  try{
-    sessionStorage.setItem('dbx_pkce_verifier',verifier);
-    sessionStorage.setItem('dbx_pkce_appkey',appKey);
-  }catch(e){}
-
-  var redirectUri=location.origin+location.pathname;
-  var url='https://www.dropbox.com/oauth2/authorize'
-    +'?client_id='+encodeURIComponent(appKey)
-    +'&response_type=code'
-    +'&redirect_uri='+encodeURIComponent(redirectUri)
-    +'&code_challenge='+encodeURIComponent(challenge)
-    +'&code_challenge_method=S256'
-    +'&token_access_type=offline';
-  location.href=url;
-}
-
-// ── OAuth callback — called on page load if ?code= present ────────────
-async function _dbxHandleOAuthCallback(){
-  var params=new URLSearchParams(location.search);
-  var code=params.get('code');
-  if(!code) return false;
-
-  // Clean URL immediately
-  if(history.replaceState) history.replaceState({},'',location.pathname);
-
-  _dbxSetStatus('Connecting to Dropbox…','var(--warn)');
-  var verifier='',appKey='';
-  try{verifier=sessionStorage.getItem('dbx_pkce_verifier')||'';appKey=sessionStorage.getItem('dbx_pkce_appkey')||'';}catch(e){}
-  if(!verifier||!appKey){_dbxSetStatus('OAuth error: session lost — try again','var(--danger)');return false;}
-
-  var redirectUri=location.origin+location.pathname;
-  var body='code='+encodeURIComponent(code)
-    +'&grant_type=authorization_code'
-    +'&redirect_uri='+encodeURIComponent(redirectUri)
-    +'&code_verifier='+encodeURIComponent(verifier)
-    +'&client_id='+encodeURIComponent(appKey);
-
+async function _dbxGetToken(){
+  if(_dbxToken && Date.now()<_dbxTokenExpiry-60000) return _dbxToken;
+  if(!_dbxRefreshToken||!_dbxAppKey) return null;
   try{
     var resp=await fetch('https://api.dropboxapi.com/oauth2/token',{
       method:'POST',
       headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:body
+      body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(_dbxRefreshToken)+'&client_id='+encodeURIComponent(_dbxAppKey)
     });
     var data=await resp.json();
     if(data.access_token){
       _dbxToken=data.access_token;
       _dbxTokenExpiry=Date.now()+(data.expires_in||14400)*1000;
-      if(data.refresh_token){
-        _dbxRefreshToken=data.refresh_token;
-        try{localStorage.setItem('wtu_dbx_refresh',_dbxRefreshToken);}catch(e){}
-      }
-      try{localStorage.setItem('wtu_dbx_app_key',appKey);}catch(e){}
-      _dbxAppKey=appKey;
-      _dbxFetchAccountInfo();
-      _dbxUpdateUI();
-      _dbxSetStatus('Connected ✓','var(--ok)');
-      showToast('Dropbox connected ✓','ok');
-      dbxStartPolling();
-      return true;
-    } else {
-      _dbxSetStatus('Auth failed: '+(data.error_description||data.error||'unknown'),'var(--danger)');
-      return false;
-    }
-  }catch(e){
-    _dbxSetStatus('Network error during auth','var(--danger)');
-    return false;
-  }
-}
-
-// ── Refresh access token using refresh_token ──────────────────────────
-async function _dbxRefreshAccessToken(){
-  if(!_dbxRefreshToken||!_dbxAppKey) return false;
-  try{
-    var resp=await fetch('https://api.dropboxapi.com/oauth2/token',{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'grant_type=refresh_token'
-        +'&refresh_token='+encodeURIComponent(_dbxRefreshToken)
-        +'&client_id='+encodeURIComponent(_dbxAppKey)
-    });
-    var data=await resp.json();
-    if(data.access_token){
-      _dbxToken=data.access_token;
-      _dbxTokenExpiry=Date.now()+(data.expires_in||14400)*1000;
-      return true;
+      return _dbxToken;
     }
     if(data.error==='invalid_grant'){
-      // Refresh token revoked — user needs to reconnect
-      _dbxRefreshToken='';
+      _dbxRefreshToken='';_dbxToken='';
       try{localStorage.removeItem('wtu_dbx_refresh');}catch(e){}
-      _dbxToken='';
-      _dbxUpdateUI();
       _dbxSetStatus('Session expired — reconnect Dropbox','var(--warn)');
     }
-    return false;
-  }catch(e){return false;}
-}
-
-// ── Get a valid token, refreshing if needed ───────────────────────────
-async function _dbxGetToken(){
-  if(_dbxToken && Date.now() < _dbxTokenExpiry-60000) return _dbxToken;
-  var ok=await _dbxRefreshAccessToken();
-  return ok ? _dbxToken : null;
-}
-
-// ── Account info (display name) ───────────────────────────────────────
-function _dbxFetchAccountInfo(){
-  if(!_dbxToken) return;
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST','https://api.dropboxapi.com/2/users/get_current_account',true);
-  xhr.setRequestHeader('Authorization','Bearer '+_dbxToken);
-  xhr.onload=function(){
-    if(xhr.status===200){
-      try{
-        var info=JSON.parse(xhr.responseText);
-        var name=(info.name&&info.name.display_name)||info.email||'';
-        var el=document.getElementById('dbx-account-name');
-        if(el) el.textContent=name+' · '+info.email;
-      }catch(e){}
-    }
-  };
-  xhr.send(null);
-}
-
-// ── Update connected/disconnected UI ─────────────────────────────────
-function _dbxUpdateUI(){
-  var isConnected=!!(_dbxRefreshToken||_dbxToken);
-  var connRow=document.getElementById('dbx-connected-row');
-  var discRow=document.getElementById('dbx-disconnected-row');
-  if(connRow) connRow.style.display=isConnected?'':'none';
-  if(discRow) discRow.style.display=isConnected?'none':'';
-}
-
-function dbxDisconnect(){
-  _dbxToken='';_dbxRefreshToken='';_dbxTokenExpiry=0;
-  try{localStorage.removeItem('wtu_dbx_refresh');localStorage.removeItem('wtu_dbx_app_key');}catch(e){}
-  dbxStopPolling();
-  _dbxUpdateUI();
-  _dbxSetStatus('Disconnected','var(--muted)');
-  showToast('Dropbox disconnected','warn');
+  }catch(e){}
+  return null;
 }
 
 function dbxApplySettings(){
-  // Legacy shim — no longer needs to read token from DOM
   _dbxPath=(document.getElementById('dbx-path').value||'').trim()||'/current.json';
   try{localStorage.setItem('wtu_dbx_path',_dbxPath);}catch(e){}
 }
@@ -2426,93 +2048,20 @@ function dbxApplySettings(){
 async function dbxSyncNow(){
   dbxApplySettings();
   var token=await _dbxGetToken();
-  if(!token){_dbxSetStatus('Not connected — tap Connect Dropbox','var(--warn)');return;}
+  if(!token){_dbxSetStatus('Not connected','var(--warn)');return;}
   _dbxPull();
 }
 
 async function _dbxPull(){
-  if(_dbxSyncing)return;
   var token=await _dbxGetToken();
-  if(!token){_dbxSetStatus('Token unavailable','var(--warn)');return;}
-  _dbxSyncing=true;
-  _dbxSetStatus('Syncing…');
-  var path=_dbxNormPath(_dbxPath);
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST','https://content.dropboxapi.com/2/files/download',true);
-  xhr.setRequestHeader('Authorization','Bearer '+token);
-  xhr.setRequestHeader('Dropbox-API-Arg',JSON.stringify({path:path}));
-  xhr.timeout=10000;
-  xhr.onload=function(){
-    _dbxSyncing=false;
-    if(xhr.status===200){
-      var rev='';
-      try{var info=JSON.parse(xhr.getResponseHeader('dropbox-api-result')||'{}');rev=info.rev||'';}catch(e){}
-      if(rev&&rev===_dbxLastRev){_dbxSetStatus('Up to date · '+_hhmm(),'var(--ok)');return;}
-      _dbxLastRev=rev;
-      try{
-        var data=JSON.parse(xhr.responseText);
-        _applyProjectLoad(data);
-        _dbxSetStatus('Loaded · '+_hhmm(),'var(--ok)');
-        _updateMobileProjectBadge();
-      }catch(e){_dbxSetStatus('Parse error','var(--danger)');}
-    } else {
-      var reason='HTTP '+xhr.status;
-      try{
-        var err=JSON.parse(xhr.responseText);
-        var tag=(err.error&&err.error['.tag'])||'';
-        if(tag==='path'&&err.error.path){
-          var ptag=err.error.path['.tag']||'';
-          if(ptag==='not_found'||ptag==='not_file'){
-            _dbxSyncing=false;_dbxPush(false);
-            _dbxSetStatus('Creating file in Dropbox…','var(--warn)');return;
-          }
-          reason=ptag||tag;
-        } else if(err.error_summary){reason=err.error_summary;}
-      }catch(pe){}
-      _dbxSetStatus('Error: '+reason,'var(--danger)');
-    }
-  };
-  xhr.onerror=function(){_dbxSyncing=false;_dbxSetStatus('Offline','var(--muted)');};
-  xhr.ontimeout=function(){_dbxSyncing=false;_dbxSetStatus('Timeout','var(--warn)');};
-  xhr.send();
-}
-
-async function _dbxPush(silent){
-  var token=await _dbxGetToken();
-  if(!token){if(!silent)_dbxSetStatus('Not connected','var(--warn)');return;}
-  var ip=localStorage.getItem('wtu_ip')||'';
-  var payload={
-    _format:'wtu-project',_version:_projectVersion+1,_saved:new Date().toISOString(),
-    _saved_by:'mobile',project:Object.assign({},project,{anbernic_ip:ip}),
-    devices:devices,spec_overrides:_getSpecOverrides(),pack_spares:_packSpares,
-  };
-  _projectVersion++;_projectBaseVersion=_projectVersion;
-  _persistProjectMeta();_updateMobileProjectBadge();
-  var path=_dbxNormPath(_dbxPath);
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST','https://content.dropboxapi.com/2/files/upload',true);
-  xhr.setRequestHeader('Authorization','Bearer '+token);
-  xhr.setRequestHeader('Content-Type','application/octet-stream');
-  xhr.setRequestHeader('Dropbox-API-Arg',JSON.stringify({path:path,mode:'overwrite',autorename:false,mute:true}));
-  xhr.timeout=12000;
-  xhr.onload=function(){
-    if(xhr.status===200){
-      try{var info=JSON.parse(xhr.responseText);_dbxLastRev=info.rev||'';}catch(e){}
-      if(!silent)_dbxSetStatus('Pushed v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
-    }else{if(!silent)_dbxSetStatus('Push error '+xhr.status,'var(--danger)');}
-  };
-  xhr.onerror=function(){if(!silent)_dbxSetStatus('Push failed — offline?','var(--warn)');};
-  xhr.send(JSON.stringify(payload,null,2));
-}
-
-function _dbxPull(){
+  if(!token){_dbxSetStatus('Not connected','var(--warn)');return;}
   if(_dbxSyncing)return;
   _dbxSyncing=true;
   _dbxSetStatus('Syncing…');
   var path=_dbxNormPath(_dbxPath);
   var xhr=new XMLHttpRequest();
   xhr.open('POST','https://content.dropboxapi.com/2/files/download',true);
-  xhr.setRequestHeader('Authorization','Bearer '+_dbxToken);
+  xhr.setRequestHeader('Authorization','Bearer '+token);
   xhr.setRequestHeader('Dropbox-API-Arg',JSON.stringify({path:path}));
   xhr.timeout=10000;
   xhr.onload=function(){
@@ -2554,17 +2103,21 @@ function _dbxPull(){
   xhr.send();
 }
 
-function _dbxPush(silent){
+async function _dbxPush(silent){
+  var token=await _dbxGetToken();
+  if(!token){if(!silent)_dbxSetStatus('Not connected','var(--warn)');return;}
   var ip=localStorage.getItem('wtu_ip')||'';
+  var combinedLog=(window._remoteLog||[]).concat(window._activityLog||[]);
   var payload={
     _format:'wtu-project',
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
-    _saved_by:'mobile',
+    _saved_by:window._riggerName||'mobile',
     project:Object.assign({},project,{anbernic_ip:ip}),
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    _log:combinedLog,
   };
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
@@ -2574,7 +2127,7 @@ function _dbxPush(silent){
   var path=_dbxNormPath(_dbxPath);
   var xhr=new XMLHttpRequest();
   xhr.open('POST','https://content.dropboxapi.com/2/files/upload',true);
-  xhr.setRequestHeader('Authorization','Bearer '+_dbxToken);
+  xhr.setRequestHeader('Authorization','Bearer '+token);
   xhr.setRequestHeader('Content-Type','application/octet-stream');
   xhr.setRequestHeader('Dropbox-API-Arg',JSON.stringify({path:path,mode:'overwrite',autorename:false,mute:true}));
   xhr.timeout=12000;
@@ -2594,9 +2147,9 @@ function _hhmm(){var n=new Date();return ('0'+n.getHours()).slice(-2)+':'+('0'+n
 
 function dbxStartPolling(){
   dbxStopPolling();
-  if(!_dbxRefreshToken&&!_dbxToken)return;
+  if(!_dbxToken&&!_dbxRefreshToken)return;
   _dbxPull();
-  _dbxPollTimer=setInterval(_dbxPull,20000);
+  _dbxPollTimer=setInterval(_dbxPull,20000); // every 20s
 }
 
 function dbxStopPolling(){
@@ -2605,14 +2158,16 @@ function dbxStopPolling(){
 
 // Hook into autoSave — push to Dropbox after local save
 var _dbxPushDebounce=null;
-var _origAutoSave=autoSave;
-function autoSave(){
-  _origAutoSave();
-  if(_dbxRefreshToken||_dbxToken){
-    clearTimeout(_dbxPushDebounce);
-    _dbxPushDebounce=setTimeout(function(){_dbxPush(true);},2000);
-  }
-}
+(function(){
+  var _orig=autoSave;
+  autoSave=function(){
+    _orig();
+    if(_dbxToken||_dbxRefreshToken){
+      clearTimeout(_dbxPushDebounce);
+      _dbxPushDebounce=setTimeout(function(){_dbxPush(true);},2000);
+    }
+  };
+})();
 
 // ── Init ────────────────────────────────────────────────────────
 try{var sd=localStorage.getItem('wtu_devices');if(sd)devices=JSON.parse(sd);}catch(e){}
@@ -2631,632 +2186,200 @@ _dbxAppKey=localStorage.getItem('wtu_dbx_app_key')||'';
 _dbxPath=localStorage.getItem('wtu_dbx_path')||'/current.json';
 var dbxPathEl=document.getElementById('dbx-path');
 if(dbxPathEl) dbxPathEl.value=_dbxPath;
-var dbxAppKeyEl=document.getElementById('dbx-app-key');
-if(dbxAppKeyEl&&_dbxAppKey) dbxAppKeyEl.value=_dbxAppKey;
-_dbxUpdateUI();
-// Handle OAuth callback (?code= from Dropbox redirect) — must run before startPolling
-_dbxHandleOAuthCallback().then(function(wasOAuth){
-  if(!wasOAuth && _dbxRefreshToken){
-    // Already connected — silently get a fresh token then start polling
-    _dbxRefreshAccessToken().then(function(ok){
-      if(ok){ _dbxFetchAccountInfo(); setTimeout(dbxStartPolling,1500); }
-      else  { _dbxUpdateUI(); }
-    });
-  }
-});
+if(_dbxRefreshToken){ setTimeout(dbxStartPolling, 1500); }
 
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){localStorage.setItem('wtu_ip',params.get('ip'));startPolling();}
 
 buildNav(); setTab('laser');
 _updateMobileProjectBadge();
-_handleRiggerParam();
-_handleShareParam();
-_handleDeviceParam();
 
-// ── Device Action Screen (QR landing) ────────────────────────────────
-var _dasGi = -1;          // global index of device currently in DAS
-var _dasMountGi = -1;     // position slot chosen during mount flow
-
-function openDAS(deviceId) {
-  var gi = devices.findIndex(function(d){ return d.device_id === deviceId; });
-  if (gi < 0) {
-    showToast('Device "' + deviceId + '" not found in project', 'warn');
-    return;
-  }
-  _dasGi = gi;
-  var d = devices[gi];
-  var sp = specFor(d);
-  var tk = TKEY[d.type] || 'laser';
-  var colMap = {laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
-  var col = colMap[tk] || 'var(--accent)';
-
-  // Header
-  var idEl = document.getElementById('das-device-id');
-  var subEl = document.getElementById('das-sub');
-  var pctEl = document.getElementById('das-pct-badge');
-  if (idEl) { idEl.textContent = d.device_id; idEl.style.color = col; }
-  if (subEl) subEl.textContent = (d.location || 'no location set') + (d.serial ? ' · ' + d.serial : '');
-  if (pctEl) { var p = pct(d); pctEl.textContent = p + '%'; pctEl.style.color = p===100?'var(--ok)':p>50?'var(--warn)':'var(--muted)'; }
-
-  // Status chips
-  var sr = document.getElementById('das-status-row');
-  if (sr) {
-    sr.innerHTML = STATUS_OPTS.map(function(s){
-      var active = d.status === s;
-      var cls = 'stat-chip' + (active ? ' ' + statClass(s) : '');
-      return '<span class="' + cls + '" onclick="_dasSetStatus('' + s + '')">' + (active?'● ':'') + s + '</span>';
-    }).join('');
-  }
-
-  // Show screen
-  document.getElementById('device-action-screen').classList.add('open');
-  dasShowPanel('actions');
+// ── Dropbox OAuth (PKCE) ──────────────────────────────────────────
+function _pkceVerifier(){
+  var arr=new Uint8Array(48);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode.apply(null,arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
-
-function closeDAS() {
-  document.getElementById('device-action-screen').classList.remove('open');
-  _dasGi = -1;
-  _dasMountGi = -1;
+async function _pkceChallenge(v){
+  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));
+  return btoa(String.fromCharCode.apply(null,new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
-
-function _dasSetStatus(status) {
-  if (_dasGi < 0) return;
-  devices[_dasGi].status = status;
-  autoSave();
-  openDAS(devices[_dasGi].device_id); // refresh
-  showToast(devices[_dasGi].device_id + ' → ' + status, 'ok');
+async function dbxStartOAuth(){
+  var appKey=(document.getElementById('dbx-app-key').value||'').trim();
+  if(!appKey){showToast('Enter your App Key first','warn');return;}
+  localStorage.setItem('wtu_dbx_app_key',appKey);
+  var verifier=_pkceVerifier();
+  var challenge=await _pkceChallenge(verifier);
+  localStorage.setItem('dbx_pkce_verifier',verifier);
+  localStorage.setItem('dbx_pkce_appkey',appKey);
+  var redirect=location.origin+location.pathname;
+  location.href='https://www.dropbox.com/oauth2/authorize'
+    +'?client_id='+encodeURIComponent(appKey)
+    +'&response_type=code'
+    +'&redirect_uri='+encodeURIComponent(redirect)
+    +'&code_challenge='+encodeURIComponent(challenge)
+    +'&code_challenge_method=S256'
+    +'&token_access_type=offline'
+    +'&scope='+encodeURIComponent('files.content.read files.content.write');
 }
-
-function dasShowPanel(panel) {
-  // Hide all panels
-  document.getElementById('das-actions').style.display = 'none';
-  document.getElementById('das-mount').classList.remove('open');
-  document.getElementById('das-specs').classList.remove('open');
-  document.getElementById('das-note').classList.remove('open');
-
-  if (panel === 'actions') {
-    document.getElementById('das-actions').style.display = 'grid';
-  } else if (panel === 'mount') {
-    document.getElementById('das-mount').classList.add('open');
-    _dasBuildPositionGrid();
-  } else if (panel === 'specs') {
-    document.getElementById('das-specs').classList.add('open');
-    _dasBuildSpecs();
-  } else if (panel === 'note') {
-    document.getElementById('das-note').classList.add('open');
-    _dasBuildNote();
-  }
-}
-
-function _dasBuildPositionGrid() {
-  if (_dasGi < 0) return;
-  var d = devices[_dasGi];
-  _dasMountGi = -1;
-
-  // Build list of all locations for this device type
-  // including devices that have a location set (pre-planned)
-  var allOfType = devices.filter(function(x){ return x.type === d.type; });
-
-  // Collect all known location slots — from all devices of this type
-  // A "slot" = a device entry (pre-planned position)
-  var grid = document.getElementById('das-pos-grid');
-  var cable = document.getElementById('das-cable-section');
-  if (cable) cable.style.display = 'none';
-
-  if (!allOfType.length) {
-    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:1/-1">No pre-planned positions found for this device type.</div>';
-    return;
-  }
-
-  grid.innerHTML = allOfType.map(function(x, i) {
-    var xgi = devices.indexOf(x);
-    var isSelf = (xgi === _dasGi);
-    // "Taken" = another device at this position already has a serial scanned
-    var isTaken = !isSelf && x.serial && x.serial.replace(/-/g,'').trim();
-    var isMounted = !isSelf && x.checks && x.checks['Mounted'];
-    var taken = isTaken || isMounted;
-    var cls = 'pos-card' + (isSelf ? ' selected' : taken ? ' taken' : '');
-    var loc = x.location || ('pos ' + (i+1));
-    var occupant = (taken && x.device_id) ? x.device_id : '';
-    return '<div class="' + cls + '" onclick="_dasTapPosition(' + xgi + ')">'
-      + (taken ? '<span class="pos-tick">✓</span>' : '')
-      + '<div>' + loc + '</div>'
-      + (occupant ? '<div class="pos-did">' + occupant + '</div>' : '')
-      + '</div>';
-  }).join('');
-}
-
-function _dasTapPosition(targetGi) {
-  // User selected a position — this is the pre-planned slot they are physically at
-  // The device in that slot will be swapped with _dasGi (or the current device fills it)
-  _dasMountGi = targetGi;
-
-  // Highlight selected
-  var grid = document.getElementById('das-pos-grid');
-  var cards = grid.querySelectorAll('.pos-card');
-  var allOfType = devices.filter(function(x){ return x.type === devices[_dasGi].type; });
-  cards.forEach(function(card, i) {
-    card.classList.remove('selected');
-    if (devices.indexOf(allOfType[i]) === targetGi) card.classList.add('selected');
-  });
-
-  // Show cable confirmation section
-  var cable = document.getElementById('das-cable-section');
-  if (cable) cable.style.display = '';
-
-  // Suggested cable from spec
-  var tgt = devices[targetGi];
-  var sp = specFor(tgt);
-  var suggestEl = document.getElementById('das-cable-suggested');
-  var curCable = tgt.cable_in || tgt.cable || '';
-
-  // Build cable options filtered by connector
-  var reqConn = sp ? (sp.in_connector || '') : '';
-  var sel = document.getElementById('das-cable-select');
-  var opts = '<option value="">— none —</option>';
-  CABLE_TYPES.forEach(function(ct){
-    if (reqConn) {
-      // Check if cable matches connector (simple: cable type key prefix)
-      var matches = false;
-      if (reqConn === 'TRUE1' && ct.key === 'powercat') matches = true;
-      if (reqConn === 'TRUE1' && ct.key === 'powerlan') matches = true;
-      if ((reqConn === '32ACEE') && ct.key === 'cee32') matches = true;
-      if (reqConn === 'Schuko' && ct.key === 'schuko') matches = true;
-      if (reqConn === 'L21-30' && ct.key === 'l2130') matches = true;
-      if (!matches && ct.key !== 'powercat') { /* show all if no match found */}
-      // If we found at least one match, be strict; otherwise show all
-    }
-    ct.lengths.forEach(function(l){
-      var v = ct.key + '-' + l.v;
-      opts += '<option value="' + v + '"' + (curCable===v?' selected':'') + '>'
-        + ct.label + ' ' + l.l + '</option>';
+async function _dbxHandleOAuthCallback(){
+  var params=new URLSearchParams(location.search);
+  var code=params.get('code');
+  if(!code) return false;
+  if(history.replaceState) history.replaceState({},'',location.pathname);
+  var verifier=localStorage.getItem('dbx_pkce_verifier')||'';
+  var appKey=localStorage.getItem('dbx_pkce_appkey')||'';
+  if(!verifier||!appKey) return false;
+  var redirect=location.origin+location.pathname;
+  try{
+    var resp=await fetch('https://api.dropboxapi.com/oauth2/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'code='+encodeURIComponent(code)
+        +'&grant_type=authorization_code'
+        +'&redirect_uri='+encodeURIComponent(redirect)
+        +'&code_verifier='+encodeURIComponent(verifier)
+        +'&client_id='+encodeURIComponent(appKey)
     });
-  });
-  if (sel) sel.innerHTML = opts;
-  if (suggestEl) suggestEl.textContent = curCable ? _cableLabel(curCable) : (reqConn ? reqConn + ' cable needed' : '— not set —');
-
-  // Show source
-  var srcBox = document.getElementById('das-source-box');
-  var srcVal = document.getElementById('das-source-val');
-  if (tgt.source && srcBox && srcVal) {
-    srcBox.style.display = '';
-    srcVal.textContent = tgt.source;
-  } else if (srcBox) {
-    srcBox.style.display = 'none';
-  }
-}
-
-function dasConfirmMount() {
-  if (_dasGi < 0 || _dasMountGi < 0) { showToast('Pick a position first', 'warn'); return; }
-  var tgt = devices[_dasMountGi];   // pre-planned slot
-  var cur = devices[_dasGi];         // device being placed
-
-  // Transfer cable choice
-  var sel = document.getElementById('das-cable-select');
-  var chosenCable = sel ? sel.value : '';
-
-  // Copy the planned location + source to the actual device being placed
-  cur.location  = tgt.location || cur.location;
-  cur.source    = tgt.source   || cur.source;
-  if (chosenCable) { cur.cable_in = chosenCable; cur.cable = chosenCable; }
-
-  // Mark as mounted
-  if (!cur.checks) cur.checks = {};
-  cur.checks['Mounted'] = true;
-  var n = new Date(), pad = function(v){return v<10?'0'+v:''+v;};
-  cur.mounted_at = pad(n.getHours()) + ':' + pad(n.getMinutes());
-  cur.status = 'Mounted';
-
-  autoSave();
-  showToast(cur.device_id + ' mounted at ' + (cur.location || 'position') + ' ✓', 'ok');
-
-  // Refresh the DAS header
-  openDAS(cur.device_id);
-  dasShowPanel('actions');
-}
-
-function _dasBuildSpecs() {
-  if (_dasGi < 0) return;
-  var d = devices[_dasGi];
-  var sp = specFor(d);
-  var el = document.getElementById('das-specs-content');
-  if (!sp) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">No spec data for this model.</div>'; return; }
-
-  var fields = [
-    ['Model', d.model || (d.device_id ? d.device_id.split(' ')[0] : '—')],
-    ['Alt name', sp.alt],
-    ['Laser W', sp.laser_w ? sp.laser_w + ' W' : null],
-    ['Power draw', sp.consumption_w ? sp.consumption_w + ' W' : null],
-    ['Weight', sp.weight_kg ? sp.weight_kg + ' kg' : null],
-    ['Input connector', sp.in_connector],
-    ['Output connector', sp.out_connector || '—'],
-    ['Scanners', sp.scanners],
-    ['Scan angle', sp.angle],
-    ['OPS / Diode', sp.ops_diode],
-    ['Outputs', sp.outputs != null ? sp.outputs + ' ports' : null],
-    ['Inputs', sp.inputs  != null ? sp.inputs  + ' ports' : null],
-    ['Notes', sp.notes],
-  ];
-
-  el.innerHTML = fields.filter(function(f){ return f[1]; }).map(function(f){
-    return '<div class="spec-row">'
-      + '<span class="spec-key">' + f[0] + '</span>'
-      + '<span class="spec-val">' + f[1] + '</span>'
-      + '</div>';
-  }).join('');
-}
-
-function _dasBuildNote() {
-  if (_dasGi < 0) return;
-  var d = devices[_dasGi];
-  var presets = ['Needs power', 'Cable fault', 'Scanner issue', 'No response', 'Needs swap', 'Physical damage'];
-  var presetsEl = document.getElementById('das-note-presets');
-  if (presetsEl) {
-    presetsEl.innerHTML = presets.map(function(p){
-      return '<button class="note-preset" onclick="_dasNotePreset('' + p + '')">' + p + '</button>';
-    }).join('');
-  }
-  var ta = document.getElementById('das-note-ta');
-  if (ta) ta.value = '';
-}
-
-function _dasNotePreset(text) {
-  var ta = document.getElementById('das-note-ta');
-  if (!ta) return;
-  ta.value = ta.value ? ta.value + ' · ' + text : text;
-  ta.focus();
-}
-
-function dasSubmitNote() {
-  if (_dasGi < 0) return;
-  var ta = document.getElementById('das-note-ta');
-  var text = (ta ? ta.value.trim() : '');
-  if (!text) { showToast('Type a note first', 'warn'); return; }
-  var d = devices[_dasGi];
-  var ts = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  d.notes = (d.notes ? d.notes + ' | ' : '') + ts + ': ' + text;
-  d.status = 'GoAndCheck';
-  autoSave();
-  showToast('Note saved — status → GoAndCheck', 'warn');
-  if (ta) ta.value = '';
-  openDAS(d.device_id);
-  dasShowPanel('actions');
-}
-
-// ── Handle ?device= URL param ─────────────────────────────────────────
-function _handleDeviceParam() {
-  var params = new URLSearchParams(location.search);
-  var deviceId = params.get('device');
-  if (!deviceId) return;
-  deviceId = deviceId.toUpperCase();
-  // Small delay to let init load project/devices first
-  setTimeout(function(){
-    if (devices.length) {
-      openDAS(deviceId);
-    } else {
-      showToast('No project loaded — open a project first', 'warn');
+    var data=await resp.json();
+    if(data.access_token){
+      _dbxToken=data.access_token;
+      _dbxTokenExpiry=Date.now()+(data.expires_in||14400)*1000;
+      if(data.refresh_token){
+        _dbxRefreshToken=data.refresh_token;
+        localStorage.setItem('wtu_dbx_refresh',_dbxRefreshToken);
+      }
+      localStorage.setItem('wtu_dbx_app_key',appKey);
+      _dbxAppKey=appKey;
+      localStorage.removeItem('dbx_pkce_verifier');
+      localStorage.removeItem('dbx_pkce_appkey');
+      _dbxFetchAccountInfo();
+      _dbxUpdateUI();
+      _dbxSetStatus('Connected ✓','var(--ok)');
+      showToast('Dropbox connected ✓','ok');
+      setTimeout(dbxStartPolling,500);
+      return true;
     }
-  }, 800);
+    _dbxSetStatus('Auth failed: '+(data.error_description||data.error||'?'),'var(--danger)');
+  }catch(e){_dbxSetStatus('Auth error','var(--danger)');}
+  return false;
 }
-
-
-// ── Share flow ────────────────────────────────────────────────────────
-var _shareLink = '';
-
-function openShare() {
-  // Load saved base URL
-  var saved = localStorage.getItem('wtu_share_url') || '';
-  var el = document.getElementById('share-base-url');
-  if (el && saved) el.value = saved;
-
-  // Project info
-  var projLabel = document.getElementById('share-proj-label');
-  var dataInfo  = document.getElementById('share-data-info');
-  if (projLabel) projLabel.textContent = (project.name || '(unnamed project)') + (project.venue ? ' · ' + project.venue : '');
-  if (dataInfo)  dataInfo.textContent  = devices.length + ' devices · v' + _projectVersion + ' · ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-
-  updateShareLink();
-  openSheet('share');
-}
-
-function _buildSharePayload() {
-  // Strip credentials — only share what a rigger needs to see
-  var safe = {
-    _format:  'wtu-share',
-    _version: _projectVersion,
-    _shared:  new Date().toISOString(),
-    project: { name: project.name || '', venue: project.venue || '' },
-    devices: devices.map(function(d) {
-      // Deep copy but strip nothing — location, checks, cables all useful
-      return Object.assign({}, d);
-    }),
+function _dbxFetchAccountInfo(){
+  if(!_dbxToken)return;
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','https://api.dropboxapi.com/2/users/get_current_account',true);
+  xhr.setRequestHeader('Authorization','Bearer '+_dbxToken);
+  xhr.onload=function(){
+    try{
+      var info=JSON.parse(xhr.responseText);
+      var el=document.getElementById('dbx-account-name');
+      if(el) el.textContent=(info.name&&info.name.display_name)||info.email||'';
+    }catch(e){}
   };
-  return safe;
+  xhr.send(null);
+}
+function _dbxUpdateUI(){
+  var connected=!!(_dbxRefreshToken||_dbxToken);
+  var cr=document.getElementById('dbx-connected-row');
+  var dr=document.getElementById('dbx-disconnected-row');
+  if(cr)cr.style.display=connected?'':'none';
+  if(dr)dr.style.display=connected?'none':'';
+}
+function dbxDisconnect(){
+  _dbxToken='';_dbxRefreshToken='';_dbxTokenExpiry=0;
+  try{localStorage.removeItem('wtu_dbx_refresh');localStorage.removeItem('wtu_dbx_app_key');}catch(e){}
+  dbxStopPolling();
+  _dbxUpdateUI();
+  _dbxSetStatus('Disconnected','var(--muted)');
+  showToast('Dropbox disconnected','warn');
 }
 
-function updateShareLink() {
-  var baseUrl = (document.getElementById('share-base-url').value || '').trim();
-  if (baseUrl) localStorage.setItem('wtu_share_url', baseUrl);
+// ── Rigger mode ───────────────────────────────────────────────────
+window._riggerName='';
+window._activityLog=[];
+window._remoteLog=[];
+window._riggerMode=false;
 
-  var preview = document.getElementById('share-link-preview');
-  var warn    = document.getElementById('share-link-warn');
-  if (!baseUrl) {
-    preview.textContent = 'Enter app URL above to generate link';
-    preview.style.color = 'var(--muted)';
-    warn.style.display = 'none';
-    _shareLink = '';
-    return;
+function _handleRiggerParam(){
+  var params=new URLSearchParams(location.search);
+  var rigger=params.get('rigger');
+  var token=params.get('dbx_token');
+  var path=params.get('dbx_path');
+  if(!rigger)return;
+  window._riggerMode=true;
+  window._riggerName=decodeURIComponent(rigger);
+  if(token){
+    _dbxToken=decodeURIComponent(token);
+    _dbxTokenExpiry=Date.now()+4*3600*1000;
   }
-
-  try {
-    var payload  = _buildSharePayload();
-    var json     = JSON.stringify(payload);
-    var encoded  = btoa(unescape(encodeURIComponent(json)));   // UTF-8 safe base64
-    var base     = baseUrl.replace(/\/?$/, '/');
-    _shareLink   = base + '?d=' + encoded;
-
-    preview.textContent = _shareLink;
-    preview.style.color = 'var(--accent)';
-
-    // Warn if URL is very long (some messaging apps truncate)
-    if (_shareLink.length > 4000) {
-      warn.style.display = '';
-      warn.textContent = '⚠ Link is ' + _shareLink.length + ' chars — large project. Works in Safari/Chrome, may not paste cleanly in some chat apps.';
-    } else {
-      warn.style.display = 'none';
-    }
-  } catch(e) {
-    preview.textContent = 'Error generating link: ' + e.message;
-    preview.style.color = 'var(--danger)';
-    _shareLink = '';
+  if(path){
+    _dbxPath=decodeURIComponent(path);
+    var pe=document.getElementById('dbx-path');
+    if(pe)pe.value=_dbxPath;
   }
-}
-
-function copyShareLink() {
-  if (!_shareLink) { showToast('Generate a link first', 'warn'); return; }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(_shareLink)
-      .then(function(){ showToast('Link copied ✓', 'ok'); })
-      .catch(function(){ _fallbackCopy(_shareLink); });
-  } else {
-    _fallbackCopy(_shareLink);
-  }
-}
-
-function _fallbackCopy(text) {
-  var ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  try { document.execCommand('copy'); showToast('Link copied ✓', 'ok'); }
-  catch(e) { showToast('Copy failed — long-press the link to copy', 'warn'); }
-  document.body.removeChild(ta);
-}
-
-function nativeShare() {
-  if (!_shareLink) { showToast('Generate a link first', 'warn'); return; }
-  var title = 'Buildert — ' + (project.name || 'project');
-  if (navigator.share) {
-    navigator.share({ title: title, url: _shareLink })
-      .catch(function(e){ if (e.name !== 'AbortError') showToast('Share failed', 'err'); });
-  } else {
-    copyShareLink();
-    showToast('Share not available — link copied instead', 'ok');
-  }
-}
-
-// ── Load from ?d= URL param (rigger side) ─────────────────────────────
-function _handleShareParam() {
-  var params = new URLSearchParams(location.search);
-  var encoded = params.get('d');
-  if (!encoded) return;
-
-  try {
-    var json = decodeURIComponent(escape(atob(encoded)));
-    var data = JSON.parse(json);
-    if (!data._format || data._format.indexOf('wtu') < 0) throw new Error('Unknown format');
-
-    // Load silently — do not overwrite local Dropbox/IP settings
-    if (data.devices && data.devices.length) {
-      devices = data.devices;
-    }
-    if (data.project) {
-      project.name  = data.project.name  || project.name;
-      project.venue = data.project.venue || project.venue;
-    }
-    if (data.devices) _packSpares = data.pack_spares || _packSpares;
-
-    // Save to local storage so it persists
-    try { localStorage.setItem('wtu_devices', JSON.stringify(devices)); } catch(e){}
-
-    _updateMobileProjectBadge();
-    renderMain();
-
-    showToast('Project loaded: ' + (project.name || devices.length + ' devices') + ' ✓', 'ok');
-
-    // Clean URL so sharing the page again doesn't re-load stale data
-    if (history.replaceState) {
-      var cleanUrl = location.pathname + (params.get('device') ? '?device=' + params.get('device') : '');
-      history.replaceState({}, '', cleanUrl);
-    }
-  } catch(e) {
-    showToast('Could not load shared data: ' + e.message, 'err');
-  }
-}
-
-
-// ── Rigger mode (opened via ?rigger= link) ────────────────────────────
-var _riggerName = '';       // set from URL param
-var _activityLog = [];     // [{by, at, device, action}]
-var _riggerMode = false;
-
-function _handleRiggerParam() {
-  var params = new URLSearchParams(location.search);
-  var rigger   = params.get('rigger');
-  var token    = params.get('dbx_token');
-  var path     = params.get('dbx_path');
-
-  if (!rigger) return;
-
-  _riggerMode  = true;
-  _riggerName  = decodeURIComponent(rigger);
-
-  // Apply Dropbox creds from URL — rigger uses owner's token
-  if (token) {
-    _dbxToken       = decodeURIComponent(token);
-    _dbxTokenExpiry = Date.now() + 4 * 3600 * 1000; // assume 4hr
-  }
-  if (path) {
-    _dbxPath = decodeURIComponent(path);
-    var pathEl = document.getElementById('dbx-path');
-    if (pathEl) pathEl.value = _dbxPath;
-  }
-
-  // Clean URL so refresh doesn't re-apply
-  if (history.replaceState) history.replaceState({}, '', location.pathname);
-
+  if(history.replaceState) history.replaceState({},'',location.pathname);
   // Show rigger banner
-  _showRiggerBanner();
-
-  // Start syncing from Dropbox
+  var banner=document.createElement('div');
+  banner.id='rigger-banner';
+  banner.style.cssText='background:rgba(0,212,255,.1);border-bottom:1px solid var(--accent);'
+    +'padding:6px 14px;font-family:var(--cond);font-weight:700;font-size:12px;'
+    +'letter-spacing:1px;color:var(--accent);display:flex;align-items:center;gap:8px;'
+    +'position:sticky;top:60px;z-index:90;';
+  banner.innerHTML='&#128100; RIGGER: '+window._riggerName.toUpperCase()
+    +'<span style="font-weight:400;color:var(--muted);margin-left:4px">· changes logged</span>'
+    +'<span id="rigger-log-count" style="margin-left:auto;color:var(--muted);font-size:10px"></span>';
+  var header=document.querySelector('header');
+  if(header&&header.nextSibling) header.parentNode.insertBefore(banner,header.nextSibling);
   _dbxPull();
   dbxStartPolling();
 }
-
-function _showRiggerBanner() {
-  // Insert a small persistent banner below header
-  var existing = document.getElementById('rigger-banner');
-  if (existing) return;
-  var banner = document.createElement('div');
-  banner.id = 'rigger-banner';
-  banner.style.cssText = 'background:rgba(0,212,255,.1);border-bottom:1px solid var(--accent);'
-    + 'padding:6px 14px;font-family:var(--cond);font-weight:700;font-size:12px;'
-    + 'letter-spacing:1px;color:var(--accent);display:flex;align-items:center;gap:8px;'
-    + 'position:sticky;top:60px;z-index:90;';
-  banner.innerHTML = '&#128100; RIGGER: ' + _riggerName.toUpperCase()
-    + '<span style="font-weight:400;color:var(--muted);margin-left:4px">· changes logged</span>'
-    + '<span id="rigger-log-count" style="margin-left:auto;color:var(--muted);font-size:10px"></span>';
-  var header = document.querySelector('header');
-  if (header && header.nextSibling) {
-    header.parentNode.insertBefore(banner, header.nextSibling);
-  } else {
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
+function _logActivity(deviceId,action){
+  if(!window._riggerMode)return;
+  var entry={by:window._riggerName,at:new Date().toISOString(),device:deviceId||'',action:action||''};
+  window._activityLog.push(entry);
+  var cnt=document.getElementById('rigger-log-count');
+  if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
 }
-
-function _logActivity(deviceId, action, extra) {
-  if (!_riggerMode && !_riggerName) return;
-  var entry = {
-    by:     _riggerName || 'unknown',
-    at:     new Date().toISOString(),
-    device: deviceId || '',
-    action: action || '',
-  };
-  if (extra) Object.assign(entry, extra);
-  _activityLog.push(entry);
-  // Update banner count
-  var cnt = document.getElementById('rigger-log-count');
-  if (cnt) cnt.textContent = _activityLog.length + ' action' + (_activityLog.length === 1 ? '' : 's');
-}
-
-// ── Patch core mutators to log activity ──────────────────────────────
-var _origTapCheck = tapCheck;
-tapCheck = function(gi, check) {
-  var before = devices[gi] && devices[gi].checks && devices[gi].checks[check];
-  _origTapCheck(gi, check);
-  var after = devices[gi] && devices[gi].checks && devices[gi].checks[check];
-  if (after !== before) {
-    _logActivity(devices[gi].device_id, (after ? '✓ ' : '✗ ') + check);
-  }
-};
-
-var _origTapStatus = tapStatus;
-tapStatus = function(gi, status) {
-  _origTapStatus(gi, status);
-  _logActivity(devices[gi].device_id, 'Status → ' + status);
-};
-
-var _origCommitSerial = commitSerial;
-commitSerial = function(gi, val) {
-  _origCommitSerial(gi, val);
-  _logActivity(devices[gi] && devices[gi].device_id, 'Serial scanned: ' + val);
-};
-
-var _origDasConfirmMount = dasConfirmMount;
-dasConfirmMount = function() {
-  var devId = (_dasGi >= 0 && devices[_dasGi]) ? devices[_dasGi].device_id : '';
-  var loc   = (_dasMountGi >= 0 && devices[_dasMountGi]) ? (devices[_dasMountGi].location || '') : '';
-  _origDasConfirmMount();
-  _logActivity(devId, 'Mounted at: ' + (loc || 'position'));
-};
-
-// ── Patch _dbxPush to include activity log ────────────────────────────
-// We override autoSave (called after every change) to merge log into payload
-var _origDbxPush = _dbxPush;
-_dbxPush = async function(silent) {
-  // Merge our local activity log into the project data before pushing
-  // We do this by patching _packSpares temporarily — cleaner: we add _log to payload
-  // Override happens via window-level patch below
-  await _origDbxPush(silent);
-};
-
-// Patch the payload builder inside _dbxPush by overriding _getSpecOverrides
-// to also inject _log into the uploaded data. Cleanest without rewriting _dbxPush:
-// We append _log by monkey-patching the XHR send via a wrapper on _dbxPush.
-// Actually simplest: override _dbxPush entirely to add _log to payload.
-_dbxPush = async function(silent) {
-  var token = await _dbxGetToken();
-  if (!token) { if (!silent) _dbxSetStatus('Not connected', 'var(--warn)'); return; }
-  var ip = localStorage.getItem('wtu_ip') || '';
-  // Merge incoming log from Dropbox with our new entries
-  var combinedLog = (window._remoteLog || []).concat(_activityLog);
-  var payload = {
-    _format: 'wtu-project', _version: _projectVersion + 1,
-    _saved: new Date().toISOString(), _saved_by: _riggerName || 'mobile',
-    project: Object.assign({}, project, {anbernic_ip: ip}),
-    devices: devices,
-    spec_overrides: _getSpecOverrides(),
-    pack_spares: _packSpares,
-    _log: combinedLog,
-  };
-  _projectVersion++; _projectBaseVersion = _projectVersion;
-  _persistProjectMeta(); _updateMobileProjectBadge();
-  var path = _dbxNormPath(_dbxPath);
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', 'https://content.dropboxapi.com/2/files/upload', true);
-  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-  xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-  xhr.setRequestHeader('Dropbox-API-Arg', JSON.stringify({path: path, mode: 'overwrite', autorename: false, mute: true}));
-  xhr.timeout = 12000;
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      try { var info = JSON.parse(xhr.responseText); _dbxLastRev = info.rev || ''; } catch(e) {}
-      if (!silent) _dbxSetStatus('Pushed v' + _projectVersion + ' · ' + _hhmm(), 'var(--ok)');
-    } else { if (!silent) _dbxSetStatus('Push error ' + xhr.status, 'var(--danger)'); }
-  };
-  xhr.onerror  = function() { if (!silent) _dbxSetStatus('Push failed — offline?', 'var(--warn)'); };
-  xhr.send(JSON.stringify(payload, null, 2));
-};
-
-// Capture _log from Dropbox when pulling
-var _origApplyProjectLoad = _applyProjectLoad;
-_applyProjectLoad = function(data) {
-  if (data && Array.isArray(data._log)) {
-    window._remoteLog = data._log; // keep remote log separate
-  }
+// Patch _applyProjectLoad to capture remote log
+var _origApplyProjectLoad=_applyProjectLoad;
+_applyProjectLoad=function(data){
+  if(data&&Array.isArray(data._log)) window._remoteLog=data._log;
   _origApplyProjectLoad(data);
 };
 
-// ── dbxStartPolling needs to work with token-from-URL too ─────────────
-var _origDbxStartPolling = dbxStartPolling;
-dbxStartPolling = function() {
-  dbxStopPolling();
-  if (!_dbxRefreshToken && !_dbxToken) return;
-  _dbxPull();
-  _dbxPollTimer = setInterval(_dbxPull, 20000);
-};
+// ── Handle ?d= share param (snapshot in URL) ──────────────────────
+function _handleShareParam(){
+  var params=new URLSearchParams(location.search);
+  var encoded=params.get('d');
+  if(!encoded)return;
+  try{
+    var json=decodeURIComponent(escape(atob(encoded)));
+    var data=JSON.parse(json);
+    if(data.devices&&data.devices.length) devices=data.devices;
+    if(data.project){project.name=data.project.name||project.name;project.venue=data.project.venue||project.venue;}
+    try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
+    _updateMobileProjectBadge();
+    renderMain();
+    showToast('Project loaded: '+(project.name||devices.length+' devices')+' ✓','ok');
+    if(history.replaceState){
+      var p2=new URLSearchParams(location.search);p2.delete('d');
+      history.replaceState({},'',location.pathname+(p2.toString()?'?'+p2.toString():''));
+    }
+  }catch(e){showToast('Could not load shared data','err');}
+}
+
+// ── OAuth callback on load ────────────────────────────────────────
+_dbxHandleOAuthCallback().then(function(wasOAuth){
+  if(!wasOAuth&&_dbxRefreshToken){
+    _dbxGetToken().then(function(tok){
+      if(tok){_dbxFetchAccountInfo();setTimeout(dbxStartPolling,1500);}
+      else _dbxUpdateUI();
+    });
+  }
+});
+_dbxUpdateUI();
+_handleRiggerParam();
+_handleShareParam();
 
 </script>
 </body>
