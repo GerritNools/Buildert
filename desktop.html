@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.766</title>
+<title>WTUniverse · Buildert Editor v3.767</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.766</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.767</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -480,8 +480,7 @@
       <button class="tab-btn"               id="tab-distro" onclick="setTab('distro')">&#9889; Distros</button>
       <button class="tab-btn"               id="tab-psu"    onclick="setTab('psu')">&#128267; PSU</button>
       <button class="tab-btn"               id="tab-all"    onclick="setTab('all')">All</button>
-      <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9741; Node</button>
-      <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
+      <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares</button>
@@ -649,22 +648,30 @@
 
   <!-- Specs View -->
   <div id="specs-view" style="display:none;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:300px;"></div>
-  <div id="diagram-wrap-desktop" style="display:none">
-    <div style="display:flex;align-items:center;gap:7px;padding:6px 0;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dFit()">&#8982; Fit</button>
-      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dZoom(1.25)">+</button>
-      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dZoom(0.8)">&minus;</button>
-      <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="dResetLayout()">&#8859; Reset</button>
-      <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Drag nodes &nbsp;&middot;&nbsp; Scroll to zoom &nbsp;&middot;&nbsp; Drag background to pan</span>
+
+  <!-- Diagram panel — SVG-based, independent positions -->
+  <div id="diag-panel" style="display:none">
+    <div class="node-toolbar">
+      <button class="btn btn-ghost" onclick="diagFitView()" style="padding:5px 11px;font-size:12px">&#8982; Fit view</button>
+      <button class="btn btn-ghost" onclick="diagResetLayout()" style="padding:5px 11px;font-size:12px">&#8859; Reset layout</button>
+      <button class="icon-btn" onclick="diagZoom(1.25)" title="Zoom in" style="font-size:14px;font-weight:700">+</button>
+      <span id="diag-zoom-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:38px;text-align:center">100%</span>
+      <button class="icon-btn" onclick="diagZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">&minus;</button>
+      <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom &nbsp;&middot;&nbsp; drag node to move &nbsp;&middot;&nbsp; drag background to pan</span>
     </div>
-    <div id="diagram-view" style="position:relative;overflow:hidden;background:var(--bg);border:1px solid var(--border);border-radius:8px;height:calc(100vh - 220px);user-select:none">
-      <div id="diagram-canvas" style="position:absolute;top:0;left:0;transform-origin:0 0">
-        <svg id="diagram-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible"></svg>
-        <div id="diagram-nodes" style="position:absolute;top:0;left:0"></div>
-        <div id="diagram-empty" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);font-family:var(--mono);font-size:13px;text-align:center">No devices with sources set.<br>Set sources on devices first.</div>
-      </div>
-    </div>
+    <svg id="diag-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;cursor:grab;">
+      <defs>
+        <marker id="darrow-ok"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
+        <marker id="darrow-warn"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
+        <marker id="darrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
+        <marker id="darrow-foh"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
+      </defs>
+      <g id="diag-edges"></g>
+      <g id="diag-nodes"></g>
+      <g id="diag-labels"></g>
+    </svg>
   </div>
+
 
 </main>
 
@@ -1216,7 +1223,7 @@ function sourceOptions(type, excludeId) {
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
   currentTab = tab;
-  ['laser','smoke','distro','psu','all','node','diagram','pack','specs','shares'].forEach(function(t) {
+  ['laser','smoke','distro','psu','all','node','pack','specs','shares'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-'+(t==='node'||t==='pack'||t==='specs'?'all':t) : '');
   });
@@ -1225,13 +1232,11 @@ function setTab(tab) {
   var pcw = document.getElementById('pack-panel');
   var sv  = document.getElementById('specs-view');
   var shv = document.getElementById('shares-panel');
-  var dgw = document.getElementById('diagram-wrap-desktop');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
   if (sv)  sv.style.display  = 'none';
   if (shv) shv.style.display = 'none';
-  if (dgw) dgw.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
@@ -1243,7 +1248,7 @@ function setTab(tab) {
   else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; renderPackList(); }
   else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
-  else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagram(); }
+  else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
 
@@ -2976,6 +2981,8 @@ async function _dbxPull(){
         _applyProjectLoad(data);
         _dbxSetStatus('Loaded · '+_hhmm(),'var(--ok)');
         _updateProjectBadge();
+        // Always refresh shares panel after any pull
+        if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
       }catch(e){ _dbxSetStatus('Parse error: '+e.message,'var(--danger)'); }
     } else {
       // Parse Dropbox error body to give a useful message
@@ -5015,6 +5022,259 @@ function dResetLayout() {
   _dDiagPositions = {};
   _dZ = 1; _dPX = 0; _dPY = 0; _dTx();
   renderDiagram();
+}
+
+
+// ── Diagram View — SVG nodes, same style as node view, own positions ──
+var _diagPositions = {};
+var _diagScale = 1.0, _diagPanX = 0, _diagPanY = 0;
+var _diagDrag = null;
+
+function _applyDiagTransform() {
+  var g1 = document.getElementById('diag-edges');
+  var g2 = document.getElementById('diag-nodes');
+  var g3 = document.getElementById('diag-labels');
+  var tr = 'translate('+_diagPanX+','+_diagPanY+') scale('+_diagScale+')';
+  if (g1) g1.setAttribute('transform', tr);
+  if (g2) g2.setAttribute('transform', tr);
+  if (g3) g3.setAttribute('transform', tr);
+}
+
+function diagZoom(factor) {
+  _diagScale = Math.max(0.2, Math.min(4.0, _diagScale * factor));
+  var lbl = document.getElementById('diag-zoom-label');
+  if (lbl) lbl.textContent = Math.round(_diagScale*100)+'%';
+  _applyDiagTransform();
+}
+
+function diagFitView() {
+  _diagScale = 1.0; _diagPanX = 0; _diagPanY = 0;
+  _applyDiagTransform();
+  var lbl = document.getElementById('diag-zoom-label');
+  if (lbl) lbl.textContent = '100%';
+}
+
+function diagResetLayout() {
+  _diagPositions = {};
+  try { localStorage.removeItem('buildert_diag_pos'); } catch(e) {}
+  renderDiagView();
+}
+
+function _saveDiagPositions() {
+  try { localStorage.setItem('buildert_diag_pos', JSON.stringify(_diagPositions)); } catch(e) {}
+}
+function _loadDiagPositions() {
+  try { var s = localStorage.getItem('buildert_diag_pos'); if(s) _diagPositions = JSON.parse(s); } catch(e) {}
+}
+
+function diagAutoLayout() {
+  var MAX_PER_ROW = 12;
+  var XGAP = 155, YGAP = 150, TYPE_GAP = 30;
+  var svg = document.getElementById('diag-svg');
+  var SVG_W = svg ? svg.clientWidth : 1200;
+  _diagPositions = {};
+  var curY = 50;
+
+  // Lasers → Smoke → Distro → PSU at bottom, FOH below all
+  var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
+  TYPE_ORDER.forEach(function(type) {
+    var typeDevices = devices.filter(function(d){ return d.type===type && d.device_id; });
+    if (!typeDevices.length) return;
+    var byModel = {}, modelOrder = [];
+    typeDevices.forEach(function(d) {
+      var m = d.model || modelFromId(d.device_id||'') || '_unknown';
+      if (!byModel[m]) { byModel[m]=[]; modelOrder.push(m); }
+      byModel[m].push(d.device_id);
+    });
+    modelOrder.sort();
+    modelOrder.forEach(function(model) {
+      var ids = byModel[model];
+      ids.sort(function(a,b){
+        var na=parseInt((a.split(/\s+/)[1]||'0'),10), nb=parseInt((b.split(/\s+/)[1]||'0'),10);
+        return na-nb;
+      });
+      for (var rowStart=0; rowStart<ids.length; rowStart+=MAX_PER_ROW) {
+        var rowIds = ids.slice(rowStart, rowStart+MAX_PER_ROW);
+        var totalW = rowIds.length * XGAP;
+        var startX = Math.max(40, (SVG_W - totalW) / 2 + XGAP/2);
+        rowIds.forEach(function(id, i) { _diagPositions[id] = {x: startX + i*XGAP, y: curY}; });
+        curY += YGAP;
+      }
+      curY += 10;
+    });
+    curY += TYPE_GAP;
+  });
+  // FOH at bottom
+  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  if (needFoh) { _diagPositions['FOH'] = {x: Math.max(40, (SVG_W - 155)/2), y: curY}; }
+  _saveDiagPositions();
+  _renderDiagSVG();
+}
+
+function renderDiagView() {
+  _loadDiagPositions();
+  if (!Object.keys(_diagPositions).length) { diagAutoLayout(); return; }
+  // Ensure all devices have positions
+  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var svg = document.getElementById('diag-svg');
+  var SVG_W = svg ? svg.clientWidth : 1200;
+  if (needFoh && !_diagPositions['FOH']) _diagPositions['FOH'] = {x: Math.max(40,(SVG_W-155)/2), y: 600};
+  devices.filter(function(d){return d.device_id;}).forEach(function(d) {
+    if (!_diagPositions[d.device_id]) _diagPositions[d.device_id] = {x:80+Math.random()*500, y:80+Math.random()*300};
+  });
+  _renderDiagSVG();
+  _initDiagEvents();
+}
+
+function _renderDiagSVG() {
+  var svg    = document.getElementById('diag-svg');
+  var edgesG = document.getElementById('diag-edges');
+  var nodesG = document.getElementById('diag-nodes');
+  var labelsG= document.getElementById('diag-labels');
+  if (!svg || !edgesG || !nodesG) return;
+
+  var NW = NODE_W, NH = NODE_H; // reuse same constants as node view
+
+  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var allIds = (needFoh ? ['FOH'] : []).concat(
+    devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;})
+  );
+
+  // ── Edges ──
+  var edgeHtml = '', labelHtml = '';
+  devices.forEach(function(d) {
+    if (!d.device_id || !d.source) return;
+    var sp = _diagPositions[d.source];
+    var dp = _diagPositions[d.device_id];
+    if (!sp || !dp) return;
+    var info = cableInfo(d);
+    var hasCable = !!(d.cable_in||d.cable);
+    var hasAdap  = !!info.adapterNote;
+    var stroke = d.source==='FOH' ? '#00d4ff' : hasCable ? (hasAdap?'#f5a623':'#3ddc84') : '#55606e';
+    var marker = d.source==='FOH' ? 'darrow-foh' : hasCable ? (hasAdap?'darrow-warn':'darrow-ok') : 'darrow-muted';
+
+    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
+    var cy=(y1+y2)/2, mx=(x1+x2)/2, my=(y1+y2)/2-4;
+
+    edgeHtml += '<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
+      +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
+      +' marker-end="url(#'+marker+')"'+(hasAdap?' stroke-dasharray="5,3"':'')+'/>';
+
+    // Cable label
+    var gi = devices.indexOf(d);
+    var cLabel = info.cdef
+      ? (function(){var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});return info.cdef.label+' '+(ld?ld.lbl:lv+'m');})()
+      : '+ set cable';
+    var lw = cLabel.length*5.5+8;
+    labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
+      +' rx="3" fill="white" stroke="'+stroke+'" stroke-width="1.2"'
+      +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
+    labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
+      +' fill="'+(hasCable?stroke:'#aaa')+'" font-size="9" font-family="Share Tech Mono,monospace"'
+      +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
+  });
+  edgesG.innerHTML = edgeHtml;
+  if (labelsG) labelsG.innerHTML = labelHtml;
+
+  // ── Nodes — reuse exact same rendering as renderNodeView ──
+  var nodeHtml = '';
+  allIds.forEach(function(id) {
+    var pos = _diagPositions[id];
+    if (!pos) return;
+    var x=pos.x, y=pos.y;
+    var isFoh = (id==='FOH');
+    var dev = isFoh ? null : devices.find(function(d){return d.device_id===id;});
+    var m = dev ? (dev.model || modelFromId(dev.device_id||'')) : '';
+    var col = isFoh ? '#00d4ff' : (m ? modelColor(m, dev.type) : (NODE_COLORS[dev&&dev.type]||'#55606e'));
+    var sub1 = m || '';
+    var sub2 = isFoh ? 'Controller' : (dev?(dev.location||dev.status||''):'');
+    var loadW = (!isFoh&&dev&&(dev.type===TYPE_DISTRO||dev.type===TYPE_PSU))?chainLoadW(id):0;
+    var st = dev?(dev.status||''):'';
+    var bgTint = st==='GoAndCheck'||st==='Swap' ? 'rgba(245,166,35,.13)'
+               : st==='Online'||st==='Mounted'  ? 'rgba(61,220,132,.09)' : 'rgba(10,12,15,.82)';
+    var nH = (sub1 && sub2) ? NH + 10 : NH;
+
+    nodeHtml += '<g data-id="'+id+'" transform="translate('+x+','+y+')">';
+    nodeHtml += '<rect x="0" y="0" width="'+NW+'" height="'+nH+'"'
+      +' rx="6" fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5" style="cursor:move"'
+      +' onmousedown="_diagMD(event)"'
+      +' ondblclick="_diagDblClick(event)" />';
+    nodeHtml += '<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
+    nodeHtml += '<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
+      +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
+    if (sub1) nodeHtml += '<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
+      +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+sub1+'</text>';
+    if (sub2) nodeHtml += '<text x="10" y="'+(sub1?48:36)+'" fill="#7a8694" font-size="11"'
+      +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,16)+'</text>';
+    if (loadW>0) {
+      var lwCol=loadW>5000?'#ff4d4d':loadW>2000?'#f5a623':'#3ddc84';
+      nodeHtml += '<text x="'+(NW-16)+'" y="'+(nH-6)+'" text-anchor="end" fill="'+lwCol+'"'
+        +' font-size="8" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+loadW+'W</text>';
+    }
+    nodeHtml += '</g>';
+  });
+  nodesG.innerHTML = nodeHtml;
+
+  // Resize SVG
+  var maxY = 300;
+  Object.keys(_diagPositions).forEach(function(id){var p=_diagPositions[id];if(p.y+NH+70>maxY)maxY=p.y+NH+70;});
+  svg.setAttribute('height', maxY);
+  _applyDiagTransform();
+}
+
+function _diagDblClick(e) { var g=e.target.closest("g"); if(g&&g.dataset.id) nodeDoubleClick(g.dataset.id); }
+function _diagMD(e) { var g=e.target.closest("g"); if(g&&g.dataset.id) _diagMouseDown(e,g.dataset.id,"move"); }
+function _diagMouseDown(e, id, mode) {
+  e.stopPropagation();
+  var svg = document.getElementById('diag-svg');
+  var pos = _diagPositions[id]; if (!pos) return;
+  var rect = svg.getBoundingClientRect();
+  var sc = { x:(e.clientX-rect.left-_diagPanX)/_diagScale, y:(e.clientY-rect.top-_diagPanY)/_diagScale };
+  _diagDrag = {id:id, startX:pos.x, startY:pos.y, mx:e.clientX, my:e.clientY};
+  document.addEventListener('mousemove', _diagMouseMove);
+  document.addEventListener('mouseup', _diagMouseUp);
+}
+function _diagMouseMove(e) {
+  if (!_diagDrag) return;
+  var dx=(e.clientX-_diagDrag.mx)/_diagScale, dy=(e.clientY-_diagDrag.my)/_diagScale;
+  _diagPositions[_diagDrag.id] = {x:Math.max(0,_diagDrag.startX+dx), y:Math.max(0,_diagDrag.startY+dy)};
+  _renderDiagSVG();
+}
+function _diagMouseUp() {
+  if (_diagDrag) { _saveDiagPositions(); _diagDrag=null; }
+  document.removeEventListener('mousemove', _diagMouseMove);
+  document.removeEventListener('mouseup', _diagMouseUp);
+}
+
+function _initDiagEvents() {
+  var svg = document.getElementById('diag-svg');
+  if (!svg || svg._diagEventsAttached) return;
+  svg._diagEventsAttached = true;
+  // Scroll zoom
+  svg.addEventListener('wheel', function(e){
+    if (currentTab !== 'diagram') return;
+    e.preventDefault();
+    var rect=svg.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    var factor=e.deltaY<0?1.12:0.89;
+    var cx=(mx-_diagPanX)/_diagScale, cy=(my-_diagPanY)/_diagScale;
+    _diagScale=Math.max(0.2,Math.min(4.0,_diagScale*factor));
+    _diagPanX=mx-cx*_diagScale; _diagPanY=my-cy*_diagScale;
+    var lbl=document.getElementById('diag-zoom-label');
+    if(lbl)lbl.textContent=Math.round(_diagScale*100)+'%';
+    _applyDiagTransform();
+  }, {passive:false});
+  // Background pan
+  var panDrag=false, panSX=0, panSY=0, panPX0=0, panPY0=0;
+  svg.addEventListener('mousedown', function(e){
+    if (e.target!==svg && e.target.closest('g') && e.target.closest('g').getAttribute('data-id')) return;
+    if (e.button!==0) return;
+    panDrag=true; panSX=e.clientX; panSY=e.clientY; panPX0=_diagPanX; panPY0=_diagPanY;
+    svg.style.cursor='grabbing'; e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e){
+    if(!panDrag)return; _diagPanX=panPX0+(e.clientX-panSX); _diagPanY=panPY0+(e.clientY-panSY); _applyDiagTransform();
+  });
+  document.addEventListener('mouseup', function(){ if(panDrag){panDrag=false;svg.style.cursor='grab';} });
 }
 
 </script>
