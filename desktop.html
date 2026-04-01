@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.767</title>
+<title>WTUniverse · Buildert Editor v3.768</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.767</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.768</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1223,7 +1223,7 @@ function sourceOptions(type, excludeId) {
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
   currentTab = tab;
-  ['laser','smoke','distro','psu','all','node','pack','specs','shares'].forEach(function(t) {
+  ['laser','smoke','distro','psu','all','node','diagram','pack','specs','shares'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-'+(t==='node'||t==='pack'||t==='specs'?'all':t) : '');
   });
@@ -1232,11 +1232,13 @@ function setTab(tab) {
   var pcw = document.getElementById('pack-panel');
   var sv  = document.getElementById('specs-view');
   var shv = document.getElementById('shares-panel');
+  var dgw = document.getElementById('diag-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
   if (sv)  sv.style.display  = 'none';
   if (shv) shv.style.display = 'none';
+  if (dgw) dgw.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
@@ -2591,6 +2593,10 @@ function loadProjectFile(input) {
 }
 
 function _applyProjectLoad(data) {
+  // Capture log immediately on any load before any writes
+  if (data && Array.isArray(data._log) && data._log.length > 0) {
+    window._projectLog = data._log;
+  }
   // Accept raw buildert.json array (legacy) — import devices only, no version tracking
   if (Array.isArray(data)) {
     devices = data;
@@ -2735,6 +2741,7 @@ function resolveProjectConflict(mode) {
     _projectBaseVersion = Math.max(_projectVersion, fileData._version);
     _projectVersion     = _projectBaseVersion;
   } else if (mode === 'file') {
+    if (Array.isArray(fileData._log)) window._projectLog = fileData._log;
     _mergeProjectNoConflict(fileData);
     document.getElementById('modal-conflict-proj').classList.remove('open');
     _pendingFileData = null;
@@ -5160,18 +5167,7 @@ function _renderDiagSVG() {
       +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
       +' marker-end="url(#'+marker+')"'+(hasAdap?' stroke-dasharray="5,3"':'')+'/>';
 
-    // Cable label
-    var gi = devices.indexOf(d);
-    var cLabel = info.cdef
-      ? (function(){var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});return info.cdef.label+' '+(ld?ld.lbl:lv+'m');})()
-      : '+ set cable';
-    var lw = cLabel.length*5.5+8;
-    labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-      +' rx="3" fill="white" stroke="'+stroke+'" stroke-width="1.2"'
-      +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
-    labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
-      +' fill="'+(hasCable?stroke:'#aaa')+'" font-size="9" font-family="Share Tech Mono,monospace"'
-      +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
+    // No cable labels in diagram view (intentional)
   });
   edgesG.innerHTML = edgeHtml;
   if (labelsG) labelsG.innerHTML = labelHtml;
