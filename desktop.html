@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.764</title>
+<title>WTUniverse · Buildert Editor v3.766</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -328,13 +328,16 @@
 
   /* ── Diagram ── */
   #diagram-view.dragging{cursor:grabbing;}
-  .diagram-node{position:absolute;background:var(--surface);border:1px solid var(--border);
-    border-radius:8px;box-shadow:0 2px 14px rgba(0,0,0,.45);cursor:pointer;}
-  .diagram-node:hover{box-shadow:0 4px 22px rgba(0,212,255,.22);}
-  .diagram-node.node-laser {border-color:rgba(91,143,255,.6);}
-  .diagram-node.node-smoke {border-color:rgba(77,230,184,.6);}
-  .diagram-node.node-distro{border-color:rgba(245,166,35,.6);}
-  .diagram-node.node-psu   {border-color:rgba(199,125,255,.6);}
+  .diagram-node{position:absolute;background:rgba(10,12,15,.82);border:1.5px solid var(--border);
+    border-radius:6px;overflow:hidden;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+  .diagram-node:hover{box-shadow:0 4px 18px rgba(0,212,255,.15);}
+  .diagram-node::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:3px 0 0 3px;}
+  .diagram-node.node-laser {border-color:#5b8fff;} .diagram-node.node-laser::before{background:#5b8fff;}
+  .diagram-node.node-smoke {border-color:#4de6b8;} .diagram-node.node-smoke::before{background:#4de6b8;}
+  .diagram-node.node-distro{border-color:#f5a623;} .diagram-node.node-distro::before{background:#f5a623;}
+  .diagram-node.node-psu   {border-color:#c77dff;} .diagram-node.node-psu::before{background:#c77dff;}
+  .diagram-node.dn-ok    {background:rgba(61,220,132,.09);}
+  .diagram-node.dn-amber {background:rgba(245,166,35,.09);}
   .diagram-node.sel{outline:2px solid var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.25),0 4px 20px rgba(0,0,0,.5)!important;}
   .n-port-row{display:flex;justify-content:center;align-items:center;height:22px;padding:0 6px;}
   .n-port{display:inline-flex;align-items:center;gap:4px;font-family:var(--cond);font-weight:700;
@@ -347,9 +350,9 @@
   .n-in  .n-dot{background:var(--accent);box-shadow:0 0 5px var(--accent);}
   .n-dead .n-dot{background:var(--muted);}
   .n-lbl{opacity:.7;font-size:8px;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
-  .n-body{padding:5px 10px 6px;}
+  .n-body{padding:5px 10px 6px 14px;}
   .n-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
-  .n-id{font-family:var(--cond);font-weight:700;font-size:13px;}
+  .n-id{font-family:var(--cond);font-weight:700;font-size:14px;}
   .n-ser{font-family:var(--mono);font-size:10px;color:var(--accent);}
   .n-loc{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .n-bar{height:3px;background:var(--border);border-radius:2px;margin-top:4px;}
@@ -431,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.764</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.766</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -2540,6 +2543,7 @@ function _buildProjectPayload() {
     devices:   devices,
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
+    _log:           window._projectLog || [],
   };
 }
 
@@ -2624,15 +2628,14 @@ function _mergeProjectNoConflict(data) {
   _projectBaseVersion = _projectVersion;
   saveSpecsToStorage();
   _persistProjectMeta();
+  // Capture activity log BEFORE autoSave so we don't overwrite it
+  if (Array.isArray(data._log)) window._projectLog = data._log;
   autoSave();
   renderTable();
-  // Capture activity log from riggers
-  if (Array.isArray(data._log)) window._projectLog = data._log;
   showToast('Loaded v' + _projectVersion + ' (by ' + (data._saved_by||'?') + ')', 'ok');
   _updateProjectBadge();
-  // Refresh activity log if rigger share modal is open
-  var rsm = document.getElementById('modal-rigger-share');
-  if (rsm && rsm.classList.contains('open')) _renderActivityLog();
+  // Refresh shares panel if open
+  if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
 }
 
 var _pendingFileData = null;
@@ -3013,6 +3016,7 @@ async function _dbxPush(silent){
     devices:  devices,
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
+    _log:           window._projectLog || [],
   };
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
@@ -4284,7 +4288,8 @@ function renderDiagram(){
     var scHtml='';
     if(sp3){var pts=[];if(sp3.laser_w)pts.push(sp3.laser_w+'W⚡');if(sp3.consumption_w)pts.push(sp3.consumption_w+'W🔌');if(sp3.weight_kg)pts.push(sp3.weight_kg+'kg');if(sp3.outputs)pts.push(sp3.outputs+' out');if(pts.length){var ti=[sp3.desc||''];if(sp3.max_a_230)ti.push(sp3.max_a_230+'A @230V');if(sp3.notes)ti.push('⚠ '+sp3.notes);scHtml='<span class="spec-chip" title="'+ti.filter(Boolean).join(' | ')+'">'+pts.join(' ')+'</span>';}}
     var el=document.createElement('div');
-    el.className='diagram-node node-'+tk;
+    var statusCls = pct===100 ? ' dn-ok' : (d.serial&&d.serial.trim() ? ' dn-amber' : '');
+    el.className='diagram-node node-'+tk+statusCls;
     el.style.cssText='left:'+p.x+'px;top:'+p.y+'px;width:'+D_NW+'px;';
     el.dataset.did=d.device_id;
     el.title=d.device_id+(d.location?' — '+d.location:'');
