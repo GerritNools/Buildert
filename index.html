@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.758</title>
+<title>WTU · Buildert v3.759</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -398,11 +398,12 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .sn-check:active{opacity:.7;}
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </head>
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.758</small></div>
+  <div class="logo">WTU <small>v3.759</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -658,7 +659,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <input class="sn-input" id="sn-input" type="text" placeholder="SERIAL"
            autocomplete="off" autocorrect="off" autocapitalize="characters"
            oninput="this.value=this.value.toUpperCase()">
-    <button class="sn-cam-btn" id="sn-cam-btn" onclick="snToggleCamera()">📷 Scan with camera</button>
+    <button class="sn-cam-btn" id="sn-cam-btn" onclick="snToggleCamera()">Scan with camera</button>
     <video id="sn-video" autoplay playsinline muted
            style="width:100%;border-radius:8px;margin-bottom:10px;display:none;max-height:200px;object-fit:cover"></video>
     <div class="sn-checks" id="sn-checks"></div>
@@ -2661,18 +2662,16 @@ function snToggleCamera() {
   var video = document.getElementById('sn-video');
   var btn = document.getElementById('sn-cam-btn');
   if (!video) return;
-  if (typeof BarcodeDetector === 'undefined') {
-    showToast('Camera scan not supported on this device', 'warn'); return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Camera not available', 'warn'); return;
   }
-  if (!_snDetector) {
-    _snDetector = new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','data_matrix']});
-  }
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream) {
-    _snCamStream = stream; _snCamActive = true;
-    video.srcObject = stream; video.style.display = 'block';
-    if (btn) btn.textContent = '⏹ Stop camera';
-    video.play().then(function(){ _snScanTick(); });
-  }).catch(function(e){ showToast('Camera error: ' + e.message, 'err'); });
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}})
+    .then(function(stream) {
+      _snCamStream = stream; _snCamActive = true;
+      video.srcObject = stream; video.style.display = 'block';
+      if (btn) btn.textContent = 'Stop camera';
+      video.play().then(function(){ _snScanTick(); });
+    }).catch(function(e){ showToast('Camera error: ' + e.message, 'err'); });
 }
 
 function snStopCamera() {
