@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.777</title>
+<title>WTU · Buildert v3.776</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.777</small></div>
+  <div class="logo">WTU <small>v3.776</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -897,20 +897,12 @@ function renderCards(){
       +'<div class="card-stripe stripe-'+tk+'"></div>'
       // Top row — double-tap opens edit
       +'<div class="card-top" ondblclick="openEdit('+gi+')" style="cursor:pointer">'
-      +  '<div style="display:flex;flex-direction:column;gap:1px;min-width:0">'
-      +    '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
-      +    (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+m+'</div>':''; })()
-      +  '</div>'
+      +  '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
       +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'NO SN')+'</div>'
       +  '<div class="badge badge-'+tk+'">'+TSHORT[d.type]+'</div>'
       +  '<button class="edit-btn" onclick="openEdit('+gi+')">✏</button>'
       +'</div>'
-      +(function(){
-        var cin=_cableLabel(d.cable_in||d.cable||'');
-        var dstream=devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);});
-        var cout=dstream.length?_cableLabel(dstream[0].cable_in||dstream[0].cable||''):'';
-        return (cin||cout)?'<div style="padding:0 14px 3px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">IN: '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">OUT: '+cout+'</span>':'')+'</div>':'';
-      })()
+      +(function(){var cin=_cableLabel(d.cable_in||d.cable||''),cout=_cableLabel(d.cable_out||'');return (cin||cout)?'<div style="padding:0 14px 4px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">↓ '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">↑ '+cout+'</span>':'')+'</div>':'';})()
       // Meta row: one-tap status chips
       +'<div class="card-meta">'
       +STATUS_OPTS.map(function(s){
@@ -2795,7 +2787,20 @@ function _logActivity(deviceId,action){
   var cnt=document.getElementById('rigger-log-count');
   if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
 }
-
+// Patch _applyProjectLoad to capture remote log
+var _origApplyProjectLoad=_applyProjectLoad;
+_applyProjectLoad=function(data){
+  if(data&&Array.isArray(data._log)){
+    // Deduplicate by timestamp+device+action
+    var seen={};
+    window._remoteLog=data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
+      if(seen[k])return false;seen[k]=true;return true;
+    });
+    window._activityLog=[];
+  }
+  _origApplyProjectLoad(data);
+};
 
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 function _handleShareParam(){
@@ -2818,6 +2823,18 @@ function _handleShareParam(){
   }catch(e){showToast('Could not load shared data','err');}
 }
 
+// ── OAuth callback on load ────────────────────────────────────────
+_dbxHandleOAuthCallback().then(function(wasOAuth){
+  if(!wasOAuth&&_dbxRefreshToken){
+    _dbxGetToken().then(function(tok){
+      if(tok){_dbxFetchAccountInfo();setTimeout(dbxStartPolling,1500);}
+      else _dbxUpdateUI();
+    });
+  }
+});
+_dbxUpdateUI();
+_handleRiggerParam();
+_handleShareParam();
 
 
 // ── Diagram view ──────────────────────────────────────────────────────
