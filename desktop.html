@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.770b</title>
+<title>WTUniverse · Buildert Editor v3.771b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.770b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.771b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -484,7 +484,7 @@
       <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
-      <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares</button>
+      <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
     </div>
     <div class="stats-bar" id="stats-bar"></div>
     <div class="sort-wrap">
@@ -2999,7 +2999,7 @@ async function _dbxPull(){
         }
         _dbxSetStatus('Loaded · '+_hhmm(),'var(--ok)');
         _updateProjectBadge();
-        // Always refresh shares panel after any pull
+        _spUpdateBadge();
         if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
       }catch(e){ _dbxSetStatus('Parse error: '+e.message,'var(--danger)'); }
     } else {
@@ -4826,7 +4826,8 @@ var _spLink = '';
 var _spShares = []; // [{name, created, url}] — stored in localStorage
 
 function renderSharesPanel() {
-  _spFilterRigger = null;  // reset filter on open
+  _spFilterRigger = null;
+  var badge=document.getElementById('sp-badge');if(badge)badge.style.display='none';
   // Restore saved URL
   var savedUrl = localStorage.getItem('wtu_share_app_url') || '';
   var urlEl = document.getElementById('sp-app-url');
@@ -4943,6 +4944,18 @@ function spDeleteShare(name) {
 
 var _spFilterRigger = null;
 function _spSetFilter(r){ _spFilterRigger = r || null; _spRenderLog(); } // null = show all
+
+function _spUpdateBadge() {
+  var cnt = (window._projectLog || []).length;
+  var el = document.getElementById('sp-badge');
+  if (!el) return;
+  if (cnt > 0 && currentTab !== 'shares') {
+    el.style.display = '';
+    el.textContent = cnt;
+  } else {
+    el.style.display = 'none';
+  }
+}
 
 function _spRenderLog() {
   var el = document.getElementById('sp-activity-log');
