@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.780</title>
+<title>WTU · Buildert v3.781</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.780</small></div>
+  <div class="logo">WTU <small>v3.781</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1628,7 +1628,7 @@ function openAddSheet(type){
   document.getElementById('m-status').value='Active';
   document.getElementById('m-notes').value='';
   document.getElementById('m-cable-in').innerHTML=_cableOpts('','');
-  document.getElementById('m-cable-out').innerHTML=_cableOpts('');
+  // cable-out display only
   populateChecksSheet(type,{},'',[]);
   updateSrcSel(type,'','');
   openSheet('device');
@@ -1648,7 +1648,7 @@ function openEdit(gi){
   document.getElementById('m-notes').value=d.notes||'';
   var _sp=specFor(d);
   document.getElementById('m-cable-in').innerHTML=_cableOpts(d.cable_in||d.cable||'',_sp?_sp.in_connector:'');
-  document.getElementById('m-cable-out').innerHTML=_cableOpts(d.cable_out||'');
+  // cable-out is read-only (computed from children)
   populateChecksSheet(d.type,d.checks||{},d.pointed||'',d.note_opts||[]);
   updateSrcSel(d.type,d.device_id,d.source||'');
   // Cable OUT: computed from children
@@ -1685,7 +1685,7 @@ function saveDevice(){
     checks:checks,note_opts:note_opts,
     pointed:type===TL?_pointed_edit:'',
     cable_in:document.getElementById('m-cable-in').value,
-    cable_out:document.getElementById('m-cable-out').value,
+    cable_out:'', // computed from children, not stored
     notes:document.getElementById('m-notes').value.trim(),
   };
   if(editIdx>=0){devices[editIdx]=d;showToast('Updated '+deviceId,'ok');}
@@ -1863,16 +1863,20 @@ function _applyProjectLoad(data){
 
   var fileVer=data._version||0, localVer=_projectVersion, baseVer=_projectBaseVersion;
 
-  // Fast-forward: no local changes since last load, or file is older
-  if(localVer<=baseVer||fileVer<=baseVer){
-    _mergeProjectNoConflict(data); return;
+  // File is older or same — nothing to do
+  if(fileVer<=baseVer && localVer<=baseVer){ _mergeProjectNoConflict(data); return; }
+
+  // File is newer — always accept file structure but merge our field-level changes on top
+  if(fileVer>baseVer){
+    _mergeSmartFromFile(data); return;
   }
-  // Both diverged — conflict
-  _showMobileConflict(data, localVer, fileVer);
+  // Only local is newer (we pushed, file hasn't caught up) — keep local
+  // This shouldn't happen often but just accept file to resync
+  _mergeProjectNoConflict(data);
 }
 
 function _mergeProjectNoConflict(data){
-  devices=data.devices||devices;
+  if(data.devices && data.devices.length>0) devices=data.devices;  // never wipe with empty
   _packSpares=data.pack_spares||[];
   if(data.project){
     project=Object.assign(project,data.project);
@@ -1887,6 +1891,45 @@ function _mergeProjectNoConflict(data){
   _persistProjectMeta();
   autoSave(); renderMain();
   showToast('Loaded v'+_projectVersion+' · by '+(data._saved_by||'?'),'ok');
+  _updateMobileProjectBadge();
+}
+
+
+function _mergeSmartFromFile(data){
+  // Fields mobile owns (rigger work) — preserve local values
+  var MOBILE_FIELDS = ['checks','status','serial','pointed','note_opts','notes'];
+  var fileDevices = data.devices || [];
+  // Build lookup of local device state
+  var localById = {};
+  devices.forEach(function(d){ if(d.device_id) localById[d.device_id] = d; });
+  // Accept file devices, but overlay our local field values
+  if(fileDevices.length > 0){
+    devices = fileDevices.map(function(fd){
+      var ld = localById[fd.device_id];
+      if(!ld) return fd; // new device from desktop — take as-is
+      var merged = Object.assign({}, fd);
+      MOBILE_FIELDS.forEach(function(f){
+        if(ld[f] !== undefined && ld[f] !== null && ld[f] !== '') merged[f] = ld[f];
+      });
+      // Merge checks object field by field
+      if(ld.checks && typeof ld.checks === 'object'){
+        merged.checks = Object.assign({}, fd.checks||{}, ld.checks);
+      }
+      return merged;
+    });
+  }
+  _packSpares = data.pack_spares || [];
+  if(data.project){
+    project = Object.assign(project, data.project);
+    var pn=document.getElementById('proj-name'); var pv=document.getElementById('proj-venue');
+    if(pn)pn.value=project.name||''; if(pv)pv.value=project.venue||'';
+  }
+  if(data.spec_overrides){try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}}
+  _projectVersion = data._version || 0;
+  _projectBaseVersion = _projectVersion;
+  _persistProjectMeta();
+  autoSave(); renderMain();
+  showToast('Synced v'+_projectVersion,'ok');
   _updateMobileProjectBadge();
 }
 
