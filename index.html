@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.787</title>
+<title>WTU · Buildert v3.788</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.787</small></div>
+  <div class="logo">WTU <small>v3.788</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -874,7 +874,7 @@ function setTab(tab){
   if(dw) dw.style.display=tab==='diagram'?'flex':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
-  if(tab==='diagram'){ _mNPos={}; renderDiagram(); return; }
+  if(tab==='diagram'){ renderDiagram(); return; }
   renderMain();
 }
 
@@ -907,18 +907,15 @@ function renderCards(){
     var hasSerial=d.serial&&d.serial.replace(/-/g,'').trim();
     var loadW=(d.type===TD||d.type===TP)?chainW(d.device_id):0;
 
+    var _lc=d.status==='Online'||d.status==='Mounted'?'sled-ok':d.status==='GoAndCheck'||d.status==='Swap'?'sled-warn':d.status==='Offline'||d.status==='Swapped'?'sled-danger':'sled-muted';
     var html='<div class="card" id="c'+gi+'">'
       +'<div class="card-stripe stripe-'+tk+'"></div>'
-      // Top row — double-tap opens edit
       +'<div class="card-top" onclick="openEdit('+gi+')" style="cursor:pointer">'
-      +  '<div style="display:flex;flex-direction:column;gap:1px;min-width:0">'
-      +    '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
-      +    (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+m+'</div>':''; })()
-      +  '</div>'
-      +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'NO SN')+'</div>'
-      +  '<div class="badge badge-'+tk+'">'+TSHORT[d.type]+'</div>'
-      +  '<button class="edit-btn" onclick="openEdit('+gi+')" title="Edit">✏</button>'
-      +  '<button class="edit-btn" onclick="openSpecSheet('+gi+')" title="Specs" style="font-size:11px">📋</button>'
+      +  '<div class="sled '+_lc+'"></div>'
+      +  '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
+      +  (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+m+'</span>':''; })()
+      +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'-')+'</div>'
+      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openEdit('+gi+')">✏</button>'
       +'</div>'
       +(function(){
         var lines=[];
@@ -934,15 +931,14 @@ function renderCards(){
         }
         return lines.length?'<div style="padding:0 14px 4px 17px;font-size:11px;font-family:var(--mono)">'+lines.join('')+'</div>':'';
       })()
-      // Meta row: one-tap status chips
+      // Status chips — tappable
       +'<div class="card-meta">'
       +STATUS_OPTS.map(function(s){
         var active=d.status===s;
         var cls=active?('stat-chip '+statClass(s)):'stat-chip';
         return '<span class="'+cls+'" onclick="tapStatus('+gi+',\''+s+'\')">'+(active?'● ':'')+s+'</span>';
       }).join('')
-      +(d.location?'<span class="card-loc">📍 '+d.location+'</span>':'')
-      +(d.source?'<span class="card-src" style="margin-left:4px">←'+d.source+'</span>':'')
+      +(d.location?'<span class="card-loc" style="font-size:10px">📍 '+d.location+'</span>':'')
       +(loadW>0?'<span class="load-badge" style="color:'+(loadW>3000?'var(--danger)':loadW>1500?'var(--warn)':'var(--ok)')+'">'+loadW+'W</span>':'')
       +'</div>'
       // Notes — always visible if set
@@ -971,15 +967,7 @@ function renderCards(){
         });
         html+='</div></div>';
       }
-      // Cable info
-      var cin=_cableLabel(d.cable_in||d.cable||''),cout=_cableLabel(d.cable_out||'');
-      if(cin||cout){
-        html+='<div class="card-notes" style="font-style:normal;display:flex;gap:12px;">'
-          +(cin?'<span style="color:var(--ok)">↓ '+cin+'</span>':'')
-          +(cout?'<span style="color:var(--smoke)">↑ '+cout+'</span>':'')
-          +'</div>';
-      }
-      if(d.notes) html+='<div class="card-notes">'+d.notes+'</div>';
+      // Notes (already in header — show again only if flagged)
       if(d.note_opts&&d.note_opts.length) html+='<div class="card-notes" style="color:var(--warn);font-style:normal">⚠ '+d.note_opts.join(' · ')+'</div>';
     }
 
