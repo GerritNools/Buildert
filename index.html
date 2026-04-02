@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.788</title>
+<title>WTU · Buildert v3.789</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.788</small></div>
+  <div class="logo">WTU <small>v3.789</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -913,24 +913,21 @@ function renderCards(){
       +'<div class="card-top" onclick="openEdit('+gi+')" style="cursor:pointer">'
       +  '<div class="sled '+_lc+'"></div>'
       +  '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
-      +  (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+m+'</span>':''; })()
+      +  (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+m+'</span>':''; })()
       +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'-')+'</div>'
-      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openEdit('+gi+')">✏</button>'
+      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openSpecSheet('+gi+')" title="Specs">📋</button>'
+      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openEdit('+gi+')" title="Edit">✏</button>'
       +'</div>'
-      +(function(){
-        var lines=[];
-        // Line 1: source ← cable_in
+      // Cable/source — only in expanded view
+      +(expanded ? (function(){
+        var rows=[];
         var cin=_cableLabel(d.cable_in||d.cable||'');
-        var srcStr=d.source?'← '+d.source:'';
-        if(cin||srcStr) lines.push('<div style="color:var(--ok)">'+(srcStr?srcStr+' ':'')+( cin?'/ '+cin:'')+'</div>');
-        // Line 2: each downstream device and its cable
+        var src=d.source?'\u2190 '+d.source:'';
+        if(cin||src) rows.push('<span style="color:var(--ok)">'+(src||'')+(cin?' / '+cin:'')+'</span>');
         var outs=devices.filter(function(x){return x.source===(d.device_id||'');});
-        if(outs.length){
-          var outParts=outs.map(function(x){var lbl=_cableLabel(x.cable_in||x.cable||'');return x.device_id+(lbl?' '+lbl:'');});
-          lines.push('<div style="color:var(--smoke)">→ '+outParts.join(' · ')+'</div>');
-        }
-        return lines.length?'<div style="padding:0 14px 4px 17px;font-size:11px;font-family:var(--mono)">'+lines.join('')+'</div>':'';
-      })()
+        if(outs.length) rows.push('<span style="color:var(--smoke)">\u2192 '+outs.map(function(x){var l=_cableLabel(x.cable_in||x.cable||'');return x.device_id+(l?' '+l:'');}).join(' \u00b7 ')+'</span>');
+        return rows.length?'<div style="padding:0 12px 3px 14px;font-size:11px;font-family:var(--mono);display:flex;flex-direction:column;gap:1px">'+rows.join('')+'</div>':'';
+      })() : '')
       // Status chips — tappable
       +'<div class="card-meta">'
       +STATUS_OPTS.map(function(s){
