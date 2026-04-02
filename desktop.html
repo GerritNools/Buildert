@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.774b</title>
+<title>WTUniverse · Buildert Editor v3.775b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -439,7 +439,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.774b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.775b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -3060,6 +3060,9 @@ async function _dbxPull(){
 
 async function _dbxPush(silent){
   var ip=(document.getElementById('device-ip')||{}).value||'';
+  // Include current node/diagram positions so mobile shows same layout
+  var _npRaw = '{}'; try{_npRaw=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
+  var _dpRaw = '{}'; try{_dpRaw=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
   var payload={
     _format:'wtu-project',
     _version: _projectVersion+1,
@@ -3070,6 +3073,8 @@ async function _dbxPush(silent){
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     _log:           window._projectLog || [],
+    _node_positions: JSON.parse(_npRaw),
+    _diag_positions: JSON.parse(_dpRaw),
   };
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
