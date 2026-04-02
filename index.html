@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.774</title>
+<title>WTU · Buildert v3.776</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -348,7 +348,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── Diagram tab ── */
 .ntab.active-diagram{color:var(--accent);}
-#diagram-wrap{padding:12px;overflow-y:auto;}
+#diagram-wrap{overflow:hidden;}
 .diag-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px;}
 .diag-row-label{font-family:var(--cond);font-weight:700;font-size:9px;letter-spacing:2px;
   text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px;}
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.774</small></div>
+  <div class="logo">WTU <small>v3.776</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -431,15 +431,15 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div class="chips" id="filter-chips"></div>
   <div id="card-list"></div>
   <!-- Nodes tab — SVG signal flow view -->
-  <div id="diagram-wrap" style="display:none;flex-direction:column;height:calc(100vh - 120px)">
+  <div id="diagram-wrap" style="display:none;flex-direction:column;height:calc(100vh - 116px)">
     <div style="display:flex;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0">
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeFit()">&#8982; Fit</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(1.25)">+</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(0.8)">&minus;</button>
       <span style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center">Tap node to edit</span>
     </div>
-    <div style="flex:1;overflow:hidden;position:relative">
-      <svg id="mob-node-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;cursor:grab;touch-action:none">
+    <div id="mob-node-outer" style="flex:1;overflow:hidden;position:relative;min-height:200px">
+      <svg id="mob-node-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-height:300px;cursor:grab;touch-action:none">
         <defs>
           <marker id="mn-arrow-ok"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
           <marker id="mn-arrow-warn"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
@@ -863,7 +863,7 @@ function setTab(tab){
   if(dw) dw.style.display=tab==='diagram'?'':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
-  if(tab==='diagram'){ renderDiagram(); return; }
+  if(tab==='diagram'){ _mNPos={}; renderDiagram(); return; }
   renderMain();
 }
 
@@ -1256,8 +1256,8 @@ function _initDetector(){
       _detector = new BarcodeDetector({formats:['qr_code','code_128','code_39']});
     });
   } else {
-    document.getElementById('cam-status').textContent = 'Use manual entry below';
-    document.getElementById('cam-toggle-btn').style.display = 'none';
+    document.getElementById('cam-status').textContent = 'Camera not available on this browser';
+    // Don't hide button — jsQR may load later
   }
 }
 
@@ -1919,7 +1919,7 @@ var _nodeGi=-1; // currently tapped device index
 var _nodeCamActive=false, _nodeCamStream=null, _nodeDetector=null, _nodeScanLoop=null;
 
 var MAP_NW=130, MAP_NH=62, MAP_HG=18, MAP_VG=52, MAP_PAD=28;
-var MAP_TYPE_ORDER=[TP,TD,TS,TL];
+var MAP_TYPE_ORDER=[TL,TS,TD,TP];
 var MAP_TYPE_COL={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
 
 function renderMap(){
@@ -1983,6 +1983,27 @@ function renderMap(){
     lines+='<path d="M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2+'"'
       +' fill="none" stroke="'+col+'" stroke-width="1.5" stroke-opacity="0.5"/>';
   });
+
+  // FOH node at bottom
+  var hasFoh = devices.some(function(d){return d.source==='FOH';});
+  if(hasFoh){
+    var fohX=Math.max(MAP_PAD,(svgW-MAP_NW)/2);
+    nodes+='<g transform="translate('+fohX+','+curY+')" style="cursor:default">'
+      +'<rect x="0" y="0" width="'+MAP_NW+'" height="'+MAP_NH+'" rx="6" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1.5"/>'
+      +'<rect x="0" y="0" width="4" height="'+MAP_NH+'" rx="2" fill="#00d4ff"/>'
+      +'<text x="10" y="22" fill="#00d4ff" font-size="13" font-weight="700" font-family="Barlow Condensed,sans-serif" letter-spacing="0.5">FOH</text>'
+      +'<text x="10" y="38" fill="#55606e" font-size="9" font-family="Share Tech Mono,monospace">Controller</text>'
+      +'</g>';
+    // Lines from FOH
+    var fohCX=fohX+MAP_NW/2, fohY=curY;
+    devices.filter(function(d){return d.source==='FOH'&&d.device_id&&pos[d.device_id];}).forEach(function(d){
+      var tp=pos[d.device_id];
+      var x2=tp.x+MAP_NW/2,y2=tp.y+MAP_NH,my=(fohY+y2)/2;
+      lines+='<path d="M'+fohCX+','+fohY+' C'+fohCX+','+my+' '+x2+','+my+' '+x2+','+y2+'"'
+        +' fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5,3"/>';
+    });
+    svgH=curY+MAP_NH+MAP_PAD;
+  }
 
   // Nodes
   devices.forEach(function(d,gi){
@@ -2551,11 +2572,15 @@ function renderDiagram() {
   var wrap = document.getElementById('diagram-wrap');
   var cardList = document.getElementById('card-list');
   var chips = document.querySelector('.chips');
-  if (wrap) wrap.style.display = 'flex';
   if (cardList) cardList.style.display = 'none';
   if (chips) chips.style.display = 'none';
-  _mNodeRender();
-  _mNodeInitEvents();
+  if (wrap) { wrap.style.display = 'flex'; }
+  // Defer render until after layout so clientWidth is correct
+  setTimeout(function(){
+    _mNPos = {}; // reset positions so auto-layout uses real width
+    _mNodeRender();
+    _mNodeInitEvents();
+  }, 50);
 }
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
@@ -2581,10 +2606,9 @@ function mNodeFit() {
   _mNodeApplyTransform();
 }
 
-function _mNodeAutoLayout() {
+function _mNodeAutoLayout(svgW) {
   var NW = _mNW, XGAP = 135, YGAP = 120, TGAP = 20;
-  var svg = document.getElementById('mob-node-svg');
-  var SVG_W = svg ? svg.clientWidth : 360;
+  var SVG_W = svgW || (window.innerWidth || 375);
   _mNPos = {};
   var curY = 40;
   var ORDER = [TL, TS, TD, TP];
@@ -2618,10 +2642,14 @@ function _mNodeRender() {
   var edgesG = document.getElementById('mob-node-edges');
   var nodesG = document.getElementById('mob-node-nodes');
   if (!svg || !edgesG || !nodesG) return;
-  if (!Object.keys(_mNPos).length) _mNodeAutoLayout();
+  // Use outer container width for layout
+  var outer = document.getElementById('mob-node-outer');
+  var svgW = (outer && outer.clientWidth > 50) ? outer.clientWidth : (window.innerWidth || 375);
+  if (!Object.keys(_mNPos).length) { _mNodeAutoLayout(svgW); }
   // Ensure all devices have positions
   devices.filter(function(d){return d.device_id;}).forEach(function(d){
     if(!_mNPos[d.device_id]) _mNPos[d.device_id]={x:40+Math.random()*200,y:40+Math.random()*200};
+
   });
   var NW=_mNW, NH=_mNH;
   var COLS = {laser:'#5b8fff',smoke:'#4de6b8',distro:'#f5a623',psu:'#c77dff'};
