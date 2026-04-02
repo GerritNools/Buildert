@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.783</title>
+<title>WTU · Buildert v3.784</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.783</small></div>
+  <div class="logo">WTU <small>v3.784</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1728,7 +1728,7 @@ function applyConn(){
   _updateMobileProjectBadge();
   // Dropbox
   dbxApplySettings();
-  if(_dbxToken) dbxStartPolling();
+  if(_dbxToken||_dbxRefreshToken){ dbxStopPolling(); dbxStartPolling(); }
   else dbxStopPolling();
   if(ip){localStorage.setItem('wtu_ip',ip);closeSheet('conn');stopPolling();startPolling();}
   else closeSheet('conn');
@@ -2421,9 +2421,11 @@ async function dbxSyncNow(){
 
 async function _dbxPull(){
   var token=await _dbxGetToken();
-  if(!token){_dbxSetStatus('Not connected','var(--warn)');return;}
+  if(!token){_dbxSetStatus('Not connected — check Settings','var(--warn)');return;}
   if(_dbxSyncing)return;
   _dbxSyncing=true;
+  // Safety: clear stuck flag after 15s
+  var _syncTimeout=setTimeout(function(){_dbxSyncing=false;},15000);
   _dbxSetStatus('Syncing…');
   var path=_dbxNormPath(_dbxPath);
   var xhr=new XMLHttpRequest();
@@ -2433,6 +2435,7 @@ async function _dbxPull(){
   xhr.timeout=10000;
   xhr.onload=function(){
     _dbxSyncing=false;
+    if(typeof _syncTimeout!=='undefined')clearTimeout(_syncTimeout);
     if(xhr.status===200){
       var rev='';
       try{var info=JSON.parse(xhr.getResponseHeader('dropbox-api-result')||'{}');rev=info.rev||'';}catch(e){}
@@ -2523,8 +2526,11 @@ function _hhmm(){var n=new Date();return ('0'+n.getHours()).slice(-2)+':'+('0'+n
 function dbxStartPolling(){
   dbxStopPolling();
   if(!_dbxToken&&!_dbxRefreshToken)return;
+  _dbxSetStatus('Connected — syncing…','var(--muted)');
   _dbxPull();
-  _dbxPollTimer=setInterval(_dbxPull,20000); // every 20s
+  _dbxPollTimer=setInterval(function(){
+    if(!_dbxSyncing) _dbxPull();
+  },20000);
 }
 
 function dbxStopPolling(){
@@ -2681,26 +2687,46 @@ window._riggerMode=false;
 
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 
-// ── OAuth callback on load ────────────────────────────────────────
-_dbxHandleOAuthCallback().then(function(wasOAuth){
+// ── Single init entry point — called after all setup ─────────────
+async function _initSync(){
+  // 1. Handle rigger link params first (sets _dbxToken if present)
+  _handleRiggerParam();
+  _handleShareParam();
+
+  // 2. Handle OAuth code redirect
+  var wasOAuth = await _dbxHandleOAuthCallback();
   if(wasOAuth){
-    // Just completed OAuth — start polling immediately
     _dbxFetchAccountInfo();
-    setTimeout(dbxStartPolling, 500);
-  } else if(_dbxRefreshToken){
-    // Returning visit with saved refresh token — get fresh access token then poll
-    _dbxGetToken().then(function(tok){
-      if(tok){ _dbxFetchAccountInfo(); setTimeout(dbxStartPolling, 500); }
-      else { _dbxUpdateUI(); showToast('Dropbox session expired — reconnect in Settings','warn'); }
-    });
-  } else if(_dbxToken){
-    // Rigger link — has direct token, just start polling
-    setTimeout(dbxStartPolling, 500);
+    _dbxUpdateUI();
+    dbxStartPolling();
+    return;
   }
+
+  // 3. Refresh token from previous session
+  if(_dbxRefreshToken){
+    var tok = await _dbxGetToken();
+    if(tok){
+      _dbxFetchAccountInfo();
+      _dbxUpdateUI();
+      dbxStartPolling();
+    } else {
+      _dbxUpdateUI();
+      _dbxSetStatus('Session expired — reconnect in Settings','var(--warn)');
+    }
+    return;
+  }
+
+  // 4. Direct token (rigger link already set _dbxToken via _handleRiggerParam)
+  if(_dbxToken){
+    _dbxUpdateUI();
+    dbxStartPolling();
+    return;
+  }
+
+  // 5. No credentials
   _dbxUpdateUI();
-});
-_handleRiggerParam();
-_handleShareParam();
+}
+_initSync();
 
 
 // ── Diagram view ──────────────────────────────────────────────────────
@@ -2928,8 +2954,7 @@ function _handleRiggerParam(){
     +'<span id="rigger-log-count" style="margin-left:auto;color:var(--muted);font-size:10px"></span>';
   var header=document.querySelector('header');
   if(header&&header.nextSibling) header.parentNode.insertBefore(banner,header.nextSibling);
-  _dbxUpdateUI();
-  dbxStartPolling();
+  // polling started by _initSync
 }
 function _logActivity(deviceId,action){
   var by=window._riggerName||project.name||'mobile';
