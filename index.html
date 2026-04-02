@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.759</title>
+<title>WTU · Buildert v3.770</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -403,7 +403,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.759</small></div>
+  <div class="logo">WTU <small>v3.770</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2215,6 +2215,9 @@ async function _dbxPush(silent){
   xhr.onload=function(){
     if(xhr.status===200){
       try{var info=JSON.parse(xhr.responseText);_dbxLastRev=info.rev||'';}catch(e){}
+      // After successful push, merge local log into remote and clear local
+      window._remoteLog=(window._remoteLog||[]).concat(window._activityLog||[]);
+      window._activityLog=[];
       if(!silent)_dbxSetStatus('Pushed v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
     } else {
       if(!silent)_dbxSetStatus('Push error '+xhr.status,'var(--danger)');
@@ -2424,7 +2427,15 @@ function _logActivity(deviceId,action){
 // Patch _applyProjectLoad to capture remote log
 var _origApplyProjectLoad=_applyProjectLoad;
 _applyProjectLoad=function(data){
-  if(data&&Array.isArray(data._log)) window._remoteLog=data._log;
+  if(data&&Array.isArray(data._log)){
+    // Deduplicate by timestamp+device+action
+    var seen={};
+    window._remoteLog=data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
+      if(seen[k])return false;seen[k]=true;return true;
+    });
+    window._activityLog=[];
+  }
   _origApplyProjectLoad(data);
 };
 
