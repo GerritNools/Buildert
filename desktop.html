@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.768</title>
+<title>WTUniverse · Buildert Editor v3.769</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.768</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.769</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -480,7 +480,8 @@
       <button class="tab-btn"               id="tab-distro" onclick="setTab('distro')">&#9889; Distros</button>
       <button class="tab-btn"               id="tab-psu"    onclick="setTab('psu')">&#128267; PSU</button>
       <button class="tab-btn"               id="tab-all"    onclick="setTab('all')">All</button>
-      <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9633; Diagram</button>
+      <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9741; Node</button>
+      <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares</button>
@@ -2595,7 +2596,11 @@ function loadProjectFile(input) {
 function _applyProjectLoad(data) {
   // Capture log immediately on any load before any writes
   if (data && Array.isArray(data._log) && data._log.length > 0) {
+    var prevCount = (window._projectLog||[]).length;
     window._projectLog = data._log;
+    if (data._log.length > prevCount && currentTab === 'shares') {
+      showToast(data._log.length + ' activity entries loaded', 'ok');
+    }
   }
   // Accept raw buildert.json array (legacy) — import devices only, no version tracking
   if (Array.isArray(data)) {
