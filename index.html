@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.770</title>
+<title>WTU · Buildert v3.771</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -328,6 +328,8 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .sp-row{display:flex;padding:8px 13px;border-bottom:1px solid var(--border2);align-items:center;gap:8px;}
 .sp-row:last-child{border-bottom:none;}
 .sp-lbl{font-family:var(--cond);font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);min-width:90px;}
+.sp-val{font-family:var(--mono);font-size:13px;color:var(--text);margin-left:auto;text-align:right;}
   color:var(--muted);min-width:90px;flex-shrink:0;}
 .sp-edit{background:transparent;border:none;border-bottom:1px solid var(--border);
   color:var(--text);font-size:14px;font-family:var(--mono);flex:1;outline:none;padding:2px 4px;}
@@ -403,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.770</small></div>
+  <div class="logo">WTU <small>v3.771</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -411,7 +413,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <button class="hbtn" id="sync-btn" onclick="togglePolling()" title="Live sync">▶</button>
   <button class="hbtn" onclick="openSheet('conn')" title="Settings">⚙</button>
   <button class="hbtn" onclick="saveProject()" title="Save project JSON">💾</button>
   <button class="hbtn" onclick="shareApp()" title="Share app with data pre-loaded" style="font-size:13px">📤</button>
@@ -515,19 +516,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
       <div id="dbx-status" style="flex:2;font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;padding-left:4px"></div>
     </div>
 
-    <div class="m-sec">Anbernic (on-site WiFi)</div>
-    <label>IP address (port 9002)</label>
-    <input id="conn-ip" type="text" inputmode="decimal" placeholder="192.168.x.x"
-           style="font-family:var(--mono);font-size:16px;letter-spacing:2px">
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
-      <button class="sb sb-ghost" style="flex:0 0 auto;padding:8px 12px;font-size:11px" onclick="qconn('192.168.1.1')">192.168.1.1</button>
-      <button class="sb sb-ghost" style="flex:0 0 auto;padding:8px 12px;font-size:11px" onclick="qconn('192.168.0.1')">192.168.0.1</button>
-      <button class="sb sb-ghost" style="flex:0 0 auto;padding:8px 12px;font-size:11px" onclick="qconn('10.0.0.1')">10.0.0.1</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="sb sb-primary" style="flex:1" onclick="applyConn()">Apply</button>
-      <button class="sb sb-ghost" style="flex:1" onclick="pushToDevice()">⬆ Push to Anbernic</button>
-    </div>
+
   </div>
 </div>
 
@@ -857,6 +846,7 @@ function renderCards(){
       +  '<div class="badge badge-'+tk+'">'+TSHORT[d.type]+'</div>'
       +  '<button class="edit-btn" onclick="openEdit('+gi+')">✏</button>'
       +'</div>'
+      +(function(){var cin=_cableLabel(d.cable_in||d.cable||''),cout=_cableLabel(d.cable_out||'');return (cin||cout)?'<div style="padding:0 14px 4px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">↓ '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">↑ '+cout+'</span>':'')+'</div>':'';})()
       // Meta row: one-tap status chips
       +'<div class="card-meta">'
       +STATUS_OPTS.map(function(s){
@@ -1051,6 +1041,8 @@ function renderPack(){
 function packAddSpare(){_packSpares.push({qty:1,desc:'',checked:false});renderPack();}
 
 // ── Specs tab ─────────────────────────────────────────────────────
+var _spExpanded = {};
+function _spToggle(k){ _spExpanded[k]=!_spExpanded[k]; renderSpecs(); }
 function renderSpecs(){
   document.querySelector('.chips').style.display='none';
   var cont=document.getElementById('card-list');
@@ -1064,16 +1056,19 @@ function renderSpecs(){
 
   function spCard(k, color, fields){
     var s=SPECS[k]; if(!s) return '';
-    var rows=fields.map(function(f){
+    var expanded=_spExpanded[k];
+    var rows=expanded ? fields.map(function(f){
       var lbl=f[0],key=f[1];
-      var v=s[key]; var disp=(v===null||v===undefined||v==='')?'—':String(v);
-      return '<div class="sp-row">'
-        +'<span class="sp-lbl">'+lbl+'</span>'
-        +'<input class="sp-edit" value="'+disp.replace(/"/g,'&quot;')+'"'
-        +' onchange="editSpecMobile(\''+k+'\',\''+key+'\',this.value)">'
-        +'</div>';
-    }).join('');
-    return '<div class="sp-card"><div class="sp-card-header" style="color:'+color+'">'+k+'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400;margin-left:8px">'+(s.alt||'')+'</span></div>'+rows+'</div>';
+      var v=s[key]; var disp=(v===null||v===undefined||v==='')?'\u2014':String(v);
+      return '<div class="sp-row"><span class="sp-lbl">'+lbl+'</span><span class="sp-val">'+disp+'</span></div>';
+    }).join('') : '';
+    return '<div class="sp-card" onclick="_spToggle(\''+k+'\')" style="cursor:pointer">'
+      +'<div class="sp-card-header" style="color:'+color+';display:flex;align-items:center;gap:8px">'
+      +'<span>'+k+'</span>'
+      +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400">'+(s.alt||'')+'</span>'
+      +'<span style="margin-left:auto;font-size:14px;color:var(--muted)">'+(expanded?'\u25b2':'\u25bc')+'</span>'
+      +'</div>'
+      +rows+'</div>';
   }
 
   var laserFields=[['Laser W','laser_w'],['Consump W','consumption_w'],['A @230V','max_a_230'],['A @110V','max_a_110'],['Weight kg','weight_kg'],['Scanners','scanners'],['Angle','angle'],['OPS/Diode','ops_diode'],['In conn.','in_connector'],['Out conn.','out_connector'],['IP range','ip'],['Notes','notes']];
@@ -1081,7 +1076,7 @@ function renderSpecs(){
   var smokeFields=[['Consump W','consumption_w'],['A @230V','max_a_230'],['Oil type','oil_type'],['In conn.','in_connector'],['Notes','notes']];
 
   cont.innerHTML=
-    '<div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors — tap to edit</div>'
+    '<div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors — tap to expand</div>'
     +lk.map(function(k){return spCard(k,'var(--laser)',laserFields);}).join('')
     +'<div class="sp-hdr" style="color:var(--distro)">⚡ Distros</div>'
     +dk.map(function(k){return spCard(k,'var(--distro)',distroFields);}).join('')
@@ -1167,19 +1162,24 @@ function closeScan(){
 }
 
 function _initDetector(){
-  if (typeof BarcodeDetector === 'undefined') {
-    document.getElementById('cam-status').textContent = 'Camera scanning not supported on this browser — use manual entry below';
-    document.getElementById('cam-toggle-btn').style.display = 'none';
+  // Use jsQR for iOS Safari compatibility
+  if (typeof jsQR !== 'undefined') {
+    _detector = 'jsqr';
+    document.getElementById('cam-status').textContent = 'Tap Start camera — hold QR/barcode in the frame';
     return;
   }
-  BarcodeDetector.getSupportedFormats().then(function(formats){
-    var fmts = formats.filter(function(f){ return ['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e','data_matrix'].indexOf(f) >= 0; });
-    _detector = new BarcodeDetector({formats: fmts.length ? fmts : ['qr_code','code_128']});
-    document.getElementById('cam-status').textContent = 'Tap Start camera — hold barcode/QR in the frame';
-  }).catch(function(){
-    _detector = new BarcodeDetector({formats:['qr_code','code_128','code_39']});
-    document.getElementById('cam-status').textContent = 'Tap Start camera to scan';
-  });
+  if (typeof BarcodeDetector !== 'undefined') {
+    BarcodeDetector.getSupportedFormats().then(function(formats){
+      var fmts = formats.filter(function(f){ return ['qr_code','code_128','code_39','ean_13','data_matrix'].indexOf(f)>=0; });
+      _detector = new BarcodeDetector({formats: fmts.length ? fmts : ['qr_code','code_128']});
+      document.getElementById('cam-status').textContent = 'Tap Start camera — hold barcode/QR in the frame';
+    }).catch(function(){
+      _detector = new BarcodeDetector({formats:['qr_code','code_128','code_39']});
+    });
+  } else {
+    document.getElementById('cam-status').textContent = 'Use manual entry below';
+    document.getElementById('cam-toggle-btn').style.display = 'none';
+  }
 }
 
 function toggleCamera(){
@@ -1187,11 +1187,9 @@ function toggleCamera(){
   else _startCamera();
 }
 
+var _scanCanvas = null;
 function _startCamera(){
-  if (!_detector) {
-    document.getElementById('cam-status').textContent = 'BarcodeDetector not available — try Chrome or iOS 17+';
-    return;
-  }
+  if (!_detector) { _initDetector(); if(!_detector){ showToast('Camera scan unavailable','warn'); return; } }
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'environment', width: {ideal:1280}, height: {ideal:720} }
   }).then(function(stream){
@@ -1231,25 +1229,42 @@ function _stopCamera(){
 }
 
 function _scanFrame(){
-  if (!_camActive || !_detector) return;
+  if (!_camActive) return;
   var video = document.getElementById('scan-video');
-  if (!video || video.readyState < 2) { _scanLoop = setTimeout(_scanFrame, 150); return; }
-
-  _detector.detect(video).then(function(codes){
-    if (codes.length > 0) {
-      var raw = codes[0].rawValue || '';
-      // Extract up to 6 alphanumeric chars — handles "SN:LA0042" or just "LA0042"
-      var match = raw.replace(/^[^A-Z0-9]*/i,'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
-      if (match && match !== _lastScan || (Date.now() - _lastScanTs) > 2000) {
-        _lastScan = match;
-        _lastScanTs = Date.now();
-        _onScanResult(match);
+  if (!video || video.readyState < 2 || video.videoWidth === 0) { _scanLoop = setTimeout(_scanFrame, 150); return; }
+  // jsQR path (iOS)
+  if (_detector === 'jsqr' && typeof jsQR !== 'undefined') {
+    if (!_scanCanvas) _scanCanvas = document.createElement('canvas');
+    _scanCanvas.width = video.videoWidth; _scanCanvas.height = video.videoHeight;
+    var ctx = _scanCanvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    var img = ctx.getImageData(0, 0, _scanCanvas.width, _scanCanvas.height);
+    var result = jsQR(img.data, img.width, img.height, {inversionAttempts:'dontInvert'});
+    if (result && result.data) {
+      var raw = result.data;
+      var match = raw.replace(/^[^A-Z0-9]*/i,'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,20);
+      if (match.length >= 2 && (match !== _lastScan || Date.now()-_lastScanTs > 2000)) {
+        _lastScan = match; _lastScanTs = Date.now(); _onScanResult(match.slice(0,6));
       }
     }
-    if (_camActive) _scanLoop = setTimeout(_scanFrame, 200);
-  }).catch(function(){
-    if (_camActive) _scanLoop = setTimeout(_scanFrame, 300);
-  });
+    if (_camActive) _scanLoop = requestAnimationFrame(_scanFrame);
+    return;
+  }
+  // BarcodeDetector path
+  if (_detector && _detector !== 'jsqr') {
+    _detector.detect(video).then(function(codes){
+      if (codes.length > 0) {
+        var raw = codes[0].rawValue || '';
+        var match = raw.replace(/^[^A-Z0-9]*/i,'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+        if (match && (match !== _lastScan || Date.now()-_lastScanTs > 2000)) {
+          _lastScan = match; _lastScanTs = Date.now(); _onScanResult(match);
+        }
+      }
+      if (_camActive) _scanLoop = setTimeout(_scanFrame, 200);
+    }).catch(function(){ if (_camActive) _scanLoop = setTimeout(_scanFrame, 300); });
+    return;
+  }
+  if (_camActive) _scanLoop = setTimeout(_scanFrame, 200);
 }
 
 function _onScanResult(serial){
