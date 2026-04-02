@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.771b</title>
+<title>WTUniverse · Buildert Editor v3.773b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -429,12 +429,17 @@
 
   .ndot{width:9px;height:9px;border-radius:50%;display:inline-block;
     vertical-align:middle;margin-right:3px;}
+
+  .mob-changed{background:rgba(0,212,255,.07);outline:1px solid rgba(0,212,255,.25);}
+  .mob-row td{background:rgba(0,212,255,.04)!important;}
+  .mob-changed-warn{background:rgba(245,166,35,.07);outline:1px solid rgba(245,166,35,.25);}
+
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.771b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.773b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1632,7 +1637,8 @@ function renderTable() {
       // mounted_at removed from table (available in log)
     }
     var isSelected = selectedGis.indexOf(gi) >= 0;
-    return '<tr class="row-' + tk + (isSelected?' row-selected':'') + '" ondblclick="openEditModal('+gi+')" style="cursor:default">'
+    var _mchg=window._mobileChanged&&window._mobileChanged[d.device_id];
+    return '<tr class="row-' + tk + (isSelected?' row-selected':'') + (_mchg?' mob-row':'') + '" ondblclick="openEditModal('+gi+')" style="cursor:default">'
       + '<td style="width:24px;text-align:center;padding:0 4px">'
       +   '<input type="checkbox" class="row-chk" data-gi="'+gi+'" onchange="onRowCheck()" style="cursor:pointer;width:14px;height:14px"' + (isSelected?' checked':'') + '>'
       + '</td>'
@@ -1687,7 +1693,7 @@ function renderTable() {
       +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
       +   (d.location||'') + '</td>'
       + '<td>' + srcHtml + '</td>'
-      + '<td>' + _oneCableSelect(gi,'cable_in', d.cable_in||d.cable||'') + '</td>'
+      + (function(){var _chg=window._mobileChanged&&window._mobileChanged[d.device_id];var _cls=_chg&&(_chg.indexOf('cable_in')>=0||_chg.indexOf('cable')>=0)?'mob-changed':'';return '<td class="'+_cls+'">'+_oneCableSelect(gi,'cable_in',d.cable_in||d.cable||'')+'</td>';})()
       + '<td style="color:var(--muted);font-size:11px;font-family:var(--mono)">' + _cableOutDisplay(d) + '</td>'
       + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'
       +   ['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'].map(function(s) { return '<option value="'+s+'"' + (d.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
@@ -2631,6 +2637,25 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
+  // Track fields changed by mobile/rigger for highlight
+  var _savedBy = data._saved_by || '';
+  var _mobileChanged = {}; // device_id → [fields changed]
+  if(_savedBy !== 'desktop'){
+    var _localById = {};
+    devices.forEach(function(d){ if(d.device_id) _localById[d.device_id]=d; });
+    (data.devices||[]).forEach(function(fd){
+      var ld = _localById[fd.device_id]; if(!ld) return;
+      var changed = [];
+      ['serial','status','cable_in','cable','pointed','checks','notes'].forEach(function(f){
+        if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])) changed.push(f);
+      });
+      if(changed.length) _mobileChanged[fd.device_id] = changed;
+    });
+    window._mobileChanged = _mobileChanged;
+    window._mobileChangedBy = _savedBy;
+  } else {
+    window._mobileChanged = {};
+  }
   devices         = data.devices         || devices;
   _packSpares     = data.pack_spares     || [];
   _specsOverrides = data.spec_overrides  || {};
@@ -2648,7 +2673,10 @@ function _mergeProjectNoConflict(data) {
   if (Array.isArray(data._log)) window._projectLog = data._log;
   autoSave();
   renderTable();
-  showToast('Loaded v' + _projectVersion + ' (by ' + (data._saved_by||'?') + ')', 'ok');
+  var _cCount = Object.keys(window._mobileChanged||{}).length;
+  var _msg = 'v' + _projectVersion + ' by ' + (data._saved_by||'?');
+  if(_cCount > 0) _msg += ' — ' + _cCount + ' device(s) changed → highlighted in cyan';
+  showToast(_msg, 'ok');
   _updateProjectBadge();
   // Refresh shares panel if open
   if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
