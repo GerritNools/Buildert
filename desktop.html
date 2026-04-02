@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.775b</title>
+<title>WTUniverse · Buildert Editor v3.776b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -439,7 +439,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.775b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.776b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1459,13 +1459,20 @@ function _oneCableSelect(gi, field, val) {
     if (sp) reqConn = field==='cable_in' ? (sp.in_connector||'') : (sp.out_connector||'');
   }
   var opts = '<option value="">— —</option>';
+  var _valSeen = !val;
   CABLE_TYPES.forEach(function(ct) {
-    if (reqConn && ct.pwr_a !== reqConn && ct.pwr_b !== reqConn) return; // filter by connector
+    if (reqConn && ct.pwr_a !== reqConn && ct.pwr_b !== reqConn) return;
     ct.lengths.forEach(function(l) {
       var v = ct.key+'-'+l.val;
+      if (val===v) _valSeen = true;
       opts += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
   });
+  // Always show current value even if connector filter excludes it
+  if (!_valSeen && val) {
+    var _ck=val.split('-')[0], _cdef=CABLE_TYPES.find(function(ct){return ct.key===_ck;});
+    if(_cdef){var _lv=parseFloat(val.split('-').slice(1).join('-'));var _ld=_cdef.lengths.find(function(l){return Math.abs(l.val-_lv)<0.01;});opts+='<option value="'+val+'" selected>'+_cdef.label+' '+(_ld?_ld.lbl:_lv+'m')+' ⚠</option>';}
+  }
   var warn = info.adapterNote ? ' title="\u26a0 '+info.adapterNote+'"' : '';
   return '<select class="cable-select '+info.css+'" onchange="setField('+gi+',\''+field+'\',this.value)"'+warn+'>'+opts+'</select>';
 }
