@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.779</title>
+<title>WTU · Buildert v3.780</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.779</small></div>
+  <div class="logo">WTU <small>v3.780</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -907,21 +907,25 @@ function renderCards(){
     var html='<div class="card" id="c'+gi+'">'
       +'<div class="card-stripe stripe-'+tk+'"></div>'
       // Top row — double-tap opens edit
-      +'<div class="card-top" style="cursor:pointer">'
+      +'<div class="card-top" onclick="openEdit('+gi+')" style="cursor:pointer">'
       +  '<div style="display:flex;flex-direction:column;gap:1px;min-width:0">'
       +    '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
       +    (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+m+'</div>':''; })()
       +  '</div>'
       +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'NO SN')+'</div>'
       +  '<div class="badge badge-'+tk+'">'+TSHORT[d.type]+'</div>'
-      +  '<button class="edit-btn" onclick="event.stopPropagation();openEdit('+gi+')" title="Edit">✏</button>'
-      +  '<button class="edit-btn" onclick="event.stopPropagation();openSpecSheet('+gi+')" title="Specs" style="font-size:11px">📋</button>'
+      +  '<button class="edit-btn" onclick="openEdit('+gi+')" title="Edit">✏</button>'
+      +  '<button class="edit-btn" onclick="openSpecSheet('+gi+')" title="Specs" style="font-size:11px">📋</button>'
       +'</div>'
       +(function(){
+        var rows=[];
         var cin=_cableLabel(d.cable_in||d.cable||'');
-        var dstream=devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);});
-        var cout=dstream.length?_cableLabel(dstream[0].cable_in||dstream[0].cable||''):'';
-        return (cin||cout)?'<div style="padding:0 14px 3px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">IN: '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">OUT: '+cout+'</span>':'')+'</div>':'';
+        if(cin) rows.push('<span style="color:var(--ok)">IN '+cin+(d.source?' ← '+d.source:'')+'</span>');
+        devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);}).forEach(function(x){
+          var lbl=_cableLabel(x.cable_in||x.cable||'');
+          if(lbl) rows.push('<span style="color:var(--smoke)">OUT '+lbl+' → '+x.device_id+'</span>');
+        });
+        return rows.length?'<div style="padding:0 14px 4px 17px;display:flex;flex-direction:column;gap:2px;font-size:11px;font-family:var(--mono)">'+rows.join('')+'</div>':'';
       })()
       // Meta row: one-tap status chips
       +'<div class="card-meta">'
