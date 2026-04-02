@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.786</title>
+<title>WTU · Buildert v3.787</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.786</small></div>
+  <div class="logo">WTU <small>v3.787</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -921,14 +921,18 @@ function renderCards(){
       +  '<button class="edit-btn" onclick="openSpecSheet('+gi+')" title="Specs" style="font-size:11px">📋</button>'
       +'</div>'
       +(function(){
-        var rows=[];
+        var lines=[];
+        // Line 1: source ← cable_in
         var cin=_cableLabel(d.cable_in||d.cable||'');
-        if(cin) rows.push('<span style="color:var(--ok)">IN '+cin+(d.source?' ← '+d.source:'')+'</span>');
-        devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);}).forEach(function(x){
-          var lbl=_cableLabel(x.cable_in||x.cable||'');
-          if(lbl) rows.push('<span style="color:var(--smoke)">OUT '+lbl+' → '+x.device_id+'</span>');
-        });
-        return rows.length?'<div style="padding:0 14px 4px 17px;display:flex;flex-direction:column;gap:2px;font-size:11px;font-family:var(--mono)">'+rows.join('')+'</div>':'';
+        var srcStr=d.source?'← '+d.source:'';
+        if(cin||srcStr) lines.push('<div style="color:var(--ok)">'+(srcStr?srcStr+' ':'')+( cin?'/ '+cin:'')+'</div>');
+        // Line 2: each downstream device and its cable
+        var outs=devices.filter(function(x){return x.source===(d.device_id||'');});
+        if(outs.length){
+          var outParts=outs.map(function(x){var lbl=_cableLabel(x.cable_in||x.cable||'');return x.device_id+(lbl?' '+lbl:'');});
+          lines.push('<div style="color:var(--smoke)">→ '+outParts.join(' · ')+'</div>');
+        }
+        return lines.length?'<div style="padding:0 14px 4px 17px;font-size:11px;font-family:var(--mono)">'+lines.join('')+'</div>':'';
       })()
       // Meta row: one-tap status chips
       +'<div class="card-meta">'
@@ -941,6 +945,8 @@ function renderCards(){
       +(d.source?'<span class="card-src" style="margin-left:4px">←'+d.source+'</span>':'')
       +(loadW>0?'<span class="load-badge" style="color:'+(loadW>3000?'var(--danger)':loadW>1500?'var(--warn)':'var(--ok)')+'">'+loadW+'W</span>':'')
       +'</div>'
+      // Notes — always visible if set
+      +(d.notes?'<div style="padding:2px 14px 5px 17px;font-size:12px;color:var(--warn);font-family:var(--mono);border-left:2px solid var(--warn);margin-left:17px">⚠ '+d.notes+'</div>':'')
       // Progress
       +'<div class="card-prog">'
       +  '<div class="pbar"><div class="pbar-fill" style="width:'+p+'%;background:'+fc+'"></div></div>'
@@ -1908,6 +1914,13 @@ function _mergeProjectNoConflict(data){
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
+  // Apply layout positions from desktop
+  if(data._node_positions && Object.keys(data._node_positions).length){
+    _mNPos = data._node_positions;
+  }
+  if(data._diag_positions && Object.keys(data._diag_positions).length){
+    window._mDiagPos = data._diag_positions;
+  }
   autoSave(); renderMain();
   showToast('Loaded v'+_projectVersion+' · by '+(data._saved_by||'?'),'ok');
   _updateMobileProjectBadge();
@@ -1947,6 +1960,12 @@ function _mergeSmartFromFile(data){
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
   _persistProjectMeta();
+  if(data._node_positions && Object.keys(data._node_positions).length){
+    _mNPos = data._node_positions;
+  }
+  if(data._diag_positions && Object.keys(data._diag_positions).length){
+    window._mDiagPos = data._diag_positions;
+  }
   autoSave(); renderMain();
   showToast('Synced v'+_projectVersion,'ok');
   _updateMobileProjectBadge();
@@ -2049,6 +2068,74 @@ function showToast(msg,type){
   clearTimeout(_tt);_tt=setTimeout(function(){t.className='';},2600);
 }
 
+
+function _renderMapFromPositions(positions){
+  // Render diagram using desktop's saved positions, scaled for mobile
+  var cont=document.getElementById('card-list');
+  var byId={}; devices.forEach(function(d){if(d.device_id)byId[d.device_id]=d;});
+  var NW=MAP_NW, NH=MAP_NH;
+  var COLS={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
+
+  // Calculate bounds for scale-to-fit
+  var minX=9999,maxX=0,minY=9999,maxY=0;
+  Object.keys(positions).forEach(function(id){
+    var p=positions[id];if(!p)return;
+    minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x+NW);
+    minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y+NH);
+  });
+  var svgW=Math.min(window.innerWidth,600);
+  var contentW=maxX-minX, contentH=maxY-minY;
+  var scale=Math.min(1,(svgW-20)/Math.max(contentW,1));
+
+  var lines='',nodes='';
+  devices.forEach(function(d){
+    if(!d.device_id||!d.source||d.source==='FOH')return;
+    var sp=positions[d.source],tp=positions[d.device_id];
+    if(!sp||!tp)return;
+    var col=COLS[d.type]||'#55606e';
+    var x1=(sp.x-minX)*scale+NW*scale/2,y1=(sp.y-minY)*scale+NH*scale,x2=(tp.x-minX)*scale+NW*scale/2,y2=(tp.y-minY)*scale,my=(y1+y2)/2;
+    lines+='<path d="M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2+'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-opacity="0.5"/>';
+  });
+  // FOH lines
+  var fohP=positions['FOH'];
+  if(fohP){
+    var fcx=(fohP.x-minX)*scale+NW*scale/2,fcy=(fohP.y-minY)*scale;
+    devices.filter(function(d){return d.source==='FOH'&&d.device_id&&positions[d.device_id];}).forEach(function(d){
+      var tp=positions[d.device_id];
+      var x2=(tp.x-minX)*scale+NW*scale/2,y2=(tp.y-minY)*scale+NH*scale,my=(fcy+y2)/2;
+      lines+='<path d="M'+fcx+','+fcy+' C'+fcx+','+my+' '+x2+','+my+' '+x2+','+y2+'" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5,3"/>';
+    });
+  }
+  // Nodes
+  Object.keys(positions).forEach(function(id){
+    var p=positions[id];if(!p)return;
+    var isFoh=(id==='FOH');
+    var dev=isFoh?null:byId[id];
+    var col=isFoh?'#00d4ff':(dev?COLS[dev.type]||'#55606e':'#55606e');
+    var px=(p.x-minX)*scale,py=(p.y-minY)*scale;
+    var nw=NW*scale,nh=NH*scale;
+    var gi=dev?devices.indexOf(dev):-1;
+    var st=dev?(dev.status||''):'';
+    var bg=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
+    nodes+='<g transform="translate('+px+','+py+')" '+(gi>=0?'onclick="nodeSheetOpen('+gi+')"':'')+' style="cursor:pointer">'
+      +'<rect x="0" y="0" width="'+nw+'" height="'+nh+'" rx="4" fill="'+bg+'" stroke="'+col+'" stroke-width="1.2"/>'
+      +'<rect x="0" y="0" width="'+(4*scale)+'" height="'+nh+'" rx="2" fill="'+col+'"/>'
+      +'<text x="'+(9*scale)+'" y="'+(16*scale)+'" fill="'+col+'" font-size="'+(Math.max(8,11*scale))+'px" font-weight="700" font-family="Barlow Condensed,sans-serif">'+id+'</text>'
+      +'</g>';
+  });
+  var svgH=(maxY-minY)*scale+NH*scale+MAP_PAD;
+  var svgEl='<svg width="'+svgW+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">'
+    +'<g>'+lines+nodes+'</g></svg>';
+  cont.innerHTML='<div id="map-wrap" style="overflow:hidden;width:100%;touch-action:none;background:var(--bg);border-radius:8px;position:relative;height:calc(100vh - 180px)">'
+    +'<div id="map-canvas" style="transform-origin:0 0;position:absolute;top:0;left:0;will-change:transform">'+svgEl+'</div>'
+    +'<div style="position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:4px">'
+    +'<button onclick="mapZoom(1.25)" style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:18px">+</button>'
+    +'<button onclick="mapZoom(0.8)" style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:18px">−</button>'
+    +'<button onclick="mapFit()" style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px">fit</button>'
+    +'</div></div>';
+  _mapZ=1;_mapPX=0;_mapPY=0;_mapApplyTransform();_mapInitEvents();setTimeout(mapFit,60);
+}
+
 // ── Map (diagram) tab ─────────────────────────────────────────────
 // Tree layout: PSU → Distro → Smoke → Laser, top-down, max 10/row
 // Pan: one-finger drag. Zoom: pinch.
@@ -2076,6 +2163,11 @@ function renderMap(){
 
   // Layout: group by type→model, sorted numerically within model, max 10/row
   var byId={}; devices.forEach(function(d){if(d.device_id)byId[d.device_id]=d;});
+  // Use desktop layout positions if available
+  if(window._mDiagPos && Object.keys(window._mDiagPos).length){
+    _renderMapFromPositions(window._mDiagPos);
+    return;
+  }
   var pos={}, curY=MAP_PAD, maxW=0;
   var svgW=Math.min(window.innerWidth, 600);
 
