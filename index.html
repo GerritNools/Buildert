@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.772</title>
+<title>WTU · Buildert v3.773</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.772</small></div>
+  <div class="logo">WTU <small>v3.773</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1575,9 +1575,9 @@ function closeSheet(id){
 }
 
 // ── Connection ──────────────────────────────────────────────────
-function qconn(ip){document.getElementById('conn-ip').value=ip;applyConn();}
+function qconn(ip){applyConn();}
 function applyConn(){
-  var ip=(document.getElementById('conn-ip').value||'').trim();
+  var ip='';
   project.name=document.getElementById('proj-name').value.trim();
   project.venue=document.getElementById('proj-venue').value.trim();
   _updateMobileProjectBadge();
@@ -1737,7 +1737,7 @@ function _mergeProjectNoConflict(data){
   if(data.project){
     project=Object.assign(project,data.project);
     var ip=data.project.anbernic_ip||'';
-    if(ip){localStorage.setItem('wtu_ip',ip);var ci=document.getElementById('conn-ip');if(ci)ci.value=ip;}
+    if(ip){localStorage.setItem('wtu_ip',ip);}
     var pn=document.getElementById('proj-name');var pv=document.getElementById('proj-venue');
     if(pn)pn.value=project.name||'';if(pv)pv.value=project.venue||'';
   }
@@ -2328,9 +2328,9 @@ try{var spm=localStorage.getItem('wtu_project_meta');if(spm){var spmd=JSON.parse
 try{var so=localStorage.getItem('buildert_specs_overrides');if(so){var ov=JSON.parse(so);Object.keys(ov).forEach(function(k){if(SPECS[k])Object.assign(SPECS[k],ov[k]);});}}catch(e){}
 
 var ip=localStorage.getItem('wtu_ip')||'';
-if(ip){document.getElementById('conn-ip').value=ip;}
-document.getElementById('proj-name').value=project.name||'';
-document.getElementById('proj-venue').value=project.venue||'';
+// conn-ip removed (Anbernic stripped)
+var _pn=document.getElementById('proj-name');if(_pn)_pn.value=project.name||'';
+var _pv=document.getElementById('proj-venue');if(_pv)_pv.value=project.venue||'';
 
 // Load Dropbox settings
 _dbxRefreshToken=localStorage.getItem('wtu_dbx_refresh')||'';
