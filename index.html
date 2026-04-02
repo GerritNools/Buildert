@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.773</title>
+<title>WTU · Buildert v3.774</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.773</small></div>
+  <div class="logo">WTU <small>v3.774</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -430,7 +430,27 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <div id="scroll">
   <div class="chips" id="filter-chips"></div>
   <div id="card-list"></div>
-  <div id="diagram-wrap" style="display:none"></div>
+  <!-- Nodes tab — SVG signal flow view -->
+  <div id="diagram-wrap" style="display:none;flex-direction:column;height:calc(100vh - 120px)">
+    <div style="display:flex;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0">
+      <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeFit()">&#8982; Fit</button>
+      <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(1.25)">+</button>
+      <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(0.8)">&minus;</button>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center">Tap node to edit</span>
+    </div>
+    <div style="flex:1;overflow:hidden;position:relative">
+      <svg id="mob-node-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;cursor:grab;touch-action:none">
+        <defs>
+          <marker id="mn-arrow-ok"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
+          <marker id="mn-arrow-warn"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
+          <marker id="mn-arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
+          <marker id="mn-arrow-foh"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
+        </defs>
+        <g id="mob-node-edges"></g>
+        <g id="mob-node-nodes"></g>
+      </svg>
+    </div>
+  </div>
   <div class="empty" id="empty-state" style="display:none">
     <div class="big">🔧</div>
     <p>No devices.<br>Tap + to add one.</p>
@@ -466,8 +486,22 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
   <!-- Camera toggle + status bar -->
   <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;">
-    <button id="cam-toggle-btn" class="sb sb-primary" style="padding:8px 16px;font-size:13px" onclick="toggleCamera()">📷 Start camera</button>
+    <button id="cam-toggle-btn" class="sb sb-primary" style="padding:8px 16px;font-size:13px" onclick="toggleCamera()">📷 Camera</button>
     <div id="cam-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);flex:1"></div>
+  </div>
+  <!-- Persistent serial input — always in DOM so iOS keyboard works -->
+  <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
+    <div style="display:flex;gap:8px">
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+             style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
+                    padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
+                    color:var(--text);outline:none"
+             oninput="this.value=this.value.toUpperCase();scanMainInput(this.value)"
+             onkeydown="if(event.key==='Enter')scanMainCommit()">
+      <button class="sb sb-primary" style="padding:12px 18px;font-size:18px" onclick="scanMainCommit()">✓</button>
+    </div>
   </div>
 
   <div class="scan-body" id="scan-body"></div>
@@ -1347,30 +1381,57 @@ function renderScan(){
     var isActive  = gi === scanGi;
     var tk = TKEY[d.type]||'laser';
     return '<div class="scan-device'+(isActive?' active':hasSerial?' done':'')+'" id="sd'+gi+'" onclick="selectScanDevice('+gi+')">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
       +   '<span class="scan-did id-'+tk+'">'+d.device_id+'</span>'
-      +   (hasSerial ? '<span style="font-family:var(--mono);font-size:12px;color:var(--ok)">✓ '+d.serial+'</span>' : '<span style="font-size:11px;color:var(--muted)">no serial</span>')
+      +   (hasSerial ? '<span style="font-family:var(--mono);font-size:12px;color:var(--ok)">&#10003; '+d.serial+'</span>'
+                     : '<span style="font-size:11px;color:var(--muted)">no serial</span>')
+      +   (isActive ? '<span style="margin-left:auto;font-size:11px;color:var(--accent);font-family:var(--cond);font-weight:700">\u2190 ACTIVE</span>' : '')
       + '</div>'
-      + '<div class="scan-loc">'+(d.location||'no location set')+'</div>'
-      + '<div class="scan-serial-row">'
-      +   '<input class="scan-serial-input" id="si'+gi+'" type="text" maxlength="15" placeholder="------"'
-      +     ' value="'+(hasSerial ? d.serial : '')+'"'
-      +     ' oninput="this.value=this.value.toUpperCase().slice(0,15)"'
-      +     ' onkeydown="if(event.key===\'Enter\'){commitSerial('+gi+',this.value);}"'
-      +     (isActive ? ' autofocus' : '')
-      +   '>'
-      +   '<button class="scan-ok-btn" onclick="commitSerial('+gi+',document.getElementById(\'si'+gi+'\').value)">✓</button>'
-      + '</div></div>';
+      + (d.location ? '<div class="scan-loc">'+d.location+'</div>' : '')
+      + '</div>';
   }).join('');
+  // Update active label
+  var lbl = document.getElementById('scan-active-label');
+  if (lbl) {
+    if (scanGi >= 0 && devices[scanGi]) {
+      lbl.textContent = 'ASSIGNING TO: ' + devices[scanGi].device_id;
+      lbl.style.color = 'var(--accent)';
+    } else {
+      lbl.textContent = 'TAP A DEVICE BELOW TO SELECT';
+      lbl.style.color = 'var(--muted)';
+    }
+  }
+  var mi = document.getElementById('scan-main-input');
+  if (mi) mi.value = '';
   if (scanGi < 0) scanNext();
 }
 
 function selectScanDevice(gi){
-  scanGi = gi; renderScan();
-  setTimeout(function(){
-    var el = document.getElementById('si'+gi); if(el){el.focus();el.select();}
-    var sd = document.getElementById('sd'+gi); if(sd) sd.scrollIntoView({behavior:'smooth',block:'center'});
-  }, 100);
+  scanGi = gi;
+  var lbl = document.getElementById('scan-active-label');
+  if (lbl && devices[gi]) { lbl.textContent='ASSIGNING TO: '+devices[gi].device_id; lbl.style.color='var(--accent)'; }
+  // Update active state on rows
+  document.querySelectorAll('.scan-device').forEach(function(el,i){ el.className='scan-device'+(i===gi?' active':(devices[i]&&devices[i].serial&&devices[i].serial.trim()?' done':'')); });
+  var sd = document.getElementById('sd'+gi); if(sd) sd.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // Focus persistent input — this reliably shows keyboard on iOS
+  var mi = document.getElementById('scan-main-input');
+  if (mi) { mi.value=''; mi.focus(); }
+}
+
+function scanMainInput(val) {
+  // Live preview in active label
+  var lbl = document.getElementById('scan-active-label');
+  if (lbl && scanGi >= 0 && devices[scanGi]) {
+    lbl.textContent = val ? 'ASSIGNING TO: '+devices[scanGi].device_id+' → '+val : 'ASSIGNING TO: '+devices[scanGi].device_id;
+  }
+}
+function scanMainCommit() {
+  var mi = document.getElementById('scan-main-input');
+  var val = mi ? mi.value.trim().toUpperCase() : '';
+  if (!val) { showToast('Enter a serial first','warn'); return; }
+  if (scanGi < 0) { showToast('Tap a device first','warn'); return; }
+  commitSerial(scanGi, val);
+  if (mi) mi.value = '';
 }
 
 function commitSerial(gi, val){
@@ -2452,6 +2513,212 @@ window._activityLog=[];
 window._remoteLog=[];
 window._riggerMode=false;
 
+
+// Patch _applyProjectLoad to capture remote log
+var _origApplyProjectLoad=_applyProjectLoad;
+_applyProjectLoad=function(data){
+  if(data&&Array.isArray(data._log)){
+    // Deduplicate by timestamp+device+action
+    var seen={};
+    window._remoteLog=data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
+      if(seen[k])return false;seen[k]=true;return true;
+    });
+    window._activityLog=[];
+  }
+  _origApplyProjectLoad(data);
+};
+
+// ── Handle ?d= share param (snapshot in URL) ──────────────────────
+
+// ── OAuth callback on load ────────────────────────────────────────
+_dbxHandleOAuthCallback().then(function(wasOAuth){
+  if(!wasOAuth&&_dbxRefreshToken){
+    _dbxGetToken().then(function(tok){
+      if(tok){_dbxFetchAccountInfo();setTimeout(dbxStartPolling,1500);}
+      else _dbxUpdateUI();
+    });
+  }
+});
+_dbxUpdateUI();
+_handleRiggerParam();
+_handleShareParam();
+
+
+// ── Diagram view ──────────────────────────────────────────────────────
+function renderDiagram() {
+  updateBanner(); buildChips();
+  var wrap = document.getElementById('diagram-wrap');
+  var cardList = document.getElementById('card-list');
+  var chips = document.querySelector('.chips');
+  if (wrap) wrap.style.display = 'flex';
+  if (cardList) cardList.style.display = 'none';
+  if (chips) chips.style.display = 'none';
+  _mNodeRender();
+  _mNodeInitEvents();
+}
+
+// ── Mobile node SVG view ─────────────────────────────────────────────
+var _mNW = 120, _mNH = 56;
+var _mNPos = {};
+var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
+
+function _mNodeApplyTransform() {
+  var g1 = document.getElementById('mob-node-edges');
+  var g2 = document.getElementById('mob-node-nodes');
+  var tr = 'translate('+_mNPanX+','+_mNPanY+') scale('+_mNScale+')';
+  if(g1) g1.setAttribute('transform', tr);
+  if(g2) g2.setAttribute('transform', tr);
+}
+
+function mNodeZoom(f) {
+  _mNScale = Math.max(0.2, Math.min(4, _mNScale * f));
+  _mNodeApplyTransform();
+}
+
+function mNodeFit() {
+  _mNScale = 1; _mNPanX = 0; _mNPanY = 0;
+  _mNodeApplyTransform();
+}
+
+function _mNodeAutoLayout() {
+  var NW = _mNW, XGAP = 135, YGAP = 120, TGAP = 20;
+  var svg = document.getElementById('mob-node-svg');
+  var SVG_W = svg ? svg.clientWidth : 360;
+  _mNPos = {};
+  var curY = 40;
+  var ORDER = [TL, TS, TD, TP];
+  ORDER.forEach(function(type) {
+    var devs = devices.filter(function(d){ return d.type===type && d.device_id; });
+    if (!devs.length) return;
+    var byM = {}, mOrd = [];
+    devs.forEach(function(d){ var m=d.model||modelFromId(d.device_id||'')||'?'; if(!byM[m]){byM[m]=[];mOrd.push(m);} byM[m].push(d.device_id); });
+    mOrd.forEach(function(m){
+      var ids = byM[m];
+      ids.sort(function(a,b){ return parseInt((a.split(/\s+/)[1]||'0'),10)-parseInt((b.split(/\s+/)[1]||'0'),10); });
+      var MAX=8;
+      for(var rs=0;rs<ids.length;rs+=MAX){
+        var row=ids.slice(rs,rs+MAX);
+        var tw=row.length*XGAP, sx=Math.max(10,(SVG_W-tw)/2+XGAP/2);
+        row.forEach(function(id,i){ _mNPos[id]={x:sx+i*XGAP,y:curY}; });
+        curY+=YGAP;
+      }
+      curY+=10;
+    });
+    curY+=TGAP;
+  });
+  // FOH at bottom
+  if (devices.some(function(d){return d.source==='FOH';})) {
+    _mNPos['FOH'] = {x: Math.max(10,(svg?svg.clientWidth:360)/2-NW/2), y: curY};
+  }
+}
+
+function _mNodeRender() {
+  var svg = document.getElementById('mob-node-svg');
+  var edgesG = document.getElementById('mob-node-edges');
+  var nodesG = document.getElementById('mob-node-nodes');
+  if (!svg || !edgesG || !nodesG) return;
+  if (!Object.keys(_mNPos).length) _mNodeAutoLayout();
+  // Ensure all devices have positions
+  devices.filter(function(d){return d.device_id;}).forEach(function(d){
+    if(!_mNPos[d.device_id]) _mNPos[d.device_id]={x:40+Math.random()*200,y:40+Math.random()*200};
+  });
+  var NW=_mNW, NH=_mNH;
+  var COLS = {laser:'#5b8fff',smoke:'#4de6b8',distro:'#f5a623',psu:'#c77dff'};
+
+  // Edges
+  var eHtml='';
+  devices.forEach(function(d){
+    if(!d.device_id||!d.source) return;
+    var sp=_mNPos[d.source], dp=_mNPos[d.device_id];
+    if(!sp||!dp) return;
+    var hasCable=!!(d.cable_in||d.cable);
+    var stroke = d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
+    var marker = d.source==='FOH'?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
+    var x1=sp.x+NW/2,y1=sp.y,x2=dp.x+NW/2,y2=dp.y+NH,cy=(y1+y2)/2;
+    eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
+      +' fill="none" stroke="'+stroke+'" stroke-width="2" marker-end="url(#'+marker+')"/>';
+  });
+  edgesG.innerHTML=eHtml;
+
+  // Nodes
+  var nHtml='';
+  var allIds=[];
+  if(_mNPos['FOH']) allIds.push('FOH');
+  devices.filter(function(d){return d.device_id;}).forEach(function(d){allIds.push(d.device_id);});
+  allIds.forEach(function(id){
+    var pos=_mNPos[id]; if(!pos) return;
+    var isFoh=(id==='FOH');
+    var dev=isFoh?null:devices.find(function(d){return d.device_id===id;});
+    var tk=dev?(TKEY[dev.type]||'laser'):'foh';
+    var col=isFoh?'#00d4ff':(COLS[tk]||'#55606e');
+    var m=dev?(dev.model||modelFromId(dev.device_id||'')):'';
+    var loc=dev?(dev.location||''):'';
+    var st=dev?(dev.status||''):'';
+    var bg=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
+    var gi=dev?devices.indexOf(dev):-1;
+    nHtml+='<g transform="translate('+pos.x+','+pos.y+')" style="cursor:pointer"'
+      +(gi>=0?' onclick="_mNodeTap('+gi+')"':'')+'>';
+    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+NH+'" rx="5" fill="'+bg+'" stroke="'+col+'" stroke-width="1.5"/>';
+    nHtml+='<rect x="0" y="0" width="4" height="'+NH+'" rx="3" fill="'+col+'"/>';
+    nHtml+='<text x="9" y="18" fill="'+col+'" font-size="13" font-weight="700" font-family="Barlow Condensed,sans-serif">'+id+'</text>';
+    if(m) nHtml+='<text x="9" y="30" fill="'+col+'" font-size="9" opacity="0.75" font-family="Barlow Condensed,sans-serif">'+m+'</text>';
+    if(loc) nHtml+='<text x="9" y="42" fill="#7a8694" font-size="9" font-family="Share Tech Mono,monospace">'+loc.slice(0,16)+'</text>';
+    nHtml+='</g>';
+  });
+  nodesG.innerHTML=nHtml;
+
+  // Resize SVG height
+  var maxY=200;
+  Object.keys(_mNPos).forEach(function(id){var p=_mNPos[id];if(p.y+NH+40>maxY)maxY=p.y+NH+40;});
+  svg.setAttribute('height',maxY);
+  _mNodeApplyTransform();
+}
+
+function _mNodeTap(gi) {
+  openSNSheet(gi);
+}
+
+function _mNodeInitEvents() {
+  var svg = document.getElementById('mob-node-svg');
+  if (!svg || svg._mEventsAttached) return;
+  svg._mEventsAttached = true;
+  // Pinch zoom + pan via touch
+  var t0=null,t0d=0,t0z=1,t0px=0,t0py=0,t0cx=0,t0cy=0;
+  svg.addEventListener('touchstart',function(e){
+    if(e.touches.length===1){t0={x:e.touches[0].clientX,y:e.touches[0].clientY};t0px=_mNPanX;t0py=_mNPanY;t0z=_mNScale;}
+    else if(e.touches.length===2){
+      t0d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      t0z=_mNScale;t0px=_mNPanX;t0py=_mNPanY;
+      t0cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+      t0cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+    }
+    e.preventDefault();
+  },{passive:false});
+  svg.addEventListener('touchmove',function(e){
+    if(e.touches.length===1&&t0){
+      _mNPanX=t0px+(e.touches[0].clientX-t0.x);
+      _mNPanY=t0py+(e.touches[0].clientY-t0.y);
+      _mNodeApplyTransform();
+    } else if(e.touches.length===2&&t0d){
+      var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      _mNScale=Math.max(0.2,Math.min(4,t0z*(d/t0d)));
+      _mNPanX=t0cx-t0cx*(_mNScale/t0z)+t0px*(_mNScale/t0z);
+      _mNPanY=t0cy-t0cy*(_mNScale/t0z)+t0py*(_mNScale/t0z);
+      _mNodeApplyTransform();
+    }
+    e.preventDefault();
+  },{passive:false});
+  svg.addEventListener('touchend',function(){t0=null;t0d=0;});
+}
+
+
+// ── Rigger mode ───────────────────────────────────────────────────
+window._riggerName='';
+window._activityLog=[];
+window._remoteLog=[];
+window._riggerMode=false;
+
 function _handleRiggerParam(){
   var params=new URLSearchParams(location.search);
   var rigger=params.get('rigger');
@@ -2543,125 +2810,6 @@ _handleShareParam();
 
 
 // ── Diagram view ──────────────────────────────────────────────────────
-function renderDiagram() {
-  updateBanner(); buildChips();
-  var wrap = document.getElementById('diagram-wrap');
-  var cardList = document.getElementById('card-list');
-  var chips = document.querySelector('.chips');
-  if (wrap) wrap.style.display = '';
-  if (cardList) cardList.style.display = 'none';
-  if (chips) chips.style.display = 'none';
-
-  if (!devices.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--mono);font-size:13px">'
-      + 'No devices in project.<br>Load a project first.</div>';
-    return;
-  }
-
-  // Build signal chain tree
-  // FOH → distros → lasers/smoke
-  // Layout: distros row, then per-distro: their connected devices
-  // FOH at bottom
-
-  var html = '';
-
-  // Find all source IDs
-  var allSources = {};
-  devices.forEach(function(d) { if (d.source) allSources[d.source] = true; });
-
-  // Group by source
-  function getChildren(parentId) {
-    return devices.filter(function(d){ return d.source === parentId && d.device_id; });
-  }
-
-  // Top level: devices sourced from FOH
-  var fromFOH = getChildren('FOH');
-  // Devices with no source that aren't FOH
-  var orphans = devices.filter(function(d){ return !d.source && d.device_id; });
-
-  function nodeHtml(d, gi) {
-    var hasSn = d.serial && d.serial.replace(/-/g,'').trim();
-    var checks = checksFor(d.type);
-    var done = checks.filter(function(ch){ return d.checks && d.checks[ch]; }).length;
-    var allDone = done === checks.length && checks.length > 0 && hasSn;
-    var cls = 'diag-node' + (allDone ? ' dn-ok' : hasSn ? ' dn-amber' : '');
-    var tk = TKEY[d.type] || 'laser';
-    var colMap = {laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
-    var col = colMap[tk] || 'var(--accent)';
-    var snText = hasSn ? d.serial : 'NO SN';
-    var snCls = hasSn ? 'sn-ok' : 'sn-miss';
-    return '<div class="' + cls + '" style="border-color:' + col + '" onclick="openSNSheet(' + gi + ')">'
-      + '<div class="dn-id" style="color:' + col + '">' + (d.device_id || '?') + '</div>'
-      + (d.model ? '<div class="dn-model">' + (d.model || '') + '</div>' : '')
-      + (d.location ? '<div class="dn-loc">' + d.location + '</div>' : '')
-      + '<div class="dn-serial ' + snCls + '">' + snText + '</div>'
-      + '</div>';
-  }
-
-  function fohNodeHtml() {
-    return '<div class="diag-node dn-foh" style="min-width:100px">'
-      + '<div class="dn-id" style="color:var(--accent)">FOH</div>'
-      + '<div class="dn-model">Controller</div>'
-      + '</div>';
-  }
-
-  // Render: sources from FOH at top, then FOH at bottom
-  // For each top-level device, show its children below it
-
-  // Collect all top-level nodes (direct from FOH or no source)
-  var topLevel = fromFOH.concat(orphans);
-
-  // Render each top-level group with its children
-  topLevel.forEach(function(parent) {
-    var pgi = devices.indexOf(parent);
-    var children = getChildren(parent.device_id);
-
-    html += '<div class="diag-section">';
-
-    // Children first (they're "higher up" in signal chain - closer to stage)
-    if (children.length) {
-      // Group children by type
-      var laserChildren = children.filter(function(d){ return d.type === TL; });
-      var smokeChildren = children.filter(function(d){ return d.type === TS; });
-      var otherChildren = children.filter(function(d){ return d.type !== TL && d.type !== TS; });
-
-      var childGroups = [];
-      if (laserChildren.length) childGroups.push({label: 'LASERS', items: laserChildren});
-      if (smokeChildren.length) childGroups.push({label: 'SMOKE', items: smokeChildren});
-      if (otherChildren.length) childGroups.push({label: 'OTHER', items: otherChildren});
-
-      childGroups.forEach(function(grp) {
-        html += '<div class="diag-row-label">' + grp.label + '</div>';
-        html += '<div class="diag-row">';
-        grp.items.forEach(function(d) {
-          var gi = devices.indexOf(d);
-          html += nodeHtml(d, gi);
-        });
-        html += '</div>';
-        html += '<div class="diag-connector"><div class="diag-line"></div></div>';
-      });
-    }
-
-    // Parent node (distro/PSU)
-    html += '<div class="diag-row">' + nodeHtml(parent, pgi) + '</div>';
-    html += '<div class="diag-connector"><div class="diag-line"></div></div>';
-    html += '</div>';
-  });
-
-  // FOH at bottom
-  if (fromFOH.length || devices.some(function(d){ return d.source === 'FOH'; })) {
-    html += '<div class="diag-row">' + fohNodeHtml() + '</div>';
-  }
-
-  wrap.innerHTML = html || '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;font-family:var(--mono)">No signal chain set up yet.<br>Set sources on devices in desktop app.</div>';
-}
-
-// ── Serial assign sheet ───────────────────────────────────────────────
-var _snGi = -1;
-var _snCamStream = null;
-var _snCamActive = false;
-var _snDetector = null;
-
 function openSNSheet(gi) {
   _snGi = gi;
   var d = devices[gi];
