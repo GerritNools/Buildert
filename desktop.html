@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.769</title>
+<title>WTUniverse · Buildert Editor v3.770b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,7 +434,7 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.769</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.770b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -2990,7 +2990,13 @@ async function _dbxPull(){
       _dbxLastRev=rev;
       try{
         var data=JSON.parse(xhr.responseText);
-        _applyProjectLoad(data);
+        // Desktop: capture log, then apply — do NOT push back on a pull
+        _isReceiving = true;
+        try {
+          _applyProjectLoad(data);
+        } finally {
+          _isReceiving = false;
+        }
         _dbxSetStatus('Loaded · '+_hhmm(),'var(--ok)');
         _updateProjectBadge();
         // Always refresh shares panel after any pull
@@ -3085,13 +3091,14 @@ function dbxStopPolling(){
 function autoSave(){
   try{localStorage.setItem('buildert_devices',JSON.stringify(devices));}catch(e){}
   if(_pollTimer){ _autoPush(); }
-  // Push to Dropbox after a short debounce
-  if(_dbxToken||_dbxRefreshToken){
+  // Push to Dropbox after a short debounce — but never as a reaction to receiving data
+  if(!_isReceiving && (_dbxToken||_dbxRefreshToken)){
     clearTimeout(_dbxPushDebounce);
     _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
   }
 }
 var _dbxPushDebounce=null;
+var _isReceiving = false; // true while applying pulled data — suppresses push-back
 
 var _pushDebounce=null;
 function _autoPush(){
