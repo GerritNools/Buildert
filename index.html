@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.781</title>
+<title>WTU · Buildert v3.783</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.781</small></div>
+  <div class="logo">WTU <small>v3.783</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -981,7 +981,9 @@ function renderCards(){
 }
 
 function tapStatus(gi,status){
-  devices[gi].status=status; renderCards(); autoSave();
+  devices[gi].status=status;
+  _logActivity(devices[gi].device_id,'Status: '+status);
+  renderCards(); autoSave();
   showToast(devices[gi].device_id+' → '+status,'ok');
 }
 function tapCheck(gi,check){
@@ -1487,6 +1489,7 @@ function commitSerial(gi, val){
   val = (val||'').trim().toUpperCase().slice(0,15);
   if (!val) return;
   devices[gi].serial = val;
+  _logActivity(devices[gi].device_id,'Serial: '+val);
   autoSave();
   showToast(devices[gi].device_id + ' → ' + val, 'ok');
   // advance to next unscanned
@@ -1690,6 +1693,8 @@ function saveDevice(){
   };
   if(editIdx>=0){devices[editIdx]=d;showToast('Updated '+deviceId,'ok');}
   else{devices.push(d);showToast('Added '+deviceId,'ok');}
+  var _savedId=devices[editIdx>=0?editIdx:devices.length-1].device_id;
+  _logActivity(_savedId,'Device saved');
   closeSheet('device'); renderMain(); autoSave(); updateLocDl();
 }
 function deleteDevice(){
@@ -1853,6 +1858,15 @@ function loadProject(input){
 }
 
 function _applyProjectLoad(data){
+  // Capture activity log from riggers
+  if(data && Array.isArray(data._log)){
+    var seen={};
+    window._remoteLog=data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
+      if(seen[k])return false;seen[k]=true;return true;
+    });
+    window._activityLog=[];
+  }
   // Raw devices array — legacy import
   if(Array.isArray(data)){
     devices=data; autoSave(); renderMain();
@@ -2548,7 +2562,7 @@ _dbxAppKey=localStorage.getItem('wtu_dbx_app_key')||'';
 _dbxPath=localStorage.getItem('wtu_dbx_path')||'/current.json';
 var dbxPathEl=document.getElementById('dbx-path');
 if(dbxPathEl) dbxPathEl.value=_dbxPath;
-if(_dbxRefreshToken){ setTimeout(dbxStartPolling, 1500); }
+// Polling started by OAuth callback below
 
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){localStorage.setItem('wtu_ip',params.get('ip'));startPolling();}
@@ -2663,33 +2677,28 @@ window._remoteLog=[];
 window._riggerMode=false;
 
 
-// Patch _applyProjectLoad to capture remote log
-var _origApplyProjectLoad=_applyProjectLoad;
-_applyProjectLoad=function(data){
-  if(data&&Array.isArray(data._log)){
-    // Deduplicate by timestamp+device+action
-    var seen={};
-    window._remoteLog=data._log.filter(function(e){
-      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
-      if(seen[k])return false;seen[k]=true;return true;
-    });
-    window._activityLog=[];
-  }
-  _origApplyProjectLoad(data);
-};
+// log capture now integrated directly into _applyProjectLoad
 
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 
 // ── OAuth callback on load ────────────────────────────────────────
 _dbxHandleOAuthCallback().then(function(wasOAuth){
-  if(!wasOAuth&&_dbxRefreshToken){
+  if(wasOAuth){
+    // Just completed OAuth — start polling immediately
+    _dbxFetchAccountInfo();
+    setTimeout(dbxStartPolling, 500);
+  } else if(_dbxRefreshToken){
+    // Returning visit with saved refresh token — get fresh access token then poll
     _dbxGetToken().then(function(tok){
-      if(tok){_dbxFetchAccountInfo();setTimeout(dbxStartPolling,1500);}
-      else _dbxUpdateUI();
+      if(tok){ _dbxFetchAccountInfo(); setTimeout(dbxStartPolling, 500); }
+      else { _dbxUpdateUI(); showToast('Dropbox session expired — reconnect in Settings','warn'); }
     });
+  } else if(_dbxToken){
+    // Rigger link — has direct token, just start polling
+    setTimeout(dbxStartPolling, 500);
   }
+  _dbxUpdateUI();
 });
-_dbxUpdateUI();
 _handleRiggerParam();
 _handleShareParam();
 
@@ -2919,12 +2928,12 @@ function _handleRiggerParam(){
     +'<span id="rigger-log-count" style="margin-left:auto;color:var(--muted);font-size:10px"></span>';
   var header=document.querySelector('header');
   if(header&&header.nextSibling) header.parentNode.insertBefore(banner,header.nextSibling);
-  _dbxPull();
+  _dbxUpdateUI();
   dbxStartPolling();
 }
 function _logActivity(deviceId,action){
-  if(!window._riggerMode)return;
-  var entry={by:window._riggerName,at:new Date().toISOString(),device:deviceId||'',action:action||''};
+  var by=window._riggerName||project.name||'mobile';
+  var entry={by:by,at:new Date().toISOString(),device:deviceId||'',action:action||''};
   window._activityLog.push(entry);
   var cnt=document.getElementById('rigger-log-count');
   if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
