@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.776</title>
+<title>WTU · Buildert v3.778</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.776</small></div>
+  <div class="logo">WTU <small>v3.778</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -693,6 +693,16 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   </div>
 </div>
 
+<!-- Spec sheet for individual device -->
+<div class="ovl" id="ovl-spec" onclick="closeSheet('spec')"></div>
+<div class="sheet" id="sheet-spec">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="spec-sheet-title">Specs</div>
+  <div class="sheet-body" id="spec-sheet-body"></div>
+  <div class="sheet-footer">
+    <button class="sb sb-ghost" onclick="closeSheet('spec')">Close</button>
+  </div>
+</div>
 <div id="toast"></div>
 <a id="dl-link" style="display:none"></a>
 
@@ -779,6 +789,7 @@ function _cableOpts(val, reqConn){
 // ── State ──────────────────────────────────────────────────────────
 var devices=[], project={name:'',venue:''};
 var _packSpares=[];
+var _isPulling = false; // guard: suppress Dropbox push while receiving data
 var currentTab='laser', editIdx=-1, expandedGis={}, _pointed_edit='';
 var _pollTimer=null, _lastHash='';
 var STATUS_OPTS=['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'];
@@ -860,7 +871,7 @@ function setTab(tab){
   // Toggle diagram vs card view
   var dw=document.getElementById('diagram-wrap');
   var cl=document.getElementById('card-list');
-  if(dw) dw.style.display=tab==='diagram'?'':'none';
+  if(dw) dw.style.display=tab==='diagram'?'flex':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
   if(tab==='diagram'){ _mNPos={}; renderDiagram(); return; }
@@ -896,13 +907,22 @@ function renderCards(){
     var html='<div class="card" id="c'+gi+'">'
       +'<div class="card-stripe stripe-'+tk+'"></div>'
       // Top row — double-tap opens edit
-      +'<div class="card-top" ondblclick="openEdit('+gi+')" style="cursor:pointer">'
-      +  '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
+      +'<div class="card-top" style="cursor:pointer">'
+      +  '<div style="display:flex;flex-direction:column;gap:1px;min-width:0">'
+      +    '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
+      +    (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+m+'</div>':''; })()
+      +  '</div>'
       +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'NO SN')+'</div>'
       +  '<div class="badge badge-'+tk+'">'+TSHORT[d.type]+'</div>'
-      +  '<button class="edit-btn" onclick="openEdit('+gi+')">✏</button>'
+      +  '<button class="edit-btn" onclick="event.stopPropagation();openEdit('+gi+')" title="Edit">✏</button>'
+      +  '<button class="edit-btn" onclick="event.stopPropagation();openSpecSheet('+gi+')" title="Specs" style="font-size:11px">📋</button>'
       +'</div>'
-      +(function(){var cin=_cableLabel(d.cable_in||d.cable||''),cout=_cableLabel(d.cable_out||'');return (cin||cout)?'<div style="padding:0 14px 4px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">↓ '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">↑ '+cout+'</span>':'')+'</div>':'';})()
+      +(function(){
+        var cin=_cableLabel(d.cable_in||d.cable||'');
+        var dstream=devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);});
+        var cout=dstream.length?_cableLabel(dstream[0].cable_in||dstream[0].cable||''):'';
+        return (cin||cout)?'<div style="padding:0 14px 3px 17px;display:flex;gap:10px;font-size:11px;font-family:var(--mono)">'+(cin?'<span style="color:var(--ok)">IN: '+cin+'</span>':'')+(cout?'<span style="color:var(--smoke)">OUT: '+cout+'</span>':'')+'</div>':'';
+      })()
       // Meta row: one-tap status chips
       +'<div class="card-meta">'
       +STATUS_OPTS.map(function(s){
@@ -1032,7 +1052,17 @@ function renderPack(){
   var TYPE_COLS={'Laser projector':'var(--laser)','Smoke machine':'var(--smoke)','Distro':'var(--distro)','Power supply':'var(--psu)'};
 
   var sig=_packSignatures[_packWorkflow]||'';
-  var html='<div style="padding:0 2px">'
+  // Check for missing cable lengths
+  var missingCables=devices.filter(function(d){return d.device_id&&!(d.cable_in||d.cable);});
+  var html='<div style="padding:0 2px">';
+  if(missingCables.length){
+    html+='<div style="background:rgba(245,166,35,.1);border:1px solid var(--warn);border-radius:8px;'
+      +'padding:10px 14px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--warn)">'
+      +'⚠ '+missingCables.length+' device'+(missingCables.length>1?'s have':' has')+' no cable IN assigned: '
+      +missingCables.slice(0,5).map(function(d){return d.device_id;}).join(', ')
+      +(missingCables.length>5?' …':'')
+      +'</div>';
+  }
     // Workflow selector
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">'
     +_packWorkflows.map(function(w){
@@ -1100,6 +1130,21 @@ function renderPack(){
     });
     html+='</tbody></table>';
   } else html+='<p style="color:var(--muted);font-size:13px;padding:8px 0">No cables assigned yet.</p>';
+  // Warning: devices with cable type but no length, or no cable at all
+  var missingCable=devices.filter(function(d){
+    return d.type===TL||d.type===TS||d.type===TD||d.type===TP;
+  }).filter(function(d){
+    var cv=d.cable_in||d.cable||'';
+    return !cv; // no cable set at all
+  });
+  if(missingCable.length){
+    html+='<div style="background:rgba(245,166,35,.08);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;margin-top:8px">';
+    html+='<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px">⚠ MISSING CABLE IN ('+missingCable.length+' device'+(missingCable.length>1?'s':'')+')</div>';
+    html+=missingCable.map(function(d){
+      return '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:2px 0">' + d.device_id + (d.location?' · '+d.location:'') + '</div>';
+    }).join('');
+    html+='</div>';
+  }
   html+='</div>';
 
   // Spares
@@ -1536,6 +1581,36 @@ function updateSrcSel(type,curId,selSrc){
   wrap.style.display='';
   sel.innerHTML='<option value="">— not set —</option>'+opts.map(function(o){return '<option value="'+o.id+'"'+(selSrc===o.id?' selected':'')+'>'+o.label+'</option>';}).join('');
 }
+function openSpecSheet(gi) {
+  var d = devices[gi];
+  if (!d) return;
+  var model = d.model || modelFromId(d.device_id || '');
+  var sp = model ? SPECS[model] : null;
+  var titleEl = document.getElementById('spec-sheet-title');
+  var bodyEl = document.getElementById('spec-sheet-body');
+  if (titleEl) titleEl.textContent = (d.device_id || model || 'Device') + ' — Specs';
+  if (!bodyEl) return;
+  if (!sp) {
+    bodyEl.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:13px">No specs found for model: ' + (model || '?') + '</p>';
+    openSheet('spec'); return;
+  }
+  var fields = [
+    ['Model', 'alt'], ['Laser W', 'laser_w'], ['Consumption W', 'consumption_w'],
+    ['A @230V', 'max_a_230'], ['A @110V', 'max_a_110'], ['Weight kg', 'weight_kg'],
+    ['Scanners', 'scanners'], ['Beam angle', 'angle'], ['kpps', 'kpps'],
+    ['OPS/Diode', 'ops_diode'], ['In connector', 'in_connector'], ['Out connector', 'out_connector'],
+    ['IP range', 'ip'], ['Outputs', 'outputs'], ['Inputs', 'inputs'],
+    ['Description', 'desc'], ['Notes', 'notes']
+  ];
+  bodyEl.innerHTML = '<div style="background:var(--panel);border-radius:8px;overflow:hidden">'
+    + fields.filter(function(f){ return sp[f[1]]!==null && sp[f[1]]!==undefined && sp[f[1]]!==''; })
+    .map(function(f){
+      return '<div class="sp-row"><span class="sp-lbl">' + f[0] + '</span>'
+        + '<span class="sp-val">' + sp[f[1]] + '</span></div>';
+    }).join('') + '</div>';
+  openSheet('spec');
+}
+
 function openAddSheet(type){
   editIdx=-1;
   document.getElementById('sheet-title').textContent='Add Device';
@@ -1806,6 +1881,7 @@ function _mergeProjectNoConflict(data){
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
+  _isPulling = false;
   autoSave(); renderMain();
   showToast('Loaded v'+_projectVersion+' · by '+(data._saved_by||'?'),'ok');
   _updateMobileProjectBadge();
@@ -1814,6 +1890,7 @@ function _mergeProjectNoConflict(data){
 var _pendingFileData=null;
 
 function _showMobileConflict(fileData, localVer, fileVer){
+  _isPulling = false; // release guard — user decides
   _pendingFileData=fileData;
   var sheet=document.getElementById('sheet-conflict');
   var title=document.getElementById('conflict-title');
@@ -2286,6 +2363,7 @@ async function dbxSyncNow(){
 async function _dbxPull(){
   var token=await _dbxGetToken();
   if(!token){_dbxSetStatus('Not connected','var(--warn)');return;}
+  _isPulling = true;
   if(_dbxSyncing)return;
   _dbxSyncing=true;
   _dbxSetStatus('Syncing…');
@@ -2396,6 +2474,7 @@ var _dbxPushDebounce=null;
   var _orig=autoSave;
   autoSave=function(){
     _orig();
+    if(_isPulling) return; // never push back while receiving data from Dropbox
     if(_dbxToken||_dbxRefreshToken){
       clearTimeout(_dbxPushDebounce);
       _dbxPushDebounce=setTimeout(function(){_dbxPush(true);},2000);
@@ -2584,7 +2663,7 @@ function renderDiagram() {
 }
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
-var _mNW = 120, _mNH = 56;
+var _mNW = 130, _mNH = 60;
 var _mNPos = {};
 var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
@@ -2664,8 +2743,18 @@ function _mNodeRender() {
     var stroke = d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
     var marker = d.source==='FOH'?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
     var x1=sp.x+NW/2,y1=sp.y,x2=dp.x+NW/2,y2=dp.y+NH,cy=(y1+y2)/2;
+    var mx=(x1+x2)/2,my=(y1+y2)/2;
     eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
       +' fill="none" stroke="'+stroke+'" stroke-width="2" marker-end="url(#'+marker+')"/>';
+    // Cable label on edge
+    if(hasCable){
+      var clbl=_cableLabel(d.cable_in||d.cable||'');
+      if(clbl){
+        var lw=clbl.length*4.5+6;
+        eHtml+='<rect x="'+(mx-lw/2)+'" y="'+(my-7)+'" width="'+lw+'" height="13" rx="3" fill="#0a0c0f" stroke="'+stroke+'" stroke-width="1"/>';
+        eHtml+='<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle" fill="'+stroke+'" font-size="8" font-family="Share Tech Mono,monospace">'+clbl+'</text>';
+      }
+    }
   });
   edgesG.innerHTML=eHtml;
 
@@ -2689,9 +2778,13 @@ function _mNodeRender() {
       +(gi>=0?' onclick="_mNodeTap('+gi+')"':'')+'>';
     nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+NH+'" rx="5" fill="'+bg+'" stroke="'+col+'" stroke-width="1.5"/>';
     nHtml+='<rect x="0" y="0" width="4" height="'+NH+'" rx="3" fill="'+col+'"/>';
-    nHtml+='<text x="9" y="18" fill="'+col+'" font-size="13" font-weight="700" font-family="Barlow Condensed,sans-serif">'+id+'</text>';
-    if(m) nHtml+='<text x="9" y="30" fill="'+col+'" font-size="9" opacity="0.75" font-family="Barlow Condensed,sans-serif">'+m+'</text>';
-    if(loc) nHtml+='<text x="9" y="42" fill="#7a8694" font-size="9" font-family="Share Tech Mono,monospace">'+loc.slice(0,16)+'</text>';
+    nHtml+='<text x="9" y="17" fill="'+col+'" font-size="13" font-weight="700" font-family="Barlow Condensed,sans-serif">'+id+'</text>';
+    if(m) nHtml+='<text x="9" y="28" fill="'+col+'" font-size="9" opacity="0.75" font-family="Barlow Condensed,sans-serif">'+m+'</text>';
+    var _cin=dev?_cableLabel(dev.cable_in||dev.cable||''):'';
+    var _cout=dev?(function(){var ds=devices.filter(function(x){return x.source===(dev.device_id||'')&&(x.cable_in||x.cable);});return ds.length?_cableLabel(ds[0].cable_in||ds[0].cable||''):'';}()):'';
+    var _ct=(_cin?'IN:'+_cin:'')+(_cin&&_cout?' ':'')+(_cout?'OUT:'+_cout:'');
+    if(_ct) nHtml+='<text x="9" y="40" fill="#3ddc84" font-size="8" font-family="Share Tech Mono,monospace">'+_ct.slice(0,24)+'</text>';
+    else if(loc) nHtml+='<text x="9" y="40" fill="#7a8694" font-size="9" font-family="Share Tech Mono,monospace">'+loc.slice(0,16)+'</text>';
     nHtml+='</g>';
   });
   nodesG.innerHTML=nHtml;
@@ -2787,20 +2880,7 @@ function _logActivity(deviceId,action){
   var cnt=document.getElementById('rigger-log-count');
   if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
 }
-// Patch _applyProjectLoad to capture remote log
-var _origApplyProjectLoad=_applyProjectLoad;
-_applyProjectLoad=function(data){
-  if(data&&Array.isArray(data._log)){
-    // Deduplicate by timestamp+device+action
-    var seen={};
-    window._remoteLog=data._log.filter(function(e){
-      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
-      if(seen[k])return false;seen[k]=true;return true;
-    });
-    window._activityLog=[];
-  }
-  _origApplyProjectLoad(data);
-};
+
 
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 function _handleShareParam(){
@@ -2823,18 +2903,6 @@ function _handleShareParam(){
   }catch(e){showToast('Could not load shared data','err');}
 }
 
-// ── OAuth callback on load ────────────────────────────────────────
-_dbxHandleOAuthCallback().then(function(wasOAuth){
-  if(!wasOAuth&&_dbxRefreshToken){
-    _dbxGetToken().then(function(tok){
-      if(tok){_dbxFetchAccountInfo();setTimeout(dbxStartPolling,1500);}
-      else _dbxUpdateUI();
-    });
-  }
-});
-_dbxUpdateUI();
-_handleRiggerParam();
-_handleShareParam();
 
 
 // ── Diagram view ──────────────────────────────────────────────────────
@@ -2974,5 +3042,14 @@ function _snScanTick() {
 }
 
 </script>
+
+<!-- Device specs sheet -->
+<div class="ovl" id="ovl-devspecs" onclick="closeSheet('devspecs')"></div>
+<div class="sheet" id="sheet-devspecs">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="devspecs-title">Specs</div>
+  <div class="sheet-body" id="devspecs-body" style="padding-bottom:24px"></div>
+</div>
+
 </body>
 </html>
