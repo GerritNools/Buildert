@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.808</title>
+<title>WTU · Buildert v3.809</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.808</small></div>
+  <div class="logo">WTU <small>v3.809</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -533,6 +533,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <input id="dbx-app-key" type="hidden" value="w7csg3860e51ov8">
     <div id="dbx-connected-row" style="display:none"></div>
     <div id="dbx-disconnected-row" style="display:none"></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border2)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">SYNC DEBUG</div>
+      <div id="sync-debug-info" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;word-break:break-all"></div>
+      <button class="sb sb-danger" onclick="wForceClear()" style="width:100%;font-size:12px;padding:8px">&#128465; Clear local data + re-sync</button>
+    </div>
   </div>
 </div>
 
@@ -2506,9 +2511,9 @@ async function wPull(){
       // Worker sync: always apply — no version gating, desktop is source of truth
       _mergeProjectNoConflict(data);
     }finally{_isPulling=false;}
-    _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
+    _dbxSetStatus('✓ '+_projectKey+' '+_hhmm(),'var(--ok)');
     _updateMobileProjectBadge();
-  }catch(e){clearTimeout(_t);_dbxSyncing=false;_dbxSetStatus('Offline','var(--muted)');}
+  }catch(e){clearTimeout(_t);_dbxSyncing=false;console.error('[SYNC] wPull error:',e);_dbxSetStatus('Error: '+e.message,'var(--danger)');}
 }
 
 async function wPush(silent){
@@ -2556,6 +2561,14 @@ function _handleProjectParam(){
   var key=params.get('project');
   var rigger=params.get('rigger');
   if(!key) return;
+  // If URL key differs from stored key, wipe stale data
+  var storedKey=localStorage.getItem('buildert_project_key')||'';
+  if(storedKey && storedKey!==key){
+    console.log('[SYNC] New project key, clearing stale data. Old:',storedKey,'New:',key);
+    try{localStorage.removeItem('wtu_devices');localStorage.removeItem('wtu_project_meta');
+        localStorage.removeItem('buildert_project_key');}catch(e){}
+    devices=[]; _projectVersion=0; _projectBaseVersion=0;
+  }
   _projectKey=key;
   // Worker URL: from param, or from localStorage (stored on first use)
   var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
@@ -2955,7 +2968,9 @@ async function _initSync(){
   console.log("[INIT] step5 check, url=",_workerUrl,"key=",_projectKey);
   // 5. Worker (configured previously, no URL params triggered it)
   if(_workerUrl&&_projectKey){
-    _dbxSetStatus('Worker sync ready','var(--muted)');
+    console.log('[INIT] Using stored Worker config, key=',_projectKey);
+    dbxStopPolling(); // stop any Dropbox polling
+    _dbxSetStatus('key:'+_projectKey,'var(--muted)');
     wStartPolling();
     return;
   }
@@ -3321,6 +3336,29 @@ function mTodoAdd(){
   _mTodos.unshift({id:'todo_'+Date.now(),label:label,urgency:Math.max(1,Math.min(3,urg)),done:false,auto:false,created:new Date().toISOString()});
   _mTodosSave(); renderTodosMobile();
 }
+
+
+function wForceClear(){
+  if(!confirm('Clear all local data and reload from Worker?')) return;
+  try{
+    localStorage.removeItem('wtu_devices');
+    localStorage.removeItem('wtu_project_meta');
+    localStorage.removeItem('wtu_project');
+  }catch(e){}
+  devices=[]; _projectVersion=0; _projectBaseVersion=0;
+  closeSheet('conn');
+  showToast('Cleared. Syncing...','ok');
+  setTimeout(function(){ wPull(); }, 300);
+}
+// Update sync debug info when settings opens
+var _origOpenSheet = openSheet;
+openSheet = function(id){
+  _origOpenSheet(id);
+  if(id==='conn'){
+    var el=document.getElementById('sync-debug-info');
+    if(el) el.textContent='URL: '+((_workerUrl||'none').replace('https://',''))+' | Key: '+(_projectKey||'none')+' | v'+_projectVersion;
+  }
+};
 
 function _logActivity(deviceId,action){
   var by=window._riggerName||project.name||'mobile';
