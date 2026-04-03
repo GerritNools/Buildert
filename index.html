@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.794</title>
+<title>WTU · Buildert v3.795</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.794</small></div>
+  <div class="logo">WTU <small>v3.795</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -449,6 +449,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
         </defs>
         <g id="mob-node-edges"></g>
         <g id="mob-node-nodes"></g>
+        <g id="mob-node-labels"></g>
       </svg>
     </div>
   </div>
@@ -529,29 +530,15 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <input id="proj-name" type="text" placeholder="My Show 2026">
     <label>Venue</label>
     <input id="proj-venue" type="text" placeholder="Venue name">
-
-    <div class="m-sec" style="margin-top:4px">Dropbox sync</div>
-    <div id="dbx-connected-row" style="display:none;background:rgba(61,220,132,.08);border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <span style="color:var(--ok)">&#10003;</span>
-        <span style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--ok)">Dropbox connected</span>
-        <button onclick="dbxDisconnect()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">Disconnect</button>
-      </div>
-      <div id="dbx-account-name" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:8px">
+      <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">SYNC</div>
+      <div id="dbx-status" style="font-family:var(--mono);font-size:12px;color:var(--muted)">Not connected</div>
+      <input id="dbx-path" type="hidden">
+      <div id="dbx-account-name" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px"></div>
     </div>
-    <div id="dbx-disconnected-row">
-      <input id="dbx-app-key" type="hidden" value="w7csg3860e51ov8">
-      <button class="sb sb-primary" onclick="dbxStartOAuth()" style="width:100%;margin-bottom:8px;font-size:15px;padding:14px">&#128279; Connect to Dropbox</button>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);text-align:center;margin-bottom:8px">One-time setup. Stays connected on this phone.</div>
-    </div>
-    <label>File path in Dropbox</label>
-    <input id="dbx-path" type="text" placeholder="/current.json" style="font-family:var(--mono);font-size:13px">
-    <div style="display:flex;gap:7px;margin-bottom:12px">
-      <button class="sb sb-primary" style="flex:1" onclick="dbxSyncNow()">&#8645; Sync now</button>
-      <div id="dbx-status" style="flex:2;font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;padding-left:4px"></div>
-    </div>
-
-
+    <input id="dbx-app-key" type="hidden" value="w7csg3860e51ov8">
+    <div id="dbx-connected-row" style="display:none"></div>
+    <div id="dbx-disconnected-row" style="display:none"></div>
   </div>
 </div>
 
@@ -948,6 +935,26 @@ function renderCards(){
       +'</div>';
 
     if(expanded){
+      // Status chips — all options
+      html+='<div class="card-meta" style="padding:4px 8px 4px 12px">'
+        +STATUS_OPTS.map(function(s){
+          var active=d.status===s;
+          var cls=active?('stat-chip '+statClass(s)):'stat-chip';
+          return '<span class="'+cls+'" onclick="tapStatus('+gi+',\''+s+'\')">'+(active?'● ':'')+s+'</span>';
+        }).join('')
+        +(d.location?'<span class="card-loc" style="font-size:10px">📍 '+d.location+'</span>':'')
+        +(loadW>0?'<span class="load-badge" style="color:'+(loadW>3000?'var(--danger)':loadW>1500?'var(--warn)':'var(--ok)')+'">'+loadW+'W</span>':'')
+        +'</div>';
+      // Cable/source info
+      (function(){
+        var rows=[];
+        var cin=_cableLabel(d.cable_in||d.cable||'');
+        var src=d.source?'← '+d.source:'';
+        if(cin||src) rows.push('<span style="color:var(--ok)">'+(src||'')+(cin?' / '+cin:'')+'</span>');
+        var outs=devices.filter(function(x){return x.source===(d.device_id||'');});
+        if(outs.length) rows.push('<span style="color:var(--smoke)">→ '+outs.map(function(x){var l=_cableLabel(x.cable_in||x.cable||'');return x.device_id+(l?' '+l:'');}).join(' · ')+'</span>');
+        if(rows.length) html+='<div style="padding:0 8px 4px 12px;font-size:11px;font-family:var(--mono);display:flex;flex-direction:column;gap:1px">'+rows.join('')+'</div>';
+      })();
       // Check pills
       html+='<div class="card-checks">'
         +checks.map(function(c){
@@ -969,8 +976,8 @@ function renderCards(){
       if(d.note_opts&&d.note_opts.length) html+='<div class="card-notes" style="color:var(--warn);font-style:normal">⚠ '+d.note_opts.join(' · ')+'</div>';
     }
 
-    html+='<button class="expand-btn" onclick="toggleCard('+gi+')">'
-      +(expanded?'▲ collapse':'▼ '+checks.length+' checks')+'</button></div>';
+    html+='</div>';
+
     return html;
   }).join('');
 }
@@ -1694,13 +1701,32 @@ function saveDevice(){
   var _cableTxt=d.cable_in?'Cable: '+_cableLabel(d.cable_in):''; _logActivity(_savedId, 'Saved'+(d.serial?' SN:'+d.serial:'')+(_cableTxt?' '+_cableTxt:''));
   closeSheet('device'); renderMain(); autoSave(); updateLocDl();
 }
+var _deletedDevice=null;
 function deleteDevice(){
   if(editIdx<0)return;
   var name=devices[editIdx].device_id||'(unnamed)';
   if(!confirm('Delete '+name+'?'))return;
+  _deletedDevice={device:Object.assign({},devices[editIdx]),idx:editIdx};
   devices.splice(editIdx,1);
+  _logActivity(name,'Deleted');
   closeSheet('device'); renderMain(); autoSave();
-  showToast('Deleted '+name,'ok');
+  showToast('Deleted '+name+' — tap to undo','warn');
+  // Show undo toast that persists 8s
+  var t=document.getElementById('toast');
+  if(t){
+    t.onclick=function(){undoDelete();t.onclick=null;};
+    t.style.cursor='pointer';
+  }
+}
+function undoDelete(){
+  if(!_deletedDevice)return;
+  devices.splice(_deletedDevice.idx,0,_deletedDevice.device);
+  _logActivity(_deletedDevice.device.device_id,'Delete undone');
+  _deletedDevice=null;
+  renderMain(); autoSave();
+  showToast('Restored ✓','ok');
+  var t=document.getElementById('toast');
+  if(t){t.onclick=null;t.style.cursor='';}
 }
 
 // ── Sheet helpers ────────────────────────────────────────────────
@@ -2953,9 +2979,11 @@ var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 function _mNodeApplyTransform() {
   var g1 = document.getElementById('mob-node-edges');
   var g2 = document.getElementById('mob-node-nodes');
+  var g3 = document.getElementById('mob-node-labels');
   var tr = 'translate('+_mNPanX+','+_mNPanY+') scale('+_mNScale+')';
   if(g1) g1.setAttribute('transform', tr);
   if(g2) g2.setAttribute('transform', tr);
+  if(g3) g3.setAttribute('transform', tr);
 }
 
 function mNodeZoom(f) {
@@ -3017,8 +3045,8 @@ function _mNodeRender() {
     if(!_mNPos[id]) _mNPos[id]={x:40+Math.random()*200,y:40+Math.random()*200};
   });
 
-  // ── Edges ────────────────────────────────────────────────────────
-  var eHtml = '';
+  // ── Edges + cable labels ─────────────────────────────────────────
+  var eHtml = '', lHtml = '';
   devices.forEach(function(d){
     if(!d.device_id||!d.source) return;
     var sp=_mNPos[d.source], dp=_mNPos[d.device_id];
@@ -3027,11 +3055,24 @@ function _mNodeRender() {
     var stroke=d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
     var marker=d.source==='FOH'?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
     var x1=sp.x+NW/2,y1=sp.y,x2=dp.x+NW/2,y2=dp.y+NH,cy=(y1+y2)/2;
+    var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
       +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
       +' marker-end="url(#'+marker+')"/>';
+    // Cable label
+    var cLabel=hasCable?_cableLabel(d.cable_in||d.cable||''):'';
+    if(cLabel){
+      var lw=cLabel.length*4.5+8;
+      lHtml+='<rect x="'+(mx-lw/2)+'" y="'+(my-7)+'" width="'+lw+'" height="13" rx="3"'
+        +' fill="rgba(10,12,15,.85)" stroke="'+stroke+'" stroke-width="1"/>';
+      lHtml+='<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
+        +' fill="'+stroke+'" font-size="8" font-family="Share Tech Mono,monospace">'+cLabel+'</text>';
+    }
   });
   edgesG.innerHTML = eHtml;
+  // Labels in separate group so they render on top
+  var labG=document.getElementById('mob-node-labels');
+  if(labG) labG.innerHTML=lHtml; else edgesG.innerHTML+=lHtml;
 
   // ── Nodes — identical to desktop renderNodeView ──────────────────
   var nHtml = '';
