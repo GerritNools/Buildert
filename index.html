@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.801</title>
+<title>WTU · Buildert v3.802</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.801</small></div>
+  <div class="logo">WTU <small>v3.802</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2963,12 +2963,9 @@ function renderDiagram() {
   if (cardList) cardList.style.display = 'none';
   if (chips) chips.style.display = 'none';
   if (wrap) { wrap.style.display = 'flex'; }
-  // Defer render until after layout so clientWidth is correct
-  setTimeout(function(){
-    if(!Object.keys(_mNPos).length) _mNPos = {};
-    _mNodeRender();
-    _mNodeInitEvents();
-  }, 50);
+  // Render immediately using window.innerWidth — no need to wait for SVG
+  _mNodeRender();
+  _mNodeInitEvents();
 }
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
@@ -3023,7 +3020,7 @@ function _mNodeAutoLayout(svgW) {
   });
   // FOH at bottom
   if (devices.some(function(d){return d.source==='FOH';})) {
-    _mNPos['FOH'] = {x: Math.max(10,(svg?svg.clientWidth:360)/2-NW/2), y: curY};
+    _mNPos['FOH'] = {x: Math.max(10, svgW/2 - NW/2), y: curY};
   }
 }
 
@@ -3033,8 +3030,8 @@ function _mNodeRender() {
   var nodesG = document.getElementById('mob-node-nodes');
   var labG   = document.getElementById('mob-node-labels');
   if (!svg || !edgesG || !nodesG) return;
-  var outer = document.getElementById('mob-node-outer');
-  var svgW  = (outer && outer.clientWidth > 50) ? outer.clientWidth : (window.innerWidth||375);
+  // Always use window.innerWidth — outer.clientWidth is 0 when parent was display:none
+  var svgW = window.innerWidth || 375;
   if (!Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
 
   var NW = _mNW, NH = _mNH;
