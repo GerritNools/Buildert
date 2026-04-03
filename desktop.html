@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.776b</title>
+<title>WTUniverse · Buildert Editor v3.778b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -439,7 +439,8 @@
 <body>
 
 <header>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.776b</span></div>
+  <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.778b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1032,7 +1033,21 @@
       &nbsp;·&nbsp; Last saved by: <span id="modal-savedby-display" style="color:var(--muted)">—</span>
     </div>
 
-    <div class="modal-section">Dropbox sync</div>
+    <div class="modal-section">Sync (Cloudflare Worker)</div>
+    <label>Worker URL <span style="color:var(--muted);font-size:10px">— from Cloudflare dashboard</span></label>
+    <input id="worker-url-inp" type="url" placeholder="https://buildert.yourname.workers.dev"
+           style="font-family:var(--mono);font-size:12px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <div id="proj-key-display" style="font-family:var(--mono);font-size:14px;letter-spacing:3px;
+           background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:8px 12px;flex:1"></div>
+      <button class="btn btn-ghost" onclick="wGenNewKey()" style="font-size:11px;padding:6px 10px">New key</button>
+      <button class="btn btn-primary" onclick="wApplySettings()" style="font-size:11px;padding:6px 10px">Apply</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6">
+      Rigger link: <span id="worker-link-preview" style="color:var(--accent)">— set Worker URL first —</span>
+    </div>
+
+    <div class="modal-section">Dropbox sync (legacy)</div>
 
     <!-- Connected -->
     <div id="dbx-connected-row" style="display:none;background:rgba(61,220,132,.08);border:1px solid var(--ok);border-radius:8px;padding:10px 14px;margin-bottom:10px">
@@ -2828,6 +2843,7 @@ function _persistProjectMeta() {
 }
 
 // ── Dropbox sync ──────────────────────────────────────────────────────
+var _workerUrl='', _projectKey='';
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 
@@ -2899,6 +2915,8 @@ async function _dbxHandleOAuthCallback(){
       localStorage.removeItem('dbx_pkce_appkey');
       _dbxFetchAccountInfo();
       _dbxUpdateUI();
+// Worker sync init
+(function(){var wu=localStorage.getItem('buildert_worker_url')||'';var wk=localStorage.getItem('buildert_project_key')||'';if(wu){var ei=document.getElementById('worker-url-inp');if(ei)ei.value=wu;}_projectKey=wk;var kd=document.getElementById('proj-key-display');if(kd)kd.textContent=wk;if(wu&&wk){_workerUrl=wu;wSyncInit();}})();
       _dbxSetStatus('Connected ✓','var(--ok)');
       showToast('Dropbox connected ✓','ok');
       setTimeout(dbxStartPolling,500);
@@ -3131,10 +3149,13 @@ function dbxStopPolling(){
 function autoSave(){
   try{localStorage.setItem('buildert_devices',JSON.stringify(devices));}catch(e){}
   if(_pollTimer){ _autoPush(); }
-  // Push to Dropbox after a short debounce — but never as a reaction to receiving data
-  if(!_isReceiving && (_dbxToken||_dbxRefreshToken)){
+  if(!_isReceiving){
     clearTimeout(_dbxPushDebounce);
-    _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
+    if(_workerUrl&&_projectKey){
+      _dbxPushDebounce=setTimeout(function(){ wPush(true); }, 2000);
+    } else if(_dbxToken||_dbxRefreshToken){
+      _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
+    }
   }
 }
 var _dbxPushDebounce=null;
@@ -4897,8 +4918,8 @@ function spUpdateLink() {
   var base = appUrl.replace(/\/?$/, '/');
   _spLink = base
     + '?rigger=' + encodeURIComponent(name)
-    + '&dbx_token=' + encodeURIComponent(_dbxToken)
     + '&dbx_path=' + encodeURIComponent(_dbxPath || '/current.json');
+  // Note: no token in link — rigger connects their own Dropbox on first open
   preview.textContent = _spLink;
   preview.style.color = 'var(--accent)';
   warn.style.display = _spLink.length > 8000 ? '' : 'none';
@@ -5337,6 +5358,105 @@ function _initDiagEvents() {
     if(!panDrag)return; _diagPanX=panPX0+(e.clientX-panSX); _diagPanY=panPY0+(e.clientY-panSY); _applyDiagTransform();
   });
   document.addEventListener('mouseup', function(){ if(panDrag){panDrag=false;svg.style.cursor='grab';} });
+}
+
+
+// ── Cloudflare Worker Sync ────────────────────────────────────────
+function _wGenKey(){
+  var c='abcdefghijklmnopqrstuvwxyz0123456789',k='';
+  for(var i=0;i<8;i++) k+=c[Math.floor(Math.random()*c.length)];
+  return k;
+}
+
+function wSyncInit(){
+  _workerUrl = localStorage.getItem('buildert_worker_url')||'';
+  _projectKey = localStorage.getItem('buildert_project_key')||'';
+  if(_workerUrl && _projectKey){
+    _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
+    setTimeout(wPoll, 1000);
+    setInterval(function(){ if(!_dbxSyncing) wPull(); }, 20000);
+  }
+}
+
+async function wPull(){
+  if(!_workerUrl||!_projectKey) return;
+  if(_dbxSyncing) return;
+  _dbxSyncing=true;
+  try{
+    var resp = await fetch(_workerUrl+'/project?key='+_projectKey, {cache:'no-store'});
+    if(resp.status===404){ _dbxSyncing=false; _dbxSetStatus('No data yet','var(--muted)'); return; }
+    if(!resp.ok){ _dbxSyncing=false; _dbxSetStatus('Worker error '+resp.status,'var(--danger)'); return; }
+    var data = await resp.json();
+    _isReceiving=true;
+    try{ _applyProjectLoad(data); }finally{ _isReceiving=false; }
+    _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
+    _updateProjectBadge();
+    if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
+    _spUpdateBadge();
+  }catch(e){ _dbxSetStatus('Pull failed','var(--warn)'); }
+  _dbxSyncing=false;
+}
+var _wPushT=null;
+async function wPush(silent){
+  if(!_workerUrl||!_projectKey) return;
+  var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
+  var dp='{}'; try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
+  var payload={
+    _format:'wtu-project',
+    _version:_projectVersion+1,
+    _saved:new Date().toISOString(),
+    _saved_by:'desktop',
+    project:Object.assign({},_projectMeta),
+    devices:devices,
+    spec_overrides:_specsOverrides,
+    pack_spares:_packSpares,
+    _log:window._projectLog||[],
+    _node_positions:JSON.parse(np),
+    _diag_positions:JSON.parse(dp),
+  };
+  _projectVersion++;
+  _projectBaseVersion=_projectVersion;
+  _persistProjectMeta();
+  _updateProjectBadge();
+  try{
+    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload,null,2),
+    });
+    if(resp.ok){
+      if(!silent) _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+    } else {
+      if(!silent) _dbxSetStatus('Save error '+resp.status,'var(--danger)');
+    }
+  }catch(e){ if(!silent) _dbxSetStatus('Save failed','var(--warn)'); }
+}
+function wPoll(){ wPull(); }
+
+
+function wApplySettings(){
+  _workerUrl=(document.getElementById('worker-url-inp').value||'').trim().replace(/\/$/,'');
+  _projectKey=document.getElementById('proj-key-display').textContent.trim();
+  if(!_workerUrl||!_projectKey){showToast('Enter Worker URL first','warn');return;}
+  try{localStorage.setItem('buildert_worker_url',_workerUrl);localStorage.setItem('buildert_project_key',_projectKey);}catch(e){}
+  _dbxSetStatus('Worker configured','var(--ok)');
+  wSyncInit();
+  _updateWorkerLinkPreview();
+  showToast('Worker sync enabled','ok');
+}
+function wGenNewKey(){
+  _projectKey=_wGenKey();
+  var el=document.getElementById('proj-key-display');
+  if(el) el.textContent=_projectKey;
+  _updateWorkerLinkPreview();
+}
+function _updateWorkerLinkPreview(){
+  var el=document.getElementById('worker-link-preview');
+  if(!el)return;
+  var appUrl=localStorage.getItem('wtu_share_app_url')||'https://gerritnools.github.io/Buildert/';
+  if(_workerUrl&&_projectKey){
+    el.textContent=appUrl.replace(/\/$/,'')+'/?project='+_projectKey;
+  }
 }
 
 </script>
