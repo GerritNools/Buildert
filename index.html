@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.795</title>
+<title>WTU · Buildert v3.797</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.795</small></div>
+  <div class="logo">WTU <small>v3.797</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -415,8 +415,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div class="conn-dot" id="conn-dot"></div>
   <span id="dbx-led" style="width:10px;height:10px;border-radius:50%;background:#55606e;display:inline-block;margin-right:2px;cursor:pointer;flex-shrink:0" onclick="openSheet('conn')"></span>
   <button class="hbtn" onclick="openSheet('conn')" title="Settings">⚙</button>
-  <button class="hbtn" onclick="saveProject()" title="Save project JSON">💾</button>
-  <button class="hbtn" onclick="shareApp()" title="Share app with data pre-loaded" style="font-size:13px">📤</button>
   <label class="hbtn" title="Load project JSON" style="cursor:pointer">
     📂<input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(this)">
   </label>
@@ -876,6 +874,7 @@ function renderMain(){
   if(currentTab==='pack'){  renderPack();  return; }
   if(currentTab==='specs'){ renderSpecs(); return; }
   if(currentTab==='map'){   renderMap();   return; }
+  if(currentTab==='todos'){  renderTodosMobile(); return; }
   renderCards();
 }
 
@@ -3034,7 +3033,7 @@ function _mNodeRender() {
   if (!svg || !edgesG || !nodesG) return;
   var outer  = document.getElementById('mob-node-outer');
   var svgW   = (outer && outer.clientWidth > 50) ? outer.clientWidth : (window.innerWidth||375);
-  if (!Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
+  if (!Object.keys(_mNPos).length) { _mNodeAutoLayout(svgW); } // use desktop positions if available
 
   var NW = _mNW, NH = _mNH;
   var needFoh = devices.some(function(d){return d.source==='FOH';});
@@ -3196,6 +3195,67 @@ function _showRiggerConnectPrompt(){
     +'style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:18px 36px;font-family:var(--cond);font-weight:900;font-size:18px;letter-spacing:2px;cursor:pointer;width:100%;max-width:300px">Connect Dropbox</button>'
     +'<div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-top:16px">One-time setup. Stays connected on this phone.</div>';
   document.body.appendChild(p);
+}
+
+
+// ── Todos (mobile) ─────────────────────────────────────────────────
+var _mTodos=[];
+function _mTodosLoad(){ try{var s=localStorage.getItem('buildert_todos');if(s)_mTodos=JSON.parse(s);}catch(e){} }
+function _mTodosSave(){ try{localStorage.setItem('buildert_todos',JSON.stringify(_mTodos));}catch(e){} }
+function _mAutoTodos(){
+  var keep=_mTodos.filter(function(t){return !t.auto;});
+  var autos=[];
+  devices.forEach(function(d){
+    if(!d.device_id)return;
+    var mounted=!!(d.checks&&d.checks['Mounted']);
+    var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
+    autos.push({id:'auto_mount_'+d.device_id,label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
+    autos.push({id:'auto_sn_'+d.device_id,label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+  });
+  _mTodos=keep.concat(autos);
+}
+function renderTodosMobile(){
+  updateBanner();
+  document.querySelector('.chips').style.display='none';
+  document.getElementById('empty-state').style.display='none';
+  _mTodosLoad(); _mAutoTodos(); _mTodosSave();
+  var cont=document.getElementById('card-list');
+  var urgLabels={1:'Normal',2:'High',3:'Urgent'};
+  var urgCols={1:'var(--muted)',2:'var(--warn)',3:'var(--danger)'};
+  var html='<div style="padding:10px 12px 4px">'
+    +'<button class="sb sb-primary" onclick="mTodoAdd()" style="width:100%;margin-bottom:8px">+ Add todo</button>'
+    +'</div>';
+  [3,2,1].forEach(function(urg){
+    var group=_mTodos.filter(function(t){return t.urgency===urg;});
+    if(!group.length)return;
+    html+='<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:'+urgCols[urg]+';padding:6px 14px 2px">'+urgLabels[urg].toUpperCase()+'</div>';
+    group.forEach(function(t){
+      var col=t.done?'var(--muted)':'var(--text)';
+      var decor=t.done?'line-through':'none';
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border2)">'
+        +'<input type="checkbox" '+(t.done?'checked':'')
+        +' onchange="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:pointer">'
+        +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+decor+'">'+t.label+'</span>'
+        +(t.auto?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">AUTO</span>':'')
+        +(t.auto?'':'<button onclick="mTodoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>')
+        +'</div>';
+    });
+  });
+  if(!_mTodos.length) html+='<div style="padding:40px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
+  cont.innerHTML=html;
+}
+function mTodoToggle(id){
+  var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
+  t.done=!t.done; _mTodosSave(); renderTodosMobile(); autoSave();
+}
+function mTodoDelete(id){
+  _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
+}
+function mTodoAdd(){
+  var label=prompt('Todo:'); if(!label)return;
+  var urg=parseInt(prompt('Urgency (1=Normal 2=High 3=Urgent)','1')||'1');
+  _mTodos.unshift({id:'todo_'+Date.now(),label:label,urgency:Math.max(1,Math.min(3,urg)),done:false,auto:false,created:new Date().toISOString()});
+  _mTodosSave(); renderTodosMobile();
 }
 
 function _logActivity(deviceId,action){
