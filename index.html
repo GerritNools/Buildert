@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.793</title>
+<title>WTU · Buildert v3.794</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.793</small></div>
+  <div class="logo">WTU <small>v3.794</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2516,11 +2516,13 @@ function wStartPolling(){
 function _handleProjectParam(){
   var params=new URLSearchParams(location.search);
   var key=params.get('project');
-  var wurl=params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
   var rigger=params.get('rigger');
   if(!key) return;
   _projectKey=key;
-  if(wurl) _workerUrl=wurl;
+  // Worker URL: from param, or from localStorage (stored on first use)
+  var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
+  if(wurl){ _workerUrl=wurl; try{localStorage.setItem('buildert_worker_url',wurl);}catch(e){} }
+  try{localStorage.setItem('buildert_project_key',key);}catch(e){}
   if(rigger){
     window._riggerMode=true;
     window._riggerName=decodeURIComponent(rigger);
