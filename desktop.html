@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.780b</title>
+<title>WTUniverse · Buildert Editor v3.782b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.780b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.782b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -490,6 +490,7 @@
       <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
+      <button class="tab-btn"               id="tab-todos"   onclick="setTab('todos')"   style="border-left:2px solid var(--border)">&#9745; Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
     </div>
     <div class="stats-bar" id="stats-bar"></div>
@@ -567,6 +568,13 @@
   <button class="icon-btn" style="padding:2px 10px;width:auto" onclick="applyBulkField('source')">Set</button>
 
   <span style="color:var(--border2);margin:0 2px">│</span>
+  <span style="color:var(--muted);font-size:10px;letter-spacing:1px">IN CABLE</span>
+  <select id="bulk-cable-in" class="cell-select" style="font-size:12px;max-width:140px">
+    <option value="">— pick —</option>
+  </select>
+  <button class="icon-btn" style="padding:2px 10px;width:auto" onclick="applyBulkField('cable_in')">Set</button>
+
+  <span style="color:var(--border2);margin:0 2px">│</span>
   <span style="color:var(--muted);font-size:10px;letter-spacing:1px">CHECK</span>
   <select id="bulk-check-name" class="cell-select" style="font-size:12px">
     <option value="Mounted">Mounted</option>
@@ -610,6 +618,7 @@
       <span id="node-zoom-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:38px;text-align:center">100%</span>
       <button class="icon-btn" onclick="nodeZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">−</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom · drag ↦ to connect · click edge label for cable</span>
+      <button class="btn" onclick="wPushLayout()" style="padding:5px 12px;font-size:12px;background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent);margin-left:6px">&#8593; Push layout to phones</button>
       <div style="margin-left:auto;display:flex;gap:5px">
         <button class="btn btn-ghost" onclick="nodeSaveAsSvg()" style="padding:5px 10px;font-size:11px">&#128190; Save SVG</button>
         <button class="btn btn-ghost" onclick="document.getElementById('node-load-svg').click()" style="padding:5px 10px;font-size:11px">&#128194; Load SVG</button>
@@ -808,6 +817,9 @@
 
 
 <!-- Shares & Activity Panel -->
+<div id="todos-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 110px)">
+  <!-- Todos rendered by renderTodosPanel() -->
+</div>
 <div id="shares-panel" style="display:none;padding:16px 18px;overflow-y:auto;height:calc(100vh - 180px)">
 
   <!-- Top bar -->
@@ -1759,12 +1771,14 @@ function toggleCheck(gi, check) {
 }
 
 function setField(gi, field, val) {
+  _pushUndo(field + " on " + (devices[gi]&&devices[gi].device_id||gi));
   devices[gi][field] = val;
   if (field !== 'notes' && field !== 'location') renderTable();
   autoSave();
 }
 
 function deleteDevice(gi) {
+  _pushUndo("delete " + (devices[gi]&&devices[gi].device_id||gi));
   if (!confirm('Delete ' + (devices[gi].device_id || devices[gi].serial || '(unnamed)') + '?')) return;
   devices.splice(gi, 1); renderTable(); autoSave();
 }
@@ -4613,6 +4627,17 @@ function toggleSelectAll(checked) {
   updateBulkBar();
 }
 
+function _populateBulkCableIn() {
+  var sel = document.getElementById('bulk-cable-in'); if(!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— pick —</option>';
+  CABLE_TYPES.forEach(function(ct){
+    ct.lengths.forEach(function(l){
+      var v=ct.key+"-"+l.val;
+      sel.innerHTML += '<option value="'+v+'"'+(cur===v?" selected":"")+">"+ct.label+" "+l.lbl+"</option>";
+    });
+  });
+}
 function updateBulkBar() {
   var bar = document.getElementById('bulk-bar');
   var cnt = document.getElementById('bulk-count');
@@ -4631,6 +4656,7 @@ function updateBulkBar() {
 
 function applyBulkField(field) {
   if (!selectedGis.length) return;
+  _pushUndo("bulk " + field);
   var val;
   if (field === 'status') {
     val = document.getElementById('bulk-status').value;
@@ -4640,6 +4666,9 @@ function applyBulkField(field) {
     if (!val) { showToast('Enter a location first','warn'); return; }
   } else if (field === 'source') {
     val = document.getElementById('bulk-source').value;
+  } else if (field === 'cable_in') {
+    val = document.getElementById('bulk-cable-in').value;
+    if (!val) { showToast('Pick a cable first','warn'); return; }
   } else if (field === 'check') {
     var chkName = document.getElementById('bulk-check-name').value;
     var chkVal  = document.getElementById('bulk-check-val').value === '1';
@@ -4651,7 +4680,7 @@ function applyBulkField(field) {
     showToast('Set ' + chkName + ' on ' + selectedGis.length + ' device(s)', 'ok');
     return;
   }
-  selectedGis.forEach(function(gi) { devices[gi][field] = val; });
+  selectedGis.forEach(function(gi) { devices[gi][field] = val; if(field==='cable_in') devices[gi].cable=val; });
   renderTable(); autoSave();
   showToast('Updated ' + field + ' on ' + selectedGis.length + ' device(s)', 'ok');
 }
@@ -4664,6 +4693,7 @@ function clearSelection() {
 
 function bulkDelete() {
   if (!selectedGis.length) return;
+  _pushUndo("bulk delete");
   var names = selectedGis.map(function(gi){ return devices[gi].device_id || devices[gi].serial || '?'; });
   if (!confirm('Delete ' + selectedGis.length + ' device(s)?\n' + names.join(', '))) return;
   // Remove in reverse index order so splicing doesn't shift subsequent indices
@@ -5459,6 +5489,149 @@ function _updateWorkerLinkPreview(){
   if(_workerUrl&&_projectKey){
     el.textContent=appUrl.replace(/\/$/,'')+'/?project='+_projectKey+'&w='+encodeURIComponent(_workerUrl);
   }
+}
+
+
+// ── Undo system ───────────────────────────────────────────────────
+var _undoStack = [];   // [{snapshot, label}]
+var _undoMax   = 30;
+
+function _pushUndo(label) {
+  _undoStack.push({ snapshot: JSON.stringify(devices), label: label || 'change' });
+  if (_undoStack.length > _undoMax) _undoStack.shift();
+}
+
+function undoLast() {
+  if (!_undoStack.length) { showToast('Nothing to undo', 'warn'); return; }
+  var entry = _undoStack.pop();
+  devices = JSON.parse(entry.snapshot);
+  autoSave(); renderTable();
+  showToast('Undid: ' + entry.label, 'ok');
+}
+
+// Hook Cmd+Z / Ctrl+Z
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault(); undoLast();
+  }
+});
+
+
+// ── Todos tab ─────────────────────────────────────────────────────
+var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}]
+
+function _todosLoad(){
+  try{ var s=localStorage.getItem('buildert_todos'); if(s)_todos=JSON.parse(s); }catch(e){}
+}
+function _todosSave(){
+  try{ localStorage.setItem('buildert_todos',JSON.stringify(_todos)); }catch(e){}
+  _updateTodosBadge();
+}
+function _updateTodosBadge(){
+  var open=_todos.filter(function(t){return !t.done;}).length;
+  var el=document.getElementById('todos-badge');
+  if(el){ el.style.display=open?'':'none'; el.textContent=open; }
+}
+function _autoTodos(){
+  // Generate auto todos from devices: Mount + Serial per device
+  var keep=_todos.filter(function(t){return !t.auto;});
+  var autos=[];
+  devices.forEach(function(d){
+    if(!d.device_id) return;
+    var mounted=!!(d.checks&&d.checks['Mounted']);
+    var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
+    autos.push({id:'auto_mount_'+d.device_id,type:'auto',label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
+    autos.push({id:'auto_sn_'+d.device_id,type:'auto',label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+  });
+  _todos=keep.concat(autos);
+}
+function renderTodosPanel(){
+  _todosLoad(); _autoTodos(); _todosSave();
+  var el=document.getElementById('todos-panel'); if(!el)return;
+  var urgLabels={1:'Normal',2:'High',3:'Urgent'};
+  var urgCols={1:'var(--muted)',2:'var(--warn)',3:'var(--danger)'};
+  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    +'<span style="font-family:var(--cond);font-weight:700;font-size:16px">TODOS</span>'
+    +'<button class="btn btn-primary" onclick="todoAdd()" style="font-size:12px;padding:4px 12px">+ Add</button>'
+    +'<button class="btn btn-ghost" onclick="todoClearDone()" style="font-size:11px;padding:3px 10px">Clear done</button>'
+    +'</div>';
+  [3,2,1].forEach(function(urg){
+    var group=_todos.filter(function(t){return t.urgency===urg;});
+    if(!group.length) return;
+    html+='<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:'+urgCols[urg]+';margin:10px 0 4px">'+urgLabels[urg].toUpperCase()+'</div>';
+    group.forEach(function(t){
+      var col=t.done?'var(--muted)':urgCols[t.urgency];
+      var tdecor=t.done?'line-through':'none';
+      var autoTag=t.auto?'<span style="font-size:9px;color:var(--muted);font-family:var(--mono);border:1px solid var(--border2);border-radius:3px;padding:0 3px;margin-left:4px">AUTO</span>':'';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
+        +'<input type="checkbox" '+(t.done?'checked':'')
+        +' onchange="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:pointer;accent-color:'+urgCols[t.urgency]+'">'  
+        +'<span style="flex:1;font-family:var(--cond);font-size:14px;color:'+col+';text-decoration:'+tdecor+'">'+t.label+'</span>'
+        +autoTag
+        +(t.auto?'':'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px">✕</button>')
+        +'</div>';
+    });
+  });
+  if(!_todos.length) html+='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:24px 0">No todos yet. Add devices to auto-generate.</div>';
+  el.innerHTML=html;
+}
+function todoToggle(id){
+  if(typeof id!=="string") id=id; // handle dataset.id
+  var t=_todos.find(function(x){return x.id===id;}); if(!t)return;
+  t.done=!t.done; _todosSave(); renderTodosPanel();
+}
+function todoDelete(id){
+  _todos=_todos.filter(function(x){return x.id!==id;}); _todosSave(); renderTodosPanel();
+}
+function todoClearDone(){
+  _todos=_todos.filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel();
+}
+function todoAdd(){
+  var label=prompt('Todo description:'); if(!label)return;
+  var urg=parseInt(prompt('Urgency (1=Normal, 2=High, 3=Urgent):','1')||'1');
+  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:label,urgency:Math.max(1,Math.min(3,urg)),done:false,auto:false,created:new Date().toISOString()});
+  _todosSave(); renderTodosPanel();
+}
+_todosLoad(); _autoTodos(); _todosSave();
+
+
+function wPushLayout(){
+  // Force-save current positions then push to Worker
+  _saveNodePositions();
+  _saveDiagPositions();
+  var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
+  var dp='{}'; try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
+  var np_parsed={}, dp_parsed={};
+  try{np_parsed=JSON.parse(np);}catch(e){}
+  try{dp_parsed=JSON.parse(dp);}catch(e){}
+
+  // Build payload including positions
+  var payload={
+    _format:'wtu-project',
+    _version:_projectVersion+1,
+    _saved:new Date().toISOString(),
+    _saved_by:'desktop',
+    project:Object.assign({},_projectMeta),
+    devices:devices,
+    spec_overrides:_specsOverrides,
+    pack_spares:_packSpares,
+    _log:window._projectLog||[],
+    _node_positions:np_parsed,
+    _diag_positions:dp_parsed,
+  };
+  _projectVersion++;
+  _projectBaseVersion=_projectVersion;
+  _persistProjectMeta();
+  _updateProjectBadge();
+
+  var pushFn = (_workerUrl&&_projectKey) ? function(){
+    return fetch(_workerUrl+'/project?key='+_projectKey,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload,null,2)})
+      .then(function(r){ _dbxSetStatus(r.ok?'Layout pushed v'+_projectVersion+' · '+_hhmm():'Push error '+r.status, r.ok?'var(--ok)':'var(--danger)'); });
+  } : function(){
+    return _dbxPush(false);
+  };
+  pushFn().catch(function(){ _dbxSetStatus('Push failed','var(--warn)'); });
+  showToast('Pushing layout to phones…','ok');
 }
 
 </script>
