@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.811</title>
+<title>WTU · Buildert v3.812</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.811</small></div>
+  <div class="logo">WTU <small>v3.812</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3017,7 +3017,20 @@ function mNodeZoom(f) {
 }
 
 function mNodeFit() {
-  _mNScale = 1; _mNPanX = 0; _mNPanY = 0;
+  if(!_mNPos||!Object.keys(_mNPos).length){_mNScale=1;_mNPanX=0;_mNPanY=0;_mNodeApplyTransform();return;}
+  var NW=_mNW,NH=_mNH,minX=99999,minY=99999,maxX=0,maxY=0;
+  Object.keys(_mNPos).forEach(function(id){
+    var p=_mNPos[id];if(!p)return;
+    if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;
+    if(p.x+NW>maxX)maxX=p.x+NW;if(p.y+NH>maxY)maxY=p.y+NH;
+  });
+  var outer=document.getElementById('mob-node-outer');
+  var vw=outer?outer.clientWidth:(window.innerWidth||375);
+  var vh=outer?outer.clientHeight:500;
+  var sx=(vw-40)/(maxX-minX||1),sy=(vh-40)/(maxY-minY||1);
+  _mNScale=Math.min(1,Math.min(sx,sy));
+  _mNPanX=20-minX*_mNScale+(vw-40-(maxX-minX)*_mNScale)/2;
+  _mNPanY=20-minY*_mNScale;
   _mNodeApplyTransform();
 }
 
@@ -3304,7 +3317,7 @@ function _renderTodosList(){
       var autoNote=t.auto?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px;margin-left:4px">AUTO</span>':'';
       html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border2)">'
         +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
-        +' onchange="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:'+(t.auto?'default':'pointer')+'">'
+        +' onclick="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:'+(t.auto?'default':'pointer')+'">'
         +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+decor+'">'+t.label+'</span>'
         +autoNote
         +(t.auto?'':'<button onclick="mTodoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>')
@@ -3333,10 +3346,30 @@ function mTodoDelete(id){
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
 }
 function mTodoAdd(){
-  var label=prompt('Todo:'); if(!label)return;
-  var urg=parseInt(prompt('Urgency (1=Normal 2=High 3=Urgent)','1')||'1');
-  _mTodos.unshift({id:'todo_'+Date.now(),label:label,urgency:Math.max(1,Math.min(3,urg)),done:false,auto:false,created:new Date().toISOString()});
-  _mTodosSave(); renderTodosMobile();
+  var cont=document.getElementById('card-list');if(!cont)return;
+  var tOpts='<option value="">No time</option>';
+  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'">'+h+':'+('0'+m).slice(-2)+'</option>';});}
+  var form='<div id="ta-form" style="background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:12px;margin:10px 12px;">'
+    +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">NEW TODO</div>'
+    +'<input id="ta-lbl" type="text" placeholder="Description..." autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
+    +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+    +'<select id="ta-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select>'
+    +'<select id="ta-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px">'+tOpts+'</select>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<button onclick="mTodoSave()" class="sb sb-primary" style="flex:1">Save</button>'
+    +'<button onclick="renderTodosMobile()" class="sb sb-ghost" style="flex:1">Cancel</button>'
+    +'</div></div>';
+  cont.innerHTML=form+cont.innerHTML;
+  setTimeout(function(){var el=document.getElementById('ta-lbl');if(el)el.focus();},100);
+}
+function mTodoSave(){
+  var lbl=(document.getElementById('ta-lbl').value||'').trim();if(!lbl)return;
+  var urg=parseInt(document.getElementById('ta-urg').value)||1;
+  var t=document.getElementById('ta-time').value||'';
+  var full=t?t+' — '+lbl:lbl;
+  _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
+  _mTodosSave();renderTodosMobile();
 }
 
 
