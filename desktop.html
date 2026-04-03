@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.779b</title>
+<title>WTUniverse · Buildert Editor v3.780b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.779b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.780b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -4918,9 +4918,9 @@ function spUpdateLink() {
   }
   var base = appUrl.replace(/\/?$/, '/');
   _spLink = base
-    + '?rigger=' + encodeURIComponent(name)
-    + '&dbx_path=' + encodeURIComponent(_dbxPath || '/current.json');
-  // Note: no token in link — rigger connects their own Dropbox on first open
+    + '?project=' + encodeURIComponent(_projectKey)
+    + '&w=' + encodeURIComponent(_workerUrl)
+    + (name ? '&rigger=' + encodeURIComponent(name) : '');
   preview.textContent = _spLink;
   preview.style.color = 'var(--accent)';
   warn.style.display = _spLink.length > 8000 ? '' : 'none';
@@ -5457,7 +5457,7 @@ function _updateWorkerLinkPreview(){
   if(!el)return;
   var appUrl=localStorage.getItem('wtu_share_app_url')||'https://gerritnools.github.io/Buildert/';
   if(_workerUrl&&_projectKey){
-    el.textContent=appUrl.replace(/\/$/,'')+'/?project='+_projectKey;
+    el.textContent=appUrl.replace(/\/$/,'')+'/?project='+_projectKey+'&w='+encodeURIComponent(_workerUrl);
   }
 }
 
