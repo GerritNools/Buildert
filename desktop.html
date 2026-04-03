@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.784b</title>
+<title>WTUniverse · Buildert Editor v3.785b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.784b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.785b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -5086,12 +5086,16 @@ function _spRenderLog() {
         }).join('');
   }
 
-  // Stats
   if (stats) {
-    stats.innerHTML = riggers.map(function(r) {
-      var cnt = log.filter(function(e){ return e.by === r; }).length;
-      return '<span><span style="color:var(--accent)">' + r + '</span> &nbsp;' + cnt + ' actions</span>';
-    }).join(' &nbsp;&middot;&nbsp; ');
+    var cc={}; log.forEach(function(e){if(e.by)cc[e.by]=(cc[e.by]||0)+1;});
+    var ldr=Object.keys(cc).sort(function(a,b){return cc[b]-cc[a];});
+    var med=['1st','2nd','3rd'];
+    stats.innerHTML='<span style="font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:1px">ACTION COUNT: </span>'
+      +ldr.map(function(r,i){
+        return '<span style="margin-right:10px;font-family:var(--cond)">'+(med[i]?'<span style="color:var(--warn);font-size:10px">'+med[i]+'</span> ':'')
+          +'<span style="color:var(--accent);font-weight:700">'+r+'</span>'
+          +' <span style="color:var(--text);font-family:var(--mono);font-size:11px">'+cc[r]+'</span></span>';
+      }).join('');
   }
 
   // Filter
@@ -5574,8 +5578,8 @@ function renderTodosPanel(){
       var tdecor=t.done?'line-through':'none';
       var autoTag=t.auto?'<span style="font-size:9px;color:var(--muted);font-family:var(--mono);border:1px solid var(--border2);border-radius:3px;padding:0 3px;margin-left:4px">AUTO</span>':'';
       html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
-        +'<input type="checkbox" '+(t.done?'checked':'')
-        +' onchange="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:pointer;accent-color:'+urgCols[t.urgency]+'">'  
+        +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
+        +' onchange="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:'+(t.auto?'default':'pointer')+';accent-color:'+urgCols[t.urgency]+'">' 
         +'<span style="flex:1;font-family:var(--cond);font-size:14px;color:'+col+';text-decoration:'+tdecor+'">'+t.label+'</span>'
         +autoTag
         +(t.auto?'':'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px">✕</button>')
@@ -5586,8 +5590,8 @@ function renderTodosPanel(){
   el.innerHTML=html;
 }
 function todoToggle(id){
-  if(typeof id!=="string") id=id; // handle dataset.id
   var t=_todos.find(function(x){return x.id===id;}); if(!t)return;
+  if(t.auto){showToast('Auto todo - driven by device state','warn');return;}
   t.done=!t.done; _todosSave(); renderTodosPanel();
 }
 function todoDelete(id){
