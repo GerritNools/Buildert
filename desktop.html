@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.787b</title>
+<title>WTUniverse · Buildert Editor v3.788b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.787b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.788b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -5597,7 +5597,7 @@ function renderTodosPanel(){
       var autoTag=t.auto?'<span style="font-size:9px;color:var(--muted);font-family:var(--mono);border:1px solid var(--border2);border-radius:3px;padding:0 3px;margin-left:4px">AUTO</span>':'';
       html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
         +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
-        +' onchange="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:'+(t.auto?'default':'pointer')+';accent-color:'+urgCols[t.urgency]+'">' 
+        +' onclick="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:'+(t.auto?'default':'pointer')+';accent-color:'+urgCols[t.urgency]+'">' 
         +'<span style="flex:1;font-family:var(--cond);font-size:14px;color:'+col+';text-decoration:'+tdecor+'">'+t.label+'</span>'
         +autoTag
         +(t.auto?'':'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px">✕</button>')
@@ -5619,10 +5619,34 @@ function todoClearDone(){
   _todos=_todos.filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel();
 }
 function todoAdd(){
-  var label=prompt('Todo description:'); if(!label)return;
-  var urg=parseInt(prompt('Urgency (1=Normal, 2=High, 3=Urgent):','1')||'1');
-  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:label,urgency:Math.max(1,Math.min(3,urg)),done:false,auto:false,created:new Date().toISOString()});
-  _todosSave(); renderTodosPanel();
+  var tOpts='<option value="">No time</option>';
+  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'">'+h+':'+('0'+m).slice(-2)+'</option>';});}
+  var m=document.createElement('div');
+  m.id='todo-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  m.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;width:380px;max-width:90vw;">'
+    +'<div style="font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">ADD TODO</div>'
+    +'<input id="td-lbl" type="text" placeholder="Description..." style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
+    +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+    +'<select id="td-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select>'
+    +'<select id="td-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+tOpts+'</select>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary" onclick="todoSave()" style="flex:1">Save</button>'
+    +'<button class="btn btn-ghost" onclick="todoCancel()" style="flex:1">Cancel</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){document.getElementById('td-lbl').focus();},50);
+}
+function todoCancel(){var m=document.getElementById('todo-modal');if(m)m.remove();}
+function todoSave(){
+  var lbl=(document.getElementById('td-lbl').value||'').trim();if(!lbl)return;
+  var urg=parseInt(document.getElementById('td-urg').value)||1;
+  var t=document.getElementById('td-time').value||'';
+  var full=t?t+' — '+lbl:lbl;
+  var modal=document.getElementById('todo-modal');if(modal)modal.remove();
+  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
+  _todosSave();renderTodosPanel();
 }
 _todosLoad(); _autoTodos(); _todosSave();
 
