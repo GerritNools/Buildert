@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.804</title>
+<title>WTU · Buildert v3.806</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.804</small></div>
+  <div class="logo">WTU <small>v3.806</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -896,11 +896,16 @@ function renderCards(){
       +'<div class="card-stripe stripe-'+tk+'"></div>'
       +'<div class="card-top" onclick="openEdit('+gi+')" style="cursor:pointer">'
       +  '<div class="sled '+_lc+'"></div>'
-      +  '<div class="card-id id-'+tk+'">'+( d.device_id||'???' )+'</div>'
-      +  (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+m+'</span>':''; })()
-      +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'">'+(hasSerial?d.serial:'-')+'</div>'
-      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openSpecSheet('+gi+')" title="Specs">📋</button>'
-      +  '<button class="edit-btn" style="width:26px;height:26px" onclick="openEdit('+gi+')" title="Edit">✏</button>'
+      +  '<div style="flex:1;min-width:0;overflow:hidden">'
+      +    '<div style="display:flex;align-items:center;gap:4px">'
+      +      '<div class="card-id id-'+tk+'" style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( d.device_id||'???' )+'</div>'
+      +      (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted);flex-shrink:0">'+m+'</span>':''; })()
+      +    '</div>'
+      +    '<div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'+(d.status==='Online'||d.status==='Mounted'?'var(--ok)':d.status==='GoAndCheck'||d.status==='Swap'?'var(--warn)':d.status==='Offline'||d.status==='Swapped'?'var(--danger)':'var(--muted)')+'">'+( d.status||'Active')+(d.location?' · 📍'+d.location:'')+'</div>'
+      +  '</div>'
+      +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'" style="font-size:10px;flex-shrink:0">'+(hasSerial?d.serial:'-')+'</div>'
+      +  '<button class="edit-btn" style="width:26px;height:26px;flex-shrink:0" onclick="event.stopPropagation();openSpecSheet('+gi+')" title="Specs">📋</button>'
+      +  '<button class="edit-btn" style="width:26px;height:26px;flex-shrink:0" onclick="event.stopPropagation();openEdit('+gi+')" title="Edit">✏</button>'
       +'</div>'
       // Cable/source — only in expanded view
       +(expanded ? (function(){
@@ -1916,15 +1921,13 @@ function _mergeProjectNoConflict(data){
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
-  // Apply layout positions from desktop
-  if(data._node_positions && Object.keys(data._node_positions).length){
-    _mNPos = data._node_positions;
-  }
-  if(data._diag_positions && Object.keys(data._diag_positions).length){
-    window._mDiagPos = data._diag_positions;
-  }
-  autoSave(); renderMain();
-  showToast('Loaded v'+_projectVersion+' · by '+(data._saved_by||'?'),'ok');
+  if(data._node_positions && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+  if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  // Save locally WITHOUT triggering push — wPull must never push back
+  try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
+  try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
+  renderMain();
+  showToast('Synced v'+_projectVersion+' from '+(data._saved_by||'?'),'ok');
   _updateMobileProjectBadge();
 }
 
@@ -1962,13 +1965,11 @@ function _mergeSmartFromFile(data){
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
   _persistProjectMeta();
-  if(data._node_positions && Object.keys(data._node_positions).length){
-    _mNPos = data._node_positions;
-  }
-  if(data._diag_positions && Object.keys(data._diag_positions).length){
-    window._mDiagPos = data._diag_positions;
-  }
-  autoSave(); renderMain();
+  if(data._node_positions && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+  if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
+  try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
+  renderMain();
   showToast('Synced v'+_projectVersion,'ok');
   _updateMobileProjectBadge();
 }
@@ -2109,6 +2110,9 @@ function _renderMapFromPositions(positions){
     nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="6"'
       +' fill="'+bg+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
     nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
+    var dstC=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
+    nHtml+='<circle cx="'+(NW-10)+'" cy="10" r="5" fill="'+dstC+'" style="pointer-events:none"/>';
+    if(!isFoh&&st) nHtml+='<text x="'+(NW-10)+'" y="22" text-anchor="middle" fill="'+dstC+'" font-size="7" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,7)+'</text>';
     nHtml+='<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" style="pointer-events:none">'+id+'</text>';
     if(m) nHtml+='<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
@@ -3088,6 +3092,9 @@ function _mNodeRender() {
     nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="6"'
       +' fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
     nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
+    var stCol=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
+    nHtml+='<circle cx="'+(NW-10)+'" cy="10" r="5" fill="'+stCol+'" style="pointer-events:none"/>';
+    if(!isFoh&&st) nHtml+='<text x="'+(NW-10)+'" y="22" text-anchor="middle" fill="'+stCol+'" font-size="7" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,7)+'</text>';
     nHtml+='<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
     if(sub1) nHtml+='<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
