@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.798</title>
+<title>WTU · Buildert v3.800</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.798</small></div>
+  <div class="logo">WTU <small>v3.800</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1868,13 +1868,16 @@ function loadProject(input){
 }
 
 function _applyProjectLoad(data){
-  // Capture activity log from riggers
+  // Capture activity log — merge, don't replace
   if(data && Array.isArray(data._log)){
     var seen={};
-    window._remoteLog=data._log.filter(function(e){
+    var existing=(window._remoteLog||[]).concat(window._activityLog||[]);
+    existing.forEach(function(e){seen[(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'')]=true;});
+    var newEntries=data._log.filter(function(e){
       var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
       if(seen[k])return false;seen[k]=true;return true;
     });
+    window._remoteLog=(existing.concat(newEntries));
     window._activityLog=[];
   }
   // Raw devices array — legacy import
@@ -2069,63 +2072,66 @@ function showToast(msg,type){
 
 
 function _renderMapFromPositions(positions){
-  // Render diagram using desktop's saved positions, scaled for mobile
+  // Render diagram as full SVG pan/zoom, identical visual to desktop diagram
   var cont=document.getElementById('card-list');
   var byId={}; devices.forEach(function(d){if(d.device_id)byId[d.device_id]=d;});
-  var NW=MAP_NW, NH=MAP_NH;
   var COLS={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
+  var NW=_mNW, NH=_mNH; // use same node size as nodes view
 
-  // Calculate bounds for scale-to-fit
-  var minX=9999,maxX=0,minY=9999,maxY=0;
-  Object.keys(positions).forEach(function(id){
-    var p=positions[id];if(!p)return;
-    minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x+NW);
-    minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y+NH);
-  });
-  var svgW=Math.min(window.innerWidth,600);
-  var contentW=maxX-minX, contentH=maxY-minY;
-  var scale=Math.min(1,(svgW-20)/Math.max(contentW,1));
-
-  var lines='',nodes='';
+  // Edges
+  var eHtml='', nHtml='';
   devices.forEach(function(d){
-    if(!d.device_id||!d.source||d.source==='FOH')return;
-    var sp=positions[d.source],tp=positions[d.device_id];
-    if(!sp||!tp)return;
-    var col=COLS[d.type]||'#55606e';
-    var x1=(sp.x-minX)*scale+NW*scale/2,y1=(sp.y-minY)*scale+NH*scale,x2=(tp.x-minX)*scale+NW*scale/2,y2=(tp.y-minY)*scale,my=(y1+y2)/2;
-    lines+='<path d="M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2+'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-opacity="0.5"/>';
+    if(!d.device_id||!d.source) return;
+    var sp=positions[d.source], tp=positions[d.device_id];
+    if(!sp||!tp) return;
+    var hasCable=!!(d.cable_in||d.cable);
+    var stroke=d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
+    var x1=sp.x+NW/2,y1=sp.y,x2=tp.x+NW/2,y2=tp.y+NH,cy=(y1+y2)/2;
+    eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
+      +' fill="none" stroke="'+stroke+'" stroke-width="2" stroke-opacity="0.7"/>';
   });
-  // FOH lines
-  var fohP=positions['FOH'];
-  if(fohP){
-    var fcx=(fohP.x-minX)*scale+NW*scale/2,fcy=(fohP.y-minY)*scale;
-    devices.filter(function(d){return d.source==='FOH'&&d.device_id&&positions[d.device_id];}).forEach(function(d){
-      var tp=positions[d.device_id];
-      var x2=(tp.x-minX)*scale+NW*scale/2,y2=(tp.y-minY)*scale+NH*scale,my=(fcy+y2)/2;
-      lines+='<path d="M'+fcx+','+fcy+' C'+fcx+','+my+' '+x2+','+my+' '+x2+','+y2+'" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5,3"/>';
-    });
-  }
+
   // Nodes
   Object.keys(positions).forEach(function(id){
-    var p=positions[id];if(!p)return;
+    var pos=positions[id]; if(!pos) return;
     var isFoh=(id==='FOH');
     var dev=isFoh?null:byId[id];
-    var col=isFoh?'#00d4ff':(dev?COLS[dev.type]||'#55606e':'#55606e');
-    var px=(p.x-minX)*scale,py=(p.y-minY)*scale;
-    var nw=NW*scale,nh=NH*scale;
-    var gi=dev?devices.indexOf(dev):-1;
+    var col=isFoh?'#00d4ff':(COLS[dev&&dev.type]||'#55606e');
+    var m=dev?(dev.model||modelFromId(dev.device_id||'')):'';
+    var sub=isFoh?'Controller':(dev?(dev.location||dev.status||''):'');
     var st=dev?(dev.status||''):'';
-    var bg=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
-    nodes+='<g transform="translate('+px+','+py+')" '+(gi>=0?'onclick="nodeSheetOpen('+gi+')"':'')+' style="cursor:pointer">'
-      +'<rect x="0" y="0" width="'+nw+'" height="'+nh+'" rx="4" fill="'+bg+'" stroke="'+col+'" stroke-width="1.2"/>'
-      +'<rect x="0" y="0" width="'+(4*scale)+'" height="'+nh+'" rx="2" fill="'+col+'"/>'
-      +'<text x="'+(9*scale)+'" y="'+(16*scale)+'" fill="'+col+'" font-size="'+(Math.max(8,11*scale))+'px" font-weight="700" font-family="Barlow Condensed,sans-serif">'+id+'</text>'
-      +'</g>';
+    var bg=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':
+           st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
+    var nH=(m&&sub)?NH+10:NH;
+    var gi=dev?devices.indexOf(dev):-1;
+    var giAttr=gi>=0?' data-gi="'+gi+'"':'';
+    nHtml+='<g transform="translate('+pos.x+','+pos.y+')"'+giAttr+' style="cursor:pointer">';
+    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="6"'
+      +' fill="'+bg+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
+    nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
+    nHtml+='<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
+      +' font-family="Barlow Condensed,sans-serif" style="pointer-events:none">'+id+'</text>';
+    if(m) nHtml+='<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
+      +' font-family="Barlow Condensed,sans-serif" style="pointer-events:none">'+m+'</text>';
+    if(sub){var sy=m?48:36;nHtml+='<text x="10" y="'+sy+'" fill="#7a8694" font-size="11"'
+      +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub.slice(0,14)+'</text>';}
+    nHtml+='</g>';
   });
-  var svgH=(maxY-minY)*scale+NH*scale+MAP_PAD;
-  var svgEl='<svg width="'+svgW+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">'
-    +'<g>'+lines+nodes+'</g></svg>';
-  cont.innerHTML='<div id="map-wrap" style="overflow:hidden;width:100%;touch-action:none;background:var(--bg);border-radius:8px;position:relative;height:calc(100vh - 180px)">'
+
+  // Bounds
+  var allPos=Object.values(positions).filter(Boolean);
+  var svgW=Math.max(600,allPos.reduce(function(m,p){return Math.max(m,p.x+NW+40);},0));
+  var svgH=Math.max(400,allPos.reduce(function(m,p){return Math.max(m,p.y+NH+40);},0));
+
+  var defs='<defs>'
+    +'<marker id="dm-ok" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>'
+    +'<marker id="dm-foh" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>'
+    +'<marker id="dm-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>'
+    +'</defs>';
+  var svgEl='<svg id="map-diag-svg" width="'+svgW+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">'
+    +defs+'<g id="map-diag-g">'+eHtml+nHtml+'</g></svg>';
+
+  cont.innerHTML='<div id="map-wrap" style="overflow:hidden;width:100%;touch-action:none;background:var(--bg);position:relative;height:calc(100vh - 180px)">'
     +'<div id="map-canvas" style="transform-origin:0 0;position:absolute;top:0;left:0;will-change:transform">'+svgEl+'</div>'
     +'<div style="position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:4px">'
     +'<button onclick="mapZoom(1.25)" style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:18px">+</button>'
@@ -2133,6 +2139,13 @@ function _renderMapFromPositions(positions){
     +'<button onclick="mapFit()" style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px">fit</button>'
     +'</div></div>';
   _mapZ=1;_mapPX=0;_mapPY=0;_mapApplyTransform();_mapInitEvents();setTimeout(mapFit,60);
+
+  // Tap to open serial sheet
+  var svg2=document.getElementById('map-diag-svg');
+  if(svg2) svg2.addEventListener('click',function(e){
+    var g=e.target&&e.target.closest('g[data-gi]');
+    if(g){ var gi=parseInt(g.dataset.gi); if(!isNaN(gi)&&gi>=0) openSNSheet(gi); }
+  });
 }
 
 // ── Map (diagram) tab ─────────────────────────────────────────────
@@ -3018,22 +3031,22 @@ function _mNodeRender() {
   var svg    = document.getElementById('mob-node-svg');
   var edgesG = document.getElementById('mob-node-edges');
   var nodesG = document.getElementById('mob-node-nodes');
+  var labG   = document.getElementById('mob-node-labels');
   if (!svg || !edgesG || !nodesG) return;
-  var outer  = document.getElementById('mob-node-outer');
-  var svgW   = (outer && outer.clientWidth > 50) ? outer.clientWidth : (window.innerWidth||375);
-  if (!Object.keys(_mNPos).length) { _mNodeAutoLayout(svgW); } // use desktop positions if available
+  var outer = document.getElementById('mob-node-outer');
+  var svgW  = (outer && outer.clientWidth > 50) ? outer.clientWidth : (window.innerWidth||375);
+  if (!Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
 
   var NW = _mNW, NH = _mNH;
   var needFoh = devices.some(function(d){return d.source==='FOH';});
   var nodeIds = devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;});
   var allIds  = (needFoh?['FOH']:[]).concat(nodeIds);
+  allIds.forEach(function(id){ if(!_mNPos[id]) _mNPos[id]={x:40+Math.random()*200,y:40+Math.random()*200}; });
 
-  allIds.forEach(function(id){
-    if(!_mNPos[id]) _mNPos[id]={x:40+Math.random()*200,y:40+Math.random()*200};
-  });
+  var COLS={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
 
-  // ── Edges + cable labels ─────────────────────────────────────────
-  var eHtml = '', lHtml = '';
+  // ── Edges + cable labels (exact copy of desktop) ────────────────
+  var eHtml='', lHtml='';
   devices.forEach(function(d){
     if(!d.device_id||!d.source) return;
     var sp=_mNPos[d.source], dp=_mNPos[d.device_id];
@@ -3041,12 +3054,10 @@ function _mNodeRender() {
     var hasCable=!!(d.cable_in||d.cable);
     var stroke=d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
     var marker=d.source==='FOH'?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW/2,y1=sp.y,x2=dp.x+NW/2,y2=dp.y+NH,cy=(y1+y2)/2;
-    var mx=(x1+x2)/2, my=(y1+y2)/2-4;
+    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
+    var cy=(y1+y2)/2, mx=(x1+x2)/2, my=(y1+y2)/2-4;
     eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
-      +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
-      +' marker-end="url(#'+marker+')"/>';
-    // Cable label
+      +' fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     var cLabel=hasCable?_cableLabel(d.cable_in||d.cable||''):'';
     if(cLabel){
       var lw=cLabel.length*4.5+8;
@@ -3056,32 +3067,29 @@ function _mNodeRender() {
         +' fill="'+stroke+'" font-size="8" font-family="Share Tech Mono,monospace">'+cLabel+'</text>';
     }
   });
-  edgesG.innerHTML = eHtml;
-  // Labels in separate group so they render on top
-  var labG=document.getElementById('mob-node-labels');
-  if(labG) labG.innerHTML=lHtml; else edgesG.innerHTML+=lHtml;
+  edgesG.innerHTML=eHtml;
+  if(labG) labG.innerHTML=lHtml;
 
-  // ── Nodes — identical to desktop renderNodeView ──────────────────
-  var nHtml = '';
+  // ── Nodes (exact visual copy of desktop renderNodeView) ──────────
+  var nHtml='';
   allIds.forEach(function(id){
     var pos=_mNPos[id]; if(!pos) return;
     var x=pos.x, y=pos.y;
     var isFoh=(id==='FOH');
     var dev=isFoh?null:devices.find(function(d){return d.device_id===id;});
     var m=dev?(dev.model||modelFromId(dev.device_id||'')):'';
-    var COLS={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
-    var col=isFoh?'#00d4ff':(m&&COLS[dev&&dev.type]?COLS[dev.type]:'#55606e');
+    var col=isFoh?'#00d4ff':(COLS[dev&&dev.type]||'#55606e');
     var sub1=m||'';
     var sub2=isFoh?'Controller':(dev?(dev.location||dev.status||''):'');
     var st=dev?(dev.status||''):'';
-    var bg=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
+    var bgTint=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':
+               st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
     var nH=(sub1&&sub2)?NH+10:NH;
     var gi=dev?devices.indexOf(dev):-1;
 
-    nHtml+='<g data-id="'+id+'" transform="translate('+x+','+y+')" style="cursor:pointer"'
-      +(gi>=0?' onclick="_mNodeTap('+gi+')"':'')+' >';
-    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'"'
-      +' rx="6" fill="'+bg+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
+    nHtml+='<g data-id="'+id+'" transform="translate('+x+','+y+')" style="cursor:pointer">';
+    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="6"'
+      +' fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
     nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
     nHtml+='<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
@@ -3094,12 +3102,19 @@ function _mNodeRender() {
     }
     nHtml+='</g>';
   });
-  nodesG.innerHTML = nHtml;
+  nodesG.innerHTML=nHtml;
 
-  // Resize SVG
+  // Tap detection handled by _mNodeInitEvents — attach gi as data attribute
+  nodesG.querySelectorAll('g[data-id]').forEach(function(g){
+    var devId=g.dataset.id;
+    if(devId==='FOH') return;
+    var gi=devices.findIndex(function(d){return d.device_id===devId;});
+    if(gi>=0) g.setAttribute('data-gi', gi);
+  });
+
   var maxY=200;
   Object.keys(_mNPos).forEach(function(id){var p=_mNPos[id];if(p&&p.y+NH+40>maxY)maxY=p.y+NH+40;});
-  svg.setAttribute('height', maxY);
+  svg.setAttribute('height',maxY);
   _mNodeApplyTransform();
 }
 
@@ -3143,18 +3158,12 @@ function _mNodeInitEvents() {
       var dx=e2.changedTouches[0].clientX-_tapStart.x;
       var dy=e2.changedTouches[0].clientY-_tapStart.y;
       if(Math.hypot(dx,dy)<10){
-        // It's a tap — find which node was tapped
-        var rect=svg.getBoundingClientRect();
-        var cx=(e2.changedTouches[0].clientX-rect.left-_mNPanX)/_mNScale;
-        var cy=(e2.changedTouches[0].clientY-rect.top-_mNPanY)/_mNScale;
-        var NW=_mNW,NH=_mNH;
-        var hit=Object.keys(_mNPos).find(function(id){
-          var p=_mNPos[id]; if(!p)return false;
-          return cx>=p.x&&cx<=p.x+NW&&cy>=p.y&&cy<=p.y+NH+10;
-        });
-        if(hit&&hit!=='FOH'){
-          var gi=devices.findIndex(function(d){return d.device_id===hit;});
-          if(gi>=0){openSNSheet(gi);}
+        // It's a tap — find which node was tapped via elementFromPoint
+        var el=document.elementFromPoint(e2.changedTouches[0].clientX,e2.changedTouches[0].clientY);
+        var g=el&&el.closest('g[data-gi]');
+        if(g){
+          var gi=parseInt(g.dataset.gi);
+          if(!isNaN(gi)&&gi>=0) openSNSheet(gi);
         }
       }
     }
