@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.809</title>
+<title>WTU · Buildert v3.811</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.809</small></div>
+  <div class="logo">WTU <small>v3.811</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -710,6 +710,7 @@ var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=f
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
 var _saveT=null, _pushT=null;
+var _mNPos={};  // node positions — declared early to avoid undefined errors
 
 var SPECS={
   'RGB20':{alt:'RGCB20',laser_w:20,consumption_w:500,weight_kg:18,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'SM506',angle:'40°',ops_diode:'Diode',notes:''},
@@ -1932,7 +1933,7 @@ function _mergeProjectNoConflict(data){
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
-  if(data._node_positions && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+  if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
   if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
@@ -1976,7 +1977,7 @@ function _mergeSmartFromFile(data){
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
   _persistProjectMeta();
-  if(data._node_positions && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+  if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
   if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
@@ -2595,8 +2596,7 @@ function _handleProjectParam(){
   // Clear stale local data so we get a fresh load from Worker
   try{localStorage.removeItem('wtu_devices');localStorage.removeItem('wtu_project_meta');}catch(e){}
   devices=[]; _projectVersion=0; _projectBaseVersion=0;
-  // Start polling immediately — no auth needed
-  setTimeout(wStartPolling, 300);
+  // NOTE: _initSync step 5 will call wStartPolling — no need for setTimeout here
 }
 
 // ── Dropbox sync (OAuth + PKCE) ──────────────────────────────────
@@ -2944,7 +2944,16 @@ async function _initSync(){
     return;
   }
 
-  // 3. Refresh token from previous session
+  // 3. Worker takes priority over Dropbox
+  if(_workerUrl&&_projectKey){
+    console.log('[INIT] Worker mode, key=',_projectKey);
+    dbxStopPolling(); // stop any Dropbox polling
+    _dbxSetStatus('key:'+_projectKey,'var(--muted)');
+    wStartPolling();
+    return;
+  }
+
+  // 4. Refresh token from previous session (Dropbox fallback)
   if(_dbxRefreshToken){
     var tok = await _dbxGetToken();
     if(tok){
@@ -2958,22 +2967,15 @@ async function _initSync(){
     return;
   }
 
-  // 4. Direct token (rigger link already set _dbxToken via _handleRiggerParam)
+  // 5. Direct token (rigger link already set _dbxToken via _handleRiggerParam)
   if(_dbxToken){
     _dbxUpdateUI();
     dbxStartPolling();
     return;
   }
 
-  console.log("[INIT] step5 check, url=",_workerUrl,"key=",_projectKey);
-  // 5. Worker (configured previously, no URL params triggered it)
-  if(_workerUrl&&_projectKey){
-    console.log('[INIT] Using stored Worker config, key=',_projectKey);
-    dbxStopPolling(); // stop any Dropbox polling
-    _dbxSetStatus('key:'+_projectKey,'var(--muted)');
-    wStartPolling();
-    return;
-  }
+  console.log("[INIT] step6: no credentials");
+  _dbxUpdateUI();
   // 6. No credentials
   _dbxUpdateUI();
 }
@@ -2996,7 +2998,7 @@ function renderDiagram() {
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
 var _mNW = 130, _mNH = 60;
-var _mNPos = {};
+// _mNPos declared early (see top)
 var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
 function _mNodeApplyTransform() {
@@ -3058,7 +3060,7 @@ function _mNodeRender() {
   if (!svg || !edgesG || !nodesG) return;
   // Always use window.innerWidth — outer.clientWidth is 0 when parent was display:none
   var svgW = window.innerWidth || 375;
-  if (!Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
+  if (!_mNPos || !Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
 
   var NW = _mNW, NH = _mNH;
   var needFoh = devices.some(function(d){return d.source==='FOH';});
