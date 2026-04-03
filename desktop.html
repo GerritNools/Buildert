@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.785b</title>
+<title>WTUniverse · Buildert Editor v3.787b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.785b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.787b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -628,6 +628,7 @@
     </div>
     <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg">
       <defs>
+        <filter id="led-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <marker id="arrow-ok"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
         <marker id="arrow-warn" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
         <marker id="arrow-muted"markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
@@ -3683,6 +3684,12 @@ function renderNodeView() {
     nodeHtml += '<text x="'+(NODE_W-5)+'" y="'+(nH/2+1)+'" text-anchor="middle"'
       +' dominant-baseline="middle" fill="var(--bg)" font-size="9" style="pointer-events:none">\u21a6</text>';
     // Device ID label
+    // Status LED in node
+    var stCol = isFoh ? '#00d4ff' :
+      (st==='Online'||st==='Mounted') ? '#3ddc84' :
+      (st==='GoAndCheck'||st==='Swap') ? '#f5a623' :
+      (st==='Offline'||st==='Swapped') ? '#ff4d4d' : '#55606e';
+    nodeHtml += '<circle cx="'+(NODE_W-12)+'" cy="12" r="5" fill="'+stCol+'" style="pointer-events:none"'+(stCol!=='#55606e'?' filter="url(#led-glow)"':'')+'/>';
     nodeHtml += '<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+label+'</text>';
     // Model name
@@ -3695,6 +3702,11 @@ function renderNodeView() {
       var sub2Y = sub1 ? 48 : 36;
       nodeHtml += '<text x="10" y="'+sub2Y+'" fill="#7a8694" font-size="11"'
         +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,16)+'</text>';
+    }
+    // Status text under LED
+    if(!isFoh && st){
+      nodeHtml += '<text x="'+(NODE_W-12)+'" y="24" text-anchor="middle" fill="'+stCol+'" font-size="8"'
+        +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,8)+'</text>';
     }
     if (loadW>0) {
       var lwCol=loadW>5000?'#ff4d4d':loadW>2000?'#f5a623':'#3ddc84';
@@ -4659,6 +4671,7 @@ function updateBulkBar() {
     var allSrcs = devices.filter(function(d){return d.device_id&&(d.type==='Distro'||d.type==='Power supply');});
     bsrc.innerHTML = '<option value="">&#8212; Source &#8212;</option>'
       + allSrcs.map(function(d){return '<option value="'+d.device_id+'">'+d.device_id+'</option>';}).join('');
+    _populateBulkCableIn();
   } else {
     bar.style.display = 'none';
   }
@@ -5328,6 +5341,9 @@ function _renderDiagSVG() {
       +' onmousedown="_diagMD(event)"'
       +' ondblclick="_diagDblClick(event)" />';
     nodeHtml += '<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
+    var dstCol=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
+    nodeHtml += '<circle cx="'+(NW-12)+'" cy="12" r="5" fill="'+dstCol+'" style="pointer-events:none"/>';
+    if(!isFoh&&st) nodeHtml += '<text x="'+(NW-12)+'" y="24" text-anchor="middle" fill="'+dstCol+'" font-size="8" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,8)+'</text>';
     nodeHtml += '<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
     if (sub1) nodeHtml += '<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
@@ -5434,6 +5450,8 @@ async function wPull(){
     var data = await resp.json();
     _isReceiving=true;
     try{ _applyProjectLoad(data); }finally{ _isReceiving=false; }
+    // Immediately cancel any pending push triggered by _applyProjectLoad
+    clearTimeout(_dbxPushDebounce);
     _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
     _updateProjectBadge();
     if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
