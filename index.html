@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.807</title>
+<title>WTU · Buildert v3.808</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.807</small></div>
+  <div class="logo">WTU <small>v3.808</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" onclick="openSheet('conn')" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">no sync</span></span>
+  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="wPull();_dbxSetStatus('Syncing...','var(--muted)')"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
 </header>
 
 <div class="banner">
@@ -2489,7 +2489,8 @@ function _nodeStopScan(){
 
 // ── Cloudflare Worker sync ────────────────────────────────────────
 async function wPull(){
-  if(!_workerUrl||!_projectKey) return;
+  console.log("[SYNC] wPull url=",_workerUrl,"key=",_projectKey);
+  if(!_workerUrl||!_projectKey){console.warn("[SYNC] wPull: no url/key");return;}
   if(_dbxSyncing) return;
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
@@ -2542,6 +2543,8 @@ async function wPush(silent){
 }
 
 function wStartPolling(){
+  console.log("[SYNC] wStartPolling url=",_workerUrl,"key=",_projectKey);
+  if(!_workerUrl||!_projectKey){console.error("[SYNC] Missing URL or key!");_dbxSetStatus("No Worker URL","var(--danger)");return;}
   if(_dbxPollTimer){clearInterval(_dbxPollTimer);_dbxPollTimer=null;}
   wPull();
   _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},20000);
@@ -2912,8 +2915,10 @@ window._riggerMode=false;
 
 // ── Single init entry point — called after all setup ─────────────
 async function _initSync(){
+  console.log("[INIT] start, url=",_workerUrl,"key=",_projectKey);
   // 1. Handle project/rigger params from URL
   _handleProjectParam(); // Worker-based — sets _workerUrl + _projectKey
+  console.log("[INIT] after handleProjectParam, url=",_workerUrl,"key=",_projectKey);
   _handleRiggerParam();  // Legacy Dropbox
   _handleShareParam();
 
@@ -2947,6 +2952,7 @@ async function _initSync(){
     return;
   }
 
+  console.log("[INIT] step5 check, url=",_workerUrl,"key=",_projectKey);
   // 5. Worker (configured previously, no URL params triggered it)
   if(_workerUrl&&_projectKey){
     _dbxSetStatus('Worker sync ready','var(--muted)');
