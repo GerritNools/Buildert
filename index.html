@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.797</title>
+<title>WTU · Buildert v3.798</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.797</small></div>
+  <div class="logo">WTU <small>v3.798</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -413,11 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" style="width:10px;height:10px;border-radius:50%;background:#55606e;display:inline-block;margin-right:2px;cursor:pointer;flex-shrink:0" onclick="openSheet('conn')"></span>
-  <button class="hbtn" onclick="openSheet('conn')" title="Settings">⚙</button>
-  <label class="hbtn" title="Load project JSON" style="cursor:pointer">
-    📂<input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(this)">
-  </label>
+  <span id="dbx-led" style="width:10px;height:10px;border-radius:50%;background:#55606e;display:inline-block;margin-right:4px;cursor:pointer;flex-shrink:0" onclick="openSheet('conn')"></span>
 </header>
 
 <div class="banner">
@@ -839,6 +835,7 @@ var TABS=[
   {k:'power', icon:'⚡', label:'Power'},
   {k:'pack',  icon:'📦', label:'Pack'},
   {k:'specs', icon:'📋', label:'Specs'},
+  {k:'todos', icon:'✅', label:'Todos'},
 ];
 function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
@@ -915,16 +912,7 @@ function renderCards(){
         if(outs.length) rows.push('<span style="color:var(--smoke)">\u2192 '+outs.map(function(x){var l=_cableLabel(x.cable_in||x.cable||'');return x.device_id+(l?' '+l:'');}).join(' \u00b7 ')+'</span>');
         return rows.length?'<div style="padding:0 12px 3px 14px;font-size:11px;font-family:var(--mono);display:flex;flex-direction:column;gap:1px">'+rows.join('')+'</div>':'';
       })() : '')
-      // Status chips — tappable
-      +'<div class="card-meta">'
-      +STATUS_OPTS.map(function(s){
-        var active=d.status===s;
-        var cls=active?('stat-chip '+statClass(s)):'stat-chip';
-        return '<span class="'+cls+'" onclick="tapStatus('+gi+',\''+s+'\')">'+(active?'● ':'')+s+'</span>';
-      }).join('')
-      +(d.location?'<span class="card-loc" style="font-size:10px">📍 '+d.location+'</span>':'')
-      +(loadW>0?'<span class="load-badge" style="color:'+(loadW>3000?'var(--danger)':loadW>1500?'var(--warn)':'var(--ok)')+'">'+loadW+'W</span>':'')
-      +'</div>'
+
       // Notes — always visible if set
       +(d.notes?'<div style="padding:2px 14px 5px 17px;font-size:12px;color:var(--warn);font-family:var(--mono);border-left:2px solid var(--warn);margin-left:17px">⚠ '+d.notes+'</div>':'')
       // Progress
@@ -3124,9 +3112,10 @@ function _mNodeInitEvents() {
   if (!svg || svg._mEventsAttached) return;
   svg._mEventsAttached = true;
   // Pinch zoom + pan via touch
+  var _tapStart=null,_tapT=0;
   var t0=null,t0d=0,t0z=1,t0px=0,t0py=0,t0cx=0,t0cy=0;
   svg.addEventListener('touchstart',function(e){
-    if(e.touches.length===1){t0={x:e.touches[0].clientX,y:e.touches[0].clientY};t0px=_mNPanX;t0py=_mNPanY;t0z=_mNScale;}
+    if(e.touches.length===1){t0={x:e.touches[0].clientX,y:e.touches[0].clientY};t0px=_mNPanX;t0py=_mNPanY;t0z=_mNScale;_tapStart={x:e.touches[0].clientX,y:e.touches[0].clientY};_tapT=Date.now();}
     else if(e.touches.length===2){
       t0d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       t0z=_mNScale;t0px=_mNPanX;t0py=_mNPanY;
@@ -3149,7 +3138,28 @@ function _mNodeInitEvents() {
     }
     e.preventDefault();
   },{passive:false});
-  svg.addEventListener('touchend',function(){t0=null;t0d=0;});
+  svg.addEventListener('touchend',function(e2){
+    if(_tapStart && e2.changedTouches.length===1 && (Date.now()-_tapT)<250){
+      var dx=e2.changedTouches[0].clientX-_tapStart.x;
+      var dy=e2.changedTouches[0].clientY-_tapStart.y;
+      if(Math.hypot(dx,dy)<10){
+        // It's a tap — find which node was tapped
+        var rect=svg.getBoundingClientRect();
+        var cx=(e2.changedTouches[0].clientX-rect.left-_mNPanX)/_mNScale;
+        var cy=(e2.changedTouches[0].clientY-rect.top-_mNPanY)/_mNScale;
+        var NW=_mNW,NH=_mNH;
+        var hit=Object.keys(_mNPos).find(function(id){
+          var p=_mNPos[id]; if(!p)return false;
+          return cx>=p.x&&cx<=p.x+NW&&cy>=p.y&&cy<=p.y+NH+10;
+        });
+        if(hit&&hit!=='FOH'){
+          var gi=devices.findIndex(function(d){return d.device_id===hit;});
+          if(gi>=0){openSNSheet(gi);}
+        }
+      }
+    }
+    t0=null;t0d=0;_tapStart=null;
+  });
 }
 
 
