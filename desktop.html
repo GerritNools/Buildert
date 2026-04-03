@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.782b</title>
+<title>WTUniverse · Buildert Editor v3.783b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.782b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.783b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -2639,10 +2639,18 @@ function loadProjectFile(input) {
 function _applyProjectLoad(data) {
   // Capture log immediately on any load before any writes
   if (data && Array.isArray(data._log) && data._log.length > 0) {
-    var prevCount = (window._projectLog||[]).length;
-    window._projectLog = data._log;
-    if (data._log.length > prevCount && currentTab === 'shares') {
-      showToast(data._log.length + ' activity entries loaded', 'ok');
+    // Merge: keep all entries, deduplicate by timestamp+by+action
+    var existing = window._projectLog || [];
+    var seen = {};
+    existing.forEach(function(e){ seen[(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'')] = true; });
+    var added = data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'');
+      if(seen[k]) return false; seen[k]=true; return true;
+    });
+    window._projectLog = existing.concat(added);
+    if (added.length > 0) {
+      _spUpdateBadge();
+      if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
     }
   }
   // Accept raw buildert.json array (legacy) — import devices only, no version tracking
@@ -2706,8 +2714,7 @@ function _mergeProjectNoConflict(data) {
   _projectBaseVersion = _projectVersion;
   saveSpecsToStorage();
   _persistProjectMeta();
-  // Capture activity log BEFORE autoSave so we don't overwrite it
-  if (Array.isArray(data._log)) window._projectLog = data._log;
+  // Log is already merged in _applyProjectLoad — nothing to do here
   autoSave();
   renderTable();
   var _cCount = Object.keys(window._mobileChanged||{}).length;
@@ -5473,8 +5480,8 @@ function wApplySettings(){
   _dbxSetStatus('Worker configured','var(--ok)');
   wSyncInit();
   _updateWorkerLinkPreview();
-  showToast('Worker sync enabled — pushing data…','ok');
-  setTimeout(function(){ wPush(false); }, 500);
+  showToast('Worker sync enabled','ok');
+  // Don't auto-push — let user click Push now to avoid overwriting log
 }
 function wGenNewKey(){
   _projectKey=_wGenKey();
