@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.783b</title>
+<title>WTUniverse · Buildert Editor v3.784b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -440,7 +440,7 @@
 
 <header>
   <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.783b</span></div>
+  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.784b</span></div>
   <!-- Project name + version badge -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
     <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -1257,7 +1257,7 @@ function sourceOptions(type, excludeId) {
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
   currentTab = tab;
-  ['laser','smoke','distro','psu','all','node','diagram','pack','specs','shares'].forEach(function(t) {
+  ['laser','smoke','distro','psu','all','node','diagram','pack','specs','todos','shares'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-'+(t==='node'||t==='pack'||t==='specs'?'all':t) : '');
   });
@@ -1267,12 +1267,14 @@ function setTab(tab) {
   var sv  = document.getElementById('specs-view');
   var shv = document.getElementById('shares-panel');
   var dgw = document.getElementById('diag-panel');
+  var tdv = document.getElementById('todos-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
   if (sv)  sv.style.display  = 'none';
   if (shv) shv.style.display = 'none';
   if (dgw) dgw.style.display = 'none';
+  if (tdv) tdv.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
@@ -1284,6 +1286,7 @@ function setTab(tab) {
   else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; renderPackList(); }
   else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
+  else if (tab === 'todos')   { if (tdv) tdv.style.display='block'; renderTodosPanel(); }
   else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
