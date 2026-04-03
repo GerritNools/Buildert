@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.802</title>
+<title>WTU · Buildert v3.804</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.802</small></div>
+  <div class="logo">WTU <small>v3.804</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3109,9 +3109,17 @@ function _mNodeRender() {
     if(gi>=0) g.setAttribute('data-gi', gi);
   });
 
-  var maxY=200;
-  Object.keys(_mNPos).forEach(function(id){var p=_mNPos[id];if(p&&p.y+NH+40>maxY)maxY=p.y+NH+40;});
-  svg.setAttribute('height',maxY);
+  var minX=0, minY=0, maxX=NW+40, maxY=NH+40;
+  Object.keys(_mNPos).forEach(function(id){
+    var p=_mNPos[id]; if(!p) return;
+    if(p.x<minX) minX=p.x;
+    if(p.y<minY) minY=p.y;
+    if(p.x+NW+40>maxX) maxX=p.x+NW+40;
+    if(p.y+NH+40>maxY) maxY=p.y+NH+40;
+  });
+  var svgHeight = maxY - Math.min(0, minY) + 40;
+  svg.setAttribute('height', Math.max(400, svgHeight));
+  svg.setAttribute('width', '100%');
   _mNodeApplyTransform();
 }
 
@@ -3218,6 +3226,24 @@ function _showRiggerConnectPrompt(){
 var _mTodos=[];
 function _mTodosLoad(){ try{var s=localStorage.getItem('buildert_todos');if(s)_mTodos=JSON.parse(s);}catch(e){} }
 function _mTodosSave(){ try{localStorage.setItem('buildert_todos',JSON.stringify(_mTodos));}catch(e){} }
+function _mSyncAutoTodos(){
+  // Sync auto todo done-state from device data, add missing, remove deleted
+  var keep=_mTodos.filter(function(t){return !t.auto;});
+  var existing={};
+  _mTodos.filter(function(t){return t.auto;}).forEach(function(t){existing[t.id]=t;});
+  var autos=[];
+  devices.forEach(function(d){
+    if(!d.device_id)return;
+    var mounted=!!(d.checks&&d.checks['Mounted']);
+    var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
+    var mid='auto_mount_'+d.device_id;
+    var sid='auto_sn_'+d.device_id;
+    autos.push({id:mid,label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
+    autos.push({id:sid,label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+  });
+  _mTodos=keep.concat(autos);
+}
+
 function _mAutoTodos(){
   var keep=_mTodos.filter(function(t){return !t.auto;});
   var autos=[];
@@ -3230,12 +3256,8 @@ function _mAutoTodos(){
   });
   _mTodos=keep.concat(autos);
 }
-function renderTodosMobile(){
-  updateBanner();
-  document.querySelector('.chips').style.display='none';
-  document.getElementById('empty-state').style.display='none';
-  _mTodosLoad(); _mAutoTodos(); _mTodosSave();
-  var cont=document.getElementById('card-list');
+function _renderTodosList(){
+  var cont=document.getElementById('card-list'); if(!cont)return;
   var urgLabels={1:'Normal',2:'High',3:'Urgent'};
   var urgCols={1:'var(--muted)',2:'var(--warn)',3:'var(--danger)'};
   var html='<div style="padding:10px 12px 4px">'
@@ -3248,11 +3270,12 @@ function renderTodosMobile(){
     group.forEach(function(t){
       var col=t.done?'var(--muted)':'var(--text)';
       var decor=t.done?'line-through':'none';
+      var autoNote=t.auto?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px;margin-left:4px">AUTO</span>':'';
       html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border2)">'
-        +'<input type="checkbox" '+(t.done?'checked':'')
-        +' onchange="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:pointer">'
+        +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
+        +' onchange="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:'+(t.auto?'default':'pointer')+'">'
         +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+decor+'">'+t.label+'</span>'
-        +(t.auto?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">AUTO</span>':'')
+        +autoNote
         +(t.auto?'':'<button onclick="mTodoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>')
         +'</div>';
     });
@@ -3260,9 +3283,20 @@ function renderTodosMobile(){
   if(!_mTodos.length) html+='<div style="padding:40px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
   cont.innerHTML=html;
 }
+function renderTodosMobile(){
+  updateBanner();
+  document.querySelector('.chips').style.display='none';
+  document.getElementById('empty-state').style.display='none';
+  _mTodosLoad(); _mSyncAutoTodos(); _mTodosSave();
+  _renderTodosList();
+}
 function mTodoToggle(id){
   var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
-  t.done=!t.done; _mTodosSave(); renderTodosMobile(); autoSave();
+  if(t.auto){showToast('Auto todo — tick in device card','warn');return;}
+  t.done=!t.done; _mTodosSave();
+  // Re-render without reloading from storage
+  _mSyncAutoTodos(); _renderTodosList();
+  autoSave();
 }
 function mTodoDelete(id){
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
