@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.798</title>
+<title>WTUniverse · Buildert Editor v3.799</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.798</div>
+    <div>build v3.799</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -879,12 +879,21 @@
     <!-- ── Left col: generate + active shares ── -->
     <div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
-        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:10px">GENERATE LINK</div>
+        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:10px">GENERATE RIGGER LINK</div>
+
         <input id="sp-rigger-name" type="text" placeholder="Rigger name (e.g. Jan)"
                oninput="spUpdateLink()"
                style="font-size:15px;font-family:var(--cond);font-weight:700;letter-spacing:1px;margin-bottom:8px">
+
         <input id="sp-app-url" type="url" placeholder="https://gerritnools.github.io/Buildert/"
-               oninput="spUpdateLink()" style="margin-bottom:8px">
+               oninput="spUpdateLink()" style="margin-bottom:10px">
+
+        <!-- Stage permissions -->
+        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px">STAGES</div>
+        <div id="sp-stage-checks" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+          <!-- populated by spUpdateLink() -->
+        </div>
+
         <div id="sp-link-preview" style="font-family:var(--mono);font-size:10px;color:var(--accent);
              word-break:break-all;background:var(--panel);border:1px solid var(--border);
              border-radius:5px;padding:8px;margin-bottom:8px;min-height:32px;line-height:1.5">
@@ -5127,32 +5136,77 @@ function renderSharesPanel() {
 }
 
 function spUpdateLink() {
-  var name   = (document.getElementById('sp-rigger-name').value || '').trim();
-  var appUrl = (document.getElementById('sp-app-url').value || '').trim();
+  var name    = (document.getElementById('sp-rigger-name').value || '').trim();
+  var appUrl  = (document.getElementById('sp-app-url').value || '').trim();
   var preview = document.getElementById('sp-link-preview');
   var warn    = document.getElementById('sp-link-warn');
   if (appUrl) localStorage.setItem('wtu_share_app_url', appUrl);
+
+  // Render stage checkboxes (always, even without name)
+  var sc = document.getElementById('sp-stage-checks');
+  if (sc && _stages.length) {
+    sc.innerHTML = _stages.map(function(s, i) {
+      var chk = _spStagePerms[s.id];
+      // Default: assigned = current stage (edit), others = view only
+      var editChk  = (chk && chk.edit)  !== undefined ? (chk && chk.edit)  : (i === _currentStageIdx);
+      var viewChk  = (chk && chk.view)  !== undefined ? (chk && chk.view)  : true;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">'
+        + '<div style="width:10px;height:10px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div>'
+        + '<span style="font-family:var(--cond);font-weight:700;font-size:13px;flex:1;color:'+s.color+'">'+s.name+'</span>'
+        + '<label style="display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer">'
+        + '<input type="checkbox" data-sid="'+s.id+'" data-perm="view" '+(viewChk?'checked':'')
+        + ' onchange="spPermChange(this)" style="accent-color:var(--muted)"> View</label>'
+        + '<label style="display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;color:var(--ok);cursor:pointer">'
+        + '<input type="checkbox" data-sid="'+s.id+'" data-perm="edit" '+(editChk?'checked':'')
+        + ' onchange="spPermChange(this)" style="accent-color:var(--ok)"> Edit</label>'
+        + '</div>';
+    }).join('');
+  }
+
   if (!name || !appUrl) {
-    preview.textContent = 'Fill in rigger name above';
-    preview.style.color = 'var(--muted)';
-    warn.style.display = 'none';
+    if (preview) { preview.textContent = 'Fill in rigger name above'; preview.style.color = 'var(--muted)'; }
+    if (warn) warn.style.display = 'none';
     _spLink = ''; return;
   }
-  if (!_dbxToken) {
-    preview.textContent = '⚠ Connect Dropbox first (Project settings)';
-    preview.style.color = 'var(--warn)';
+  if (!_workerUrl || !_projectKey) {
+    if (preview) { preview.textContent = '⚠ No Worker configured — go to Project Settings'; preview.style.color = 'var(--warn)'; }
     _spLink = ''; return;
   }
+
+  // Build stage permission string: stageId:e (edit) or stageId:v (view)
+  var stagePerms = _stages.map(function(s) {
+    var p = _spStagePerms[s.id] || {};
+    var edit = (p.edit !== undefined) ? p.edit : (s.id === (_stages[_currentStageIdx]||{}).id);
+    var view = (p.view !== undefined) ? p.view : true;
+    if (!view && !edit) return null;
+    return s.id + ':' + (edit ? 'e' : 'v');
+  }).filter(Boolean).join(',');
+
+  // Primary stage = first editable stage
+  var primaryStage = _stages.find(function(s){
+    var p=_spStagePerms[s.id]||{}; return p.edit||p.edit===undefined&&s.id===(_stages[_currentStageIdx]||{}).id;
+  }) || _stages[0];
+
   var base = appUrl.replace(/\/?$/, '/');
   _spLink = base
     + '?project=' + encodeURIComponent(_projectKey)
     + '&w=' + encodeURIComponent(_workerUrl)
-    + '&stage=' + encodeURIComponent(_stages[_currentStageIdx] ? _stages[_currentStageIdx].id : '')
+    + '&stage=' + encodeURIComponent(primaryStage ? primaryStage.id : '')
+    + '&stages=' + encodeURIComponent(stagePerms)
     + (name ? '&rigger=' + encodeURIComponent(name) : '');
-  preview.textContent = _spLink;
-  preview.style.color = 'var(--accent)';
-  warn.style.display = _spLink.length > 8000 ? '' : 'none';
-  if (_spLink.length > 8000) warn.textContent = '⚠ Long link — use Copy button';
+  if (preview) { preview.textContent = _spLink; preview.style.color = 'var(--accent)'; }
+  if (warn) { warn.style.display = _spLink.length > 8000 ? '' : 'none'; }
+}
+
+var _spStagePerms = {}; // {stageId: {view: bool, edit: bool}}
+function spPermChange(el){
+  var sid  = el.dataset.sid;
+  var perm = el.dataset.perm;
+  if (!_spStagePerms[sid]) _spStagePerms[sid] = {view:true, edit:false};
+  _spStagePerms[sid][perm] = el.checked;
+  // If edit checked, auto-check view
+  if (perm==='edit' && el.checked) _spStagePerms[sid].view = true;
+  spUpdateLink();
 }
 
 function spCopyLink() {
@@ -5160,7 +5214,7 @@ function spCopyLink() {
   var name = (document.getElementById('sp-rigger-name').value || '').trim();
   // Save to shares list
   _spShares = _spShares.filter(function(s){ return s.name !== name; }); // replace if exists
-  _spShares.unshift({name: name, created: new Date().toISOString(), url: _spLink});
+  _spShares.unshift({name: name, created: new Date().toISOString(), url: _spLink, stagePerms: Object.assign({}, _spStagePerms)});
   if (_spShares.length > 25) _spShares = _spShares.slice(0, 25);
   try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
   // Copy
