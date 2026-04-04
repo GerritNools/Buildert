@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.790b</title>
+<title>WTUniverse · Buildert Editor v3.792b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -462,8 +462,8 @@
       <div class="fm-item" onclick="fileSave()" id="fm-save">&#128190; Save <span style="color:var(--muted);font-size:10px">Cmd+S</span></div>
       <div class="fm-item" onclick="fileSaveAs()">&#128190; Save As…</div>
       <div class="fm-sep"></div>
-      <div class="fm-item" onclick="fileLoadSpecs()">&#128203; Load Specs…</div>
-      <div class="fm-item" onclick="fileExportSpecs()">&#128203; Export Specs…</div>
+      <div class="fm-item" onclick="fileLoadSpecs()">&#128203; Import Specs (CSV)…</div>
+      <div class="fm-item" onclick="fileExportSpecs()">&#128229; Export Specs (CSV)…</div>
       <div class="fm-sep"></div>
       <div class="fm-item" onclick="fileImportCSV()">&#128229; Import CSV…</div>
     </div>
@@ -1239,6 +1239,100 @@ var TYPE_KEY   = {}; TYPE_KEY[TYPE_LASER]='laser'; TYPE_KEY[TYPE_SMOKE]='smoke';
 
 // ── State ─────────────────────────────────────────────────────────────
 var devices    = [];
+// ── Multi-stage ───────────────────────────────────────────────────
+var _stages = [];
+var _currentStageIdx = 0;
+
+function _stageColors(){ return ['#5b8fff','#4de6b8','#f5a623','#c77dff','#ff6b6b','#3ddc84','#ffd93d','#00d4ff','#a8e6cf','#ff8b94','#b4a7d6']; }
+
+function _ensureStages(){
+  if(!_stages.length){
+    var np='{}';try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
+    var dp='{}';try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
+    _stages=[{id:'stage_main',name:_projectMeta.name||'Stage 1',color:_stageColors()[0],
+      devices:devices.slice(),nodePositions:JSON.parse(np),diagPositions:JSON.parse(dp)}];
+    _currentStageIdx=0;
+  }
+  devices=_stages[_currentStageIdx].devices;
+  _nodePositions=_stages[_currentStageIdx].nodePositions||{};
+  _diagPositions=_stages[_currentStageIdx].diagPositions||{};
+}
+
+function _saveCurrentStageLayout(){
+  if(!_stages[_currentStageIdx]) return;
+  _stages[_currentStageIdx].nodePositions=_nodePositions;
+  _stages[_currentStageIdx].diagPositions=_diagPositions;
+  _stages[_currentStageIdx].devices=devices;
+}
+
+function switchStage(idx){
+  _saveCurrentStageLayout();
+  _currentStageIdx=Math.max(0,Math.min(idx,_stages.length-1));
+  devices=_stages[_currentStageIdx].devices;
+  _nodePositions=_stages[_currentStageIdx].nodePositions||{};
+  _diagPositions=_stages[_currentStageIdx].diagPositions||{};
+  try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
+  try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
+  _renderStageBar(); renderTable(); _updateProjectBadge(); autoSave();
+}
+
+function addStage(){
+  _saveCurrentStageLayout();
+  var name=prompt('Stage name:','Stage '+(_stages.length+1)); if(!name)return;
+  var col=_stageColors()[_stages.length%_stageColors().length];
+  _stages.push({id:'stage_'+Date.now(),name:name,color:col,devices:[],nodePositions:{},diagPositions:{}});
+  _currentStageIdx=_stages.length-1;
+  devices=_stages[_currentStageIdx].devices;
+  _nodePositions={}; _diagPositions={};
+  _renderStageBar(); renderTable(); _updateProjectBadge(); autoSave();
+}
+
+function renameStage(idx){
+  var s=_stages[idx];if(!s)return;
+  var name=prompt('Stage name:',s.name);if(!name)return;
+  s.name=name; _renderStageBar(); autoSave();
+}
+
+function deleteStage(idx){
+  if(_stages.length<=1){showToast('Cannot delete last stage','warn');return;}
+  if(!confirm('Delete stage "'+_stages[idx].name+'"?'))return;
+  _stages.splice(idx,1);
+  if(_currentStageIdx>=_stages.length)_currentStageIdx=_stages.length-1;
+  devices=_stages[_currentStageIdx].devices;
+  _nodePositions=_stages[_currentStageIdx].nodePositions||{};
+  _diagPositions=_stages[_currentStageIdx].diagPositions||{};
+  _renderStageBar(); renderTable(); autoSave();
+}
+
+function _renderStageBar(){
+  var bar=document.getElementById('stage-bar');if(!bar)return;
+  bar.innerHTML='';
+  _stages.forEach(function(s,i){
+    var active=(i===_currentStageIdx);
+    var btn=document.createElement('button');
+    btn.style.cssText='padding:4px 14px;border-radius:20px;border:2px solid '+(active?s.color:'var(--border2)')+';'
+      +'background:'+(active?s.color+'22':'transparent')+';color:'+(active?s.color:'var(--muted)')+';'
+      +'font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.5px;cursor:pointer;white-space:nowrap;transition:all .15s;';
+    btn.innerHTML=s.name+'<span style="font-size:10px;opacity:.6;margin-left:4px">'+s.devices.length+'</span>';
+    btn.onclick=function(e){e.stopPropagation();switchStage(i);};
+    btn.ondblclick=function(e){e.stopPropagation();renameStage(i);};
+    // Right-click to delete
+    btn.oncontextmenu=function(e){e.preventDefault();deleteStage(i);};
+    bar.appendChild(btn);
+  });
+  var add=document.createElement('button');
+  add.style.cssText='padding:4px 10px;border-radius:20px;border:2px dashed var(--border2);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;';
+  add.title='Add stage (click)'; add.textContent='+';
+  add.onclick=addStage;
+  bar.appendChild(add);
+  var ov=document.createElement('button');
+  ov.style.cssText='margin-left:auto;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;';
+  ov.textContent='◈ Overview';
+  ov.onclick=function(){setTab('overview');};
+  bar.appendChild(ov);
+}
+
+
 var selectedGis = [];
 var currentTab = 'laser';
 var editIndex  = -1;
@@ -5934,55 +6028,7 @@ function _startAutosave(){
 }
 
 // ── Load Specs ────────────────────────────────────────────────────
-async function fileLoadSpecs(){
-  document.getElementById('file-menu').style.display='none';
-  if(window.showOpenFilePicker){
-    try{
-      var [handle]=await window.showOpenFilePicker({types:[{description:'Buildert Specs',accept:{'application/json':['.buildert','.json']}}]});
-      var file=await handle.getFile();
-      var text=await file.text();
-      _applySpecs(JSON.parse(text), handle.name);
-    }catch(e){if(e.name!=='AbortError')showToast('Load specs failed','warn');}
-  } else {
-    var inp=document.createElement('input');
-    inp.type='file'; inp.accept='.buildert,.json';
-    inp.onchange=function(){
-      if(!inp.files[0])return;
-      var r=new FileReader();
-      r.onload=function(){
-        try{_applySpecs(JSON.parse(r.result),inp.files[0].name);}
-        catch(e){showToast('Invalid specs file','warn');}
-      };
-      r.readAsText(inp.files[0]);
-    };
-    inp.click();
-  }
-}
-function _applySpecs(data, name){
-  // Accept {models:{...}} or raw {RGBB:{...},...} format
-  var specs=data.models||data;
-  if(typeof specs!=='object'||!Object.keys(specs).length){showToast('No specs found in file','warn');return;}
-  _specsOverrides=specs;
-  saveSpecsToStorage();
-  var badge=document.getElementById('specs-badge');
-  if(badge){badge.style.display='';badge.title='Specs: '+name;}
-  showToast('Specs loaded: '+name+' ('+Object.keys(specs).length+' models)','ok');
-  renderTable();
-}
 
-// ── Export Specs ──────────────────────────────────────────────────
-function fileExportSpecs(){
-  document.getElementById('file-menu').style.display='none';
-  // Merge DEVICE_SPECS with overrides for export
-  var merged=Object.assign({},DEVICE_SPECS,_specsOverrides);
-  var payload={_format:'buildert-specs',_saved:new Date().toISOString(),models:merged};
-  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download='specs.buildert'; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Specs exported as specs.buildert','ok');
-}
 
 // ── CSV Import ────────────────────────────────────────────────────
 function fileImportCSV(){
@@ -6083,6 +6129,90 @@ function renderOverview(){
   }
 
   el.innerHTML=html;
+}
+
+
+// ── Specs CSV ─────────────────────────────────────────────────────
+var _SPECS_CSV_COLS = ['model','alt','laser_w','consumption_w','max_a_230','max_a_110','weight_kg','inputs','in_connector','outputs','out_connector','ip','scanners','angle','ops_diode','desc','notes'];
+
+function fileExportSpecs(){
+  document.getElementById('file-menu').style.display='none';
+  var merged=Object.assign({},DEVICE_SPECS,_specsOverrides);
+  var rows=[_SPECS_CSV_COLS.join(',')];
+  Object.keys(merged).forEach(function(model){
+    var sp=merged[model];
+    var row=_SPECS_CSV_COLS.map(function(col){
+      var v=col==='model'?model:(sp[col]!=null?sp[col]:'');
+      var s=String(v);
+      return (s.indexOf(',')>=0||s.indexOf('"')>=0)?'"'+s.replace(/"/g,'""')+'"':s;
+    });
+    rows.push(row.join(','));
+  });
+  var blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='specs.csv';a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported specs.csv — '+Object.keys(merged).length+' models','ok');
+}
+
+async function fileLoadSpecs(){
+  document.getElementById('file-menu').style.display='none';
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='.csv,.buildert,.json';
+  inp.onchange=function(){
+    if(!inp.files[0])return;
+    var r=new FileReader();var fname=inp.files[0].name;
+    r.onload=function(){
+      if(fname.toLowerCase().endsWith('.csv')) _applySpecsCSV(r.result,fname);
+      else{try{_applySpecsJSON(JSON.parse(r.result),fname);}catch(e){showToast('Invalid file','warn');}}
+    };
+    r.readAsText(inp.files[0]);
+  };
+  inp.click();
+}
+
+function _csvParseLine(line){
+  var res=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(c===','&&!inQ){res.push(cur);cur='';}
+    else cur+=c;
+  }
+  res.push(cur);return res;
+}
+
+function _applySpecsCSV(csv,name){
+  var lines=csv.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(!lines.length){showToast('Empty CSV','warn');return;}
+  var hdrs=_csvParseLine(lines[0]).map(function(h){return h.trim().toLowerCase();});
+  var mci=hdrs.indexOf('model');
+  if(mci<0){showToast('CSV needs a "model" column','warn');return;}
+  var specs={};
+  var numCols=['laser_w','consumption_w','max_a_230','max_a_110','weight_kg','inputs','outputs'];
+  for(var i=1;i<lines.length;i++){
+    var vals=_csvParseLine(lines[i]);
+    var model=vals[mci]&&vals[mci].trim();if(!model)continue;
+    var sp={};
+    hdrs.forEach(function(h,j){
+      if(h==='model')return;
+      var v=(vals[j]||'').trim();
+      sp[h]=numCols.indexOf(h)>=0?(v===''?null:parseFloat(v)):v;
+    });
+    specs[model]=sp;
+  }
+  _applySpecsJSON({models:specs},name);
+}
+
+function _applySpecsJSON(data,name){
+  var specs=data.models||data;
+  if(typeof specs!=='object'||!Object.keys(specs).length){showToast('No specs found','warn');return;}
+  _specsOverrides=specs;saveSpecsToStorage();
+  var badge=document.getElementById('specs-badge');
+  if(badge){badge.style.display='';badge.title='Specs: '+name;}
+  showToast('Specs loaded: '+name+' ('+Object.keys(specs).length+' models)','ok');
+  renderTable();
 }
 
 </script>
