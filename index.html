@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.813</title>
+<title>WTU · Buildert v3.814</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.813</small></div>
+  <div class="logo">WTU <small>v3.814</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1833,10 +1833,12 @@ function setConn(ok){
 
 // ── Save / Load JSON ────────────────────────────────────────────
 function _updateMobileProjectBadge(){
+  // Use _renderMobileStageBar if stages loaded, otherwise simple display
+  if(_mStages.length){ _renderMobileStageBar(); return; }
   var nm=document.getElementById('mob-proj-name');
   var vr=document.getElementById('mob-proj-ver');
   if(nm) nm.textContent=project.name||'(no project)';
-  if(vr) vr.textContent=_projectVersion>0?'v'+_projectVersion+(_projectVersion>_projectBaseVersion?' · unsaved changes':'· saved'):'';
+  if(vr) vr.textContent=(window._riggerName?'👤 '+window._riggerName:'')+(_projectVersion>0?' v'+_projectVersion:'');
 }
 
 // ── Project file sync ────────────────────────────────────────────
@@ -3465,12 +3467,12 @@ function _renderMobileStageBar(){
       +'</button>';
   }).join('');
 
-  // Update header to show project + stage
+  // Update header
   var nm = document.getElementById('mob-proj-name');
   var vr = document.getElementById('mob-proj-ver');
   var stageName = _mStages[_mCurrentStageIdx]?_mStages[_mCurrentStageIdx].name:'';
-  if(nm) nm.textContent = (project.name||'Project') + (_mPeekMode?' 👁 ':' · ') + stageName;
-  if(vr) vr.textContent = (_mPeekMode?'PEEK MODE — read only':'') + (window._riggerName?' · '+window._riggerName:'');
+  if(nm) nm.textContent = (project.name||'—') + (stageName?' · '+stageName:'');
+  if(vr) vr.textContent = (_mPeekMode?'👁 PEEK — read only ':'')+(window._riggerName?'👤 '+window._riggerName:'');
 }
 
 function _stagePct(s){
