@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.796</title>
+<title>WTUniverse · Buildert Editor v3.797</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.796</div>
+    <div>build v3.797</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5147,6 +5147,7 @@ function spUpdateLink() {
   _spLink = base
     + '?project=' + encodeURIComponent(_projectKey)
     + '&w=' + encodeURIComponent(_workerUrl)
+    + '&stage=' + encodeURIComponent(_stages[_currentStageIdx] ? _stages[_currentStageIdx].id : '')
     + (name ? '&rigger=' + encodeURIComponent(name) : '');
   preview.textContent = _spLink;
   preview.style.color = 'var(--accent)';
