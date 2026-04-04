@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.814</title>
+<title>WTU · Buildert v3.815</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.814</small></div>
+  <div class="logo">WTU <small>v3.815</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -791,6 +791,7 @@ var _mStages = [];          // full stages array from Worker
 var _mCurrentStageIdx = 0;  // active stage index
 var _mAssignedStageId = '';  // rigger's assigned stage (from URL param)
 var _mPeekMode = false;     // true = viewing another stage read-only
+var _mStagePerms = {};      // {stageId: "e"|"v"} — from URL &stages= param
 var currentTab='laser', editIdx=-1, expandedGis={}, _pointed_edit='';
 var _pollTimer=null, _lastHash='';
 var STATUS_OPTS=['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'];
@@ -2624,6 +2625,11 @@ function _handleProjectParam(){
   try{localStorage.setItem('buildert_project_key',key);}catch(e){}
   var stage=params.get('stage')||'';
   if(stage){ _mAssignedStageId=decodeURIComponent(stage); }
+  // Parse stage permissions: "stageId:e,stageId:v,..."
+  var stagesParam=params.get('stages')||'';
+  if(stagesParam){ stagesParam.split(',').forEach(function(part){
+    var kv=part.split(':'); if(kv.length===2) _mStagePerms[kv[0]]=kv[1];
+  }); }
   if(rigger){
     window._riggerMode=true;
     window._riggerName=decodeURIComponent(rigger);
@@ -3455,6 +3461,11 @@ function _renderMobileStageBar(){
     var isAssigned = (!_mAssignedStageId && i===0) || (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
     var pct = _stagePct(s);
     var pctCol = pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
+    // Check if this stage is accessible
+    var perm = _mStagePerms[s.id];
+    var noPerms = Object.keys(_mStagePerms).length===0;
+    if(!noPerms && !perm) return ''; // no access — hide pill
+    var canEdit = noPerms || perm==='e';
     return '<button onclick="mSwitchStage('+i+')" style="'
       +'display:inline-flex;align-items:center;gap:5px;'
       +'margin-right:6px;padding:3px 10px;border-radius:16px;'
@@ -3463,6 +3474,7 @@ function _renderMobileStageBar(){
       +'color:'+(active?s.color:'var(--muted)')+';'
       +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">'
       + (isAssigned?'★ ':'')+s.name
+      +(canEdit?'':'<span style="font-size:9px;opacity:.6">🔒</span>')
       +'<span style="font-family:var(--mono);font-size:9px;color:'+pctCol+'">'+pct+'%</span>'
       +'</button>';
   }).join('');
@@ -3485,11 +3497,15 @@ function _stagePct(s){
 
 function mSwitchStage(idx){
   if(!_mStages[idx]) return;
+  var s = _mStages[idx];
+  // Check permissions
+  var perm = _mStagePerms[s.id]; // "e"=edit, "v"=view, undefined=no access
+  var hasPerms = Object.keys(_mStagePerms).length===0; // no perms = all allowed (legacy)
+  if(!hasPerms && !perm){ showToast('No access to '+s.name,'warn'); return; }
   _mCurrentStageIdx = idx;
   var isAssigned = (!_mAssignedStageId && idx===0) ||
-    (_mStages[idx].id===_mAssignedStageId ||
-     _mStages[idx].name.toLowerCase()===_mAssignedStageId.toLowerCase());
-  _mPeekMode = !isAssigned;
+    (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
+  _mPeekMode = !isAssigned || perm==='v';
   devices = _mStages[idx].devices || [];
   var pos = _mStages[idx].nodePositions||{};
   var dpos = _mStages[idx].diagPositions||{};
