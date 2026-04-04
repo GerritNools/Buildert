@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.812</title>
+<title>WTU · Buildert v3.813</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.812</small></div>
+  <div class="logo">WTU <small>v3.813</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -416,6 +416,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="wPull();_dbxSetStatus('Syncing...','var(--muted)')"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
 </header>
 
+<div id="mob-stage-bar" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:4px 10px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
 <div class="banner">
   <div class="ban-bar"><div class="ban-fill" id="ban-fill" style="width:0%"></div></div>
   <div class="ban-pct" id="ban-pct" style="color:var(--muted)">—</div>
@@ -784,6 +785,12 @@ function _cableOpts(val, reqConn){
 // ── State ──────────────────────────────────────────────────────────
 var devices=[], project={name:'',venue:''};
 var _packSpares=[];
+
+// ── Multi-stage state ─────────────────────────────────────────────
+var _mStages = [];          // full stages array from Worker
+var _mCurrentStageIdx = 0;  // active stage index
+var _mAssignedStageId = '';  // rigger's assigned stage (from URL param)
+var _mPeekMode = false;     // true = viewing another stage read-only
 var currentTab='laser', editIdx=-1, expandedGis={}, _pointed_edit='';
 var _pollTimer=null, _lastHash='';
 var STATUS_OPTS=['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'];
@@ -987,6 +994,7 @@ function renderCards(){
 }
 
 function tapStatus(gi,status){
+  if(_mPeekMode){showToast('Peek mode — read only','warn');return;}
   devices[gi].status=status;
   _logActivity(devices[gi].device_id,'Status: '+status);
   renderCards(); autoSave();
@@ -1646,6 +1654,7 @@ function openAddSheet(type){
   setTimeout(function(){document.getElementById('m-model').focus();},300);
 }
 function openEdit(gi){
+  if(_mPeekMode){showToast('Peek mode — read only','warn');return;}
   var d=devices[gi]; editIdx=gi;
   document.getElementById('sheet-title').textContent='Edit '+(d.device_id||d.serial||'???');
   document.getElementById('del-wrap').style.display='';
@@ -1933,8 +1942,26 @@ function _mergeProjectNoConflict(data){
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
-  if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
-  if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  // Handle multi-stage data from desktop
+  if(Array.isArray(data.stages) && data.stages.length){
+    _mStages = data.stages;
+    // Find assigned stage or default to 0
+    var assignedIdx = 0;
+    if(_mAssignedStageId){
+      var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
+      if(ai>=0) assignedIdx=ai;
+    }
+    _mCurrentStageIdx = assignedIdx;
+    devices = _mStages[_mCurrentStageIdx].devices || [];
+    var pos = _mStages[_mCurrentStageIdx].nodePositions||{};
+    var dpos = _mStages[_mCurrentStageIdx].diagPositions||{};
+    if(Object.keys(pos).length) _mNPos = pos;
+    if(Object.keys(dpos).length) window._mDiagPos = dpos;
+  } else {
+    if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+    if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  }
+  _renderMobileStageBar();
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
@@ -1977,8 +2004,26 @@ function _mergeSmartFromFile(data){
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
   _persistProjectMeta();
-  if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
-  if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  // Handle multi-stage data from desktop
+  if(Array.isArray(data.stages) && data.stages.length){
+    _mStages = data.stages;
+    // Find assigned stage or default to 0
+    var assignedIdx = 0;
+    if(_mAssignedStageId){
+      var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
+      if(ai>=0) assignedIdx=ai;
+    }
+    _mCurrentStageIdx = assignedIdx;
+    devices = _mStages[_mCurrentStageIdx].devices || [];
+    var pos = _mStages[_mCurrentStageIdx].nodePositions||{};
+    var dpos = _mStages[_mCurrentStageIdx].diagPositions||{};
+    if(Object.keys(pos).length) _mNPos = pos;
+    if(Object.keys(dpos).length) window._mDiagPos = dpos;
+  } else {
+    if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
+    if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
+  }
+  _renderMobileStageBar();
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
   renderMain();
@@ -2575,6 +2620,8 @@ function _handleProjectParam(){
   var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
   if(wurl){ _workerUrl=wurl; try{localStorage.setItem('buildert_worker_url',wurl);}catch(e){} }
   try{localStorage.setItem('buildert_project_key',key);}catch(e){}
+  var stage=params.get('stage')||'';
+  if(stage){ _mAssignedStageId=decodeURIComponent(stage); }
   if(rigger){
     window._riggerMode=true;
     window._riggerName=decodeURIComponent(rigger);
@@ -3394,6 +3441,62 @@ openSheet = function(id){
     if(el) el.textContent='URL: '+((_workerUrl||'none').replace('https://',''))+' | Key: '+(_projectKey||'none')+' | v'+_projectVersion;
   }
 };
+
+
+function _renderMobileStageBar(){
+  var bar = document.getElementById('mob-stage-bar');
+  if(!bar) return;
+  if(!_mStages.length){ bar.style.display='none'; return; }
+  bar.style.display='';
+  bar.innerHTML = _mStages.map(function(s,i){
+    var active = (i===_mCurrentStageIdx);
+    var isAssigned = (!_mAssignedStageId && i===0) || (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
+    var pct = _stagePct(s);
+    var pctCol = pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
+    return '<button onclick="mSwitchStage('+i+')" style="'
+      +'display:inline-flex;align-items:center;gap:5px;'
+      +'margin-right:6px;padding:3px 10px;border-radius:16px;'
+      +'border:2px solid '+(active?s.color:'var(--border2)')+';'
+      +'background:'+(active?s.color+'22':'transparent')+';'
+      +'color:'+(active?s.color:'var(--muted)')+';'
+      +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">'
+      + (isAssigned?'★ ':'')+s.name
+      +'<span style="font-family:var(--mono);font-size:9px;color:'+pctCol+'">'+pct+'%</span>'
+      +'</button>';
+  }).join('');
+
+  // Update header to show project + stage
+  var nm = document.getElementById('mob-proj-name');
+  var vr = document.getElementById('mob-proj-ver');
+  var stageName = _mStages[_mCurrentStageIdx]?_mStages[_mCurrentStageIdx].name:'';
+  if(nm) nm.textContent = (project.name||'Project') + (_mPeekMode?' 👁 ':' · ') + stageName;
+  if(vr) vr.textContent = (_mPeekMode?'PEEK MODE — read only':'') + (window._riggerName?' · '+window._riggerName:'');
+}
+
+function _stagePct(s){
+  var devs = s.devices||[];
+  if(!devs.length) return 0;
+  var mounted = devs.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
+  var sn = devs.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
+  return Math.round((mounted+sn)/devs.length/2*100);
+}
+
+function mSwitchStage(idx){
+  if(!_mStages[idx]) return;
+  _mCurrentStageIdx = idx;
+  var isAssigned = (!_mAssignedStageId && idx===0) ||
+    (_mStages[idx].id===_mAssignedStageId ||
+     _mStages[idx].name.toLowerCase()===_mAssignedStageId.toLowerCase());
+  _mPeekMode = !isAssigned;
+  devices = _mStages[idx].devices || [];
+  var pos = _mStages[idx].nodePositions||{};
+  var dpos = _mStages[idx].diagPositions||{};
+  if(Object.keys(pos).length) _mNPos = pos; else _mNPos={};
+  if(Object.keys(dpos).length) window._mDiagPos = dpos;
+  _renderMobileStageBar();
+  renderMain();
+  if(_mPeekMode) showToast('Peeking at '+_mStages[idx].name+' — read only','warn');
+}
 
 function _logActivity(deviceId,action){
   var by=window._riggerName||project.name||'mobile';
