@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.792b</title>
+<title>WTUniverse · Buildert Editor v3.793b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -451,7 +451,7 @@
 <body>
 
 <header>
-  <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
+  <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert <span id="hdr-version" style="font-size:9px;font-family:var(--mono);color:var(--muted);font-weight:400;letter-spacing:1px;vertical-align:middle"></span></div>
 
   <!-- File menu -->
   <div style="position:relative;flex-shrink:0" id="file-menu-wrap">
@@ -540,14 +540,18 @@
         <option value="source">Source</option>
       </select>
     </div>
-    <div class="ml-auto" style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="btn btn-ghost"  onclick="openCsvModal()">&#128229; CSV</button>
-      <button class="btn btn-ghost"  onclick="exportCsv()">&#128228; Export CSV</button>
-      <button class="btn btn-ghost"  onclick="openLabelModal()">&#127991; Labels</button>
-      <button class="btn btn-ok"     onclick="saveProject()" title="Save project file">&#128190; Save project</button>
-      <label  class="btn btn-ghost"  style="cursor:pointer" title="Load project file">&#128194; Load project<input type="file" id="proj-load-input" accept=".json" style="display:none" onchange="loadProjectFile(this)"></label>
-      <button class="btn btn-ghost"  onclick="shareToMobile()" title="Export mobile app with current data">&#128244; Share to mobile</button>
-      <button class="btn btn-primary" onclick="openRiggerShare()" title="Generate live share link for rigger">&#128279; Share to rigger</button>
+    <div class="ml-auto" style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost" onclick="openLabelModal()">&#127991; Labels</button>
+      <button class="btn btn-ghost" onclick="openCsvModal()">&#128229; Import CSV</button>
+      <button class="btn btn-ghost" onclick="exportCsv()">&#128228; Export CSV</button>
+      <!-- Share dropdown -->
+      <div style="position:relative" id="share-menu-wrap">
+        <button class="btn btn-primary" onclick="toggleShareMenu()" style="padding:7px 14px">&#128279; Share &#9662;</button>
+        <div id="share-menu" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px">
+          <div class="fm-item" onclick="openRiggerShare();document.getElementById('share-menu').style.display='none'">&#128279; Rigger links</div>
+          <div class="fm-item" onclick="shareToMobile();document.getElementById('share-menu').style.display='none'">&#128244; Export mobile app</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2646,8 +2650,8 @@ function _updateProjectBadge() {
   var vb = document.getElementById('proj-version-badge');
   var mv = document.getElementById('modal-ver-display');
   if (nb) nb.textContent = _projectMeta.name || '(no project)';
-  // Update file name display with project name if no file loaded
   if(!_fileName||_fileName==='no file — use File → New or Open'){_setFileName((_projectMeta.name||'untitled')+' (unsaved)');}
+  var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'v'+_projectVersion:'');
   if (vb) vb.textContent = _projectVersion > 0 ? 'v' + _projectVersion : '';
   if (mv) mv.textContent = _projectVersion > 0 ? 'v' + _projectVersion : 'not saved yet';
 }
@@ -5876,7 +5880,16 @@ function _setFileName(name){
 }
 
 // ── File menu toggle ──────────────────────────────────────────────
+function toggleShareMenu(){
+  var m=document.getElementById('share-menu');if(!m)return;
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  var w=document.getElementById('share-menu-wrap');
+  if(w&&!w.contains(e.target)){var m=document.getElementById('share-menu');if(m)m.style.display='none';}
+});
 function toggleFileMenu(){
+
   var m=document.getElementById('file-menu');
   if(!m) return;
   m.style.display=m.style.display==='none'?'block':'none';
@@ -6067,9 +6080,9 @@ function renderOverview(){
   var totalMounted=allDevices.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
   var totalSn=allDevices.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
 
-  var html='<div style="margin-bottom:16px">'
-    +'<div style="font-family:var(--cond);font-weight:900;font-size:22px;letter-spacing:2px;margin-bottom:4px">PROJECT OVERVIEW</div>'
-    +'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">'+_projectMeta.name+((_projectMeta.venue)?' · '+_projectMeta.venue:'')+'</div>'
+  var html='<div style="margin-bottom:16px;display:flex;align-items:baseline;gap:12px">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:22px;letter-spacing:2px">PROJECT OVERVIEW</div>'
+    +'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">'+_projectMeta.name+((_projectMeta.venue)?' · '+_projectMeta.venue:'')+(_projectVersion?' v'+_projectVersion:'')+'</div>'
     +'</div>';
 
   // Total progress bar
@@ -6091,22 +6104,26 @@ function renderOverview(){
     // Count by status
     var statusCounts={};
     devs.forEach(function(d){statusCounts[d.status||'Active']=(statusCounts[d.status||'Active']||0)+1;});
-    html+='<div style="background:var(--surface);border:2px solid '+s.color+';border-radius:10px;padding:14px;cursor:pointer" onclick="switchStage('+i+');setTab(\'all\')">'+'\n';
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-      +'<div style="width:10px;height:10px;border-radius:50%;background:'+s.color+'"></div>'
-      +'<span style="font-family:var(--cond);font-weight:700;font-size:16px;color:'+s.color+'">'+s.name+'</span>'
-      +'<span style="margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700;color:'+stCol+'">'+pct+'%</span>'
-      +'</div>'
-      +'<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:8px">'
-      +'<div style="height:100%;width:'+pct+'%;background:'+stCol+';border-radius:3px"></div></div>'
-      +'<div style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:12px">'
-      +'<span>'+devs.length+' devices</span>'
-      +'<span>'+mounted+' mounted</span>'
-      +'<span>'+sn+' serials</span>'
-      +'</div>'
-      +(Object.keys(statusCounts).length?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">'
-        +Object.keys(statusCounts).map(function(s){return '<span style="margin-right:8px">'+s+': '+statusCounts[s]+'</span>';}).join('')+'</div>':'')
-      +'</div>';
+    var cardHtml='<div style="background:var(--surface);border:2px solid '+s.color+';border-radius:10px;padding:14px;cursor:pointer" onclick="switchStage('+i+');setTab(\'all\')">';
+    cardHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+    cardHtml+='<div style="width:12px;height:12px;border-radius:50%;background:'+s.color+'"></div>';
+    cardHtml+='<span style="font-family:var(--cond);font-weight:700;font-size:18px;color:'+s.color+'">'+s.name+'</span>';
+    cardHtml+='<span style="margin-left:auto;font-family:var(--mono);font-size:22px;font-weight:700;color:'+stCol+'">'+pct+'%</span>';
+    cardHtml+='</div>';
+    cardHtml+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:10px">';
+    cardHtml+='<div style="height:100%;width:'+pct+'%;background:'+stCol+';border-radius:3px"></div></div>';
+    cardHtml+='<div style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:14px;margin-bottom:6px">';
+    cardHtml+='<span>'+devs.length+' devices</span>';
+    cardHtml+='<span style="color:'+(mounted>0?'#3ddc84':'var(--muted)')+'">'+mounted+' mounted</span>';
+    cardHtml+='<span style="color:'+(sn>0?'#5b8fff':'var(--muted)')+'">'+sn+' serials</span>';
+    cardHtml+='</div>';
+    if(Object.keys(statusCounts).length){
+      cardHtml+='<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">';
+      Object.keys(statusCounts).forEach(function(st){cardHtml+='<span style="margin-right:8px">'+st+': '+statusCounts[st]+'</span>';});
+      cardHtml+='</div>';
+    }
+    cardHtml+='</div>';
+    html+=cardHtml;
   });
   html+='</div>';
 
