@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.788b</title>
+<title>WTUniverse · Buildert Editor v3.789b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -434,20 +434,46 @@
   .mob-row td{background:rgba(0,212,255,.04)!important;}
   .mob-changed-warn{background:rgba(245,166,35,.07);outline:1px solid rgba(245,166,35,.25);}
 
+
+  .fm-item{padding:8px 14px;font-family:var(--mono);font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;}
+  .fm-item:hover{background:var(--panel);}
+  .fm-sep{border-top:1px solid var(--border);margin:3px 0;}
+
 </style>
 </head>
 <body>
 
 <header>
-  <span id="dbx-led-d" title="Dropbox" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-right:6px;flex-shrink:0"></span>
-  <div class="logo">WTUniverse <span>·</span> Buildert <span style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:1px;margin-left:4px">v3.788b</span></div>
-  <!-- Project name + version badge -->
-  <div style="display:flex;align-items:center;gap:7px;margin-left:12px;flex-shrink:0;">
-    <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);letter-spacing:.5px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-          onclick="document.getElementById('modal-project').classList.add('open')" title="Edit project settings">—</span>
-    <span id="proj-version-badge" style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:1px 6px"></span>
-    <button class="btn btn-ghost" onclick="document.getElementById('modal-project').classList.add('open')" style="padding:4px 8px;font-size:12px" title="Project settings">&#9881;</button>
+  <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
+
+  <!-- File menu -->
+  <div style="position:relative;flex-shrink:0" id="file-menu-wrap">
+    <button class="btn btn-ghost" onclick="toggleFileMenu()" style="padding:5px 10px;font-size:12px">&#128196; File &#9662;</button>
+    <div id="file-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:180px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px">
+      <div class="fm-item" onclick="fileNew()">&#128196; New project</div>
+      <div class="fm-item" onclick="fileOpen()">&#128194; Open project…</div>
+      <div class="fm-item" onclick="fileSave()" id="fm-save">&#128190; Save <span style="color:var(--muted);font-size:10px">Cmd+S</span></div>
+      <div class="fm-item" onclick="fileSaveAs()">&#128190; Save As…</div>
+      <div class="fm-sep"></div>
+      <div class="fm-item" onclick="fileLoadSpecs()">&#128203; Load Specs…</div>
+      <div class="fm-item" onclick="fileExportSpecs()">&#128203; Export Specs…</div>
+      <div class="fm-sep"></div>
+      <div class="fm-item" onclick="fileImportCSV()">&#128229; Import CSV…</div>
+    </div>
   </div>
+
+  <!-- Filename + unsaved indicator -->
+  <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;margin:0 8px">
+    <span id="file-unsaved" style="color:var(--warn);font-size:16px;display:none" title="Unsaved changes">●</span>
+    <span id="file-name" style="font-family:var(--mono);font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">no file — use File → New or Open</span>
+    <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
+  </div>
+
+  <!-- Project name badge -->
+  <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0"
+        onclick="document.getElementById('modal-project').classList.add('open')" title="Project settings">—</span>
+
+  <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
     <label style="font-size:11px;color:var(--muted);font-family:var(--mono)">IP</label>
     <input type="text" id="device-ip" placeholder="192.168.x.x"
@@ -2513,6 +2539,8 @@ function _updateProjectBadge() {
   var vb = document.getElementById('proj-version-badge');
   var mv = document.getElementById('modal-ver-display');
   if (nb) nb.textContent = _projectMeta.name || '(no project)';
+  // Update file name display with project name if no file loaded
+  if(!_fileName||_fileName==='no file — use File → New or Open'){_setFileName((_projectMeta.name||'untitled')+' (unsaved)');}
   if (vb) vb.textContent = _projectVersion > 0 ? 'v' + _projectVersion : '';
   if (mv) mv.textContent = _projectVersion > 0 ? 'v' + _projectVersion : 'not saved yet';
 }
@@ -5689,6 +5717,256 @@ function wPushLayout(){
   pushFn().catch(function(){ _dbxSetStatus('Push failed','var(--warn)'); });
   showToast('Pushing layout to phones…','ok');
 }
+
+
+// ── File System ───────────────────────────────────────────────────
+var _fileHandle = null;   // FileSystemFileHandle (modern browsers)
+var _fileName   = null;   // just the name for display
+var _specsData  = null;   // loaded specs override object
+var _autoSaveTimer = null;
+var _unsaved = false;
+
+function _markUnsaved(){
+  _unsaved=true;
+  var dot=document.getElementById('file-unsaved');
+  if(dot) dot.style.display='';
+}
+function _markSaved(){
+  _unsaved=false;
+  var dot=document.getElementById('file-unsaved');
+  if(dot) dot.style.display='none';
+}
+function _setFileName(name){
+  _fileName=name;
+  var el=document.getElementById('file-name');
+  if(el) el.textContent=name||'unsaved';
+}
+
+// ── File menu toggle ──────────────────────────────────────────────
+function toggleFileMenu(){
+  var m=document.getElementById('file-menu');
+  if(!m) return;
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  if(!document.getElementById('file-menu-wrap').contains(e.target)){
+    var m=document.getElementById('file-menu');
+    if(m) m.style.display='none';
+  }
+});
+
+// ── Build project payload (full source of truth) ──────────────────
+function _buildFilePayload(){
+  var np='{}';try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
+  var dp='{}';try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
+  return {
+    _format:'buildert-project',
+    _version:_projectVersion,
+    _saved:new Date().toISOString(),
+    project:Object.assign({},_projectMeta),
+    devices:devices,
+    spec_overrides:_specsOverrides,
+    pack_spares:_packSpares,
+    _log:window._projectLog||[],
+    _node_positions:JSON.parse(np),
+    _diag_positions:JSON.parse(dp),
+  };
+}
+
+// ── New ───────────────────────────────────────────────────────────
+function fileNew(){
+  document.getElementById('file-menu').style.display='none';
+  if(_unsaved && !confirm('Discard unsaved changes?')) return;
+  devices=[]; _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
+  _specsOverrides={}; _packSpares=[]; window._projectLog=[];
+  _projectVersion=0; _projectBaseVersion=0;
+  _fileHandle=null; _setFileName('New Project');
+  _markSaved();
+  renderTable(); _updateProjectBadge();
+  showToast('New project created','ok');
+}
+
+// ── Open ──────────────────────────────────────────────────────────
+async function fileOpen(){
+  document.getElementById('file-menu').style.display='none';
+  if(_unsaved && !confirm('Discard unsaved changes?')) return;
+  if(window.showOpenFilePicker){
+    try{
+      var [handle]=await window.showOpenFilePicker({types:[{description:'Buildert Project',accept:{'application/json':['.buildert','.json']}}]});
+      _fileHandle=handle;
+      var file=await handle.getFile();
+      var text=await file.text();
+      _loadFromText(text, handle.name);
+    }catch(e){if(e.name!=='AbortError')showToast('Open failed: '+e.message,'warn');}
+  } else {
+    // Fallback: file input
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='.buildert,.json';
+    inp.onchange=function(){
+      if(!inp.files[0])return;
+      var r=new FileReader();
+      r.onload=function(){_loadFromText(r.result, inp.files[0].name);};
+      r.readAsText(inp.files[0]);
+    };
+    inp.click();
+  }
+}
+function _loadFromText(text, name){
+  try{
+    var data=JSON.parse(text);
+    if(data._format!=='buildert-project'&&data._format!=='wtu-project'){
+      showToast('Not a Buildert project file','warn'); return;
+    }
+    _isReceiving=true;
+    try{_applyProjectLoad(data);}finally{_isReceiving=false;}
+    clearTimeout(_dbxPushDebounce);
+    _setFileName(name);
+    _markSaved();
+    showToast('Opened: '+name,'ok');
+    // Push to Worker so riggers get the loaded project
+    setTimeout(function(){wPush(true);},800);
+  }catch(e){showToast('Parse error: '+e.message,'warn');}
+}
+
+// ── Save ──────────────────────────────────────────────────────────
+async function fileSave(){
+  document.getElementById('file-menu').style.display='none';
+  if(_fileHandle){
+    await _writeToHandle(_fileHandle);
+  } else {
+    await fileSaveAs();
+  }
+}
+async function fileSaveAs(){
+  document.getElementById('file-menu').style.display='none';
+  var defaultName=(_projectMeta.name||'project').replace(/\s+/g,'_')+'.buildert';
+  if(window.showSaveFilePicker){
+    try{
+      var handle=await window.showSaveFilePicker({
+        suggestedName:defaultName,
+        types:[{description:'Buildert Project',accept:{'application/json':['.buildert']}}]
+      });
+      _fileHandle=handle;
+      await _writeToHandle(handle);
+      _setFileName(handle.name);
+    }catch(e){if(e.name!=='AbortError')showToast('Save failed: '+e.message,'warn');}
+  } else {
+    // Fallback: download
+    var payload=_buildFilePayload();
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download=defaultName; a.click();
+    URL.revokeObjectURL(url);
+    _setFileName(defaultName);
+    _markSaved();
+    showToast('Downloaded: '+defaultName,'ok');
+    wPush(true);
+  }
+}
+async function _writeToHandle(handle){
+  try{
+    var payload=_buildFilePayload();
+    _projectVersion++;
+    _projectBaseVersion=_projectVersion;
+    payload._version=_projectVersion;
+    _updateProjectBadge();
+    var writable=await handle.createWritable();
+    await writable.write(JSON.stringify(payload,null,2));
+    await writable.close();
+    _markSaved();
+    _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+    showToast('Saved · '+handle.name,'ok');
+    wPush(true);
+  }catch(e){showToast('Write failed: '+e.message,'warn');}
+}
+
+// ── Autosave every 60s ────────────────────────────────────────────
+function _startAutosave(){
+  clearInterval(_autoSaveTimer);
+  _autoSaveTimer=setInterval(async function(){
+    if(_unsaved && _fileHandle){
+      await _writeToHandle(_fileHandle);
+    }
+  },60000);
+}
+
+// ── Load Specs ────────────────────────────────────────────────────
+async function fileLoadSpecs(){
+  document.getElementById('file-menu').style.display='none';
+  if(window.showOpenFilePicker){
+    try{
+      var [handle]=await window.showOpenFilePicker({types:[{description:'Buildert Specs',accept:{'application/json':['.buildert','.json']}}]});
+      var file=await handle.getFile();
+      var text=await file.text();
+      _applySpecs(JSON.parse(text), handle.name);
+    }catch(e){if(e.name!=='AbortError')showToast('Load specs failed','warn');}
+  } else {
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='.buildert,.json';
+    inp.onchange=function(){
+      if(!inp.files[0])return;
+      var r=new FileReader();
+      r.onload=function(){
+        try{_applySpecs(JSON.parse(r.result),inp.files[0].name);}
+        catch(e){showToast('Invalid specs file','warn');}
+      };
+      r.readAsText(inp.files[0]);
+    };
+    inp.click();
+  }
+}
+function _applySpecs(data, name){
+  // Accept {models:{...}} or raw {RGBB:{...},...} format
+  var specs=data.models||data;
+  if(typeof specs!=='object'||!Object.keys(specs).length){showToast('No specs found in file','warn');return;}
+  _specsOverrides=specs;
+  saveSpecsToStorage();
+  var badge=document.getElementById('specs-badge');
+  if(badge){badge.style.display='';badge.title='Specs: '+name;}
+  showToast('Specs loaded: '+name+' ('+Object.keys(specs).length+' models)','ok');
+  renderTable();
+}
+
+// ── Export Specs ──────────────────────────────────────────────────
+function fileExportSpecs(){
+  document.getElementById('file-menu').style.display='none';
+  // Merge DEVICE_SPECS with overrides for export
+  var merged=Object.assign({},DEVICE_SPECS,_specsOverrides);
+  var payload={_format:'buildert-specs',_saved:new Date().toISOString(),models:merged};
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='specs.buildert'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Specs exported as specs.buildert','ok');
+}
+
+// ── CSV Import ────────────────────────────────────────────────────
+function fileImportCSV(){
+  document.getElementById('file-menu').style.display='none';
+  document.getElementById('csv-import-btn').click();
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();fileSave();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='o'){e.preventDefault();fileOpen();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='n'){e.preventDefault();fileNew();}
+});
+
+// ── Hook autoSave to mark unsaved ────────────────────────────────
+// Wrap the existing autoSave
+(function(){
+  var _origAS=autoSave;
+  autoSave=function(){
+    _markUnsaved();
+    _origAS();
+  };
+})();
+
+// ── Start autosave loop ───────────────────────────────────────────
+_startAutosave();
 
 </script>
 </body>
