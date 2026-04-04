@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.789b</title>
+<title>WTUniverse · Buildert Editor v3.790b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -439,6 +439,13 @@
   .fm-item:hover{background:var(--panel);}
   .fm-sep{border-top:1px solid var(--border);margin:3px 0;}
 
+
+  #stage-bar{display:flex;align-items:center;gap:6px;padding:6px 16px;
+    background:var(--panel);border-bottom:1px solid var(--border);
+    overflow-x:auto;flex-wrap:nowrap;position:sticky;top:60px;z-index:97;}
+  #stage-bar::-webkit-scrollbar{height:3px;}
+  #stage-bar::-webkit-scrollbar-thumb{background:var(--border2);}
+
 </style>
 </head>
 <body>
@@ -504,6 +511,7 @@
   <div class="seg-bar" id="seg-bar"></div>
 </div>
 
+<div id="stage-bar"></div>
 <main>
   <div class="toolbar">
     <div class="tabs">
@@ -516,6 +524,7 @@
       <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
       <button class="tab-btn"               id="tab-pack"   onclick="setTab('pack')">&#128230; Pack</button>
       <button class="tab-btn"               id="tab-specs"   onclick="setTab('specs')"   style="border-left:2px solid var(--border)">&#128203; Specs</button>
+      <button class="tab-btn"               id="tab-overview" onclick="setTab('overview')"  style="border-left:2px solid var(--border)">&#9783; Overview</button>
       <button class="tab-btn"               id="tab-todos"   onclick="setTab('todos')"   style="border-left:2px solid var(--border)">&#9745; Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
     </div>
@@ -844,6 +853,7 @@
 
 
 <!-- Shares & Activity Panel -->
+<div id="overview-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 130px)"></div>
 <div id="todos-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 110px)">
   <!-- Todos rendered by renderTodosPanel() -->
 </div>
@@ -1295,6 +1305,7 @@ function setTab(tab) {
   var shv = document.getElementById('shares-panel');
   var dgw = document.getElementById('diag-panel');
   var tdv = document.getElementById('todos-panel');
+  var ovv = document.getElementById('overview-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
@@ -1302,6 +1313,7 @@ function setTab(tab) {
   if (shv) shv.style.display = 'none';
   if (dgw) dgw.style.display = 'none';
   if (tdv) tdv.style.display = 'none';
+  if (ovv) ovv.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
   var isListTab = ['laser','smoke','distro','psu','all'].indexOf(tab) >= 0;
@@ -1314,6 +1326,7 @@ function setTab(tab) {
   else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
   else if (tab === 'todos')   { if (tdv) tdv.style.display='block'; renderTodosPanel(); }
+  else if (tab === 'overview'){ if (ovv) ovv.style.display='block'; renderOverview(); }
   else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
@@ -2714,6 +2727,28 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
+  // Load multi-stage data if present
+  if(Array.isArray(data.stages) && data.stages.length){
+    _stages = data.stages;
+    _currentStageIdx = 0;
+    devices = _stages[0].devices;
+    _nodePositions = _stages[0].nodePositions||{};
+    _diagPositions = _stages[0].diagPositions||{};
+    try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
+    try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
+    _renderStageBar();
+  } else if(Array.isArray(data.devices) && data.devices.length){
+    // Legacy single-stage: wrap in stages array
+    _stages=[{id:'stage_main',name:data.project&&data.project.name||'Stage 1',
+      color:'#5b8fff',devices:data.devices,
+      nodePositions:data._node_positions||{},
+      diagPositions:data._diag_positions||{}}];
+    _currentStageIdx=0;
+    devices=_stages[0].devices;
+    _nodePositions=_stages[0].nodePositions;
+    _diagPositions=_stages[0].diagPositions;
+    _renderStageBar();
+  }
   // Track fields changed by mobile/rigger for highlight
   var _savedBy = data._saved_by || '';
   var _mobileChanged = {}; // device_id → [fields changed]
@@ -2969,6 +3004,9 @@ async function _dbxHandleOAuthCallback(){
       localStorage.removeItem('dbx_pkce_appkey');
       _dbxFetchAccountInfo();
       _dbxUpdateUI();
+// Stage init
+_ensureStages();
+_renderStageBar();
 // Worker sync init
 (function(){var wu=localStorage.getItem('buildert_worker_url')||'';var wk=localStorage.getItem('buildert_project_key')||'';if(wu){var ei=document.getElementById('worker-url-inp');if(ei)ei.value=wu;}_projectKey=wk;var kd=document.getElementById('proj-key-display');if(kd)kd.textContent=wk;if(wu&&wk){_workerUrl=wu;wSyncInit();}})();
       _dbxSetStatus('Connected ✓','var(--ok)');
@@ -3509,6 +3547,7 @@ var NODE_COLORS = {
 // ── Persistence ───────────────────────────────────────────────────────
 function _saveNodePositions() {
   try { localStorage.setItem('buildert_node_pos', JSON.stringify(_nodePositions)); } catch(e){}
+  if(_stages[_currentStageIdx]) _stages[_currentStageIdx].nodePositions=_nodePositions;
 }
 function _loadNodePositions() {
   try {
@@ -5757,19 +5796,22 @@ document.addEventListener('click',function(e){
 
 // ── Build project payload (full source of truth) ──────────────────
 function _buildFilePayload(){
-  var np='{}';try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
-  var dp='{}';try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
+  // Save current stage layout before building payload
+  _saveCurrentStageLayout();
+  _stages[_currentStageIdx].devices = devices;
   return {
     _format:'buildert-project',
     _version:_projectVersion,
     _saved:new Date().toISOString(),
     project:Object.assign({},_projectMeta),
+    stages:_stages,
+    // Legacy single-stage fields (for Worker compatibility with mobile)
     devices:devices,
     spec_overrides:_specsOverrides,
     pack_spares:_packSpares,
     _log:window._projectLog||[],
-    _node_positions:JSON.parse(np),
-    _diag_positions:JSON.parse(dp),
+    _node_positions:_stages[_currentStageIdx].nodePositions||{},
+    _diag_positions:_stages[_currentStageIdx].diagPositions||{},
   };
 }
 
@@ -5967,6 +6009,81 @@ document.addEventListener('keydown',function(e){
 
 // ── Start autosave loop ───────────────────────────────────────────
 _startAutosave();
+
+
+// ── Overview ──────────────────────────────────────────────────────
+function renderOverview(){
+  var el=document.getElementById('overview-panel'); if(!el)return;
+  _ensureStages();
+  var allDevices=[];
+  _stages.forEach(function(s){ allDevices=allDevices.concat(s.devices); });
+  var totalDevs=allDevices.length;
+  var totalMounted=allDevices.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
+  var totalSn=allDevices.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
+
+  var html='<div style="margin-bottom:16px">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:22px;letter-spacing:2px;margin-bottom:4px">PROJECT OVERVIEW</div>'
+    +'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">'+_projectMeta.name+((_projectMeta.venue)?' · '+_projectMeta.venue:'')+'</div>'
+    +'</div>';
+
+  // Total progress bar
+  var totPct=totalDevs?Math.round((totalMounted+totalSn)/totalDevs/2*100):0;
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px">'
+    +'<span>TOTAL PROGRESS</span><span>'+totalMounted+'/'+totalDevs+' mounted · '+totalSn+'/'+totalDevs+' serials</span></div>'
+    +'<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">'
+    +'<div style="height:100%;width:'+totPct+'%;background:#3ddc84;border-radius:4px;transition:width .3s"></div></div></div>';
+
+  // Stage grid
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px">';
+  _stages.forEach(function(s,i){
+    var devs=s.devices;
+    var mounted=devs.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
+    var sn=devs.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
+    var pct=devs.length?Math.round((mounted+sn)/devs.length/2*100):0;
+    var stCol=pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
+    // Count by status
+    var statusCounts={};
+    devs.forEach(function(d){statusCounts[d.status||'Active']=(statusCounts[d.status||'Active']||0)+1;});
+    html+='<div style="background:var(--surface);border:2px solid '+s.color+';border-radius:10px;padding:14px;cursor:pointer" onclick="switchStage('+i+');setTab(\'all\')">'+'\n';
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +'<div style="width:10px;height:10px;border-radius:50%;background:'+s.color+'"></div>'
+      +'<span style="font-family:var(--cond);font-weight:700;font-size:16px;color:'+s.color+'">'+s.name+'</span>'
+      +'<span style="margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700;color:'+stCol+'">'+pct+'%</span>'
+      +'</div>'
+      +'<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:8px">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+stCol+';border-radius:3px"></div></div>'
+      +'<div style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:12px">'
+      +'<span>'+devs.length+' devices</span>'
+      +'<span>'+mounted+' mounted</span>'
+      +'<span>'+sn+' serials</span>'
+      +'</div>'
+      +(Object.keys(statusCounts).length?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">'
+        +Object.keys(statusCounts).map(function(s){return '<span style="margin-right:8px">'+s+': '+statusCounts[s]+'</span>';}).join('')+'</div>':'')
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Combined activity log
+  var log=(window._projectLog||[]).slice().reverse().slice(0,50);
+  if(log.length){
+    html+='<div style="font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:1px;margin-bottom:8px;color:var(--muted)">RECENT ACTIVITY</div>';
+    html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">';
+    log.slice(0,20).forEach(function(e,i){
+      var t=e.at?new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+      var bg=i%2?'transparent':'rgba(255,255,255,.02)';
+      html+='<div style="display:grid;grid-template-columns:48px 80px 110px 1fr;padding:6px 12px;background:'+bg+';border-bottom:1px solid var(--border2);font-family:var(--mono);font-size:11px;align-items:center">'
+        +'<span style="color:var(--muted);font-size:10px">'+t+'</span>'
+        +'<span style="color:var(--accent);font-family:var(--cond);font-weight:700">'+(e.by||'?')+'</span>'
+        +'<span style="color:var(--text)">'+(e.device||'')+'</span>'
+        +'<span style="color:var(--muted)">'+(e.action||'')+'</span>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
+}
 
 </script>
 </body>
