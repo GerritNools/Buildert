@@ -1270,7 +1270,7 @@ function _saveCurrentStageLayout(){
   if(!_stages[_currentStageIdx]) return;
   _stages[_currentStageIdx].nodePositions=JSON.parse(JSON.stringify(_nodePositions));
   _stages[_currentStageIdx].diagPositions=JSON.parse(JSON.stringify(_diagPositions));
-  _stages[_currentStageIdx].devices=devices.slice(); // deep copy reference
+  _stages[_currentStageIdx].devices=JSON.parse(JSON.stringify(devices)); // true deep copy
 }
 
 function switchStage(idx){
@@ -5919,11 +5919,11 @@ function _buildFilePayload(){
   _saveCurrentStageLayout();
   _stages[_currentStageIdx].devices = devices;
   return {
-    _format:'buildert-project',
+    _format:'wtu-project',
     _version:_projectVersion,
     _saved:new Date().toISOString(),
     project:Object.assign({},_projectMeta),
-    stages:_stages,
+    stages:JSON.parse(JSON.stringify(_stages)),
     // Legacy single-stage fields (for Worker compatibility with mobile)
     devices:devices,
     spec_overrides:_specsOverrides,
@@ -5990,15 +5990,17 @@ function _loadFromText(text, name){
     if(data._format!=='buildert-project'&&data._format!=='wtu-project'){
       showToast('Not a Buildert project file','warn'); return;
     }
+    // File open: load unconditionally, no version conflict check
     _isReceiving=true;
-    try{_applyProjectLoad(data);}finally{_isReceiving=false;}
+    try{ _mergeProjectNoConflict(data); }finally{ _isReceiving=false; }
     clearTimeout(_dbxPushDebounce);
+    _projectBaseVersion = _projectVersion; // reset conflict base
     _setFileName(name);
     _markSaved();
-    showToast('Opened: '+name,'ok');
-    // Push to Worker so riggers get the loaded project
+    _updateProjectBadge();
+    showToast('Opened: '+name+' ('+_stages.length+' stage'+ (_stages.length>1?'s':'')+')', 'ok');
     setTimeout(function(){wPush(true);},800);
-  }catch(e){showToast('Parse error: '+e.message,'warn');}
+  }catch(e){showToast('Parse error: '+e.message,'warn');console.error(e);}
 }
 
 // ── Save ──────────────────────────────────────────────────────────
