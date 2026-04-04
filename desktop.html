@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.794</title>
+<title>WTUniverse · Buildert Editor v3.796</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.794</div>
+    <div>build v3.796</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2829,13 +2829,14 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
-  // Load multi-stage data if present
+  // Load multi-stage data — always accept from file open, only from Worker if not desktop-origin
+  var _fromDesktop = (data._saved_by==='desktop'||!data._saved_by);
   if(Array.isArray(data.stages) && data.stages.length){
     _stages = data.stages;
-    _currentStageIdx = 0;
-    devices = _stages[0].devices;
-    _nodePositions = _stages[0].nodePositions||{};
-    _diagPositions = _stages[0].diagPositions||{};
+    _currentStageIdx = Math.min(_currentStageIdx, _stages.length-1);
+    devices = _stages[_currentStageIdx].devices;
+    _nodePositions = _stages[_currentStageIdx].nodePositions||{};
+    _diagPositions = _stages[_currentStageIdx].diagPositions||{};
     try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
     try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
     _renderStageBar();
@@ -2870,7 +2871,11 @@ function _mergeProjectNoConflict(data) {
   } else {
     window._mobileChanged = {};
   }
-  devices         = data.devices         || devices;
+  // Only use flat devices if stages weren't loaded above
+  if(!Array.isArray(data.stages)||!data.stages.length){
+    devices = data.devices || devices;
+    if(_stages[_currentStageIdx]) _stages[_currentStageIdx].devices = devices;
+  }
   _packSpares     = data.pack_spares     || [];
   _specsOverrides = data.spec_overrides  || {};
   if (data.project) {
@@ -5608,6 +5613,9 @@ function wSyncInit(){
   }
 }
 
+function wStopPolling(){
+  if(typeof _dbxPollTimer!=="undefined"&&_dbxPollTimer){clearInterval(_dbxPollTimer);_dbxPollTimer=null;}
+}
 async function wPull(){
   if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
@@ -5941,6 +5949,11 @@ function fileNew(){
   _currentStageIdx=0;
   devices=_stages[0].devices;
   _fileHandle=null; _setFileName('New Project (unsaved)');
+  // Stop Worker/Dropbox sync so old data can't reload
+  wStopPolling(); dbxStopPolling();
+  _workerUrl=''; _projectKey='';
+  try{localStorage.removeItem('buildert_project_key');}catch(e){}
+  _dbxSetStatus('No sync — new project','var(--muted)');
   _markSaved();
   _renderStageBar(); renderTable(); _updateProjectBadge();
   showToast('New project — add devices to get started','ok');
