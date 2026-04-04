@@ -452,9 +452,9 @@
 
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
-  <div style="font-family:var(--mono);font-size:10px;color:var(--border2);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>app v3.793</div>
-    <div id="hdr-version" style="color:var(--muted)"></div>
+  <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
+    <div>build v3.794</div>
+    <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
   <!-- File menu -->
@@ -2655,7 +2655,7 @@ function _updateProjectBadge() {
   var mv = document.getElementById('modal-ver-display');
   if (nb) nb.textContent = _projectMeta.name || '(no project)';
   if(!_fileName||_fileName==='no file — use File → New or Open'){_setFileName((_projectMeta.name||'untitled')+' (unsaved)');}
-  var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'project v'+_projectVersion:'not saved');
+  var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'project v'+_projectVersion:'');
   if (vb) vb.textContent = _projectVersion > 0 ? 'v' + _projectVersion : '';
   if (mv) mv.textContent = _projectVersion > 0 ? 'v' + _projectVersion : 'not saved yet';
 }
@@ -3106,11 +3106,6 @@ async function _dbxHandleOAuthCallback(){
       localStorage.removeItem('dbx_pkce_appkey');
       _dbxFetchAccountInfo();
       _dbxUpdateUI();
-// Stage init
-_ensureStages();
-_renderStageBar();
-// Worker sync init
-(function(){var wu=localStorage.getItem('buildert_worker_url')||'';var wk=localStorage.getItem('buildert_project_key')||'';if(wu){var ei=document.getElementById('worker-url-inp');if(ei)ei.value=wu;}_projectKey=wk;var kd=document.getElementById('proj-key-display');if(kd)kd.textContent=wk;if(wu&&wk){_workerUrl=wu;wSyncInit();}})();
       _dbxSetStatus('Connected ✓','var(--ok)');
       showToast('Dropbox connected ✓','ok');
       setTimeout(dbxStartPolling,500);
@@ -4746,6 +4741,11 @@ _dbxHandleOAuthCallback().then(function(wasOAuth){
 });
 // Init Quick Add
 qaUpdateModel();
+// Stage init — after devices loaded, after OAuth check
+_ensureStages();
+_renderStageBar();
+// Worker sync init
+(function(){var wu=localStorage.getItem('buildert_worker_url')||'';var wk=localStorage.getItem('buildert_project_key')||'';if(wu){var ei=document.getElementById('worker-url-inp');if(ei)ei.value=wu;}_projectKey=wk;var kd=document.getElementById('proj-key-display');if(kd)kd.textContent=wk;if(wu&&wk){_workerUrl=wu;wSyncInit();}})();
 // Attach scroll-to-zoom and background pan on the node SVG
 (function(){
   var svg = document.getElementById('node-svg');
