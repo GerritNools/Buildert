@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.793b</title>
+<title>WTUniverse · Buildert Editor v3.794</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -451,7 +451,11 @@
 <body>
 
 <header>
-  <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert <span id="hdr-version" style="font-size:9px;font-family:var(--mono);color:var(--muted);font-weight:400;letter-spacing:1px;vertical-align:middle"></span></div>
+  <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
+  <div style="font-family:var(--mono);font-size:10px;color:var(--border2);flex-shrink:0;margin-left:4px;line-height:1.2">
+    <div>app v3.793</div>
+    <div id="hdr-version" style="color:var(--muted)"></div>
+  </div>
 
   <!-- File menu -->
   <div style="position:relative;flex-shrink:0" id="file-menu-wrap">
@@ -1264,9 +1268,9 @@ function _ensureStages(){
 
 function _saveCurrentStageLayout(){
   if(!_stages[_currentStageIdx]) return;
-  _stages[_currentStageIdx].nodePositions=_nodePositions;
-  _stages[_currentStageIdx].diagPositions=_diagPositions;
-  _stages[_currentStageIdx].devices=devices;
+  _stages[_currentStageIdx].nodePositions=JSON.parse(JSON.stringify(_nodePositions));
+  _stages[_currentStageIdx].diagPositions=JSON.parse(JSON.stringify(_diagPositions));
+  _stages[_currentStageIdx].devices=devices.slice(); // deep copy reference
 }
 
 function switchStage(idx){
@@ -2651,7 +2655,7 @@ function _updateProjectBadge() {
   var mv = document.getElementById('modal-ver-display');
   if (nb) nb.textContent = _projectMeta.name || '(no project)';
   if(!_fileName||_fileName==='no file — use File → New or Open'){_setFileName((_projectMeta.name||'untitled')+' (unsaved)');}
-  var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'v'+_projectVersion:'');
+  var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'project v'+_projectVersion:'not saved');
   if (vb) vb.textContent = _projectVersion > 0 ? 'v' + _projectVersion : '';
   if (mv) mv.textContent = _projectVersion > 0 ? 'v' + _projectVersion : 'not saved yet';
 }
@@ -5926,13 +5930,20 @@ function _buildFilePayload(){
 function fileNew(){
   document.getElementById('file-menu').style.display='none';
   if(_unsaved && !confirm('Discard unsaved changes?')) return;
-  devices=[]; _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
+  // Full reset
+  _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
   _specsOverrides={}; _packSpares=[]; window._projectLog=[];
   _projectVersion=0; _projectBaseVersion=0;
-  _fileHandle=null; _setFileName('New Project');
+  _nodePositions={}; _diagPositions={};
+  try{localStorage.removeItem('buildert_node_pos');localStorage.removeItem('buildert_diag_pos');}catch(e){}
+  // Reset to single empty stage
+  _stages=[{id:'stage_main',name:'Stage 1',color:_stageColors()[0],devices:[],nodePositions:{},diagPositions:{}}];
+  _currentStageIdx=0;
+  devices=_stages[0].devices;
+  _fileHandle=null; _setFileName('New Project (unsaved)');
   _markSaved();
-  renderTable(); _updateProjectBadge();
-  showToast('New project created','ok');
+  _renderStageBar(); renderTable(); _updateProjectBadge();
+  showToast('New project — add devices to get started','ok');
 }
 
 // ── Open ──────────────────────────────────────────────────────────
@@ -6000,8 +6011,12 @@ async function fileSaveAs(){
       _setFileName(handle.name);
     }catch(e){if(e.name!=='AbortError')showToast('Save failed: '+e.message,'warn');}
   } else {
-    // Fallback: download
+    // Fallback for Safari: download file
     var payload=_buildFilePayload();
+    _projectVersion++;
+    _projectBaseVersion=_projectVersion;
+    payload._version=_projectVersion;
+    _updateProjectBadge();
     var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
@@ -6009,7 +6024,8 @@ async function fileSaveAs(){
     URL.revokeObjectURL(url);
     _setFileName(defaultName);
     _markSaved();
-    showToast('Downloaded: '+defaultName,'ok');
+    _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+    showToast('Downloaded v'+_projectVersion+': '+defaultName,'ok');
     wPush(true);
   }
 }
