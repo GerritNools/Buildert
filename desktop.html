@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.801</title>
+<title>WTUniverse · Buildert Editor v3.802</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.801</div>
+    <div>build v3.802</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2877,7 +2877,21 @@ function _mergeProjectNoConflict(data) {
     devices = _stages[_currentStageIdx].devices;
     window._mobileChanged = changed;
     window._mobileChangedBy = data._saved_by || 'mobile';
-    // Accept version + log from mobile push
+    // Merge activity log from mobile
+    if(Array.isArray(data._log) && data._log.length){
+      var existing = window._projectLog || [];
+      var seen = {};
+      existing.forEach(function(e){ seen[(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'')] = true; });
+      var newEntries = data._log.filter(function(e){
+        var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'');
+        if(seen[k]) return false; seen[k]=true; return true;
+      });
+      if(newEntries.length){
+        window._projectLog = existing.concat(newEntries);
+        _spUpdateBadge();
+      }
+    }
+    // Accept version from mobile push
     if(data._version > _projectVersion){
       _projectVersion = data._version;
       _projectBaseVersion = _projectVersion;
@@ -5883,35 +5897,149 @@ function _autoTodos(){
   });
   _todos=keep.concat(autos);
 }
+var _todosShowAuto = true; // toggle auto todos visibility
+
 function renderTodosPanel(){
   _todosLoad(); _autoTodos(); _todosSave();
   var el=document.getElementById('todos-panel'); if(!el)return;
+
   var urgLabels={1:'Normal',2:'High',3:'Urgent'};
-  var urgCols={1:'var(--muted)',2:'var(--warn)',3:'var(--danger)'};
-  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
-    +'<span style="font-family:var(--cond);font-weight:700;font-size:16px">TODOS</span>'
-    +'<button class="btn btn-primary" onclick="todoAdd()" style="font-size:12px;padding:4px 12px">+ Add</button>'
-    +'<button class="btn btn-ghost" onclick="todoClearDone()" style="font-size:11px;padding:3px 10px">Clear done</button>'
+  var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
+  var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.06)',3:'rgba(255,77,77,.06)'};
+  var urgBorder={1:'var(--border2)',2:'rgba(245,166,35,.3)',3:'rgba(255,77,77,.3)'};
+
+  var manual=_todos.filter(function(t){return !t.auto;});
+  var auto=_todos.filter(function(t){return t.auto;});
+  var doneCount=manual.filter(function(t){return t.done;}).length;
+  var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
+  var autoSnDone=auto.filter(function(t){return t.id.startsWith('auto_sn')&&t.done;}).length;
+  var autoTotal=auto.length/2||0;
+
+  // Header
+  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)">'
+    +'<div style="flex:1">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:20px;letter-spacing:2px">TODOS</div>'
+    +(manual.length?'<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px">'
+      +doneCount+'/'+manual.length+' manual done</div>':'')
+    +'</div>'
+    +'<button class="btn btn-primary" onclick="todoAdd()" style="font-size:12px;padding:5px 14px">+ Add todo</button>'
+    +(doneCount?'<button class="btn btn-ghost" onclick="todoClearDone()" style="font-size:11px;padding:4px 10px">Clear done</button>':'')
     +'</div>';
-  [3,2,1].forEach(function(urg){
-    var group=_todos.filter(function(t){return t.urgency===urg;});
-    if(!group.length) return;
-    html+='<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:'+urgCols[urg]+';margin:10px 0 4px">'+urgLabels[urg].toUpperCase()+'</div>';
-    group.forEach(function(t){
-      var col=t.done?'var(--muted)':urgCols[t.urgency];
-      var tdecor=t.done?'line-through':'none';
-      var autoTag=t.auto?'<span style="font-size:9px;color:var(--muted);font-family:var(--mono);border:1px solid var(--border2);border-radius:3px;padding:0 3px;margin-left:4px">AUTO</span>':'';
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
-        +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
-        +' onclick="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:16px;height:16px;cursor:'+(t.auto?'default':'pointer')+';accent-color:'+urgCols[t.urgency]+'">' 
-        +'<span style="flex:1;font-family:var(--cond);font-size:14px;color:'+col+';text-decoration:'+tdecor+'">'+t.label+'</span>'
-        +autoTag
-        +(t.auto?'':'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px">✕</button>')
+
+  // Auto-todos summary bar
+  if(auto.length){
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+      +'<span style="font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;color:var(--muted)">AUTO PROGRESS</span>'
+      +'<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;margin-left:auto">'
+      +'<input type="checkbox" '+ (_todosShowAuto?'checked':'')+' onclick="_todosShowAuto=this.checked;renderTodosPanel()" style="accent-color:var(--muted)"> Show auto todos'
+      +'</label>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">MOUNTED</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span>'
+      +'</div></div>'
+      +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">SERIALS</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</span>'
+      +'</div></div>'
+      +'</div></div>';
+  }
+
+  // Auto todos (collapsible)
+  if(_todosShowAuto && auto.length){
+    html+='<div style="margin-bottom:16px">'
+      +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">AUTO — DRIVEN BY DEVICE STATE</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px">';
+    auto.forEach(function(t){
+      var col=t.done?'var(--muted)':('#3ddc84');
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--panel);border-radius:4px;border:1px solid var(--border2)">'
+        +'<span style="font-size:12px">'+(t.done?'✅':'⬜')+'</span>'
+        +'<span style="font-family:var(--mono);font-size:11px;color:'+col+';text-decoration:'+(t.done?'line-through':'none')+'">'+t.label+'</span>'
         +'</div>';
     });
+    html+='</div></div>';
+  }
+
+  // Manual todos by urgency
+  var hasManual=false;
+  [3,2,1].forEach(function(urg){
+    var group=manual.filter(function(t){return t.urgency===urg;});
+    if(!group.length) return;
+    hasManual=true;
+    html+='<div style="margin-bottom:14px">'
+      +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:'+urgCols[urg]+';margin-bottom:6px;opacity:.8">'
+      +urgLabels[urg].toUpperCase()+'</div>';
+    group.forEach(function(t){
+      var done=t.done;
+      var col=done?'var(--muted)':urgCols[t.urgency];
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;'
+        +'background:'+(done?'transparent':urgBg[t.urgency])+';'
+        +'border:1px solid '+(done?'var(--border2)':urgBorder[t.urgency])+';'
+        +'border-radius:8px;margin-bottom:5px;transition:background .15s">'
+        +'<input type="checkbox" '+(done?'checked':'')+' onclick="todoToggle(this.dataset.id)" data-id="'+t.id
+        +'" style="width:17px;height:17px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[t.urgency]+'">'
+        +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+(done?'line-through':'none')+'">'+t.label+'</span>'
+        +'<button onclick="todoEdit(this.dataset.id)" data-id="'+t.id+'" title="Edit" '
+        +'style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;opacity:.6">✎</button>'
+        +'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" title="Delete" '
+        +'style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;opacity:.6">&times;</button>'
+        +'</div>';
+    });
+    html+='</div>';
   });
-  if(!_todos.length) html+='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:24px 0">No todos yet. Add devices to auto-generate.</div>';
+
+  if(!hasManual && !auto.length){
+    html+='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:32px 0;text-align:center">'
+      +'No todos yet — add devices to auto-generate, or click + Add todo</div>';
+  }
+
   el.innerHTML=html;
+}
+
+function todoEdit(id){
+  var t=_todos.find(function(x){return x.id===id;}); if(!t) return;
+  var tOpts='<option value="">No time</option>';
+  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'"'+(t.label.startsWith(h+':'+('0'+m).slice(-2))?' selected':'')+'>'+h+':'+('0'+m).slice(-2)+'</option>';})}
+  var curLabel=t.label.replace(/^\d+:\d+\s—\s/,'');
+  var curTime=t.label.match(/^(\d+:\d+)/)?t.label.match(/^(\d+:\d+)/)[1]:'';
+  var m=document.createElement('div');
+  m.id='todo-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  m.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;width:380px;max-width:90vw;">'
+    +'<div style="font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">EDIT TODO</div>'
+    +'<input id="td-lbl" type="text" value="'+curLabel.replace(/"/g,'&quot;')+'" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
+    +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+    +'<select id="td-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px"><option value="1"'+(t.urgency===1?' selected':'')+'>Normal</option><option value="2"'+(t.urgency===2?' selected':'')+'>High</option><option value="3"'+(t.urgency===3?' selected':'')+'>Urgent</option></select>'
+    +'<select id="td-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+tOpts+'</select>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary" id="todo-edit-save" style="flex:1">Save</button>'
+    +'<button class="btn btn-ghost" onclick="todoCancel()" style="flex:1">Cancel</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  document.getElementById('todo-edit-save').onclick = function(){ todoSaveEdit(id); };
+  // Set time select value
+  if(curTime){var sel=document.getElementById('td-time');if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===curTime){sel.selectedIndex=i;break;}}}}
+  setTimeout(function(){var el=document.getElementById('td-lbl');if(el){el.focus();el.select();}},50);
+}
+
+function todoSaveEdit(id){
+  var t=_todos.find(function(x){return x.id===id;}); if(!t) return;
+  var lbl=(document.getElementById('td-lbl').value||'').trim(); if(!lbl) return;
+  var urg=parseInt(document.getElementById('td-urg').value)||1;
+  var time=document.getElementById('td-time').value||'';
+  t.label=time?time+' — '+lbl:lbl;
+  t.urgency=urg;
+  var modal=document.getElementById('todo-modal'); if(modal) modal.remove();
+  _todosSave(); renderTodosPanel();
 }
 function todoToggle(id){
   var t=_todos.find(function(x){return x.id===id;}); if(!t)return;
