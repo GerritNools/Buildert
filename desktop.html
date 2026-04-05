@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.800</title>
+<title>WTUniverse · Buildert Editor v3.801</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.800</div>
+    <div>build v3.801</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1333,9 +1333,17 @@ function _renderStageBar(){
     btn.innerHTML=s.name+'<span style="font-size:10px;opacity:.6;margin-left:4px">'+s.devices.length+'</span>';
     btn.onclick=function(e){e.stopPropagation();switchStage(i);};
     btn.ondblclick=function(e){e.stopPropagation();renameStage(i);};
-    // Right-click to delete
     btn.oncontextmenu=function(e){e.preventDefault();deleteStage(i);};
     bar.appendChild(btn);
+    // Show rename + delete buttons for active stage
+    if(active){
+      var editBtn=document.createElement('button');
+      editBtn.title='Rename stage';
+      editBtn.textContent='✎';
+      editBtn.style.cssText='padding:2px 6px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer;margin-left:-4px;';
+      editBtn.onclick=function(e){e.stopPropagation();renameStage(i);};
+      bar.appendChild(editBtn);
+    }
   });
   var add=document.createElement('button');
   add.style.cssText='padding:4px 10px;border-radius:20px;border:2px dashed var(--border2);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;';
@@ -5151,6 +5159,7 @@ var _spShares = []; // [{name, created, url}] — stored in localStorage
 
 function renderSharesPanel() {
   _spFilterRigger = null;
+  _spStagePerms = {}; // reset perms for new link generation
   var badge=document.getElementById('sp-badge');if(badge)badge.style.display='none';
   // Restore saved URL
   var savedUrl = localStorage.getItem('wtu_share_app_url') || '';
@@ -5273,36 +5282,71 @@ function _spRenderShares() {
   var el = document.getElementById('sp-shares-list');
   if (!el) return;
   if (!_spShares.length) { el.innerHTML = '<div style="color:var(--muted);padding:8px 0">No links generated yet</div>'; return; }
-  el.innerHTML = _spShares.map(function(s) {
-    var d = new Date(s.created);
-    var ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    // Count their log entries
-    var count = (window._projectLog||[]).filter(function(e){ return e.by === s.name; }).length;
-    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
-      + '<span style="color:var(--accent);font-weight:700;min-width:80px">' + s.name + '</span>'
+  el.innerHTML = _spShares.map(function(sh) {
+    var dt = new Date(sh.created);
+    var ts = dt.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' + dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    var count = (window._projectLog||[]).filter(function(e){ return e.by === sh.name; }).length;
+    // Stage permissions display
+    var permsHtml = '';
+    if(sh.stagePerms && Object.keys(sh.stagePerms).length){
+      var pills = _stages.map(function(st){
+        var p = sh.stagePerms[st.id];
+        if(!p) return '';
+        return '<span style="font-size:9px;padding:1px 5px;border-radius:3px;margin-right:2px;'
+          +'background:'+(p==='e'?'rgba(61,220,132,.15)':'rgba(255,255,255,.08)')+';'
+          +'color:'+(p==='e'?'var(--ok)':'var(--muted)')+';border:1px solid '+(p==='e'?'var(--ok)':'var(--border2)')+';">'
+          +st.name+(p==='e'?' ✏':' 👁')+'</span>';
+      }).join('');
+      if(pills) permsHtml = '<div style="margin-top:3px">'+pills+'</div>';
+    }
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border2)">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700;font-size:14px;min-width:90px">' + sh.name + '</span>'
       + '<span style="color:var(--muted);font-size:10px;flex:1">' + ts + '</span>'
-      + (count ? '<span style="color:var(--ok);font-size:10px">' + count + ' actions</span>' : '')
-      + '<button onclick="spRecopyLink(this.dataset.name)" data-name="' + s.name + '" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">↻ Copy</button>'
-      + '<button onclick="spDeleteShare(this.dataset.name)" data-name="' + s.name + '" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'
+      + (count ? '<span style="color:var(--ok);font-size:10px;font-family:var(--mono)">' + count + ' ✓</span>' : '')
+      + '<button onclick="spRecopyLink(this.dataset.name)" data-name="' + sh.name + '" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">↻ Resend</button>'
+      + '<button onclick="spDeleteShare(this.dataset.name)" data-name="' + sh.name + '" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'
+      + '</div>'
+      + permsHtml
       + '</div>';
   }).join('');
 }
 
 function spRecopyLink(name) {
-  var s = _spShares.find(function(x){ return x.name === name; });
-  if (!s) return;
-  // Regenerate with fresh token
-  if (_dbxToken) {
-    var base = s.url.split('?')[0];
-    s.url = base
-      + '?rigger=' + encodeURIComponent(name)
-      + '&dbx_token=' + encodeURIComponent(_dbxToken)
-      + '&dbx_path=' + encodeURIComponent(_dbxPath || '/current.json');
-    s.created = new Date().toISOString();
-    try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(s.url).then(function(){ showToast('Link for ' + name + ' refreshed & copied ✓', 'ok'); _spRenderShares(); });
+  var sh = _spShares.find(function(x){ return x.name === name; });
+  if(!sh) return;
+  if(!_workerUrl || !_projectKey){ showToast('No Worker configured','warn'); return; }
+  // Rebuild URL with current Worker + stored stage perms
+  var appUrl = (document.getElementById('sp-app-url').value||'').trim() || sh.url.split('?')[0];
+  var base = appUrl.replace(/\/?$/,'/');
+  // Rebuild stage perms string from stored perms
+  var stagePerms = _stages.map(function(st){
+    var p = sh.stagePerms ? sh.stagePerms[st.id] : null;
+    if(!p) return null;
+    return st.id+':'+p;
+  }).filter(Boolean).join(',');
+  // Primary stage = first editable
+  var primary = _stages.find(function(st){
+    return sh.stagePerms && sh.stagePerms[st.id]==='e';
+  }) || _stages[0];
+  sh.url = base
+    + '?project=' + encodeURIComponent(_projectKey)
+    + '&w=' + encodeURIComponent(_workerUrl)
+    + '&stage=' + encodeURIComponent(primary ? primary.id : '')
+    + '&stages=' + encodeURIComponent(stagePerms)
+    + '&rigger=' + encodeURIComponent(name);
+  sh.created = new Date().toISOString();
+  try{ localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); }catch(e){}
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(sh.url).then(function(){
+      showToast('Link for '+name+' updated & copied ✓','ok'); _spRenderShares();
+    });
+  } else {
+    var ta=document.createElement('textarea');
+    ta.value=sh.url; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{document.execCommand('copy');showToast('Link for '+name+' copied ✓','ok');}catch(e){}
+    document.body.removeChild(ta); _spRenderShares();
   }
 }
 
