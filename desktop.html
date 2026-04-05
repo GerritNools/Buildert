@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.799</title>
+<title>WTUniverse · Buildert Editor v3.800</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.799</div>
+    <div>build v3.800</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2838,8 +2838,57 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
-  // Load multi-stage data — always accept from file open, only from Worker if not desktop-origin
-  var _fromDesktop = (data._saved_by==='desktop'||!data._saved_by);
+  var fromMobile = data._saved_by && data._saved_by !== 'desktop';
+
+  if(fromMobile) {
+    // ── MOBILE MERGE: only update fields mobile owns ────────────────
+    // Desktop owns: stages structure, nodePositions, device list, diagPositions
+    // Mobile owns:  serial, status, checks, pointed, notes, cable_in, cable
+    var MOBILE_FIELDS = ['serial','status','checks','pointed','notes','cable_in','cable'];
+    var changed = {};
+    var incomingDevs = data.devices || [];
+    // Build lookup of incoming mobile data
+    var incomingById = {};
+    incomingDevs.forEach(function(d){ if(d.device_id) incomingById[d.device_id]=d; });
+    // Apply mobile fields to ALL stages
+    _stages.forEach(function(stage){
+      stage.devices.forEach(function(ld){
+        var fd = incomingById[ld.device_id];
+        if(!fd) return;
+        var devChanged = [];
+        MOBILE_FIELDS.forEach(function(f){
+          if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])){
+            ld[f] = fd[f];
+            devChanged.push(f);
+          }
+        });
+        if(devChanged.length) changed[ld.device_id] = devChanged;
+      });
+    });
+    // Update current stage reference
+    devices = _stages[_currentStageIdx].devices;
+    window._mobileChanged = changed;
+    window._mobileChangedBy = data._saved_by || 'mobile';
+    // Accept version + log from mobile push
+    if(data._version > _projectVersion){
+      _projectVersion = data._version;
+      _projectBaseVersion = _projectVersion;
+      _persistProjectMeta();
+    }
+    _markUnsaved(); // desktop has new mobile data — needs saving
+    autoSave();
+    renderTable();
+    var cnt = Object.keys(changed).length;
+    if(cnt > 0){
+      showToast((data._saved_by||'Rigger')+' updated '+cnt+' device'+(cnt===1?'':'s'), 'ok');
+      _updateProjectBadge();
+    }
+    if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
+    return;
+  }
+
+  // ── DESKTOP / FILE MERGE: full replace ─────────────────────────
+  // Called from file open or wPull of desktop-saved data
   if(Array.isArray(data.stages) && data.stages.length){
     _stages = data.stages;
     _currentStageIdx = Math.min(_currentStageIdx, _stages.length-1);
@@ -2850,63 +2899,40 @@ function _mergeProjectNoConflict(data) {
     try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
     _renderStageBar();
   } else if(Array.isArray(data.devices) && data.devices.length){
-    // Legacy single-stage: wrap in stages array
-    _stages=[{id:'stage_main',name:data.project&&data.project.name||'Stage 1',
-      color:'#5b8fff',devices:data.devices,
-      nodePositions:data._node_positions||{},
-      diagPositions:data._diag_positions||{}}];
-    _currentStageIdx=0;
-    devices=_stages[0].devices;
-    _nodePositions=_stages[0].nodePositions;
-    _diagPositions=_stages[0].diagPositions;
-    _renderStageBar();
+    // Legacy single-stage
+    if(!_stages.length){
+      _stages=[{id:'stage_main',name:(data.project&&data.project.name)||'Stage 1',
+        color:'#5b8fff',devices:data.devices,
+        nodePositions:data._node_positions||{},
+        diagPositions:data._diag_positions||{}}];
+      _currentStageIdx=0;
+      _renderStageBar();
+    } else {
+      // Preserve stages structure, just update current stage devices
+      _stages[_currentStageIdx].devices = data.devices;
+    }
+    devices = _stages[_currentStageIdx].devices;
+    _nodePositions = data._node_positions||_nodePositions;
+    _diagPositions = data._diag_positions||_diagPositions;
   }
-  // Track fields changed by mobile/rigger for highlight
-  var _savedBy = data._saved_by || '';
-  var _mobileChanged = {}; // device_id → [fields changed]
-  if(_savedBy !== 'desktop'){
-    var _localById = {};
-    devices.forEach(function(d){ if(d.device_id) _localById[d.device_id]=d; });
-    (data.devices||[]).forEach(function(fd){
-      var ld = _localById[fd.device_id]; if(!ld) return;
-      var changed = [];
-      ['serial','status','cable_in','cable','pointed','checks','notes'].forEach(function(f){
-        if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])) changed.push(f);
-      });
-      if(changed.length) _mobileChanged[fd.device_id] = changed;
-    });
-    window._mobileChanged = _mobileChanged;
-    window._mobileChangedBy = _savedBy;
-  } else {
-    window._mobileChanged = {};
-  }
-  // Only use flat devices if stages weren't loaded above
-  if(!Array.isArray(data.stages)||!data.stages.length){
-    devices = data.devices || devices;
-    if(_stages[_currentStageIdx]) _stages[_currentStageIdx].devices = devices;
-  }
+  window._mobileChanged = {};
   _packSpares     = data.pack_spares     || [];
   _specsOverrides = data.spec_overrides  || {};
-  if (data.project) {
+  if(data.project){
     _projectMeta = Object.assign(_projectMeta, data.project);
-    var ip = data.project.anbernic_ip || '';
+    var ip = data.project.anbernic_ip||'';
     var ipEl = document.getElementById('device-ip');
-    if (ip && ipEl) ipEl.value = ip;
+    if(ip && ipEl) ipEl.value = ip;
   }
   _projectVersion     = data._version || 0;
   _projectBaseVersion = _projectVersion;
   saveSpecsToStorage();
   _persistProjectMeta();
-  // Log is already merged in _applyProjectLoad — nothing to do here
   autoSave();
   renderTable();
-  var _cCount = Object.keys(window._mobileChanged||{}).length;
-  var _msg = 'v' + _projectVersion + ' by ' + (data._saved_by||'?');
-  if(_cCount > 0) _msg += ' — ' + _cCount + ' device(s) changed → highlighted in cyan';
-  showToast(_msg, 'ok');
+  showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
-  // Refresh shares panel if open
-  if (currentTab === 'shares') { _spRenderLog(); _spRenderShares(); }
+  if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
 }
 
 var _pendingFileData = null;
@@ -5681,8 +5707,8 @@ async function wPull(){
     if(!resp.ok){ _dbxSyncing=false; _dbxSetStatus('Worker error '+resp.status,'var(--danger)'); return; }
     var data = await resp.json();
     _isReceiving=true;
-    try{ _applyProjectLoad(data); }finally{ _isReceiving=false; }
-    // Immediately cancel any pending push triggered by _applyProjectLoad
+    try{ _mergeProjectNoConflict(data); }finally{ _isReceiving=false; }
+    // Immediately cancel any pending push
     clearTimeout(_dbxPushDebounce);
     _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
     _updateProjectBadge();
