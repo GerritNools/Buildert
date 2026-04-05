@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.815</title>
+<title>WTU · Buildert v3.816</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.815</small></div>
+  <div class="logo">WTU <small>v3.816</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openSheet('conn')"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3461,23 +3461,29 @@ function _renderMobileStageBar(){
     var isAssigned = (!_mAssignedStageId && i===0) || (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
     var pct = _stagePct(s);
     var pctCol = pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
-    // Check if this stage is accessible
     var perm = _mStagePerms[s.id];
     var noPerms = Object.keys(_mStagePerms).length===0;
     if(!noPerms && !perm) return ''; // no access — hide pill
     var canEdit = noPerms || perm==='e';
-    return '<button onclick="mSwitchStage('+i+')" style="'
+    return '<button data-stageidx="'+i+'" style="'
       +'display:inline-flex;align-items:center;gap:5px;'
-      +'margin-right:6px;padding:3px 10px;border-radius:16px;'
+      +'margin-right:6px;padding:5px 12px;border-radius:16px;'
       +'border:2px solid '+(active?s.color:'var(--border2)')+';'
       +'background:'+(active?s.color+'22':'transparent')+';'
       +'color:'+(active?s.color:'var(--muted)')+';'
-      +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">'
+      +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;'
+      +'min-height:32px;-webkit-tap-highlight-color:rgba(0,0,0,0)">'
       + (isAssigned?'★ ':'')+s.name
-      +(canEdit?'':'<span style="font-size:9px;opacity:.6">🔒</span>')
-      +'<span style="font-family:var(--mono);font-size:9px;color:'+pctCol+'">'+pct+'%</span>'
+      +(canEdit?'':' 🔒')
+      +' <span style="font-family:var(--mono);font-size:9px;color:'+pctCol+'">'+pct+'%</span>'
       +'</button>';
   }).join('');
+
+  // Event delegation — works reliably on iOS
+  bar.onclick = function(e){
+    var btn = e.target.closest('button[data-stageidx]');
+    if(btn) mSwitchStage(parseInt(btn.dataset.stageidx));
+  };
 
   // Update header
   var nm = document.getElementById('mob-proj-name');
