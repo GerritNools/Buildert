@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.816</title>
+<title>WTU · Buildert v3.817</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
   --bg:#0a0c0f;--surface:#111318;--panel:#161a20;--border:#252a34;--border2:#1e2330;
   --text:#c8cdd8;--muted:#55606e;
   --accent:#00d4ff;--laser:#5b8fff;--smoke:#4de6b8;--distro:#f5a623;--psu:#c77dff;
-  --warn:#f5a623;--danger:#ff4d4d;--ok:#3ddc84;
+  --warn:#f5a623;--danger:#ff4d4d;--ok:#0b0b0b;
   --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;--cond:'Barlow Condensed',sans-serif;
   --nav-h:64px;--hdr-h:52px;--ban-h:40px;--sb:env(safe-area-inset-bottom,0px);
 }
@@ -405,15 +405,15 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.816</small></div>
+  <div class="logo">WTU <small>v3.817</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
-    <div id="mob-proj-name" onclick="openSheet('conn')"
+    <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.2">—</div>
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="wPull();_dbxSetStatus('Syncing...','var(--muted)')"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
+  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
 </header>
 
 <div id="mob-stage-bar" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:4px 10px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
@@ -519,26 +519,9 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <!-- Connection sheet -->
 <div class="sheet" id="sheet-conn">
   <div class="sheet-handle"></div>
-  <div class="sheet-title">Settings</div>
-  <div class="sheet-body">
-    <label>Project name</label>
-    <input id="proj-name" type="text" placeholder="My Show 2026">
-    <label>Venue</label>
-    <input id="proj-venue" type="text" placeholder="Venue name">
-    <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:8px">
-      <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">SYNC</div>
-      <div id="dbx-status" style="font-family:var(--mono);font-size:12px;color:var(--muted)">Not connected</div>
-      <input id="dbx-path" type="hidden">
-      <div id="dbx-account-name" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px"></div>
-    </div>
-    <input id="dbx-app-key" type="hidden" value="w7csg3860e51ov8">
-    <div id="dbx-connected-row" style="display:none"></div>
-    <div id="dbx-disconnected-row" style="display:none"></div>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border2)">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">SYNC DEBUG</div>
-      <div id="sync-debug-info" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;word-break:break-all"></div>
-      <button class="sb sb-danger" onclick="wForceClear()" style="width:100%;font-size:12px;padding:8px">&#128465; Clear local data + re-sync</button>
-    </div>
+  <div class="sheet-title" id="conn-sheet-title">Project</div>
+  <div class="sheet-body" id="conn-sheet-body">
+    <!-- populated by openProjectSheet() -->
   </div>
 </div>
 
@@ -3441,16 +3424,109 @@ function wForceClear(){
   setTimeout(function(){ wPull(); }, 300);
 }
 // Update sync debug info when settings opens
-var _origOpenSheet = openSheet;
-openSheet = function(id){
-  _origOpenSheet(id);
-  if(id==='conn'){
-    var el=document.getElementById('sync-debug-info');
-    if(el) el.textContent='URL: '+((_workerUrl||'none').replace('https://',''))+' | Key: '+(_projectKey||'none')+' | v'+_projectVersion;
+
+
+
+
+
+
+function openProjectSheet(){
+  var body  = document.getElementById('conn-sheet-body');
+  var title = document.getElementById('conn-sheet-title');
+  if(!body) return;
+  if(title) title.textContent = project.name || 'Project';
+
+  var html = '';
+
+  // ── Rigger identity ───────────────────────────────────────────
+  if(window._riggerName){
+    html += '<div style="display:flex;align-items:center;gap:10px;background:rgba(0,212,255,.08);'
+      +'border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:14px">'
+      +'<span style="font-size:22px">👤</span>'
+      +'<div><div style="font-family:var(--cond);font-weight:900;font-size:18px;color:var(--accent)">'+window._riggerName+'</div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">rigger · logged in</div></div>'
+      +'</div>';
   }
-};
 
+  // ── Project info ──────────────────────────────────────────────
+  html += '<div style="margin-bottom:16px">'
+    +(project.name?'<div style="font-family:var(--cond);font-weight:900;font-size:22px;color:var(--text);margin-bottom:2px">'+project.name+'</div>':'')
+    +(project.venue?'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">📍 '+project.venue+'</div>':'')
+    +(project.date?'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">📅 '+project.date+'</div>':'')
+    +'</div>';
 
+  // ── Stages ────────────────────────────────────────────────────
+  if(_mStages.length){
+    var accessibleStages = _mStages.filter(function(s){
+      var perm = _mStagePerms[s.id];
+      return Object.keys(_mStagePerms).length===0 || perm;
+    });
+
+    if(accessibleStages.length > 0){
+      html += '<div style="font-family:var(--cond);font-weight:700;font-size:10px;'
+        +'letter-spacing:2px;color:var(--muted);margin-bottom:8px">STAGES</div>';
+
+      _mStages.forEach(function(s, i){
+        var perm    = _mStagePerms[s.id];
+        var noPerms = Object.keys(_mStagePerms).length===0;
+        if(!noPerms && !perm) return; // no access
+        var canEdit = noPerms || perm==='e';
+        var active  = (i === _mCurrentStageIdx);
+        var pct     = _stagePct(s);
+        var pctCol  = pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
+        var devs    = s.devices||[];
+        var mounted = devs.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
+
+        html += '<div data-switchstage="'+i+'" style="'
+          +'display:flex;align-items:center;gap:12px;padding:14px;'
+          +'background:'+(active?s.color+'18':'var(--surface)')+';'
+          +'border:2px solid '+(active?s.color:'var(--border2)')+';'
+          +'border-radius:10px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">'
+          +'<div style="width:14px;height:14px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div>'
+          +'<div style="flex:1;min-width:0">'
+          +  '<div style="font-family:var(--cond);font-weight:700;font-size:18px;color:'+(active?s.color:'var(--text)')+'">'+s.name+'</div>'
+          +  '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'
+          +    devs.length+' devices · '+mounted+' mounted'
+          +    (canEdit?' · <span style="color:var(--ok)">✏ edit</span>':' · <span style="color:var(--muted)">👁 view only</span>')
+          +  '</div>'
+          +'</div>'
+          +'<div style="text-align:right;flex-shrink:0">'
+          +  '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+pctCol+'">'+pct+'%</div>'
+          +  (active?'<div style="font-size:10px;color:'+s.color+';font-family:var(--mono)">active</div>':'')
+          +'</div>'
+          +'</div>';
+      });
+    }
+  } else {
+    // No stages yet — just show device count
+    html += '<div style="font-family:var(--mono);font-size:12px;color:var(--muted);padding:8px 0">'
+      +devices.length+' devices loaded</div>';
+  }
+
+  // ── Sync row (minimal) ────────────────────────────────────────
+  var syncTxt = (document.getElementById('dbx-led-txt')||{}).textContent || '—';
+  html += '<div style="border-top:1px solid var(--border2);padding-top:12px;margin-top:8px;'
+    +'display:flex;align-items:center;gap:8px">'
+    +'<div style="flex:1;font-family:var(--mono);font-size:10px;color:var(--muted)">'
+    +'🔗 '+(_projectKey||'no key')+' · '+syncTxt+'</div>'
+    +'<button class="sb sb-ghost" onclick="wPull();_dbxSetStatus(\'Syncing...\',\'var(--muted)\');closeSheet(\'conn\')" '
+    +'style="font-size:11px;padding:6px 12px;flex-shrink:0">↓ Sync</button>'
+    +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
+    +'</div>';
+
+  body.innerHTML = html;
+
+  // Event delegation for stage rows
+  body.onclick = function(e){
+    var row = e.target.closest('[data-switchstage]');
+    if(row){
+      mSwitchStage(parseInt(row.dataset.switchstage));
+      closeSheet('conn');
+    }
+  };
+
+  openSheet('conn');
+}
 function _renderMobileStageBar(){
   var bar = document.getElementById('mob-stage-bar');
   if(!bar) return;
