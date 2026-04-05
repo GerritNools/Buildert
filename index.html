@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.817</title>
+<title>WTU · Buildert v3.818</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
   --bg:#0a0c0f;--surface:#111318;--panel:#161a20;--border:#252a34;--border2:#1e2330;
   --text:#c8cdd8;--muted:#55606e;
   --accent:#00d4ff;--laser:#5b8fff;--smoke:#4de6b8;--distro:#f5a623;--psu:#c77dff;
-  --warn:#f5a623;--danger:#ff4d4d;--ok:#0b0b0b;
+  --warn:#f5a623;--danger:#ff4d4d;--ok:#3ddc84;
   --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;--cond:'Barlow Condensed',sans-serif;
   --nav-h:64px;--hdr-h:52px;--ban-h:40px;--sb:env(safe-area-inset-bottom,0px);
 }
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.817</small></div>
+  <div class="logo">WTU <small>v3.818</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1930,14 +1930,19 @@ function _mergeProjectNoConflict(data){
   _persistProjectMeta();
   // Handle multi-stage data from desktop
   if(Array.isArray(data.stages) && data.stages.length){
+    var wasEmpty = !_mStages.length;
     _mStages = data.stages;
-    // Find assigned stage or default to 0
-    var assignedIdx = 0;
-    if(_mAssignedStageId){
-      var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
-      if(ai>=0) assignedIdx=ai;
+    // Only reset current stage on first load — never interrupt user browsing
+    if(wasEmpty){
+      var assignedIdx = 0;
+      if(_mAssignedStageId){
+        var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
+        if(ai>=0) assignedIdx=ai;
+      }
+      _mCurrentStageIdx = assignedIdx;
     }
-    _mCurrentStageIdx = assignedIdx;
+    // Keep idx in bounds after stage list may have changed
+    _mCurrentStageIdx = Math.min(_mCurrentStageIdx, _mStages.length-1);
     devices = _mStages[_mCurrentStageIdx].devices || [];
     var pos = _mStages[_mCurrentStageIdx].nodePositions||{};
     var dpos = _mStages[_mCurrentStageIdx].diagPositions||{};
@@ -1992,14 +1997,19 @@ function _mergeSmartFromFile(data){
   _persistProjectMeta();
   // Handle multi-stage data from desktop
   if(Array.isArray(data.stages) && data.stages.length){
+    var wasEmpty = !_mStages.length;
     _mStages = data.stages;
-    // Find assigned stage or default to 0
-    var assignedIdx = 0;
-    if(_mAssignedStageId){
-      var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
-      if(ai>=0) assignedIdx=ai;
+    // Only reset current stage on first load — never interrupt user browsing
+    if(wasEmpty){
+      var assignedIdx = 0;
+      if(_mAssignedStageId){
+        var ai = _mStages.findIndex(function(s){return s.id===_mAssignedStageId||s.name.toLowerCase()===_mAssignedStageId.toLowerCase();});
+        if(ai>=0) assignedIdx=ai;
+      }
+      _mCurrentStageIdx = assignedIdx;
     }
-    _mCurrentStageIdx = assignedIdx;
+    // Keep idx in bounds after stage list may have changed
+    _mCurrentStageIdx = Math.min(_mCurrentStageIdx, _mStages.length-1);
     devices = _mStages[_mCurrentStageIdx].devices || [];
     var pos = _mStages[_mCurrentStageIdx].nodePositions||{};
     var dpos = _mStages[_mCurrentStageIdx].diagPositions||{};
@@ -3585,9 +3595,10 @@ function mSwitchStage(idx){
   var hasPerms = Object.keys(_mStagePerms).length===0; // no perms = all allowed (legacy)
   if(!hasPerms && !perm){ showToast('No access to '+s.name,'warn'); return; }
   _mCurrentStageIdx = idx;
-  var isAssigned = (!_mAssignedStageId && idx===0) ||
-    (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
-  _mPeekMode = !isAssigned || perm==='v';
+  // Determine edit rights purely from permissions
+  // If no perms at all (legacy link) — edit is allowed on all stages
+  var noPerms = Object.keys(_mStagePerms).length===0;
+  _mPeekMode = noPerms ? false : (perm !== 'e');
   devices = _mStages[idx].devices || [];
   var pos = _mStages[idx].nodePositions||{};
   var dpos = _mStages[idx].diagPositions||{};
