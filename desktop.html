@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.808</div>
+    <div>build v3.809</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3523,9 +3523,10 @@ var _specsCat = {};
 })();
 
 function getSpec(modelKey) {
-  var base = DEVICE_SPECS[modelKey];
-  if (!base) return null;
-  var ov = _specsOverrides[modelKey];
+  var base = DEVICE_SPECS[modelKey] || null;
+  var ov   = _specsOverrides[modelKey] || null;
+  if(!base && !ov) return null;
+  if(!base) return ov;                          // override-only model (imported)
   return ov ? Object.assign({}, base, ov) : base;
 }
 // Override specsForDevice to use live merged spec
@@ -3535,7 +3536,22 @@ function specsForDevice(d) {
 }
 
 function loadSpecsFromStorage() {
-  try { var s=localStorage.getItem('buildert_specs'); if(s) _specsOverrides=JSON.parse(s); } catch(e){}
+  try {
+    var s=localStorage.getItem('buildert_specs');
+    if(s){
+      _specsOverrides=JSON.parse(s);
+      // Merge into DEVICE_SPECS so all lookups see them
+      Object.keys(_specsOverrides).forEach(function(k){
+        if(!DEVICE_SPECS[k]) DEVICE_SPECS[k]={};
+        Object.assign(DEVICE_SPECS[k], _specsOverrides[k]);
+      });
+    }
+  } catch(e){}
+}
+
+function _rebuildModelLists(){
+  // Re-run qaUpdateModel so dropdowns reflect new models
+  if(typeof qaUpdateModel==='function') qaUpdateModel();
 }
 function saveSpecsToStorage() {
   try { localStorage.setItem('buildert_specs', JSON.stringify(_specsOverrides)); } catch(e){}
@@ -6594,11 +6610,20 @@ function _applySpecsCSV(csv,name){
 function _applySpecsJSON(data,name){
   var specs=data.models||data;
   if(typeof specs!=='object'||!Object.keys(specs).length){showToast('No specs found','warn');return;}
-  _specsOverrides=specs;saveSpecsToStorage();
+  _specsOverrides=specs;
+  saveSpecsToStorage();
+  // Merge into DEVICE_SPECS so model dropdowns + all lookups see the new entries
+  Object.keys(specs).forEach(function(k){
+    if(!DEVICE_SPECS[k]) DEVICE_SPECS[k]={};
+    Object.assign(DEVICE_SPECS[k], specs[k]);
+  });
+  // Rebuild model lists that depend on DEVICE_SPECS
+  _rebuildModelLists();
   var badge=document.getElementById('specs-badge');
-  if(badge){badge.style.display='';badge.title='Specs: '+name;}
-  showToast('Specs loaded: '+name+' ('+Object.keys(specs).length+' models)','ok');
+  if(badge){badge.style.display='';badge.title='Specs: '+name+'  ('+Object.keys(specs).length+' models)';}
+  showToast('Specs loaded: '+name+' — '+Object.keys(specs).length+' models','ok');
   renderTable();
+  if(currentTab==='specs') renderSpecs();
 }
 
 
