@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.807</title>
+<title>WTUniverse · Buildert Editor v3.811</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.810</div>
+    <div>build v3.811</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -532,6 +532,7 @@
       <button class="tab-btn"               id="tab-overview" onclick="setTab('overview')"  style="border-left:2px solid var(--border)">&#9783; Overview</button>
       <button class="tab-btn"               id="tab-todos"   onclick="setTab('todos')"   style="border-left:2px solid var(--border)">&#9745; Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn"               id="tab-shares"  onclick="setTab('shares')"  style="border-left:2px solid var(--border)">&#128279; Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
+      <button class="tab-btn" onclick="openLabelModal()" style="border-left:2px solid var(--border);margin-left:auto">&#127991; Labels</button>
     </div>
     <div class="stats-bar" id="stats-bar"></div>
     <div class="sort-wrap">
@@ -545,19 +546,7 @@
         <option value="source">Source</option>
       </select>
     </div>
-    <div class="ml-auto" style="display:flex;gap:6px;align-items:center">
-      <button class="btn btn-ghost" onclick="openLabelModal()">&#127991; Labels</button>
-      <button class="btn btn-ghost" onclick="openCsvModal()">&#128229; Import CSV</button>
-      <button class="btn btn-ghost" onclick="exportCsv()">&#128228; Export CSV</button>
-      <!-- Share dropdown -->
-      <div style="position:relative" id="share-menu-wrap">
-        <button class="btn btn-primary" onclick="toggleShareMenu()" style="padding:7px 14px">&#128279; Share &#9662;</button>
-        <div id="share-menu" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px">
-          <div class="fm-item" onclick="openRiggerShare();document.getElementById('share-menu').style.display='none'">&#128279; Rigger links</div>
-          <div class="fm-item" onclick="shareToMobile();document.getElementById('share-menu').style.display='none'">&#128244; Export mobile app</div>
-        </div>
-      </div>
-    </div>
+
   </div>
 
   <!-- Quick Add Panel -->
@@ -4716,21 +4705,27 @@ function renderSpecs(){
       +' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}"'
       +' title="Click to edit">'+disp+'</span>';
   }
-  var lk=['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HULK','PIKO35','PIKO60','PIKO70','VIPER'];
-  var dk=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
-  var sk=['PEASOUP','SHOCKFOG','FAN'];
-
-  // Extend hardcoded lists with any imported models that have a matching category
+  // Build model lists dynamically — imported specs take priority
+  // Use all keys from DEVICE_SPECS (which has imported specs merged in)
   var allModels = Object.keys(DEVICE_SPECS);
+  var lk=[],dk=[],sk=[],pkList=[];
+  var DEFAULT_LASERS=['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HULK','PIKO35','PIKO60','PIKO70','VIPER'];
+  var DEFAULT_DISTROS=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
+  var DEFAULT_SMOKE=['PEASOUP','SHOCKFOG','FAN'];
   allModels.forEach(function(k){
-    var sp = DEVICE_SPECS[k]; if(!sp) return;
-    var cat = sp.category||'';
-    if(cat==='laser'  && lk.indexOf(k)<0) lk.push(k);
-    if(cat==='distro' && dk.indexOf(k)<0) dk.push(k);
-    if(cat==='smoke'  && sk.indexOf(k)<0) sk.push(k);
-    if(cat==='psu'    && pkList.indexOf(k)<0) pkList.push(k);
+    var sp=DEVICE_SPECS[k];if(!sp||typeof sp!=='object')return;
+    var cat=sp.category||'';
+    // If imported (has category field): use that
+    if(cat==='laser') lk.push(k);
+    else if(cat==='distro') dk.push(k);
+    else if(cat==='smoke') sk.push(k);
+    else if(cat==='psu') pkList.push(k);
+    // Fallback: classify by default lists if no category
+    else if(DEFAULT_LASERS.indexOf(k)>=0) lk.push(k);
+    else if(DEFAULT_DISTROS.indexOf(k)>=0) dk.push(k);
+    else if(DEFAULT_SMOKE.indexOf(k)>=0) sk.push(k);
+    // anything else goes to 'extra' (handled below)
   });
-  var pkList = Object.keys(DEVICE_SPECS).filter(function(k){ return (DEVICE_SPECS[k]||{}).category==='psu'; });
 
   var lTbl='<div><div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors <span style="font-size:10px;opacity:.6;font-weight:400">— click any cell to edit</span></div>'
     +'<table class="sp-tbl"><thead><tr>'
@@ -6960,3 +6955,6 @@ function renderPowerView(){
 </script>
 </body>
 </html>
+
+
+
