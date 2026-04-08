@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.809</div>
+    <div>build v3.810</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4720,6 +4720,18 @@ function renderSpecs(){
   var dk=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
   var sk=['PEASOUP','SHOCKFOG','FAN'];
 
+  // Extend hardcoded lists with any imported models that have a matching category
+  var allModels = Object.keys(DEVICE_SPECS);
+  allModels.forEach(function(k){
+    var sp = DEVICE_SPECS[k]; if(!sp) return;
+    var cat = sp.category||'';
+    if(cat==='laser'  && lk.indexOf(k)<0) lk.push(k);
+    if(cat==='distro' && dk.indexOf(k)<0) dk.push(k);
+    if(cat==='smoke'  && sk.indexOf(k)<0) sk.push(k);
+    if(cat==='psu'    && pkList.indexOf(k)<0) pkList.push(k);
+  });
+  var pkList = Object.keys(DEVICE_SPECS).filter(function(k){ return (DEVICE_SPECS[k]||{}).category==='psu'; });
+
   var lTbl='<div><div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors <span style="font-size:10px;opacity:.6;font-weight:400">— click any cell to edit</span></div>'
     +'<table class="sp-tbl"><thead><tr>'
     +'<th>Model</th><th>Alt</th><th>Laser W</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
@@ -4786,6 +4798,35 @@ function renderSpecs(){
     }).join('')+'</tbody></table></div>';
 
   el.innerHTML=lTbl+dTbl+sTbl;
+
+  // Add any imported models not covered by the above sections
+  var shown = lk.concat(dk).concat(sk).concat(pkList);
+  var extra = Object.keys(DEVICE_SPECS).filter(function(k){ return shown.indexOf(k)<0; });
+  if(extra.length){
+    var extraTbl='<div><div class="sp-hdr" style="color:var(--accent)">📦 Imported / Other</div>'
+      +'<table class="sp-tbl"><thead><tr>'
+      +'<th>Model</th><th>Category</th><th>Alt</th><th>Consump W</th><th>A @230V</th>'
+      +'<th>kg</th><th>Pwr In</th><th>Data In</th><th>Pwr Out</th><th>Data Out</th>'
+      +'<th>Description</th><th>Notes</th>'
+      +'</tr></thead><tbody>'
+      +extra.map(function(k){var s=getSpec(k)||{};
+        return '<tr>'
+          +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--accent)">'+k+'</span></td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+ed(k,'category',s.category||'',50)+'</td>'
+          +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
+          +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
+          +'<td>'+ed(k,'max_a_230',s.max_a_230!=null?s.max_a_230:'',30)+'</td>'
+          +'<td>'+ed(k,'weight_kg',s.weight_kg!=null?s.weight_kg:'',30)+'</td>'
+          +'<td>'+ed(k,'pwr_in',s.pwr_in||s.in_connector||'',50)+'</td>'
+          +'<td>'+ed(k,'data_in',s.data_in||'',50)+'</td>'
+          +'<td>'+ed(k,'pwr_out',s.pwr_out||s.out_connector||'',50)+'</td>'
+          +'<td>'+ed(k,'data_out',s.data_out||'',50)+'</td>'
+          +'<td style="color:var(--muted);font-size:11px">'+ed(k,'desc',s.desc||'',100)+'</td>'
+          +'<td>'+ed(k,'notes',s.notes||'',80)+'</td>'
+          +'</tr>';
+      }).join('')+'</tbody></table></div>';
+    el.innerHTML += extraTbl;
+  }
 }
 
 // ── Init
