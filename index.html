@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.818</title>
+<title>WTU · Buildert v3.819</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.818</small></div>
+  <div class="logo">WTU <small>v3.819</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1002,6 +1002,35 @@ function tapPointed(gi,val){
 function toggleCard(gi){ expandedGis[gi]=!expandedGis[gi]; renderCards(); }
 
 // ── Power tab ─────────────────────────────────────────────────────
+
+function _getDeviceW(dev){
+  if(!dev) return 0;
+  var sp=specFor(dev);
+  return sp?(sp.consumption_w||0):0;
+}
+
+function _distroPhaseLoad(distroId){
+  var result={L1:0,L2:0,L3:0,unassigned:0};
+  var distroDev=devices.find(function(d){return d.device_id===distroId;});
+  if(!distroDev) return result;
+  var sp=specFor(distroDev)||{};
+  if(!sp.outlet_phases) return result;
+  var portPhase={};
+  sp.outlet_phases.split(',').forEach(function(seg){
+    var parts=seg.trim().split(':');
+    if(parts.length!==2) return;
+    var range=parts[0].split('-').map(Number);
+    for(var p=range[0];p<=range[1];p++) portPhase[p]=parts[1];
+  });
+  devices.filter(function(d){return d.source===distroId;}).forEach(function(d){
+    var w=_getDeviceW(d);
+    var port=parseInt(d.outlet_port)||0;
+    var phase=port?(portPhase[port]||'unassigned'):'unassigned';
+    result[phase]=(result[phase]||0)+w;
+  });
+  return result;
+}
+
 function renderPower(){
   buildChips(); updateBanner();
   document.querySelector('.chips').style.display='none';
@@ -1010,7 +1039,6 @@ function renderPower(){
   var roots=devices.filter(function(d){return d.type===TD||d.type===TP;});
   if(!roots.length){cont.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  // Sort: PSU first, then distros, by chain load desc
   roots.sort(function(a,b){
     if(a.type!==b.type) return a.type===TP?-1:1;
     return chainW(b.device_id)-chainW(a.device_id);
@@ -1018,24 +1046,54 @@ function renderPower(){
   cont.innerHTML=roots.map(function(d){
     var tk=TKEY[d.type];
     var load=chainW(d.device_id);
-    var max=d.type===TP?10000:7200; // rough max watts
+    var sp=specFor(d)||{};
+    var is3phase=sp.phases===3&&sp.outlet_phases;
+    var max=d.type===TP?10000:(is3phase?21000:7200);
     var barW=Math.min(100,Math.round(load/max*100));
-    var col=load>6000?'var(--danger)':load>3000?'var(--warn)':'var(--ok)';
+    var col=barW>80?'var(--danger)':barW>60?'var(--warn)':'var(--ok)';
     var children=devices.filter(function(x){return x.source===d.device_id;});
-    return '<div class="power-card">'
+    var stLed=d.status==='Online'||d.status==='Mounted'?'#3ddc84':d.status==='GoAndCheck'||d.status==='Swap'?'#f5a623':d.status==='Offline'||d.status==='Swapped'?'#ff4d4d':'#55606e';
+
+    var html='<div class="power-card">'
       +'<div class="power-card-header">'
-      +  '<span class="badge badge-'+tk+'">'+TSHORT[d.type]+'</span>'
-      +  '<span class="power-id id-'+tk+'">'+d.device_id+'</span>'
-      +  '<span class="power-load" style="color:'+col+'">'+(load>0?load+'W':'0W')+'</span>'
+      +'<span style="width:9px;height:9px;border-radius:50%;background:'+stLed+';flex-shrink:0;display:inline-block;margin-right:4px"></span>'
+      +'<span class="power-id id-'+tk+'">'+d.device_id+'</span>'
+      +'<span style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:4px">'+( sp.alt||'' )+'</span>'
+      +'<span class="power-load" style="color:'+col+'">'+(load>0?load+'W':'0W')+'</span>'
       +'</div>'
       +'<div class="power-bar-wrap"><div class="power-bar-fill" style="width:'+barW+'%;background:'+col+'"></div></div>'
-      +'<div class="power-children">'
-      +children.map(function(c){
-        var sp=specFor(c),cw=(sp&&sp.consumption_w)||0;
-        return '<span class="power-child">'+c.device_id+(cw?' '+cw+'W':'')+'</span>';
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:2px 0 6px">'+(load/230).toFixed(1)+'A @230V · '+barW+'% cap</div>';
+
+    // Phase breakdown
+    if(is3phase){
+      var phases=_distroPhaseLoad(d.device_id);
+      var phaseColors={L1:'#ff6b6b',L2:'#f5a623',L3:'#3ddc84'};
+      var maxPh=sp.max_a_230?(sp.max_a_230/3*230):2400;
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">';
+      ['L1','L2','L3'].forEach(function(ph){
+        var pw=phases[ph]||0;
+        var pPct=Math.min(100,Math.round(pw/maxPh*100));
+        var phCol=phaseColors[ph];
+        html+='<div style="background:var(--panel);border-radius:5px;padding:6px 8px">'
+          +'<div style="font-family:var(--cond);font-weight:700;font-size:12px;color:'+phCol+'">'+ph+'</div>'
+          +'<div style="height:4px;background:var(--bg);border-radius:2px;margin:3px 0">'
+          +'<div style="height:100%;width:'+pPct+'%;background:'+phCol+'"></div></div>'
+          +'<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+(pPct>80?'var(--danger)':phCol)+'">'+pw+'W</div>'
+          +'</div>';
+      });
+      html+='</div>';
+      if(phases.unassigned) html+='<div style="font-family:var(--mono);font-size:10px;color:var(--warn);margin-bottom:4px">⚠ '+phases.unassigned+'W unassigned</div>';
+    }
+
+    html+='<div class="power-children">'
+      +children.map(function(x){
+        var xsp=specFor(x),xw=(xsp&&xsp.consumption_w)||0;
+        var port=x.outlet_port?' #'+x.outlet_port:'';
+        return '<span class="power-child">'+x.device_id+port+(xw?' '+xw+'W':'')+'</span>';
       }).join('')
       +(children.length===0?'<span style="font-size:11px;color:var(--muted)">no children</span>':'')
       +'</div></div>';
+    return html;
   }).join('');
 }
 
