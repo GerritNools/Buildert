@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.802</title>
+<title>WTUniverse · Buildert Editor v3.805</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.802</div>
+    <div>build v3.805</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -694,15 +694,17 @@
 
   <!-- Packing List Panel -->
   <div id="pack-panel" style="display:none">
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 10px;flex-wrap:wrap">
-      <span style="font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:1px;color:var(--accent)">PACKING LIST</span>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 8px;flex-wrap:wrap">
+      <span style="font-family:var(--cond);font-weight:900;font-size:15px;letter-spacing:2px;color:var(--accent)">PACKING LIST</span>
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
-        <button class="btn btn-ghost" onclick="packAddSpare()" style="padding:5px 11px;font-size:12px">+ Spare item</button>
       </div>
     </div>
-    <div id="pack-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:calc(100vh - 260px)">
+    <div id="pack-stage-tabs" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap"></div>
+    <div id="pack-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:calc(100vh - 310px)"></div>
+    <div style="margin-top:10px">
+      <div id="pack-shared-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:360px"></div>
     </div>
   </div>
 
@@ -782,7 +784,7 @@
     <!-- Source group: label + select wrapped so BOTH hide together -->
     <div class="field-group" id="source-group">
       <label>Source <span style="color:var(--muted);font-size:10px">&#8212; upstream device this connects into</span></label>
-      <select id="m-source">
+      <select id="m-source" onchange="updatePhaseLabel()">
         <option value="">&#8212; not set &#8212;</option>
       </select>
     </div>
@@ -841,6 +843,15 @@
         </select>
       </div>
     </div>
+    <div id="outlet-port-wrap" style="display:none;margin-bottom:10px">
+      <label>Outlet port <span style="color:var(--muted);font-size:10px">— which outlet on the source distro</span></label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="number" id="m-outlet-port" min="1" max="24" placeholder="e.g. 3"
+               style="width:80px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:8px;border-radius:5px"
+               oninput="updatePhaseLabel()">
+        <span id="m-phase-label" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)"></span>
+      </div>
+    </div>
     <label>Cable IN <span style="color:var(--muted);font-size:10px">— cable arriving at this device from its source</span></label>
     <select id="m-cable-in" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none;margin-bottom:13px">
       <option value="">— none —</option>
@@ -871,6 +882,7 @@
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
     <span style="font-family:var(--cond);font-weight:900;font-size:18px;letter-spacing:2px;color:var(--accent)">&#128279; SHARES &amp; ACTIVITY</span>
     <span id="sp-last-sync" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:4px"></span>
+    <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="spExportLog()">&#128229; Export log</button>
     <button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="dbxSyncNow();setTimeout(renderSharesPanel,1500)">&#8645; Refresh</button>
   </div>
 
@@ -926,7 +938,7 @@
         <div style="display:grid;grid-template-columns:52px 80px 100px 1fr auto;
              padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--border);
              font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.2px;color:var(--muted)">
-          <span>TIME</span><span>WHO</span><span>DEVICE</span><span>ACTION</span><span></span>
+          <span>DATE/TIME</span><span>WHO</span><span>DEVICE</span><span>ACTION</span><span></span>
         </div>
         <div id="sp-activity-log" style="max-height:calc(100vh - 290px);overflow-y:auto"></div>
       </div>
@@ -1511,27 +1523,27 @@ function distroLoadW(id) { return chainLoadW(id); }
 // Key = first word of device_id (uppercase). e.g. "RGBB 3" → key "RGBB"
 var DEVICE_SPECS = {
   // ── Lasers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  'RGB20':    {alt:'RGCB20',              laser_w:20,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:18.0,  inputs:1, outputs:1, ip:'192.168.10.X', scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'20W RGB laser — gele sticker',               in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
+  'RGB20':    {category:'laser', alt:'RGCB20',              laser_w:20,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:18.0,  inputs:1, outputs:1, ip:'192.168.10.X', scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'20W RGB laser — gele sticker',               in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
   'CYAN':     {alt:'Green/Blue',          laser_w:14,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Gr=OPS Bl=Diode',    desc:'GB — Gr=OPS  Bl=Diode',                      in_connector:'TRUE1', out_connector:'', notes:''},
-  'WHITE':    {alt:'Yellow/Blue',         laser_w:null, consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Y=OPS Bl=Diode',     desc:'YB — Y=OPS  Bl=Diode',                       in_connector:'TRUE1', out_connector:'', notes:''},
-  'RGBB':     {alt:'RGBB',                laser_w:14,   consumption_w:1035, max_a_230:4.5,  max_a_110:9.4,  weight_kg:18.0,  inputs:1, outputs:2, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',                      in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'RGB6':     {alt:'RGB6',                laser_w:6,    consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:7.0,   inputs:1, outputs:1, ip:'192.168.6.X',  scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'6W RGB laser',                               in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'RGB10':    {alt:'RGCB10 / Kvant CM10', laser_w:10,   consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:15.0,  inputs:1, outputs:1, ip:'',             scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'Kvant CM10 — externe connector plaat',       in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'GOPSL':    {alt:'Green OPS / G10',     laser_w:10,   consumption_w:460,  max_a_230:2.0,  max_a_110:4.2,  weight_kg:8.2,   inputs:1, outputs:1, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Green OPS laser',                            in_connector:'TRUE1', out_connector:'TRUE1', notes:'LET OP! Doorlus 0.7mm\u00b2 \u2014 max 10A totale doorlus'},
-  'SUPERNOVA':{alt:'Supernova',           laser_w:null, consumption_w:1900, max_a_230:8.1,  max_a_110:17.3, weight_kg:37.0,  inputs:1, outputs:0, ip:'192.168.9.X',  scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Large OPS unit',                             in_connector:'TRUE1', out_connector:'', notes:''},
+  'WHITE':    {category:'laser', alt:'Yellow/Blue',         laser_w:null, consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Y=OPS Bl=Diode',     desc:'YB — Y=OPS  Bl=Diode',                       in_connector:'TRUE1', out_connector:'', notes:''},
+  'RGBB':     {alt:'RGBB',                laser_w:14,   consumption_w:1035, max_a_230:4.5,  max_a_110:9.4,  weight_kg:18.0,  inputs:1, outputs:2, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',                      in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'RGB6':     {alt:'RGB6',                laser_w:6,    consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:7.0,   inputs:1, outputs:1, ip:'192.168.6.X',  scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'6W RGB laser',                               in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'RGB10':    {category:'laser', alt:'RGCB10 / Kvant CM10', laser_w:10,   consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:15.0,  inputs:1, outputs:1, ip:'',             scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'Kvant CM10 — externe connector plaat',       in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'GOPSL':    {category:'laser', alt:'Green OPS / G10',     laser_w:10,   consumption_w:460,  max_a_230:2.0,  max_a_110:4.2,  weight_kg:8.2,   inputs:1, outputs:1, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Green OPS laser',                            in_connector:'TRUE1', out_connector:'TRUE1', notes:'LET OP! Doorlus 0.7mm\u00b2 \u2014 max 10A totale doorlus'},
+  'SUPERNOVA':{category:'laser', alt:'Supernova',           laser_w:null, consumption_w:1900, max_a_230:8.1,  max_a_110:17.3, weight_kg:37.0,  inputs:1, outputs:0, ip:'192.168.9.X',  scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Large OPS unit',                             in_connector:'TRUE1', out_connector:'', notes:''},
   'HULK':     {alt:'Hulk',                laser_w:null, consumption_w:3600, max_a_230:16,   max_a_110:null, weight_kg:65,    inputs:1, outputs:0, ip:'',             scanners:'SM',       angle:null,  scanrate_kpps:30, ops_diode:null,                 desc:'Grote unit met extra koel unit',             in_connector:'TRUE1', out_connector:'', notes:'LET OP! ALLEEN 230V'},
-  'PIKO35':   {alt:'RTI Piko 35',         laser_w:35,   consumption_w:1000, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:'CT6210',   angle:'51\u00b0', scanrate_kpps:30, ops_diode:null,           desc:'RTI Piko 35',                                in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'PIKO60':   {alt:'RTI Piko 60',         laser_w:60,   consumption_w:1500, max_a_230:null, max_a_110:null, weight_kg:41.0,  inputs:1, outputs:1, ip:'',             scanners:'EMS-8000', angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 60',                                in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'PIKO70':   {alt:'RTI Piko 70',         laser_w:70,   consumption_w:null, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:null,       angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 70',                                in_connector:'TRUE1', out_connector:'TRUE1', notes:''},
-  'VIPER':    {alt:'Coherent Viper',      laser_w:20,   consumption_w:850,  max_a_230:3.7,  max_a_110:7.8,  weight_kg:35.0,  inputs:1, outputs:1, ip:'192.168.5.X',  scanners:'CT6215',   angle:'60\u00b0', scanrate_kpps:30, ops_diode:'OPS Fiber',    desc:'Oude unit, plastic zijplaten',               in_connector:'TRUE1', out_connector:'TRUE1', notes:'Smalle beam'},
+  'PIKO35':   {category:'laser', alt:'RTI Piko 35',         laser_w:35,   consumption_w:1000, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:'CT6210',   angle:'51\u00b0', scanrate_kpps:30, ops_diode:null,           desc:'RTI Piko 35',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'PIKO60':   {category:'laser', alt:'RTI Piko 60',         laser_w:60,   consumption_w:1500, max_a_230:null, max_a_110:null, weight_kg:41.0,  inputs:1, outputs:1, ip:'',             scanners:'EMS-8000', angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 60',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'PIKO70':   {category:'laser', alt:'RTI Piko 70',         laser_w:70,   consumption_w:null, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:null,       angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 70',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'VIPER':    {category:'laser', alt:'Coherent Viper',      laser_w:20,   consumption_w:850,  max_a_230:3.7,  max_a_110:7.8,  weight_kg:35.0,  inputs:1, outputs:1, ip:'192.168.5.X',  scanners:'CT6215',   angle:'60\u00b0', scanrate_kpps:30, ops_diode:'OPS Fiber',    desc:'Oude unit, plastic zijplaten',               in_connector:'TRUE1', out_connector:'TRUE1', notes:'Smalle beam'},
   // ── Distros ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  '32A':      {alt:'32A Distro',          consumption_w:null, weight_kg:null, ip:'', outputs:6, inputs:3,    phases:3, fibre:false, desc:'6 out / 3 in / noodstop / 3-phase',  in_connector:'32ACEE', out_connector:'16ACEEBlue', notes:'CEE RED 32A 3P+N+E'},
+  '32A':      {category:'distro', alt:'32A Distro',          consumption_w:null, weight_kg:null, ip:'', outputs:12, inputs:3,   phases:3, fibre:false, desc:'12 out / 3 in / noodstop / 3-phase', in_connector:'32ACEE', out_connector:'16ACEEBlue', outlet_phases:'1-4:L1,5-8:L2,9-12:L3', notes:'CEE RED 32A 3P+N+E'},
   '32AFIBRE': {alt:'32A Distro fibre',    consumption_w:null, weight_kg:null, ip:'', outputs:6, inputs:null, phases:3, fibre:true,  desc:'6 out / fibre media converter / 3-phase',  in_connector:'32ACEE', out_connector:'16ACEEBlue', notes:'CEE RED 32A 3P+N+E'},
-  '8PORT':    {alt:'8 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:6, inputs:2,    phases:1, fibre:false, desc:'6 out / 2 in / 1-phase / Schuko 16A',  in_connector:'Schuko', out_connector:'16ACEEBlue', notes:'Schuko 16A input'},
-  '4PORT':    {alt:'4 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:4, inputs:4,    phases:1, fibre:false, desc:'4 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
-  '3PORT':    {alt:'3 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:3, inputs:4,    phases:1, fibre:false, desc:'3 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
+  '8PORT':    {category:'distro', alt:'8 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:6, inputs:2,    phases:1, fibre:false, desc:'6 out / 2 in / 1-phase / Schuko 16A',  in_connector:'Schuko', out_connector:'16ACEEBlue', notes:'Schuko 16A input'},
+  '4PORT':    {category:'distro', alt:'4 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:4, inputs:4,    phases:1, fibre:false, desc:'4 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
+  '3PORT':    {category:'distro', alt:'3 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:3, inputs:4,    phases:1, fibre:false, desc:'3 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
   // ── Smoke ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  'PEASOUP':  {alt:'Pea Soup',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'mineral', desc:'Low-lying fog \u2014 mineral oil',  in_connector:'Schuko', out_connector:'', notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
+  'PEASOUP':  {category:'smoke', alt:'Pea Soup',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'mineral', desc:'Low-lying fog \u2014 mineral oil',  in_connector:'Schuko', out_connector:'', notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
   'SHOCKFOG': {alt:'Shockfog',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'glycol',  desc:'Hazer \u2014 glycol oil, no CO2',   in_connector:'Schuko', out_connector:'', notes:'Glycol oil \u2014 no CO2 needed'},
   'FAN':      {alt:'Fan unit',            consumption_w:1000, max_a_230:4.4,max_a_110:9,  weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:null,      desc:'Fan unit for smoke/haze',            in_connector:'Schuko', out_connector:'', notes:''},
 };
@@ -2108,6 +2120,8 @@ function openEditModal(gi) {
   document.getElementById('m-status').value      = d.status||'Active';
   document.getElementById('m-pointed').value     = d.pointed||'';
   document.getElementById('m-notes').value       = d.notes||'';
+  var opEl=document.getElementById('m-outlet-port');if(opEl)opEl.value=d.outlet_port||'';
+  setTimeout(updatePhaseLabel,50);
   _populateConnectorSelects(d.connector_in||'', d.connector_out||'');
   var _d_sp = getSpec(d.model || modelFromId(d.device_id||''));
   _populateCableSelects(d.cable_in||d.cable||'', d.cable_out||'', _d_sp ? _d_sp.in_connector : '');
@@ -2211,6 +2225,7 @@ function saveDevice() {
     connector_out: document.getElementById('m-connector-out').value,
     cable_in:      document.getElementById('m-cable-in').value,
     cable_out:     editIndex >= 0 ? (devices[editIndex].cable_out||'') : '',  // computed field, not editable
+    outlet_port:   (function(){ var el=document.getElementById('m-outlet-port'); return el&&el.value?parseInt(el.value)||null:null; })(),
   };
 
   if (editIndex >= 0) { devices[editIndex] = d; showToast('Updated '+deviceId,'ok'); }
@@ -2758,6 +2773,7 @@ function _buildProjectPayload() {
     devices:   devices,
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
+    pack_shared:    _packShared,
     _log:           window._projectLog || [],
   };
 }
@@ -2938,7 +2954,8 @@ function _mergeProjectNoConflict(data) {
     _diagPositions = data._diag_positions||_diagPositions;
   }
   window._mobileChanged = {};
-  _packSpares     = data.pack_spares     || [];
+  _packSpares = data.pack_spares || [];
+  if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
   _specsOverrides = data.spec_overrides  || {};
   if(data.project){
     _projectMeta = Object.assign(_projectMeta, data.project);
@@ -3076,7 +3093,8 @@ function resolveProjectConflict(mode) {
     _projectBaseVersion = _projectVersion;
     if (fileData.project) _projectMeta = Object.assign(_projectMeta, fileData.project);
     if (fileData.spec_overrides) _specsOverrides = Object.assign(_specsOverrides, fileData.spec_overrides);
-    if (fileData.pack_spares)    _packSpares = fileData.pack_spares;
+    if (fileData.pack_spares) _packSpares=fileData.pack_spares;
+  if (fileData.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},fileData.pack_shared); _packSharedSave(); }
     saveSpecsToStorage(); _persistProjectMeta(); autoSave(); renderTable();
     showToast('Merged — v' + _projectVersion, 'ok');
     _updateProjectBadge();
@@ -3348,6 +3366,7 @@ async function _dbxPush(silent){
     devices:  devices,
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
+    pack_shared:    _packShared,
     _log:           window._projectLog || [],
     _node_positions: JSON.parse(_npRaw),
     _diag_positions: JSON.parse(_dpRaw),
@@ -4329,9 +4348,13 @@ function nodePrint() {
 
 
 // ── Packing List ──────────────────────────────────────────────────────
-var _packSpares = []; // [{qty, desc, checked}]
+var _packSpares = [];
+var _packShared = {toolcase:[],office:[],spares:[]};
+function _packSharedLoad(){try{var s=localStorage.getItem("brt_psh");if(s)_packShared=Object.assign({toolcase:[],office:[],spares:[]},JSON.parse(s));}catch(e){}}
+function _packSharedSave(){try{localStorage.setItem("brt_psh",JSON.stringify(_packShared));}catch(e){}}
+_packSharedLoad();
 
-function renderPackList() {
+function renderPackStage(stageDevices) {
   var el = document.getElementById('pack-content');
   if (!el) return;
 
@@ -4352,7 +4375,7 @@ function renderPackList() {
 
   var totalDevices = 0;
   TYPE_ORDER.forEach(function(type){
-    var group = devices.filter(function(d){return d.type===type;});
+    var group = stageDevices.filter(function(d){return d.type===type;});
     if (!group.length) return;
     // Group by model key
     var byModel = {}, modelOrder = [];
@@ -4396,7 +4419,7 @@ function renderPackList() {
 
   // ── Cable summary section ──────────────────────────────────────────
   var cableCounts = {};
-  devices.forEach(function(d){
+  stageDevices.forEach(function(d){
     [d.cable_in||d.cable||'', d.cable_out||''].filter(Boolean).forEach(function(c){
       cableCounts[c] = (cableCounts[c]||0) + 1;
     });
@@ -4430,30 +4453,8 @@ function renderPackList() {
   }
   cableHtmlStr += '</div>';
 
-  // ── Spare items section ────────────────────────────────────────────
-  var spareHtml = '<div class="pack-section">'
-    +'<div class="pack-section-title">Spare / Extra items</div>'
-    +'<table class="pack-table" id="pack-spares-table"><thead><tr>'
-    +'<th style="width:20px"></th><th style="width:60px">Qty</th><th>Description</th><th style="width:30px"></th>'
-    +'</tr></thead><tbody>';
-  _packSpares.forEach(function(s,i){
-    spareHtml += '<tr class="pack-spare-row">'
-      +'<td><input type="checkbox" class="pack-check"'+(s.checked?' checked':'')+'></td>'
-      +'<td><input type="number" min="1" value="'+s.qty+'" style="width:50px;background:var(--bg);'
-      +'border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;'
-      +'padding:2px 5px;border-radius:3px" onchange="_packSpares['+i+'].qty=parseInt(this.value)||1"></td>'
-      +'<td><input type="text" value="'+s.desc.replace(/"/g,'&quot;')+'" style="width:100%;background:var(--bg);'
-      +'border:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:12px;'
-      +'padding:2px 6px;border-radius:3px" onchange="_packSpares['+i+'].desc=this.value"></td>'
-      +'<td><button class="icon-btn del pack-del" onclick="_packSpares.splice('+i+',1);renderPackList()">✕</button></td>'
-      +'</tr>';
-  });
-  spareHtml += '</tbody></table></div>';
-
-  el.innerHTML = devHtml + cableHtmlStr + spareHtml;
-
-  var stats = document.getElementById('pack-stats');
-  if (stats) stats.textContent = totalDevices+' devices · '+totalCables+' cables · '+_packSpares.length+' spares';
+  el.innerHTML = devHtml + cableHtmlStr;
+  return {devices:totalDevices, cables:totalCables};
 }
 
 function _cableLabel(key) {
@@ -5196,9 +5197,9 @@ function spUpdateLink() {
   if (sc && _stages.length) {
     sc.innerHTML = _stages.map(function(s, i) {
       var chk = _spStagePerms[s.id];
-      // Default: assigned = current stage (edit), others = view only
-      var editChk  = (chk && chk.edit)  !== undefined ? (chk && chk.edit)  : (i === _currentStageIdx);
-      var viewChk  = (chk && chk.view)  !== undefined ? (chk && chk.view)  : true;
+      // Default: current stage = edit+view, others = view only
+      var editChk = chk ? !!chk.edit : (i === _currentStageIdx);
+      var viewChk = chk ? !!chk.view : true;
       return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">'
         + '<div style="width:10px;height:10px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div>'
         + '<span style="font-family:var(--cond);font-weight:700;font-size:13px;flex:1;color:'+s.color+'">'+s.name+'</span>'
@@ -5225,15 +5226,15 @@ function spUpdateLink() {
   // Build stage permission string: stageId:e (edit) or stageId:v (view)
   var stagePerms = _stages.map(function(s) {
     var p = _spStagePerms[s.id] || {};
-    var edit = (p.edit !== undefined) ? p.edit : (s.id === (_stages[_currentStageIdx]||{}).id);
-    var view = (p.view !== undefined) ? p.view : true;
+    var edit = _spStagePerms[s.id] ? !!_spStagePerms[s.id].edit : (s.id === (_stages[_currentStageIdx]||{}).id);
+    var view = _spStagePerms[s.id] ? !!_spStagePerms[s.id].view : true;
     if (!view && !edit) return null;
     return s.id + ':' + (edit ? 'e' : 'v');
   }).filter(Boolean).join(',');
 
   // Primary stage = first editable stage
   var primaryStage = _stages.find(function(s){
-    var p=_spStagePerms[s.id]||{}; return p.edit||p.edit===undefined&&s.id===(_stages[_currentStageIdx]||{}).id;
+    return _spStagePerms[s.id] ? !!_spStagePerms[s.id].edit : (s.id === (_stages[_currentStageIdx]||{}).id);
   }) || _stages[0];
 
   var base = appUrl.replace(/\/?$/, '/');
@@ -6197,7 +6198,7 @@ function fileNew(){
   if(_unsaved && !confirm('Discard unsaved changes?')) return;
   // Full reset
   _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
-  _specsOverrides={}; _packSpares=[]; window._projectLog=[];
+  _specsOverrides={}; _packSpares=[]; _packShared={toolcase:[],office:[],spares:[]}; window._projectLog=[];
   _projectVersion=0; _projectBaseVersion=0;
   _nodePositions={}; _diagPositions={};
   try{localStorage.removeItem('buildert_node_pos');localStorage.removeItem('buildert_diag_pos');}catch(e){}
@@ -6438,7 +6439,9 @@ function renderOverview(){
 
 
 // ── Specs CSV ─────────────────────────────────────────────────────
-var _SPECS_CSV_COLS = ['model','alt','laser_w','consumption_w','max_a_230','max_a_110','weight_kg','inputs','in_connector','outputs','out_connector','ip','scanners','angle','ops_diode','desc','notes'];
+var _SPECS_CSV_COLS = ['category','model','alt','phases','consumption_w','max_a_230','max_a_110','laser_w','weight_kg','inputs','pwr_in','data_in','outputs','pwr_out','data_out','outlets','outlet_phases','ip','scanners','angle','ops_diode','desc','notes'];
+// Map old field names to new
+var _SPECS_FIELD_MAP = {in_connector:'pwr_in',out_connector:'pwr_out'};
 
 function fileExportSpecs(){
   document.getElementById('file-menu').style.display='none';
@@ -6446,8 +6449,31 @@ function fileExportSpecs(){
   var rows=[_SPECS_CSV_COLS.join(',')];
   Object.keys(merged).forEach(function(model){
     var sp=merged[model];
+    // Also export cables as separate rows
     var row=_SPECS_CSV_COLS.map(function(col){
-      var v=col==='model'?model:(sp[col]!=null?sp[col]:'');
+      // Handle field aliases (in_connector→pwr_in etc)
+      var v;
+      if(col==='model') v=model;
+      else if(col==='pwr_in') v=sp.pwr_in||sp.in_connector||'';
+      else if(col==='pwr_out') v=sp.pwr_out||sp.out_connector||'';
+      else v=(sp[col]!=null?sp[col]:'');
+      var s=String(v===null?'':v);
+      return (s.indexOf(',')>=0||s.indexOf('"')>=0)?'"'+s.replace(/"/g,'""')+'"':s;
+    });
+    rows.push(row.join(','));
+  });
+  // Export cable types as category=cable rows
+  CABLE_TYPES.forEach(function(ct){
+    var row=_SPECS_CSV_COLS.map(function(col){
+      var v='';
+      if(col==='category') v='cable';
+      else if(col==='model') v=ct.key;
+      else if(col==='alt'||col==='desc') v=ct.label;
+      else if(col==='pwr_in') v=ct.pwr_a||'';
+      else if(col==='pwr_out') v=ct.pwr_b||'';
+      else if(col==='data_in') v=ct.data_a||'';
+      else if(col==='data_out') v=ct.data_b||'';
+      else if(col==='notes') v=ct.lengths.map(function(l){return l.lbl;}).join(' | ');
       var s=String(v);
       return (s.indexOf(',')>=0||s.indexOf('"')>=0)?'"'+s.replace(/"/g,'""')+'"':s;
     });
@@ -6458,7 +6484,7 @@ function fileExportSpecs(){
   var a=document.createElement('a');
   a.href=url;a.download='specs.csv';a.click();
   URL.revokeObjectURL(url);
-  showToast('Exported specs.csv — '+Object.keys(merged).length+' models','ok');
+  showToast('Exported specs.csv — '+Object.keys(merged).length+' device models + '+CABLE_TYPES.length+' cable types','ok');
 }
 
 async function fileLoadSpecs(){
@@ -6495,18 +6521,46 @@ function _applySpecsCSV(csv,name){
   var mci=hdrs.indexOf('model');
   if(mci<0){showToast('CSV needs a "model" column','warn');return;}
   var specs={};
-  var numCols=['laser_w','consumption_w','max_a_230','max_a_110','weight_kg','inputs','outputs'];
+  var cableUpdates=[]; // cable type updates
+  var numCols=['laser_w','consumption_w','max_a_230','max_a_110','weight_kg','inputs','outputs','phases','outlets','max_a'];
+  // Field aliases: csv column name → internal field name
+  var aliases={pwr_in:'pwr_in',pwr_out:'pwr_out',data_in:'data_in',data_out:'data_out',
+    in_connector:'pwr_in',out_connector:'pwr_out'}; // accept old names too
   for(var i=1;i<lines.length;i++){
     var vals=_csvParseLine(lines[i]);
     var model=vals[mci]&&vals[mci].trim();if(!model)continue;
+    var cat='';
+    var cati=hdrs.indexOf('category');
+    if(cati>=0) cat=(vals[cati]||'').trim().toLowerCase();
+    if(cat==='cable'){
+      // Update cable type
+      var ct=CABLE_TYPES.find(function(c){return c.key===model;});
+      if(ct){
+        hdrs.forEach(function(h,j){
+          var v=(vals[j]||'').trim();
+          if(h==='pwr_in'||h==='in_connector') ct.pwr_a=v;
+          else if(h==='pwr_out'||h==='out_connector') ct.pwr_b=v;
+          else if(h==='data_in') ct.data_a=v;
+          else if(h==='data_out') ct.data_b=v;
+          else if(h==='alt'||h==='desc') ct.label=v||ct.label;
+        });
+        cableUpdates.push(model);
+      }
+      continue;
+    }
     var sp={};
     hdrs.forEach(function(h,j){
       if(h==='model')return;
       var v=(vals[j]||'').trim();
-      sp[h]=numCols.indexOf(h)>=0?(v===''?null:parseFloat(v)):v;
+      var field=aliases[h]||h;
+      sp[field]=numCols.indexOf(h)>=0?(v===''?null:parseFloat(v)):v;
     });
+    // Keep backward compat: copy pwr_in/pwr_out to in_connector/out_connector
+    if(sp.pwr_in) sp.in_connector=sp.pwr_in;
+    if(sp.pwr_out) sp.out_connector=sp.pwr_out;
     specs[model]=sp;
   }
+  if(cableUpdates.length) showToast('Updated '+cableUpdates.length+' cable type(s)','ok');
   _applySpecsJSON({models:specs},name);
 }
 
@@ -6518,6 +6572,177 @@ function _applySpecsJSON(data,name){
   if(badge){badge.style.display='';badge.title='Specs: '+name;}
   showToast('Specs loaded: '+name+' ('+Object.keys(specs).length+' models)','ok');
   renderTable();
+}
+
+
+var _packActiveStageIdx = -1;
+
+function renderPackList() {
+  var tabsEl = document.getElementById('pack-stage-tabs');
+  if(tabsEl){
+    tabsEl.innerHTML = _stages.map(function(s,i){
+      var act = (i===(_packActiveStageIdx<0?_currentStageIdx:_packActiveStageIdx));
+      return '<button data-packidx="'+i+'" onclick="packSetStage(+this.dataset.packidx)" style="padding:4px 14px;border-radius:16px;border:2px solid '+(act?s.color:'var(--border2)')+';background:'+(act?s.color+'22':'transparent')+';color:'+(act?s.color:'var(--muted)')+';font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">'+s.name+'</button>';
+    }).join('') + '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center;margin-left:6px">← stage</span>';
+  }
+  var si = _packActiveStageIdx<0 ? _currentStageIdx : _packActiveStageIdx;
+  var stageDevs = (_stages[si]||{}).devices || devices;
+  var el = document.getElementById('pack-content');
+  if(el) { var res = renderPackStage(stageDevs); var st=document.getElementById('pack-stats'); if(st) st.textContent=res.devices+' devices · '+res.cables+' cables'; }
+  renderPackShared();
+}
+
+function packSetStage(idx){ _packActiveStageIdx=idx; renderPackList(); }
+
+function renderPackShared(){
+  var el = document.getElementById('pack-shared-content');
+  if(!el) return;
+  var cats=[{key:'toolcase',label:'\u{1F9F0} Toolcase',col:'var(--distro)'},{key:'office',label:'\u{1F4CB} Office',col:'var(--smoke)'},{key:'spares',label:'\u2699\uFE0F Spares',col:'var(--laser)'}];
+  var h='<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:12px">SHARED — ALL STAGES</div>';
+  cats.forEach(function(c){
+    var items=_packShared[c.key]||[];
+    var done=items.filter(function(x){return x.checked;}).length;
+    h+='<div style="margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+      +'<span style="font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;color:'+c.col+'">'+c.label+'</span>'
+      +(items.length?'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+done+'/'+items.length+'</span>':'')
+      +'<button data-pcat="'+c.key+'" onclick="packSharedAdd(this.dataset.pcat)" style="margin-left:auto;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">+ Add</button>'
+      +'</div>';
+    if(items.length){
+      h+='<table class="pack-table"><thead><tr><th style="width:24px"></th><th style="width:55px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
+      items.forEach(function(s,i){
+        h+='<tr>'
+          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' data-pcat="'+c.key+'" data-pidx="'+i+'" onclick="packSharedCheck(this.dataset.pcat,+this.dataset.pidx,this.checked)"></td>'
+          +'<td><input type="number" min="1" value="'+s.qty+'" data-pcat="'+c.key+'" data-pidx="'+i+'" style="width:48px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:2px 5px;border-radius:3px" onchange="packSharedQty(this.dataset.pcat,+this.dataset.pidx,this.value)"></td>'
+          +'<td><input type="text" value="'+s.desc.replace(/"/g,'&quot;')+'" data-pcat="'+c.key+'" data-pidx="'+i+'" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:3px" onchange="packSharedDesc(this.dataset.pcat,+this.dataset.pidx,this.value)"></td>'
+          +'<td><button data-pcat="'+c.key+'" data-pidx="'+i+'" onclick="packSharedDel(this.dataset.pcat,+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">\u00d7</button></td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+    } else {
+      h+='<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:3px 0">Empty</div>';
+    }
+    h+='</div>';
+  });
+  el.innerHTML=h;
+}
+function packSharedAdd(cat){if(!_packShared[cat])_packShared[cat]=[];_packShared[cat].push({qty:1,desc:'',checked:false});_packSharedSave();renderPackShared();setTimeout(function(){var rows=document.querySelectorAll('[data-pcat="'+cat+'"]');if(rows.length){var last=rows[rows.length-1];var row=last.closest&&last.closest('tr');if(row){var inp=row.querySelector('input[type="text"]');if(inp)inp.focus();}}},60);}
+function packSharedCheck(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].checked=v;_packSharedSave();}
+function packSharedQty(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].qty=parseInt(v)||1;_packSharedSave();}
+function packSharedDesc(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].desc=v;_packSharedSave();}
+function packSharedDel(cat,i){if(_packShared[cat])_packShared[cat].splice(i,1);_packSharedSave();renderPackShared();}
+
+
+function spExportLog() {
+  var log = (window._projectLog || []).slice().sort(function(a,b){ return (a.at||'').localeCompare(b.at||''); });
+  if(!log.length){ showToast('No activity to export','warn'); return; }
+
+  var lines = [];
+  lines.push('BUILDERT ACTIVITY LOG');
+  lines.push('Project: ' + (_projectMeta.name||'—') + (_projectMeta.venue?' · '+_projectMeta.venue:''));
+  lines.push('Exported: ' + new Date().toLocaleString());
+  lines.push('='.repeat(60));
+  lines.push('');
+
+  // Group by day
+  var byDay = {};
+  log.forEach(function(e){
+    var day = e.at ? new Date(e.at).toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : 'Unknown';
+    if(!byDay[day]) byDay[day] = [];
+    byDay[day].push(e);
+  });
+
+  Object.keys(byDay).forEach(function(day){
+    lines.push('── ' + day + ' ──');
+    byDay[day].forEach(function(e){
+      var t = e.at ? new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
+      var who = (e.by||'?').padEnd(12);
+      var dev = (e.device||'').padEnd(12);
+      lines.push(t + '  ' + who + '  ' + dev + '  ' + (e.action||''));
+    });
+    lines.push('');
+  });
+
+  // Swapped devices summary
+  var swapped = [];
+  _stages.forEach(function(stage){
+    (stage.devices||[]).forEach(function(d){
+      if(d.status==='Swapped'||d.status==='Offline'){
+        swapped.push({id:d.device_id, status:d.status, notes:d.notes||'', stage:stage.name});
+      }
+    });
+  });
+  if(swapped.length){
+    lines.push('='.repeat(60));
+    lines.push('DEVICE ISSUES');
+    lines.push('');
+    swapped.forEach(function(s){
+      lines.push('['+s.status+'] ' + s.id + ' ('+s.stage+')' + (s.notes?' — '+s.notes:''));
+    });
+    lines.push('');
+  }
+
+  var txt = lines.join('\n');
+  var blob = new Blob([txt], {type:'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var fname = (_projectMeta.name||'buildert').replace(/\s+/g,'_') + '_log_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.href=url; a.download=fname; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Log exported as ' + fname, 'ok');
+}
+
+
+function updatePhaseLabel(){
+  var src = document.getElementById('m-source');
+  var portEl = document.getElementById('m-outlet-port');
+  var lblEl = document.getElementById('m-phase-label');
+  var wrap = document.getElementById('outlet-port-wrap');
+  if(!src||!portEl||!lblEl||!wrap) return;
+  var srcId = src.value;
+  var srcDev = srcId ? devices.find(function(d){return d.device_id===srcId;}) : null;
+  var srcSpec = srcDev ? (DEVICE_SPECS[srcDev.model||modelFromId(srcDev.device_id||'')] || {}) : {};
+  var hasOutlets = srcSpec.outlet_phases && srcSpec.outlets;
+  wrap.style.display = hasOutlets ? '' : 'none';
+  if(!hasOutlets || !portEl.value) { lblEl.textContent=''; return; }
+  var port = parseInt(portEl.value)||0;
+  var phase = '';
+  if(srcSpec.outlet_phases){
+    srcSpec.outlet_phases.split(',').forEach(function(seg){
+      var parts=seg.trim().split(':');
+      if(parts.length!==2) return;
+      var range=parts[0].split('-').map(Number);
+      if(port>=range[0]&&port<=range[1]) phase=parts[1];
+    });
+  }
+  lblEl.textContent = phase ? ('Phase: '+phase) : '';
+  lblEl.style.color = phase==='L1'?'#ff4d4d':phase==='L2'?'#f5a623':phase==='L3'?'#3ddc84':'var(--muted)';
+}
+
+
+function _distroPhaseLoad(distroId){
+  // Returns {L1: watts, L2: watts, L3: watts, unassigned: watts}
+  var result = {L1:0, L2:0, L3:0, unassigned:0};
+  var distroDev = devices.find(function(d){return d.device_id===distroId;});
+  if(!distroDev) return result;
+  var spec = DEVICE_SPECS[distroDev.model||modelFromId(distroId)]||{};
+  if(!spec.outlet_phases) return result;
+  // Build phase map: port# → phase
+  var portPhase = {};
+  spec.outlet_phases.split(',').forEach(function(seg){
+    var parts=seg.trim().split(':');
+    if(parts.length!==2) return;
+    var range=parts[0].split('-').map(Number);
+    for(var p=range[0];p<=range[1];p++) portPhase[p]=parts[1];
+  });
+  // Find children
+  devices.filter(function(d){return d.source===distroId;}).forEach(function(d){
+    var w = _getDeviceW(d);
+    var port = parseInt(d.outlet_port)||0;
+    var phase = port ? (portPhase[port]||'unassigned') : 'unassigned';
+    result[phase] = (result[phase]||0) + w;
+  });
+  return result;
 }
 
 </script>
