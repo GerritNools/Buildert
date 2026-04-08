@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.807</div>
+    <div>build v3.808</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -6516,12 +6516,24 @@ async function fileLoadSpecs(){
   inp.click();
 }
 
-function _csvParseLine(line){
+function _csvDetectDelimiter(firstLine){
+  // Count semicolons vs commas outside quotes to detect delimiter
+  var commas=0,semis=0,inQ=false;
+  for(var i=0;i<firstLine.length;i++){
+    var c=firstLine[i];
+    if(c==='"') inQ=!inQ;
+    else if(!inQ){if(c===',')commas++;else if(c===';')semis++;}
+  }
+  return semis>commas?';':',';
+}
+
+function _csvParseLine(line, delim){
+  delim=delim||',';
   var res=[],cur='',inQ=false;
   for(var i=0;i<line.length;i++){
     var c=line[i];
     if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
-    else if(c===','&&!inQ){res.push(cur);cur='';}
+    else if(c===delim&&!inQ){res.push(cur);cur='';}
     else cur+=c;
   }
   res.push(cur);return res;
@@ -6530,7 +6542,9 @@ function _csvParseLine(line){
 function _applySpecsCSV(csv,name){
   var lines=csv.split(/\r?\n/).filter(function(l){return l.trim();});
   if(!lines.length){showToast('Empty CSV','warn');return;}
-  var hdrs=_csvParseLine(lines[0]).map(function(h){return h.trim().toLowerCase();});
+  var delim=_csvDetectDelimiter(lines[0]);
+  if(delim===';') showToast('Detected semicolon delimiter — converting…','ok');
+  var hdrs=_csvParseLine(lines[0],delim).map(function(h){return h.trim().toLowerCase();});
   var mci=hdrs.indexOf('model');
   if(mci<0){showToast('CSV needs a "model" column','warn');return;}
   var specs={};
@@ -6540,7 +6554,7 @@ function _applySpecsCSV(csv,name){
   var aliases={pwr_in:'pwr_in',pwr_out:'pwr_out',data_in:'data_in',data_out:'data_out',
     in_connector:'pwr_in',out_connector:'pwr_out'}; // accept old names too
   for(var i=1;i<lines.length;i++){
-    var vals=_csvParseLine(lines[i]);
+    var vals=_csvParseLine(lines[i],delim);
     var model=vals[mci]&&vals[mci].trim();if(!model)continue;
     var cat='';
     var cati=hdrs.indexOf('category');
