@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.819</title>
+<title>WTU · Buildert v3.820</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.819</small></div>
+  <div class="logo">WTU <small>v3.820</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1982,7 +1982,14 @@ function _mergeProjectNoConflict(data){
     var pn=document.getElementById('proj-name');var pv=document.getElementById('proj-venue');
     if(pn)pn.value=project.name||'';if(pv)pv.value=project.venue||'';
   }
-  if(data.spec_overrides){try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}}
+  if(data.spec_overrides){
+    try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
+    // Merge into live SPECS so model dropdowns and spec sheets see them
+    Object.keys(data.spec_overrides).forEach(function(k){
+      if(!SPECS[k]) SPECS[k]={};
+      Object.assign(SPECS[k], data.spec_overrides[k]);
+    });
+  }
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
@@ -2049,7 +2056,14 @@ function _mergeSmartFromFile(data){
     var pn=document.getElementById('proj-name'); var pv=document.getElementById('proj-venue');
     if(pn)pn.value=project.name||''; if(pv)pv.value=project.venue||'';
   }
-  if(data.spec_overrides){try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}}
+  if(data.spec_overrides){
+    try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
+    // Merge into live SPECS so model dropdowns and spec sheets see them
+    Object.keys(data.spec_overrides).forEach(function(k){
+      if(!SPECS[k]) SPECS[k]={};
+      Object.assign(SPECS[k], data.spec_overrides[k]);
+    });
+  }
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
   _persistProjectMeta();
@@ -2898,7 +2912,7 @@ var _dbxPushDebounce=null;
 try{var sd=localStorage.getItem('wtu_devices');if(sd)devices=JSON.parse(sd);}catch(e){}
 try{var sp2=localStorage.getItem('wtu_project');if(sp2)project=JSON.parse(sp2);}catch(e){}
 try{var spm=localStorage.getItem('wtu_project_meta');if(spm){var spmd=JSON.parse(spm);_projectVersion=spmd.version||0;_projectBaseVersion=spmd.base_version||0;if(spmd.name)project.name=spmd.name;if(spmd.venue)project.venue=spmd.venue;}}catch(e){}
-try{var so=localStorage.getItem('buildert_specs_overrides');if(so){var ov=JSON.parse(so);Object.keys(ov).forEach(function(k){if(SPECS[k])Object.assign(SPECS[k],ov[k]);});}}catch(e){}
+try{var so=localStorage.getItem('buildert_specs_overrides');if(so){var ov=JSON.parse(so);Object.keys(ov).forEach(function(k){if(!SPECS[k])SPECS[k]={};Object.assign(SPECS[k],ov[k]);});}}catch(e){}
 
 var ip=localStorage.getItem('wtu_ip')||'';
 // conn-ip removed (Anbernic stripped)
