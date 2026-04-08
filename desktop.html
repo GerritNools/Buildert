@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.805</title>
+<title>WTUniverse · Buildert Editor v3.807</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.805</div>
+    <div>build v3.807</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -523,6 +523,7 @@
       <button class="tab-btn"               id="tab-smoke"  onclick="setTab('smoke')">&#128168; Smoke</button>
       <button class="tab-btn"               id="tab-distro" onclick="setTab('distro')">&#9889; Distros</button>
       <button class="tab-btn"               id="tab-psu"    onclick="setTab('psu')">&#128267; PSU</button>
+      <button class="tab-btn"               id="tab-power"  onclick="setTab('power')">&#9889; Power</button>
       <button class="tab-btn"               id="tab-all"    onclick="setTab('all')">All</button>
       <button class="tab-btn"               id="tab-node"   onclick="setTab('node')">&#9741; Node</button>
       <button class="tab-btn"               id="tab-diagram" onclick="setTab('diagram')">&#9633; Diagram</button>
@@ -709,6 +710,8 @@
   </div>
 
   <!-- Specs View -->
+  <div id="power-view" style="display:none;padding:0;overflow-y:auto;height:calc(100vh - 110px)"></div>
+
   <div id="specs-view" style="display:none;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:300px;"></div>
 
   <!-- Diagram panel — SVG-based, independent positions -->
@@ -1436,6 +1439,7 @@ function setTab(tab) {
   var shv = document.getElementById('shares-panel');
   var dgw = document.getElementById('diag-panel');
   var tdv = document.getElementById('todos-panel');
+  var pwv = document.getElementById('power-view');
   var ovv = document.getElementById('overview-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
@@ -1444,6 +1448,7 @@ function setTab(tab) {
   if (shv) shv.style.display = 'none';
   if (dgw) dgw.style.display = 'none';
   if (tdv) tdv.style.display = 'none';
+  if (pwv) pwv.style.display = 'none';
   if (ovv) ovv.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
@@ -1458,6 +1463,7 @@ function setTab(tab) {
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
   else if (tab === 'todos')   { if (tdv) tdv.style.display='block'; renderTodosPanel(); }
   else if (tab === 'overview'){ if (ovv) ovv.style.display='block'; renderOverview(); }
+  else if (tab === 'power')   { if (pwv) pwv.style.display='block'; renderPowerView(); }
   else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
 }
@@ -1499,6 +1505,12 @@ function hexToRgba(col, alpha) {
 // ── Render ────────────────────────────────────────────────────────────
 // Recursive chain load — sums ALL consumption downstream of a device_id.
 // Walks through distros/PSUs chained together, up to full rig total.
+function _getDeviceW(dev){
+  if(!dev) return 0;
+  var sp = specsForDevice(dev);
+  return sp ? (sp.consumption_w||0) : 0;
+}
+
 function chainLoadW(deviceId, visited) {
   if (!deviceId) return 0;
   visited = visited || {};
@@ -1523,19 +1535,19 @@ function distroLoadW(id) { return chainLoadW(id); }
 // Key = first word of device_id (uppercase). e.g. "RGBB 3" → key "RGBB"
 var DEVICE_SPECS = {
   // ── Lasers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  'RGB20':    {category:'laser', alt:'RGCB20',              laser_w:20,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:18.0,  inputs:1, outputs:1, ip:'192.168.10.X', scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'20W RGB laser — gele sticker',               in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'CYAN':     {alt:'Green/Blue',          laser_w:14,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Gr=OPS Bl=Diode',    desc:'GB — Gr=OPS  Bl=Diode',                      in_connector:'TRUE1', out_connector:'', notes:''},
-  'WHITE':    {category:'laser', alt:'Yellow/Blue',         laser_w:null, consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Y=OPS Bl=Diode',     desc:'YB — Y=OPS  Bl=Diode',                       in_connector:'TRUE1', out_connector:'', notes:''},
-  'RGBB':     {alt:'RGBB',                laser_w:14,   consumption_w:1035, max_a_230:4.5,  max_a_110:9.4,  weight_kg:18.0,  inputs:1, outputs:2, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',                      in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'RGB6':     {alt:'RGB6',                laser_w:6,    consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:7.0,   inputs:1, outputs:1, ip:'192.168.6.X',  scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'6W RGB laser',                               in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'RGB10':    {category:'laser', alt:'RGCB10 / Kvant CM10', laser_w:10,   consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:15.0,  inputs:1, outputs:1, ip:'',             scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'Kvant CM10 — externe connector plaat',       in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'GOPSL':    {category:'laser', alt:'Green OPS / G10',     laser_w:10,   consumption_w:460,  max_a_230:2.0,  max_a_110:4.2,  weight_kg:8.2,   inputs:1, outputs:1, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Green OPS laser',                            in_connector:'TRUE1', out_connector:'TRUE1', notes:'LET OP! Doorlus 0.7mm\u00b2 \u2014 max 10A totale doorlus'},
-  'SUPERNOVA':{category:'laser', alt:'Supernova',           laser_w:null, consumption_w:1900, max_a_230:8.1,  max_a_110:17.3, weight_kg:37.0,  inputs:1, outputs:0, ip:'192.168.9.X',  scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Large OPS unit',                             in_connector:'TRUE1', out_connector:'', notes:''},
-  'HULK':     {alt:'Hulk',                laser_w:null, consumption_w:3600, max_a_230:16,   max_a_110:null, weight_kg:65,    inputs:1, outputs:0, ip:'',             scanners:'SM',       angle:null,  scanrate_kpps:30, ops_diode:null,                 desc:'Grote unit met extra koel unit',             in_connector:'TRUE1', out_connector:'', notes:'LET OP! ALLEEN 230V'},
-  'PIKO35':   {category:'laser', alt:'RTI Piko 35',         laser_w:35,   consumption_w:1000, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:'CT6210',   angle:'51\u00b0', scanrate_kpps:30, ops_diode:null,           desc:'RTI Piko 35',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'PIKO60':   {category:'laser', alt:'RTI Piko 60',         laser_w:60,   consumption_w:1500, max_a_230:null, max_a_110:null, weight_kg:41.0,  inputs:1, outputs:1, ip:'',             scanners:'EMS-8000', angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 60',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'PIKO70':   {category:'laser', alt:'RTI Piko 70',         laser_w:70,   consumption_w:null, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:null,       angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 70',                                in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
-  'VIPER':    {category:'laser', alt:'Coherent Viper',      laser_w:20,   consumption_w:850,  max_a_230:3.7,  max_a_110:7.8,  weight_kg:35.0,  inputs:1, outputs:1, ip:'192.168.5.X',  scanners:'CT6215',   angle:'60\u00b0', scanrate_kpps:30, ops_diode:'OPS Fiber',    desc:'Oude unit, plastic zijplaten',               in_connector:'TRUE1', out_connector:'TRUE1', notes:'Smalle beam'},
+  'RGB20':    {category:'laser', alt:'RGCB20',              laser_w:20,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:18.0,  inputs:1, outputs:1, ip:'192.168.10.X', scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'20W RGB laser — gele sticker',               phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'CYAN':     {category:'laser', alt:'Green/Blue',          laser_w:14,   consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Gr=OPS Bl=Diode',    desc:'GB — Gr=OPS  Bl=Diode',                      phases:1, in_connector:'TRUE1', out_connector:'', notes:''},
+  'WHITE':    {category:'laser', alt:'Yellow/Blue',         laser_w:null, consumption_w:500,  max_a_230:2.2,  max_a_110:4.6,  weight_kg:12.5,  inputs:1, outputs:0, ip:'',             scanners:'DT50',     angle:'40°', scanrate_kpps:23, ops_diode:'Y=OPS Bl=Diode',     desc:'YB — Y=OPS  Bl=Diode',                       phases:1, in_connector:'TRUE1', out_connector:'', notes:''},
+  'RGBB':     {category:'laser', alt:'RGBB',                laser_w:14,   consumption_w:1035, max_a_230:4.5,  max_a_110:9.4,  weight_kg:18.0,  inputs:1, outputs:2, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',                      phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'RGB6':     {category:'laser', alt:'RGB6',                laser_w:6,    consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:7.0,   inputs:1, outputs:1, ip:'192.168.6.X',  scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'6W RGB laser',                               phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'RGB10':    {category:'laser', alt:'RGCB10 / Kvant CM10', laser_w:10,   consumption_w:300,  max_a_230:1.3,  max_a_110:2.7,  weight_kg:15.0,  inputs:1, outputs:1, ip:'',             scanners:'SM506',    angle:'40°', scanrate_kpps:23, ops_diode:'Diode',              desc:'Kvant CM10 — externe connector plaat',       phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'GOPSL':    {category:'laser', alt:'Green OPS / G10',     laser_w:10,   consumption_w:460,  max_a_230:2.0,  max_a_110:4.2,  weight_kg:8.2,   inputs:1, outputs:1, ip:'',             scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Green OPS laser',                            phases:1, in_connector:'TRUE1', out_connector:'TRUE1', notes:'LET OP! Doorlus 0.7mm\u00b2 \u2014 max 10A totale doorlus'},
+  'SUPERNOVA':{category:'laser', alt:'Supernova',           laser_w:null, consumption_w:1900, max_a_230:8.1,  max_a_110:17.3, weight_kg:37.0,  inputs:1, outputs:0, ip:'192.168.9.X',  scanners:'CT6215',   angle:'60°', scanrate_kpps:30, ops_diode:'OPS',                desc:'Large OPS unit',                             phases:1, in_connector:'TRUE1', out_connector:'', notes:''},
+  'HULK':     {category:'laser', alt:'Hulk',                laser_w:null, consumption_w:3600, max_a_230:16,   max_a_110:null, weight_kg:65,    inputs:1, outputs:0, ip:'',             scanners:'SM',       angle:null,  scanrate_kpps:30, ops_diode:null,                 desc:'Grote unit met extra koel unit',             phases:1, in_connector:'TRUE1', out_connector:'', notes:'LET OP! ALLEEN 230V'},
+  'PIKO35':   {category:'laser', alt:'RTI Piko 35',         laser_w:35,   consumption_w:1000, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:'CT6210',   angle:'51\u00b0', scanrate_kpps:30, ops_diode:null,           desc:'RTI Piko 35',                                phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'PIKO60':   {category:'laser', alt:'RTI Piko 60',         laser_w:60,   consumption_w:1500, max_a_230:null, max_a_110:null, weight_kg:41.0,  inputs:1, outputs:1, ip:'',             scanners:'EMS-8000', angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 60',                                phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'PIKO70':   {category:'laser', alt:'RTI Piko 70',         laser_w:70,   consumption_w:null, max_a_230:null, max_a_110:null, weight_kg:null,  inputs:1, outputs:1, ip:'',             scanners:null,       angle:null,  scanrate_kpps:null,ops_diode:null,                desc:'RTI Piko 70',                                phases:1, in_connector:'TRUE1', out_connector:'TRUE1', data_in:'Neutrik', data_out:'Neutrik', notes:''},
+  'VIPER':    {category:'laser', alt:'Coherent Viper',      laser_w:20,   consumption_w:850,  max_a_230:3.7,  max_a_110:7.8,  weight_kg:35.0,  inputs:1, outputs:1, ip:'192.168.5.X',  scanners:'CT6215',   angle:'60\u00b0', scanrate_kpps:30, ops_diode:'OPS Fiber',    desc:'Oude unit, plastic zijplaten',               phases:1, in_connector:'TRUE1', out_connector:'TRUE1', notes:'Smalle beam'},
   // ── Distros ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   '32A':      {category:'distro', alt:'32A Distro',          consumption_w:null, weight_kg:null, ip:'', outputs:12, inputs:3,   phases:3, fibre:false, desc:'12 out / 3 in / noodstop / 3-phase', in_connector:'32ACEE', out_connector:'16ACEEBlue', outlet_phases:'1-4:L1,5-8:L2,9-12:L3', notes:'CEE RED 32A 3P+N+E'},
   '32AFIBRE': {alt:'32A Distro fibre',    consumption_w:null, weight_kg:null, ip:'', outputs:6, inputs:null, phases:3, fibre:true,  desc:'6 out / fibre media converter / 3-phase',  in_connector:'32ACEE', out_connector:'16ACEEBlue', notes:'CEE RED 32A 3P+N+E'},
@@ -1543,9 +1555,9 @@ var DEVICE_SPECS = {
   '4PORT':    {category:'distro', alt:'4 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:4, inputs:4,    phases:1, fibre:false, desc:'4 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
   '3PORT':    {category:'distro', alt:'3 Port Distro',       consumption_w:null, weight_kg:null, ip:'', outputs:3, inputs:4,    phases:1, fibre:false, desc:'3 out / 4 in / 1-phase',  in_connector:'16ACEEBlue', out_connector:'16ACEEBlue', notes:''},
   // ── Smoke ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  'PEASOUP':  {category:'smoke', alt:'Pea Soup',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'mineral', desc:'Low-lying fog \u2014 mineral oil',  in_connector:'Schuko', out_connector:'', notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
-  'SHOCKFOG': {alt:'Shockfog',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'glycol',  desc:'Hazer \u2014 glycol oil, no CO2',   in_connector:'Schuko', out_connector:'', notes:'Glycol oil \u2014 no CO2 needed'},
-  'FAN':      {alt:'Fan unit',            consumption_w:1000, max_a_230:4.4,max_a_110:9,  weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:null,      desc:'Fan unit for smoke/haze',            in_connector:'Schuko', out_connector:'', notes:''},
+  'PEASOUP':  {category:'smoke', alt:'Pea Soup',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'mineral', desc:'Low-lying fog \u2014 mineral oil',  phases:1, in_connector:'Schuko', out_connector:'', notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
+  'SHOCKFOG': {category:'smoke', alt:'Shockfog',            consumption_w:2200, max_a_230:10, max_a_110:20, weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:'glycol',  desc:'Hazer \u2014 glycol oil, no CO2',   phases:1, in_connector:'Schuko', out_connector:'', notes:'Glycol oil \u2014 no CO2 needed'},
+  'FAN':      {category:'smoke', alt:'Fan unit',            consumption_w:1000, max_a_230:4.4,max_a_110:9,  weight_kg:null,  inputs:1, outputs:0, ip:'', oil_type:null,      desc:'Fan unit for smoke/haze',            phases:1, in_connector:'Schuko', out_connector:'', notes:''},
 };
 
 // Extract model key from device_id: first word, uppercase. "RGBB 3" → "RGBB"
@@ -6479,7 +6491,8 @@ function fileExportSpecs(){
     });
     rows.push(row.join(','));
   });
-  var blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  var bom='\uFEFF'; // UTF-8 BOM for Excel
+  var blob=new Blob([bom+rows.join('\n')],{type:'text/csv;charset=utf-8'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url;a.download='specs.csv';a.click();
@@ -6743,6 +6756,125 @@ function _distroPhaseLoad(distroId){
     result[phase] = (result[phase]||0) + w;
   });
   return result;
+}
+
+
+function renderPowerView(){
+  var el = document.getElementById('power-view');
+  if(!el) return;
+
+  // Collect all root power devices (PSU, Distro) — those sourced from FOH or nothing
+  var roots = devices.filter(function(d){
+    return (d.type===TYPE_DISTRO||d.type===TYPE_PSU) &&
+           (!d.source || d.source==='FOH');
+  });
+  // Also include distros sourced from PSUs
+  var allPower = devices.filter(function(d){ return d.type===TYPE_DISTRO||d.type===TYPE_PSU; });
+
+  if(!allPower.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:13px;color:var(--muted)">No distros or PSUs in this stage</div>';
+    return;
+  }
+
+  var totalW = 0;
+  allPower.forEach(function(d){ if(!d.source||d.source==='FOH') totalW += chainLoadW(d.device_id); });
+
+  var html = '<div style="padding:16px 18px">';
+
+  // ── Total header ──
+  var totCol = totalW>10000?'var(--danger)':totalW>6000?'var(--warn)':'var(--ok)';
+  var totA = (totalW/230).toFixed(1);
+  html += '<div style="display:flex;align-items:baseline;gap:16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">'
+    +'<span style="font-family:var(--cond);font-weight:900;font-size:20px;letter-spacing:2px">POWER</span>'
+    +'<span style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+totCol+'">'+totalW+'W</span>'
+    +'<span style="font-family:var(--mono);font-size:14px;color:var(--muted)">≈ '+totA+'A @230V total</span>'
+    +'</div>';
+
+  // ── Per distro/PSU cards ──
+  allPower.sort(function(a,b){
+    if(a.type!==b.type) return a.type===TYPE_PSU?-1:1;
+    return chainLoadW(b.device_id)-chainLoadW(a.device_id);
+  });
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px">';
+
+  allPower.forEach(function(dev){
+    var sp = specsForDevice(dev)||{};
+    var load = chainLoadW(dev.device_id);
+    var is3phase = sp.phases===3 && sp.outlet_phases;
+    var maxW = sp.phases===3 ? 21000 : 7200; // rough: 32A*3phases vs 32A*1phase
+    var barPct = Math.min(100, Math.round(load/maxW*100));
+    var col = barPct>80?'var(--danger)':barPct>60?'var(--warn)':'var(--ok)';
+    var typeCol = dev.type===TYPE_PSU?'var(--psu)':'var(--distro)';
+    var stLed = dev.status==='Online'||dev.status==='Mounted'?'#3ddc84':dev.status==='GoAndCheck'||dev.status==='Swap'?'#f5a623':dev.status==='Offline'||dev.status==='Swapped'?'#ff4d4d':'#55606e';
+
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">';
+
+    // Card header
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border2)">'
+      +'<div style="width:10px;height:10px;border-radius:50%;background:'+stLed+'"></div>'
+      +'<span style="font-family:var(--cond);font-weight:900;font-size:18px;color:'+typeCol+'">'+dev.device_id+'</span>'
+      +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+sp.alt+'</span>'
+      +'<span style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+col+';margin-left:auto">'+load+'W</span>'
+      +'</div>';
+
+    // Overall load bar
+    html += '<div style="padding:10px 14px 4px">'
+      +'<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:4px">'
+      +'<div style="height:100%;width:'+barPct+'%;background:'+col+';border-radius:4px;transition:width .3s"></div></div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+barPct+'% capacity · '+(load/230).toFixed(1)+'A @230V</div>'
+      +'</div>';
+
+    // Phase breakdown for 3-phase distros
+    if(is3phase){
+      var phases = _distroPhaseLoad(dev.device_id);
+      var phaseColors = {L1:'#ff6b6b',L2:'#f5a623',L3:'#3ddc84'};
+      var maxPhaseW = sp.max_a_230 ? sp.max_a_230/3*230 : 2400; // per-phase max
+      html += '<div style="padding:8px 14px 4px;border-top:1px solid var(--border2)">';
+      html += '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px">PHASE LOAD</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">';
+      ['L1','L2','L3'].forEach(function(ph){
+        var pw = phases[ph]||0;
+        var pA = (pw/230).toFixed(1);
+        var pPct = Math.min(100,Math.round(pw/maxPhaseW*100));
+        var phCol = phaseColors[ph];
+        html += '<div style="background:var(--panel);border-radius:6px;padding:8px">'
+          +'<div style="font-family:var(--cond);font-weight:700;font-size:13px;color:'+phCol+';margin-bottom:4px">'+ph+'</div>'
+          +'<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:4px">'
+          +'<div style="height:100%;width:'+pPct+'%;background:'+phCol+';border-radius:3px"></div></div>'
+          +'<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+(pPct>80?'var(--danger)':phCol)+'">'+pw+'W</div>'
+          +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+pA+'A</div>'
+          +'</div>';
+      });
+      html += '</div>';
+      if(phases.unassigned) html += '<div style="font-family:var(--mono);font-size:10px;color:var(--warn);margin-top:6px">⚠ '+phases.unassigned+'W on unassigned ports</div>';
+      html += '</div>';
+    }
+
+    // Children list
+    var children = devices.filter(function(c){return c.source===dev.device_id;});
+    if(children.length){
+      html += '<div style="padding:8px 14px 12px;border-top:1px solid var(--border2)">';
+      html += '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px">CONNECTED</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      children.forEach(function(c){
+        var csp = specsForDevice(c)||{};
+        var cw = csp.consumption_w||0;
+        var cport = c.outlet_port ? ' #'+c.outlet_port : '';
+        var cLed = c.status==='Online'||c.status==='Mounted'?'#3ddc84':c.status==='GoAndCheck'||c.status==='Swap'?'#f5a623':c.status==='Offline'||c.status==='Swapped'?'#ff4d4d':'#55606e';
+        html += '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:3px 7px;font-family:var(--mono);font-size:11px">'
+          +'<span style="width:6px;height:6px;border-radius:50%;background:'+cLed+';flex-shrink:0"></span>'
+          +c.device_id+cport+(cw?' <span style="color:var(--muted)">'+cw+'W</span>':'')
+          +'</span>';
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>'; // end card
+  });
+
+  html += '</div></div>'; // end grid + padding
+  el.innerHTML = html;
 }
 
 </script>
