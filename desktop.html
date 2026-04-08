@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.811</div>
+    <div>build v3.812</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2957,7 +2957,16 @@ function _mergeProjectNoConflict(data) {
   window._mobileChanged = {};
   _packSpares = data.pack_spares || [];
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
-  _specsOverrides = data.spec_overrides  || {};
+  // Merge project spec_overrides ON TOP of loaded specs — never wipe imported specs
+  if(data.spec_overrides && Object.keys(data.spec_overrides).length){
+    Object.assign(_specsOverrides, data.spec_overrides);
+    // Also merge into DEVICE_SPECS
+    Object.keys(data.spec_overrides).forEach(function(k){
+      if(!DEVICE_SPECS[k]) DEVICE_SPECS[k]={};
+      Object.assign(DEVICE_SPECS[k], data.spec_overrides[k]);
+    });
+    saveSpecsToStorage();
+  }
   if(data.project){
     _projectMeta = Object.assign(_projectMeta, data.project);
     var ip = data.project.anbernic_ip||'';
@@ -6262,7 +6271,9 @@ function fileNew(){
   if(_unsaved && !confirm('Discard unsaved changes?')) return;
   // Full reset
   _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
-  _specsOverrides={}; _packSpares=[]; _packShared={toolcase:[],office:[],spares:[]}; window._projectLog=[];
+  _packSpares=[]; _packShared={toolcase:[],office:[],spares:[]}; window._projectLog=[];
+  // Keep specs — they belong to the stock DB, not the project
+  loadSpecsFromStorage();
   _projectVersion=0; _projectBaseVersion=0;
   _nodePositions={}; _diagPositions={};
   try{localStorage.removeItem('buildert_node_pos');localStorage.removeItem('buildert_diag_pos');}catch(e){}
@@ -6955,6 +6966,3 @@ function renderPowerView(){
 </script>
 </body>
 </html>
-
-
-
