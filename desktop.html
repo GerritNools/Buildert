@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.824</title>
+<title>WTUniverse · Buildert Editor v3.825</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.824</div>
+    <div>build v3.825</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -480,9 +480,6 @@
     <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
   </div>
 
-  <!-- Project name badge -->
-  <span id="proj-name-badge" style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0"
-        onclick="document.getElementById('modal-project').classList.add('open')" title="Project settings">—</span>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
@@ -2713,10 +2710,8 @@ function pushToDevice(){
 }
 
 function _updateProjectBadge() {
-  var nb = document.getElementById('proj-name-badge');
   var vb = document.getElementById('proj-version-badge');
   var mv = document.getElementById('modal-ver-display');
-  if (nb) nb.textContent = _projectMeta.name || '(no project)';
   if(!_fileName||_fileName==='no file — use File → New or Open'){_setFileName((_projectMeta.name||'untitled')+' (unsaved)');}
   var hv=document.getElementById('hdr-version'); if(hv) hv.textContent=(_projectVersion?'project v'+_projectVersion:'');
   if (vb) vb.textContent = _projectVersion > 0 ? 'v' + _projectVersion : '';
@@ -6335,7 +6330,8 @@ function wPushLayout(){
 
 
 // ── File System ───────────────────────────────────────────────────
-var _fileHandle = null;   // FileSystemFileHandle (modern browsers)
+var _fileHandle = null;
+var _lastOpenedFileName = null;   // FileSystemFileHandle (modern browsers)
 var _fileName   = null;   // just the name for display
 var _specsData  = null;   // loaded specs override object
 var _autoSaveTimer = null;
@@ -6446,6 +6442,7 @@ async function fileOpen(){
     inp.type='file'; inp.accept='.buildert,.json';
     inp.onchange=function(){
       if(!inp.files[0])return;
+      _lastOpenedFileName=inp.files[0].name;
       var r=new FileReader();
       r.onload=function(){_loadFromText(r.result, inp.files[0].name);};
       r.readAsText(inp.files[0]);
@@ -6477,6 +6474,9 @@ async function fileSave(){
   document.getElementById('file-menu').style.display='none';
   if(_fileHandle){
     await _writeToHandle(_fileHandle);
+  } else if(_lastOpenedFileName){
+    // No File System Access API (Safari) — re-download with same filename
+    _fileSaveDownload(_lastOpenedFileName);
   } else {
     await fileSaveAs();
   }
@@ -7161,6 +7161,24 @@ function compatibleCableTypes(pwrIn) {
 function devicePwrIn(dev) {
   var sp = specsForDevice(dev)||{};
   return sp.pwr_in || sp.in_connector || '';
+}
+
+
+function _fileSaveDownload(name){
+  var payload=_buildFilePayload();
+  _projectVersion++;
+  _projectBaseVersion=_projectVersion;
+  payload._version=_projectVersion;
+  _updateProjectBadge();
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=name||'project.buildert'; a.click();
+  URL.revokeObjectURL(url);
+  _markSaved();
+  _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+  showToast('Saved · '+name,'ok');
+  wPush(true);
 }
 
 </script>
