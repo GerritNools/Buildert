@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.817</title>
+<title>WTUniverse · Buildert Editor v3.818</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.817</div>
+    <div>build v3.818</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -687,10 +687,11 @@
       <span style="font-family:var(--cond);font-weight:900;font-size:15px;letter-spacing:2px;color:var(--accent)">PACKING LIST</span>
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
+        <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
       </div>
     </div>
-    <div id="pack-stage-tabs" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap"></div>
+    <!-- Stage selection via main stage bar -->
     <div id="pack-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:calc(100vh - 310px)"></div>
     <div style="margin-top:10px">
       <div id="pack-shared-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:360px"></div>
@@ -2883,7 +2884,7 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
-  var fromMobile = data._saved_by && data._saved_by !== 'desktop';
+  var fromMobile = data._saved_by && data._saved_by !== 'desktop' && data._saved_by !== '';
 
   if(fromMobile) {
     // ── MOBILE MERGE: only update fields mobile owns ────────────────
@@ -2891,11 +2892,16 @@ function _mergeProjectNoConflict(data) {
     // Mobile owns:  serial, status, checks, pointed, notes, cable_in, cable
     var MOBILE_FIELDS = ['serial','status','checks','pointed','notes','cable_in','cable'];
     var changed = {};
-    var incomingDevs = data.devices || [];
-    // Build lookup of incoming mobile data
+    // Build incoming device lookup from ALL incoming stages (mobile sends full stages[])
     var incomingById = {};
-    incomingDevs.forEach(function(d){ if(d.device_id) incomingById[d.device_id]=d; });
-    // Apply mobile fields to ALL stages
+    if(Array.isArray(data.stages) && data.stages.length){
+      data.stages.forEach(function(stage){
+        (stage.devices||[]).forEach(function(fd){ if(fd.device_id) incomingById[fd.device_id]=fd; });
+      });
+    } else {
+      (data.devices||[]).forEach(function(fd){ if(fd.device_id) incomingById[fd.device_id]=fd; });
+    }
+    // Apply mobile fields to ALL local stages
     _stages.forEach(function(stage){
       stage.devices.forEach(function(ld){
         var fd = incomingById[ld.device_id];
@@ -5977,6 +5983,7 @@ async function wPush(silent){
     stages:JSON.parse(JSON.stringify(_stages)),
     devices:devices,
     spec_overrides:_specsOverrides,
+    cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     _log:window._projectLog||[],
     _node_positions:JSON.parse(np),
@@ -6296,6 +6303,7 @@ function wPushLayout(){
     project:Object.assign({},_projectMeta),
     devices:devices,
     spec_overrides:_specsOverrides,
+    cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     _log:window._projectLog||[],
     _node_positions:np_parsed,
@@ -6376,6 +6384,7 @@ function _buildFilePayload(){
     // Legacy single-stage fields (for Worker compatibility with mobile)
     devices:devices,
     spec_overrides:_specsOverrides,
+    cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     _log:window._projectLog||[],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
@@ -6790,15 +6799,10 @@ function _applySpecsJSON(data,name){
 
 
 var _packActiveStageIdx = -1;
+var _packShowAll = false;
 
 function renderPackList() {
-  var tabsEl = document.getElementById('pack-stage-tabs');
-  if(tabsEl){
-    tabsEl.innerHTML = _stages.map(function(s,i){
-      var act = (i===(_packActiveStageIdx<0?_currentStageIdx:_packActiveStageIdx));
-      return '<button data-packidx="'+i+'" onclick="packSetStage(+this.dataset.packidx)" style="padding:4px 14px;border-radius:16px;border:2px solid '+(act?s.color:'var(--border2)')+';background:'+(act?s.color+'22':'transparent')+';color:'+(act?s.color:'var(--muted)')+';font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">'+s.name+'</button>';
-    }).join('') + '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center;margin-left:6px">← stage</span>';
-  }
+  // stage selection via main stage bar
   var si = _packActiveStageIdx<0 ? _currentStageIdx : _packActiveStageIdx;
   var stageDevs = (_stages[si]||{}).devices || devices;
   var el = document.getElementById('pack-content');
