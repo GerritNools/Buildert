@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.826</title>
+<title>WTU · Buildert v3.827</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.826</small></div>
+  <div class="logo">WTU <small>v3.827</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -726,42 +726,44 @@ MODELS[TD]=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
 MODELS[TP]=[];
 
 var CABLE_TYPES=[
-  {key:'powercat',label:'PowerCAT',  lengths:[{v:0.3,l:'0.3m'},{v:7.5,l:'7.5m'},{v:15,l:'15m'},{v:35,l:'35m'},{v:80,l:'80m'}]},
-  {key:'powerlan',label:'PowerLAN',  lengths:[{v:0.3,l:'0.3m'},{v:7.5,l:'7.5m'},{v:15,l:'15m'},{v:35,l:'35m'},{v:80,l:'80m'}]},
-  {key:'l2130',   label:'L21-30',    lengths:[{v:3.05,l:'10ft'},{v:7.62,l:'25ft'},{v:15.24,l:'50ft'}]},
-  {key:'schuko',  label:'Schuko',    lengths:[{v:25,l:'25m'},{v:50,l:'50m'}]},
-  {key:'cee32',   label:'CEE 32A',   lengths:[{v:7.62,l:'25ft'},{v:15.24,l:'50ft'}]},
+  {key:'powercat',label:'PowerCAT',pwr_a:'TR1',pwr_b:'TR1',data_a:'Ethercon',data_b:'Ethercon',
+   lengths:[{val:0.3,lbl:'0.3 m',v:0.3,l:'0.3 m'},{val:7.5,lbl:'7.5 m',v:7.5,l:'7.5 m'},{val:15,lbl:'15 m',v:15,l:'15 m'},{val:35,lbl:'35 m',v:35,l:'35 m'},{val:80,lbl:'80 m',v:80,l:'80 m'}]},
+  {key:'powerlan',label:'PowerLAN',pwr_a:'HartingPushPull',pwr_b:'HartingPushPull',data_a:'HartingPushPull',data_b:'HartingPushPull',
+   lengths:[{val:0.3,lbl:'0.3 m',v:0.3,l:'0.3 m'},{val:7.5,lbl:'7.5 m',v:7.5,l:'7.5 m'},{val:15,lbl:'15 m',v:15,l:'15 m'},{val:35,lbl:'35 m',v:35,l:'35 m'},{val:80,lbl:'80 m',v:80,l:'80 m'}]},
+  {key:'l2130',label:'L21-30',pwr_a:'L21-30',pwr_b:'L21-30',data_a:'',data_b:'',
+   lengths:[{val:1.5,lbl:'Lunch box',v:1.5,l:'Lunch box'},{val:8,lbl:'25 ft (8m)',v:8,l:'25 ft (8m)'},{val:15,lbl:'50 ft (15m)',v:15,l:'50 ft (15m)'},{val:30,lbl:'100 ft (30m)',v:30,l:'100 ft (30m)'},{val:45,lbl:'150 ft (45m)',v:45,l:'150 ft (45m)'}]},
+  {key:'schuko',label:'Schuko',pwr_a:'Schuko',pwr_b:'Schuko',data_a:'',data_b:'',
+   lengths:[{val:10,lbl:'10 m',v:10,l:'10 m'},{val:25,lbl:'25 m',v:25,l:'25 m'},{val:50,lbl:'50 m',v:50,l:'50 m'}]},
+  {key:'cee32',label:'CEE 32A RED',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',
+   lengths:[{val:10,lbl:'10 m',v:10,l:'10 m'}]},
 ];
 function _cableLabel(key){
   if(!key)return '';
   var ct=CABLE_TYPES.find(function(c){return key.indexOf(c.key+'-')===0;});
   if(!ct)return key;
   var lv=parseFloat(key.split('-').slice(1).join('-'));
-  var ld=ct.lengths.find(function(l){return Math.abs(l.v-lv)<0.01;});
-  return ct.label+' '+(ld?ld.l:lv+'m');
+  var ld=ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;});
+  return ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m');
 }
 function _cableOpts(val, reqConn){
-  var CONN_CABLE={
-    'TRUE1':['powercat','powerlan'],
-    'PPPower':['powerlan','powercat'],
-    '32ACEE':['cee32'],
-    'Schuko':['schuko'],
-    'L21-30':['l2130'],
-    '16ACEEBlue':['powercat','cee32']
-  };
-  var allowed = reqConn && CONN_CABLE[reqConn] ? CONN_CABLE[reqConn] : null;
-  var o='<option value="">— none —</option>';
+  // Match cable by pwr_in connector on device
+  var allowed = null;
+  if(reqConn){
+    allowed = CABLE_TYPES.filter(function(ct){
+      return ct.pwr_a===reqConn || ct.pwr_b===reqConn;
+    }).map(function(ct){return ct.key;});
+    if(!allowed.length) allowed=null; // fallback: show all
+  }
+  var o='<option value="">-- none --</option>';
   CABLE_TYPES.forEach(function(ct){
     if(allowed && allowed.indexOf(ct.key)<0) return;
     ct.lengths.forEach(function(l){
-      var v=ct.key+'-'+l.v;
-      o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.l+'</option>';
+      var lval=l.val||l.v;
+      var llbl=l.lbl||l.l||lval+'m';
+      var v=ct.key+'-'+lval;
+      o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+llbl+'</option>';
     });
   });
-  // If nothing matched the filter, show all
-  if(o==='<option value="">— none —</option>'){
-    CABLE_TYPES.forEach(function(ct){ct.lengths.forEach(function(l){var v=ct.key+'-'+l.v;o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.l+'</option>';});});
-  }
   return o;
 }
 
@@ -1680,7 +1682,7 @@ function openEdit(gi){
   document.getElementById('m-status').value=d.status||'Active';
   document.getElementById('m-notes').value=d.notes||'';
   var _sp=specFor(d);
-  document.getElementById('m-cable-in').innerHTML=_cableOpts(d.cable_in||d.cable||'',_sp?_sp.in_connector:'');
+  document.getElementById('m-cable-in').innerHTML=_cableOpts(d.cable_in||d.cable||'',_sp?(_sp.pwr_in||_sp.in_connector):'');
   // cable-out is read-only (computed from children)
   populateChecksSheet(d.type,d.checks||{},d.pointed||'',d.note_opts||[]);
   updateSrcSel(d.type,d.device_id,d.source||'');
@@ -3305,8 +3307,47 @@ function _mNodeRender() {
   _mNodeApplyTransform();
 }
 
+function _closeNodeTapSheet(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
 function _mNodeTap(gi) {
-  openSNSheet(gi);
+  var d=devices[gi]; if(!d) return;
+  _closeNodeTapSheet();
+  var sheet=document.createElement('div');
+  sheet.id='node-tap-sheet';
+  sheet.style.cssText='position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);border-radius:16px 16px 0 0;z-index:3000;padding:12px;';
+  var col=d.type==='Laser projector'?'var(--laser)':d.type==='Smoke machine'?'var(--smoke)':d.type==='Distro'?'var(--distro)':'var(--psu)';
+  // Header
+  var hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;gap:10px;padding:4px 0 10px;border-bottom:1px solid var(--border2);margin-bottom:8px';
+  hdr.innerHTML='<span style="font-family:var(--cond);font-weight:900;font-size:18px;color:'+col+'">'+d.device_id+'</span>'
+    +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+( d.location||'')+'</span>';
+  var closeBtn=document.createElement('button');
+  closeBtn.style.cssText='margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:0 4px';
+  closeBtn.innerHTML='&times;';
+  closeBtn.onclick=_closeNodeTapSheet;
+  hdr.appendChild(closeBtn);
+  sheet.appendChild(hdr);
+  // Action buttons
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px';
+  var btns=[
+    {label:'&#9673; Serial', fn:function(){_closeNodeTapSheet();openSNSheet(gi);}},
+    {label:'&#128203; Specs',fn:function(){_closeNodeTapSheet();openSpecSheet(gi);}},
+    {label:'&#9998; Edit',   fn:function(){_closeNodeTapSheet();openEdit(gi);}},
+  ];
+  btns.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.style.cssText='padding:12px 8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--cond);font-weight:700;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)';
+    btn.innerHTML=b.label;
+    btn.onclick=b.fn;
+    grid.appendChild(btn);
+  });
+  sheet.appendChild(grid);
+  document.body.appendChild(sheet);
+  setTimeout(function(){
+    document.addEventListener('touchstart',function _d(e){
+      if(!sheet.contains(e.target)){sheet.remove();document.removeEventListener('touchstart',_d);}
+    });
+  },100);
 }
 
 function _mNodeInitEvents() {
@@ -3442,131 +3483,84 @@ var _mTodosShowAuto = true;
 
 function _renderTodosList(){
   var cont=document.getElementById('card-list'); if(!cont)return;
-  var urgLabels={1:'Normal',2:'High',3:'Urgent'};
   var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
   var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.07)',3:'rgba(255,77,77,.07)'};
 
-  var manual=_mTodos.filter(function(t){return !t.auto;});
+  var curStageId=(_mStages[_mCurrentStageIdx]||{}).id||'';
+  var allManual=_mTodos.filter(function(t){return !t.auto;});
   var auto=_mTodos.filter(function(t){return t.auto;});
   var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
   var autoSnDone=auto.filter(function(t){return t.id.startsWith('auto_sn')&&t.done;}).length;
   var autoTotal=auto.length/2||0;
-  var doneCount=manual.filter(function(t){return t.done;}).length;
+  var doneCount=allManual.filter(function(t){return t.done;}).length;
 
   var html='<div style="padding:10px 12px 6px;display:flex;gap:8px">'
     +'<button class="sb sb-primary" onclick="mTodoAdd()" style="flex:1">+ Add</button>'
     +(doneCount?'<button class="sb sb-ghost" onclick="mTodoClearDone()" style="font-size:12px">Clear done</button>':'')
     +'</div>';
 
-  // Auto progress bars
+  // Stage todos — THIS STAGE on top
+  var stageTodos=allManual.filter(function(t){return t.stage_id===curStageId||(!t.stage_id&&t.stage_id!=='overall');});
+  var overallTodos=allManual.filter(function(t){return t.stage_id==='overall';});
+
+  function _section(todos,label,col){
+    if(!todos.length) return '';
+    var sorted=todos.slice().sort(function(a,b){
+      if(a.done!==b.done) return a.done?1:-1;
+      if((b.urgency||1)!==(a.urgency||1)) return (b.urgency||1)-(a.urgency||1);
+      return 0;
+    });
+    var out='<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:'+col+';padding:6px 14px 3px;opacity:.8">'+label+'</div>';
+    sorted.forEach(function(t){
+      var done=t.done; var urg=t.urgency||1;
+      out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin:0 0 3px;background:'+(done?'transparent':urgBg[urg])+';border-bottom:1px solid var(--border2)">'
+        +'<input type="checkbox" '+(done?'checked':'')+' onclick="mTodoToggle(this.dataset.id)" data-id="'+t.id
+        +'" style="width:22px;height:22px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[urg]+'">'
+        +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+(done?'var(--muted)':urgCols[urg])+';text-decoration:'+(done?'line-through':'none')+'">'+t.label+'</span>'
+        +(t.stage_id==='overall'?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">ALL</span>':'')
+        +'<button onclick="mTodoEdit(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:14px;padding:0 3px;cursor:pointer">&#9998;</button>'
+        +'<button onclick="mTodoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:16px;padding:0 3px;cursor:pointer">&times;</button>'
+        +'</div>';
+    });
+    return out;
+  }
+
+  // Stage todos first, then overall
+  var stageCol=(_mStages[_mCurrentStageIdx]||{}).color||'var(--accent)';
+  var stageName=(_mStages[_mCurrentStageIdx]||{}).name||'Stage';
+  html+=_section(stageTodos, stageName.toUpperCase(), stageCol);
+  html+=_section(overallTodos, 'OVERALL', 'var(--muted)');
+
+  if(!allManual.length) html+='<div style="padding:30px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
+
+  // Auto progress at bottom
   if(auto.length){
-    html+='<div style="background:var(--panel);margin:0 12px 10px;border-radius:8px;padding:10px 12px">'
+    html+='<div style="background:var(--panel);margin:8px 12px;border-radius:8px;padding:10px 12px">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
       +'<span style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted)">AUTO PROGRESS</span>'
       +'<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--muted)">'
-      +'<input type="checkbox" '+ (_mTodosShowAuto?'checked':'')+' onclick="_mTodosShowAuto=this.checked;_renderTodosList()" style="accent-color:var(--muted)"> show auto</label>'
+      +'<input type="checkbox" '+(_mTodosShowAuto?'checked':'')+' onclick="_mTodosShowAuto=this.checked;_renderTodosList()" style="accent-color:var(--muted)"> show auto</label>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">MOUNTED</div>'
-      +'<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:3px">'
-      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84"></div></div>'
-      +'<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</div>'
-      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg);border-radius:3px"><div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span></div></div>'
       +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">SERIALS</div>'
-      +'<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:3px">'
-      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff"></div></div>'
-      +'<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</div>'
-      +'</div></div></div>';
-
+      +'<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg);border-radius:3px"><div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</span></div></div>'
+      +'</div></div>';
     if(_mTodosShowAuto){
-      html+='<div style="padding:0 12px 8px">'
-        +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:4px">AUTO TODOS</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">';
+      html+='<div style="padding:0 12px 8px;display:grid;grid-template-columns:1fr 1fr;gap:3px">';
       auto.forEach(function(t){
         html+='<div style="display:flex;align-items:center;gap:5px;background:var(--panel);border-radius:4px;padding:4px 7px">'
-          +'<span style="font-size:11px">'+(t.done?'✅':'⬜')+'</span>'
-          +'<span style="font-family:var(--mono);font-size:10px;color:'+(t.done?'var(--muted)':'var(--text)')+';text-decoration:'+(t.done?'line-through':'none')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.label+'</span>'
+          +'<span style="font-size:11px">'+(t.done?'\u2705':'\u2b1c')+'</span>'
+          +'<span style="font-family:var(--mono);font-size:10px;color:'+(t.done?'var(--muted)':'var(--ok)')+';text-decoration:'+(t.done?'line-through':'none')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.label+'</span>'
           +'</div>';
       });
-      html+='</div></div>';
+      html+='</div>';
     }
   }
-
-  // Sort manual todos: by time first, then urgency desc, then created
-  manual.sort(function(a,b){
-    var at=a.label.match(/^(\d+):(\d+)/),bt=b.label.match(/^(\d+):(\d+)/);
-    var an=at?parseInt(at[1])*60+parseInt(at[2]):9999;
-    var bn=bt?parseInt(bt[1])*60+parseInt(bt[2]):9999;
-    if(an!==bn) return an-bn;
-    return (b.urgency||1)-(a.urgency||1);
-  });
-
-  // Render manual todos
-  if(manual.length){
-    [3,2,1].forEach(function(urg){
-      var group=manual.filter(function(t){return t.urgency===urg;});
-      if(!group.length)return;
-      var urgIcon={1:'',2:'⚠️ ',3:'🔴 '};
-      html+='<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:'+urgCols[urg]+';padding:8px 14px 3px;opacity:.8">'+urgIcon[urg]+urgLabels[urg].toUpperCase()+'</div>';
-      group.forEach(function(t){
-        var done=t.done;
-        var timePart=t.label.match(/^(\d+:\d+)\s—\s/);
-        var dispLabel=timePart?t.label.slice(timePart[0].length):t.label;
-        var timeTag=timePart?'<span style="font-family:var(--mono);font-size:10px;color:var(--accent);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:4px;padding:1px 6px;margin-right:6px">'+timePart[1]+'</span>':'';
-        html+='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 8px 6px;'
-          +'background:'+(done?'var(--surface)':urgBg[urg])+';'
-          +'border:1px solid '+(done?'var(--border2)':'rgba('+({1:'255,255,255',2:'245,166,35',3:'255,77,77'}[urg])+',.2)')+';'
-          +'border-radius:8px">'
-          +'<input type="checkbox" '+(done?'checked':'')+' data-id="'+t.id+'" onclick="mTodoToggle(this.dataset.id)"'
-          +' style="width:22px;height:22px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[urg]+'">'
-          +'<div style="flex:1;min-width:0">'
-          +timeTag
-          +'<span style="font-family:var(--cond);font-size:16px;color:'+(done?'var(--muted)':urgCols[urg])+';text-decoration:'+(done?'line-through':'none')+'">'+dispLabel+'</span>'
-          +'</div>'
-          +'<button data-id="'+t.id+'" onclick="mTodoEdit(this.dataset.id)" style="background:none;border:none;color:var(--muted);font-size:16px;padding:4px 6px;cursor:pointer;flex-shrink:0">✎</button>'
-          +'<button data-id="'+t.id+'" onclick="mTodoDelete(this.dataset.id)" style="background:none;border:none;color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer;flex-shrink:0">✕</button>'
-          +'</div>';
-      });
-    });
-  }
-
-  if(!manual.length && !auto.length){
-    html+='<div style="padding:40px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
-  }
   cont.innerHTML=html;
-}
-
-function mTodoClearDone(){
-  _mTodos=_mTodos.filter(function(t){return t.auto||!t.done;}); _mTodosSave(); _renderTodosList();
-}
-
-function mTodoEdit(id){
-  var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
-  var curTime=t.label.match(/^(\d+:\d+)/)?t.label.match(/^(\d+:\d+)/)[1]:'';
-  var curLabel=t.label.replace(/^\d+:\d+\s—\s/,'');
-  var tOpts='<option value="">No time</option>';
-  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'"'+(curTime===h+':'+('0'+m).slice(-2)?' selected':'')+'>'+h+':'+('0'+m).slice(-2)+'</option>';});}
-  var cont=document.getElementById('card-list');if(!cont)return;
-  var form='<div id="ta-form" style="background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:12px;margin:10px 12px;">'
-    +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">EDIT TODO</div>'
-    +'<input id="ta-lbl" type="text" value="'+curLabel.replace(/"/g,'&quot;')+'" autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
-    +'<div style="display:flex;gap:6px;margin-bottom:8px">'
-    +'<select id="ta-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px"><option value="1"'+(t.urgency===1?' selected':'')+'>Normal</option><option value="2"'+(t.urgency===2?' selected':'')+'>High</option><option value="3"'+(t.urgency===3?' selected':'')+'>Urgent</option></select>'
-    +'<select id="ta-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px">'+tOpts+'</select>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px">'
-    +'<button id="ta-save-edit" class="sb sb-primary" style="flex:1">Save</button>'
-    +'<button onclick="renderTodosMobile()" class="sb sb-ghost" style="flex:1">Cancel</button>'
-    +'</div></div>';
-  cont.innerHTML=form+cont.innerHTML;
-  document.getElementById('ta-save-edit').onclick=function(){
-    var lbl=(document.getElementById('ta-lbl').value||'').trim();if(!lbl)return;
-    var urg=parseInt(document.getElementById('ta-urg').value)||1;
-    var time=document.getElementById('ta-time').value||'';
-    t.label=time?time+' — '+lbl:lbl; t.urgency=urg; t._localEdit=true;
-    _mTodosSave(); renderTodosMobile(); autoSave();
-  };
-  setTimeout(function(){var el=document.getElementById('ta-lbl');if(el){el.focus();el.select();}},100);
 }
 function renderTodosMobile(){
   updateBanner();
@@ -3632,7 +3626,7 @@ function mTodoSave(){
     var todo=_mTodos.find(function(x){return x.id===_mTodoEditId;});
     if(todo){todo.label=full;todo.urgency=urg;todo._localEdit=true;}
   } else {
-    _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
+    _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,done:false,auto:false,stage_id:(document.getElementById('ta-stage')||{}).value||((_mStages[_mCurrentStageIdx]||{}).id||''),created:new Date().toISOString()});
   }
   _mTodosSave(); closeSheet('todo'); renderTodosMobile(); autoSave();
 }
