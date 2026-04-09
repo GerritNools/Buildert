@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.815</title>
+<title>WTUniverse · Buildert Editor v3.817</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.815</div>
+    <div>build v3.817</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1238,6 +1238,7 @@ var TYPE_LASER  = 'Laser projector';
 var TYPE_SMOKE  = 'Smoke machine';
 var TYPE_DISTRO = 'Distro';
 var TYPE_PSU    = 'Power supply';
+var TYPE_ADAPTER = 'Adapter';
 
 var LASER_CHECKS  = ['Mounted','Pointed','Cabled'];
 var SMOKE_CHECKS  = ['Placed','Fan','CO2','Regulator','Power cable'];
@@ -1252,6 +1253,7 @@ SOURCE_TYPES[TYPE_LASER]  = [TYPE_DISTRO, TYPE_LASER];
 SOURCE_TYPES[TYPE_SMOKE]  = [TYPE_DISTRO, TYPE_PSU];
 SOURCE_TYPES[TYPE_DISTRO] = [TYPE_DISTRO, TYPE_PSU, '_foh'];
 SOURCE_TYPES[TYPE_PSU]    = [];
+SOURCE_TYPES[TYPE_ADAPTER]= [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, TYPE_ADAPTER];
 
 var TYPE_ICON  = {}; TYPE_ICON[TYPE_LASER]='L'; TYPE_ICON[TYPE_SMOKE]='S'; TYPE_ICON[TYPE_DISTRO]='D'; TYPE_ICON[TYPE_PSU]='P';
 var TYPE_SHORT = {}; TYPE_SHORT[TYPE_LASER]='LP'; TYPE_SHORT[TYPE_SMOKE]='SM'; TYPE_SHORT[TYPE_DISTRO]='DI'; TYPE_SHORT[TYPE_PSU]='PSU';
@@ -1754,6 +1756,7 @@ function editSpecField(k, f, val) {
 
 function renderTable() {
   if (currentTab === 'node') { renderNodeView(); return; }
+  if (currentTab === 'devices') renderDeviceCatBar();
   var head  = document.getElementById('table-head');
   var body  = document.getElementById('table-body');
   var empty = document.getElementById('empty-state');
@@ -2033,6 +2036,7 @@ var MODEL_KEYS_BY_TYPE = {
   'Smoke machine':   ['PEASOUP','SHOCKFOG','FAN'],
   'Distro':          ['32A','32AFIBRE','8PORT','4PORT','3PORT'],
   'Power supply':    [],
+  'Adapter':         [],
 };
 
 function populateModelDropdown(type, currentModel) {
@@ -2246,6 +2250,7 @@ function saveDevice() {
   if (editIndex >= 0) { devices[editIndex] = d; showToast('Updated '+deviceId,'ok'); }
   else { devices.push(d); showToast('Added '+deviceId,'ok'); }
 
+  _markUnsaved(); // immediately protect against wPull overwrite
   closeModal(); renderTable(); autoSave();
 }
 
@@ -3463,7 +3468,7 @@ function autoSave(){
   if(!_isReceiving){
     clearTimeout(_dbxPushDebounce);
     if(_workerUrl&&_projectKey){
-      _dbxPushDebounce=setTimeout(function(){ wPush(true); }, 2000);
+      _dbxPushDebounce=setTimeout(function(){ _dbxPushDebounce=null; wPush(true); }, 3000);
     } else if(_dbxToken||_dbxRefreshToken){
       _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
     }
@@ -3577,8 +3582,27 @@ function loadSpecsFromStorage() {
 }
 
 function _rebuildModelLists(){
-  // Re-run qaUpdateModel so dropdowns reflect new models
+  // Rebuild MODEL_KEYS_BY_TYPE from DEVICE_SPECS (imported specs take over)
+  var CAT_TO_TYPE = {
+    laser:'Laser projector', smoke:'Smoke machine',
+    distro:'Distro', psu:'Power supply', adapter:'Adapter'
+  };
+  // Reset to empty
+  Object.keys(MODEL_KEYS_BY_TYPE).forEach(function(t){ MODEL_KEYS_BY_TYPE[t]=[]; });
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    var sp=DEVICE_SPECS[k]; if(!sp||typeof sp!=='object') return;
+    var cat=(sp.category||'').toLowerCase();
+    var type=CAT_TO_TYPE[cat];
+    if(!type) return; // cables, unknown — skip device list
+    if(!MODEL_KEYS_BY_TYPE[type]) MODEL_KEYS_BY_TYPE[type]=[];
+    if(MODEL_KEYS_BY_TYPE[type].indexOf(k)<0) MODEL_KEYS_BY_TYPE[type].push(k);
+  });
+  // Also add Adapter type if any exist
+  if((MODEL_KEYS_BY_TYPE['Adapter']||[]).length > 0){
+    SOURCE_TYPES['Adapter'] = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
+  }
   if(typeof qaUpdateModel==='function') qaUpdateModel();
+  if(typeof populateTypeDropdown==='function') populateTypeDropdown();
 }
 function saveSpecsToStorage() {
   try { localStorage.setItem('buildert_specs', JSON.stringify(_specsOverrides)); } catch(e){}
@@ -4830,10 +4854,66 @@ function renderSpecs(){
         +'</tr>';
     }).join('')+'</tbody></table></div>';
 
-  el.innerHTML=lTbl+dTbl+sTbl;
+  // Build PSU table
+  var pTbl='';
+  if(pkList.length){
+    pTbl='<div><div class="sp-hdr" style="color:var(--psu)">🔌 Power Supplies</div>'
+      +'<table class="sp-tbl"><thead><tr><th>Model</th><th>Alt</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
+      +'<th>kg</th><th>Pwr In</th><th>Data In</th><th>Outlets</th><th>Phases</th><th>Description</th><th>Notes</th>'
+      +'</tr></thead><tbody>'
+      +pkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
+        +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--psu)">'+k+'</span></td>'
+        +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
+        +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
+        +'<td>'+ed(k,'max_a_230',s.max_a_230!=null?s.max_a_230:'',30)+'</td>'
+        +'<td>'+ed(k,'max_a_110',s.max_a_110!=null?s.max_a_110:'',30)+'</td>'
+        +'<td>'+ed(k,'weight_kg',s.weight_kg!=null?s.weight_kg:'',30)+'</td>'
+        +'<td>'+ed(k,'pwr_in',s.pwr_in||s.in_connector||'',50)+'</td>'
+        +'<td>'+ed(k,'data_in',s.data_in||'',50)+'</td>'
+        +'<td>'+ed(k,'outlets',s.outlets!=null?s.outlets:'',30)+'</td>'
+        +'<td>'+ed(k,'phases',s.phases!=null?s.phases:'',25)+'</td>'
+        +'<td style="color:var(--muted);font-size:11px">'+ed(k,'desc',s.desc||'',100)+'</td>'
+        +'<td>'+ed(k,'notes',s.notes||'',80)+'</td>'
+        +'</tr>';}).join('')+'</tbody></table></div>';
+  }
+
+  // Adapter table
+  var adkList=Object.keys(DEVICE_SPECS).filter(function(k){return (DEVICE_SPECS[k]||{}).category==='adapter';});
+  var aTbl='';
+  if(adkList.length){
+    aTbl='<div><div class="sp-hdr" style="color:var(--accent)">🔄 Adapters</div>'
+      +'<table class="sp-tbl"><thead><tr><th>Model</th><th>Alt</th><th>Pwr In</th><th>Data In</th><th>Pwr Out</th><th>Data Out</th><th>Description</th><th>Notes</th>'
+      +'</tr></thead><tbody>'
+      +adkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
+        +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--accent)">'+k+'</span></td>'
+        +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
+        +'<td>'+ed(k,'pwr_in',s.pwr_in||s.in_connector||'',50)+'</td>'
+        +'<td>'+ed(k,'data_in',s.data_in||'',50)+'</td>'
+        +'<td>'+ed(k,'pwr_out',s.pwr_out||s.out_connector||'',50)+'</td>'
+        +'<td>'+ed(k,'data_out',s.data_out||'',50)+'</td>'
+        +'<td style="color:var(--muted);font-size:11px">'+ed(k,'desc',s.desc||'',100)+'</td>'
+        +'<td>'+ed(k,'notes',s.notes||'',80)+'</td>'
+        +'</tr>';}).join('')+'</tbody></table></div>';
+  }
+
+  // Cable types table (from CABLE_TYPES array)
+  var cTbl='<div><div class="sp-hdr" style="color:var(--muted)">🔗 Cables</div>'
+    +'<table class="sp-tbl"><thead><tr><th>Key</th><th>Label</th><th>Pwr A</th><th>Pwr B</th><th>Data A</th><th>Data B</th><th>Lengths</th>'
+    +'</tr></thead><tbody>'
+    +CABLE_TYPES.map(function(ct){return '<tr>'
+      +'<td><span style="font-family:var(--mono);font-size:12px;color:var(--muted)">'+ct.key+'</span></td>'
+      +'<td style="font-family:var(--cond);font-weight:700">'+ct.label+'</td>'
+      +'<td style="font-size:11px">'+ct.pwr_a+'</td>'
+      +'<td style="font-size:11px">'+ct.pwr_b+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+ct.data_a+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+ct.data_b+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+ct.lengths.map(function(l){return l.lbl||l.l;}).join(' · ')+'</td>'
+      +'</tr>';}).join('')+'</tbody></table></div>';
+
+  el.innerHTML=lTbl+dTbl+sTbl+pTbl+aTbl+cTbl;
 
   // Add any imported models not covered by the above sections
-  var shown = lk.concat(dk).concat(sk).concat(pkList);
+  var shown = lk.concat(dk).concat(sk).concat(pkList).concat(adkList);
   var extra = Object.keys(DEVICE_SPECS).filter(function(k){ return shown.indexOf(k)<0; });
   if(extra.length){
     var extraTbl='<div><div class="sp-hdr" style="color:var(--accent)">📦 Imported / Other</div>'
@@ -5850,7 +5930,7 @@ function wSyncInit(){
   _projectKey = localStorage.getItem('buildert_project_key')||'';
   if(_workerUrl && _projectKey){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
-    setTimeout(wPoll, 1000);
+    setTimeout(wPoll, 5000);  // delay startup pull — give time to load local data first
     setInterval(function(){ if(!_dbxSyncing) wPull(); }, 20000);
   }
 }
@@ -5861,6 +5941,8 @@ function wStopPolling(){
 async function wPull(){
   if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
+  // Don't overwrite local unsaved work — wait for push to complete first
+  if(_unsaved || _dbxPushDebounce){ _dbxSetStatus('Waiting to sync…','var(--muted)'); return; }
   _dbxSyncing=true;
   try{
     var resp = await fetch(_workerUrl+'/project?key='+_projectKey, {cache:'no-store'});
@@ -7000,37 +7082,49 @@ function renderPowerView(){
 function renderDeviceCatBar(){
   var bar = document.getElementById('device-cat-bar');
   if(!bar) return;
-  bar.style.display = '';
+  bar.style.display = 'flex';
 
-  // Collect all categories present in DEVICE_SPECS
+  // Count devices per category
   var catCounts = {all: devices.length};
   devices.forEach(function(dev){
     var sp = specsForDevice(dev)||{};
-    var cat = (sp.category||'').toLowerCase()||'other';
-    catCounts[cat] = (catCounts[cat]||0)+1;
+    var cat = (sp.category||'').toLowerCase();
+    if(cat) catCounts[cat] = (catCounts[cat]||0)+1;
   });
 
-  // Build ordered list: all first, then by device count desc
+  // Also include categories from DEVICE_SPECS that have no devices yet
+  // (so "Adapter" chip shows even if stage has none)
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    var cat = (DEVICE_SPECS[k].category||'').toLowerCase();
+    if(cat && cat!=='cable' && catCounts[cat]===undefined) catCounts[cat]=0;
+  });
+
+  // Order: all first, then by device count desc, then alphabetical for zeros
   var cats = Object.keys(catCounts).filter(function(c){return c!=='all';});
-  cats.sort(function(a,b){return catCounts[b]-catCounts[a];});
+  cats.sort(function(a,b){
+    var diff = catCounts[b]-catCounts[a];
+    return diff!==0 ? diff : a.localeCompare(b);
+  });
   cats.unshift('all');
 
-  var CAT_ICONS = {all:'⬛',laser:'💡',smoke:'💨',distro:'⚡',psu:'🔌',adapter:'🔄',cable:'🔗'};
+  var CAT_ICONS = {all:'▪',laser:'💡',smoke:'💨',distro:'⚡',psu:'🔌',adapter:'🔄',cable:'🔗'};
   var CAT_LABELS = {all:'All',laser:'Lasers',smoke:'Smoke',distro:'Distros',psu:'PSU',adapter:'Adapters',cable:'Cables'};
 
   bar.innerHTML = cats.map(function(cat){
     var active = (cat === currentDeviceFilter);
-    var icon = CAT_ICONS[cat]||'▪';
+    var cnt = catCounts[cat];
+    var icon = CAT_ICONS[cat]||'▫';
     var label = CAT_LABELS[cat] || (cat.charAt(0).toUpperCase()+cat.slice(1));
-    var cnt = catCounts[cat]||0;
+    // Don't show chips for categories with 0 devices AND not the active filter
+    if(cnt===0 && !active) return '';
     return '<button data-cat="'+cat+'" onclick="setDeviceFilter(this.dataset.cat)" style="'
-      +'display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;'
+      +'display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:14px;'
       +'border:1px solid '+(active?'var(--accent)':'var(--border2)')+';'
       +'background:'+(active?'rgba(0,212,255,.12)':'transparent')+';'
       +'color:'+(active?'var(--accent)':'var(--muted)')+';'
-      +'font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap">'
+      +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">'
       +icon+' '+label
-      +(cnt?' <span style="opacity:.6;font-size:10px">'+cnt+'</span>':'')
+      +' <span style="font-family:var(--mono);font-weight:400;font-size:10px;opacity:.6">'+cnt+'</span>'
       +'</button>';
   }).join('');
 }
