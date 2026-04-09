@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.828</title>
+<title>WTUniverse · Buildert Editor v3.826</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.828</div>
+    <div>build v3.827</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1257,7 +1257,7 @@ SOURCE_TYPES['Adapter']   = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
 
 var TYPE_ICON  = {}; TYPE_ICON[TYPE_LASER]='L'; TYPE_ICON[TYPE_SMOKE]='S'; TYPE_ICON[TYPE_DISTRO]='D'; TYPE_ICON[TYPE_PSU]='P';
 var TYPE_SHORT = {}; TYPE_SHORT[TYPE_LASER]='LP'; TYPE_SHORT[TYPE_SMOKE]='SM'; TYPE_SHORT[TYPE_DISTRO]='DI'; TYPE_SHORT[TYPE_PSU]='PSU';
-var TYPE_KEY   = {}; TYPE_KEY[TYPE_LASER]='laser'; TYPE_KEY[TYPE_SMOKE]='smoke'; TYPE_KEY[TYPE_DISTRO]='distro'; TYPE_KEY[TYPE_PSU]='psu'; TYPE_KEY['Adapter']='adapter';
+var TYPE_KEY   = {}; TYPE_KEY[TYPE_LASER]='laser'; TYPE_KEY[TYPE_SMOKE]='smoke'; TYPE_KEY[TYPE_DISTRO]='distro'; TYPE_KEY[TYPE_PSU]='psu';
 
 // ── State ─────────────────────────────────────────────────────────────
 var devices    = [];
@@ -1387,7 +1387,6 @@ function today() { return new Date().toISOString().slice(0,10); }
 
 function checksFor(type) {
   if (type === TYPE_LASER)  return LASER_CHECKS;
-  if (type === TYPE_ADAPTER || type === 'Adapter') return [];
   if (type === TYPE_SMOKE)  return SMOKE_CHECKS;
   if (type === TYPE_DISTRO) return DISTRO_CHECKS;
   if (type === TYPE_PSU)    return PSU_CHECKS;
@@ -1628,20 +1627,6 @@ var CONNECTOR_LABELS = {
 
 // Cable types — each has power connector, optional data connector, and lengths
 // ft lengths shown with metre equivalent in label
-// Extract model key from device_id — handles multi-word models like "32A PC Distro"
-function modelFromId(device_id) {
-  if (!device_id) return '';
-  var id = device_id.trim().toUpperCase();
-  // Try longest matching known model key first
-  var best = '';
-  Object.keys(DEVICE_SPECS).forEach(function(k){
-    var ku = k.toUpperCase();
-    if((id === ku || id.startsWith(ku+' ')) && ku.length > best.length) best = k;
-  });
-  if(best) return best;
-  return (id.split(/\s+/)[0] || '');
-}
-
 var CABLE_TYPES = [
   {key:'powercat',label:'PowerCAT',pwr_a:'TR1',pwr_b:'TR1',data_a:'Ethercon',data_b:'Ethercon',
    lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
@@ -2073,8 +2058,8 @@ function syncDeviceId() {
   if (model && editIndex === -1) {
     var takenNums = {};
     devices.forEach(function(d) {
-      var dm = modelFromId(d.device_id||'');
-      if (dm.toUpperCase() === model.toUpperCase()) { var rest=(d.device_id||'').slice(dm.length).trim(); var n=parseInt(rest,10); if(!isNaN(n)) takenNums[n]=true; }
+      var p = (d.device_id || '').trim().toUpperCase().split(/\s+/);
+      if (p[0] === model.toUpperCase()) { var n=parseInt(p[1],10); if(!isNaN(n)) takenNums[n]=true; }
     });
     var next = 1;
     while (takenNums[next]) next++;
