@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.822</title>
+<title>WTUniverse · Buildert Editor v3.824</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.823</div>
+    <div>build v3.824</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4912,19 +4912,25 @@ function renderSpecs(){
   }
 
   // Cable types table (from CABLE_TYPES array)
-  var cTbl='<div><div class="sp-hdr" style="color:var(--muted)">🔗 Cables</div>'
-    +'<table class="sp-tbl"><thead><tr><th>Key</th><th>Label</th><th>Pwr A</th><th>Pwr B</th><th>Data A</th><th>Data B</th><th>Lengths</th>'
-    +'</tr></thead><tbody>'
-    +CABLE_TYPES.map(function(ct){return '<tr>'
-      +'<td><span style="font-family:var(--mono);font-size:12px;color:var(--muted)">'+ct.key+'</span></td>'
-      +'<td style="font-family:var(--cond);font-weight:700">'+ct.label+'</td>'
-      +'<td style="font-size:11px">'+ct.pwr_a+'</td>'
-      +'<td style="font-size:11px">'+ct.pwr_b+'</td>'
-      +'<td style="font-size:11px;color:var(--muted)">'+ct.data_a+'</td>'
-      +'<td style="font-size:11px;color:var(--muted)">'+ct.data_b+'</td>'
-      +'<td style="font-size:11px;color:var(--muted)">'+ct.lengths.map(function(l){return l.lbl||l.l;}).join(' · ')+'</td>'
-      +'</tr>';}).join('')+'</tbody></table></div>';
-
+  var cTbl=(function(){
+    var h='<div><div class="sp-hdr" style="color:var(--muted)">🔗 Cables</div>'
+      +'<table class="sp-tbl"><thead><tr><th>Cable</th><th>Length</th><th>Pwr A</th><th>Pwr B</th><th>Data A</th><th>Data B</th></tr></thead><tbody>';
+    CABLE_TYPES.forEach(function(ct){
+      var lens=ct.lengths&&ct.lengths.length?ct.lengths:[{lbl:"--",val:""}];
+      lens.forEach(function(l,li){
+        var ll=l.lbl||l.l||(l.val?l.val+"m":"--");
+        h+='<tr style="'+(li===0?'border-top:2px solid var(--border)':'')+'">'
+          +'<td style="font-family:var(--cond);font-weight:700;color:var(--muted)">'+(li===0?ct.label:'')+'</td>'
+          +'<td style="font-family:var(--mono);font-size:12px;font-weight:700">'+ll+'</td>'
+          +'<td style="font-size:11px">'+ct.pwr_a+'</td>'
+          +'<td style="font-size:11px">'+ct.pwr_b+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+ct.data_a+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+ct.data_b+'</td>'
+          +'</tr>';
+      });
+    });
+    return h+'</tbody></table></div>';
+  })()
   el.innerHTML=lTbl+dTbl+sTbl+pTbl+aTbl+cTbl;
 
   // Add any imported models not covered by the above sections
@@ -6112,119 +6118,91 @@ var _todosShowAuto = true;
 function renderTodosPanel(){
   _todosLoad(); _autoTodos(); _todosSave();
   var el=document.getElementById('todos-panel'); if(!el)return;
-
-  var urgLabels={1:'Normal',2:'High',3:'Urgent'};
   var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
   var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.06)',3:'rgba(255,77,77,.06)'};
-  var urgBorder={1:'var(--border2)',2:'rgba(245,166,35,.3)',3:'rgba(255,77,77,.3)'};
-
-  var manual=_todos.filter(function(t){return !t.auto;});
+  var urgBdr={1:'var(--border2)',2:'rgba(245,166,35,.3)',3:'rgba(255,77,77,.3)'};
+  var curStageId=(_stages[_currentStageIdx]||{}).id||'';
+  var stageName=(_stages[_currentStageIdx]||{}).name||'';
+  var stageCol=(_stages[_currentStageIdx]||{}).color||'var(--accent)';
+  var allManual=_todos.filter(function(t){return !t.auto;});
   var auto=_todos.filter(function(t){return t.auto;});
-  var doneCount=manual.filter(function(t){return t.done;}).length;
   var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
   var autoSnDone=auto.filter(function(t){return t.id.startsWith('auto_sn')&&t.done;}).length;
   var autoTotal=auto.length/2||0;
+  var doneCount=allManual.filter(function(t){return t.done;}).length;
 
-  var stageLabel = _todosAllStages ? 'All stages' : (_stages[_currentStageIdx]||{}).name||'';
-
-  // Header
-  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)">'
-    +'<div style="flex:1">'
-    +'<div style="font-family:var(--cond);font-weight:900;font-size:20px;letter-spacing:2px">TODOS</div>'
-    +'<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px">'
-    +(stageLabel?'<span style="color:var(--accent)">'+stageLabel+'</span> · ':'')
-    +(manual.length?doneCount+'/'+manual.length+' manual done':'no manual todos')
-    +'</div>'
-    +'</div>'
-    +(_stages.length>1?'<button class="btn btn-ghost" onclick="_todosAllStages=!_todosAllStages;renderTodosPanel()" style="font-size:11px;padding:4px 10px;'
-      +(_todosAllStages?'background:rgba(0,212,255,.12);color:var(--accent)':'')+'">'
-      +'&#9783; '+ (_todosAllStages?'All stages':'This stage')+'</button>':'')
-    +'<button class="btn btn-primary" onclick="todoAdd()" style="font-size:12px;padding:5px 14px">+ Add todo</button>'
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
+    +'<span style="font-family:var(--cond);font-weight:900;font-size:20px;letter-spacing:2px;flex:1">TODOS</span>'
+    +(_stages.length>1?'<button class="btn btn-ghost" onclick="_todosAllStages=!_todosAllStages;renderTodosPanel()" style="font-size:11px;padding:4px 10px;'+(_todosAllStages?'background:rgba(0,212,255,.12);color:var(--accent)':'')+'">'+(_todosAllStages?'All stages':'This stage')+'</button>':'')
+    +'<button class="btn btn-primary" onclick="todoAdd()" style="font-size:12px;padding:5px 14px">+ Add</button>'
     +(doneCount?'<button class="btn btn-ghost" onclick="todoClearDone()" style="font-size:11px;padding:4px 10px">Clear done</button>':'')
     +'</div>';
 
-  // Auto-todos summary bar
+  function _card(t){
+    var done=t.done; var urg=t.urgency||1;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+(done?'transparent':urgBg[urg])+';border:1px solid '+(done?'var(--border2)':urgBdr[urg])+';border-radius:8px;margin-bottom:5px">'
+      +'<input type="checkbox" '+(done?'checked':'')+' onclick="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:17px;height:17px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[urg]+'">'
+      +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+(done?'var(--muted)':urgCols[urg])+';text-decoration:'+(done?'line-through':'none')+'">'+t.label+'</span>'
+      +(t.stage_id==='overall'&&!_todosAllStages?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">ALL</span>':'')
+      +'<button onclick="todoEdit(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;opacity:.6">&#9998;</button>'
+      +'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;opacity:.6">&times;</button>'
+      +'</div>';
+  }
+
+  function _section(todos,label,col){
+    if(!todos.length) return '';
+    var sorted=todos.slice().sort(function(a,b){
+      if(a.done!==b.done) return a.done?1:-1;
+      if((b.urgency||1)!==(a.urgency||1)) return (b.urgency||1)-(a.urgency||1);
+      var am=a.label.match(/^(\d+):(\d+)/),bm=b.label.match(/^(\d+):(\d+)/);
+      return (am?parseInt(am[1])*60+parseInt(am[2]):9999)-(bm?parseInt(bm[1])*60+parseInt(bm[2]):9999);
+    });
+    var open=todos.filter(function(t){return !t.done;}).length;
+    return '<div style="margin-bottom:18px">'
+      +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1.5px;color:'+col+';margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border2)">'
+      +label+' <span style="font-family:var(--mono);font-size:10px;opacity:.6">'+open+' open</span></div>'
+      +sorted.map(_card).join('')+'</div>';
+  }
+
+  if(_todosAllStages||_stages.length<=1){
+    html+=_section(allManual,'All todos','var(--text)');
+  } else {
+    var stageTodos=allManual.filter(function(t){return t.stage_id===curStageId||(!t.stage_id&&t.stage_id!=='overall');});
+    var overallTodos=allManual.filter(function(t){return t.stage_id==='overall';});
+    html+=_section(stageTodos,'&#128205; '+stageName,stageCol);
+    html+=_section(overallTodos,'&#127760; Overall &mdash; all stages','var(--muted)');
+  }
+
+  if(!allManual.length) html+='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:20px 0;text-align:center">No todos yet</div>';
+
   if(auto.length){
-    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
-      +'<span style="font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;color:var(--muted)">AUTO PROGRESS</span>'
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:6px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<span style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--muted)">AUTO PROGRESS</span>'
       +'<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;margin-left:auto">'
-      +'<input type="checkbox" '+ (_todosShowAuto?'checked':'')+' onclick="_todosShowAuto=this.checked;renderTodosPanel()" style="accent-color:var(--muted)"> Show auto todos'
-      +'</label>'
-      +'</div>'
+      +'<input type="checkbox" '+(_todosShowAuto?'checked':'')+' onclick="_todosShowAuto=this.checked;renderTodosPanel()" style="accent-color:var(--muted)"> show list</label></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
       +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">MOUNTED</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
-      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span>'
-      +'</div></div>'
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span></div></div>'
       +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
       +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">SERIALS</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
-      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</span>'
-      +'</div></div>'
-      +'</div></div>';
-  }
-
-  // Auto todos (collapsible)
-  if(_todosShowAuto && auto.length){
-    html+='<div style="margin-bottom:16px">'
-      +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">AUTO — DRIVEN BY DEVICE STATE</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px">';
-    auto.forEach(function(t){
-      var col=t.done?'var(--muted)':('#3ddc84');
-      html+='<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--panel);border-radius:4px;border:1px solid var(--border2)">'
-        +'<span style="font-size:12px">'+(t.done?'✅':'⬜')+'</span>'
-        +'<span style="font-family:var(--mono);font-size:11px;color:'+col+';text-decoration:'+(t.done?'line-through':'none')+'">'+t.label+'</span>'
-        +'</div>';
-    });
-    html+='</div></div>';
-  }
-
-  // Manual todos by urgency
-  var hasManual=false;
-  [3,2,1].forEach(function(urg){
-    var group=manual.filter(function(t){return t.urgency===urg;});
-    if(!group.length) return;
-    hasManual=true;
-    html+='<div style="margin-bottom:14px">'
-      +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:'+urgCols[urg]+';margin-bottom:6px;opacity:.8">'
-      +urgLabels[urg].toUpperCase()+'</div>';
-    // Sort by time within each urgency group
-    group.sort(function(a,b){
-      var at=a.label.match(/^(\d+):(\d+)/),bt=b.label.match(/^(\d+):(\d+)/);
-      var an=at?parseInt(at[1])*60+parseInt(at[2]):9999;
-      var bn=bt?parseInt(bt[1])*60+parseInt(bt[2]):9999;
-      return an-bn;
-    });
-    group.forEach(function(t){
-      var done=t.done;
-      var col=done?'var(--muted)':urgCols[t.urgency];
-      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;'
-        +'background:'+(done?'transparent':urgBg[t.urgency])+';'
-        +'border:1px solid '+(done?'var(--border2)':urgBorder[t.urgency])+';'
-        +'border-radius:8px;margin-bottom:5px;transition:background .15s">'
-        +'<input type="checkbox" '+(done?'checked':'')+' onclick="todoToggle(this.dataset.id)" data-id="'+t.id
-        +'" style="width:17px;height:17px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[t.urgency]+'">'
-        +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+(done?'line-through':'none')+'">'+t.label+'</span>'
-        +'<button onclick="todoEdit(this.dataset.id)" data-id="'+t.id+'" title="Edit" '
-        +'style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;opacity:.6">✎</button>'
-        +'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" title="Delete" '
-        +'style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;opacity:.6">&times;</button>'
-        +'</div>';
-    });
+      +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</span></div></div></div>';
+    if(_todosShowAuto){
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:3px;margin-top:8px">';
+      auto.forEach(function(t){html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg);border-radius:4px">'
+        +'<span style="font-size:11px">'+(t.done?'&#9989;':'&#11036;')+'</span>'
+        +'<span style="font-family:var(--mono);font-size:10px;color:'+(t.done?'var(--muted)':'#3ddc84')+';text-decoration:'+(t.done?'line-through':'none')+'">'+t.label+'</span></div>';});
+      html+='</div>';
+    }
     html+='</div>';
-  });
-
-  if(!hasManual && !auto.length){
-    html+='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:32px 0;text-align:center">'
-      +'No todos yet — add devices to auto-generate, or click + Add todo</div>';
   }
-
   el.innerHTML=html;
 }
 
@@ -6278,13 +6256,17 @@ function todoClearDone(){
 }
 function todoAdd(){
   var tOpts='<option value="">No time</option>';
-  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'">'+h+':'+('0'+m).slice(-2)+'</option>';});}
+  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'">'+h+':'+('0'+m).slice(-2)+'</option>';})}
+  var curStageId=(_stages[_currentStageIdx]||{}).id||'';
+  var stageOpts='<option value="overall">Overall - all stages</option>';
+  _stages.forEach(function(s){stageOpts+='<option value="'+s.id+'"'+(s.id===curStageId?' selected':'')+'>'+s.name+'</option>';});
   var m=document.createElement('div');
   m.id='todo-modal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  m.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;width:380px;max-width:90vw;">'
+  m.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;width:400px;max-width:90vw;">'
     +'<div style="font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">ADD TODO</div>'
     +'<input id="td-lbl" type="text" placeholder="Description..." style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
+    +(_stages.length>1?'<select id="td-stage" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px;font-size:13px;margin-bottom:8px">'+stageOpts+'</select>':'')
     +'<div style="display:flex;gap:8px;margin-bottom:12px">'
     +'<select id="td-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select>'
     +'<select id="td-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+tOpts+'</select>'
@@ -6303,7 +6285,9 @@ function todoSave(){
   var t=document.getElementById('td-time').value||'';
   var full=t?t+' — '+lbl:lbl;
   var modal=document.getElementById('todo-modal');if(modal)modal.remove();
-  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
+  var stgSel=document.getElementById('td-stage');
+  var stgId=stgSel?stgSel.value:((_stages[_currentStageIdx]||{}).id||'');
+  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,done:false,auto:false,stage_id:stgId,created:new Date().toISOString()});
   _todosSave();renderTodosPanel();
 }
 _todosLoad(); _autoTodos(); _todosSave();
