@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.824</title>
+<title>WTU · Buildert v3.826</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.824</small></div>
+  <div class="logo">WTU <small>v3.826</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -773,6 +773,7 @@ try{var _psh=localStorage.getItem('brt_psh');if(_psh)_packShared=Object.assign({
 
 // ── Multi-stage state ─────────────────────────────────────────────
 var _mStages = [];          // full stages array from Worker
+var _mDidFit = false;       // auto-fit on first load
 var _mCurrentStageIdx = 0;  // active stage index
 var _mAssignedStageId = '';  // rigger's assigned stage (from URL param)
 var _mPeekMode = false;     // true = viewing another stage read-only
@@ -868,6 +869,9 @@ function setTab(tab){
 
 // ── Render ─────────────────────────────────────────────────────────
 function renderMain(){
+  if(currentTab==='nodes'||currentTab==='diagram'){
+    if(!_mDidFit){ _mDidFit=true; setTimeout(_mFitView,200); }
+  }
   if(currentTab==='diagram'){
     _mNodeRender(); // live update without resetting positions
     return;
@@ -1115,16 +1119,7 @@ function renderPack(){
   var catCols={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
   var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros',psu:'Power Supplies'};
 
-  // Stage tabs
   var stageHtml='';
-  if(_mStages.length>1){
-    stageHtml='<div style="display:flex;gap:6px;overflow-x:auto;padding:8px 12px 4px;-webkit-overflow-scrolling:touch">';
-    _mStages.forEach(function(s,i){
-      var active=(i===_mCurrentStageIdx);
-      stageHtml+='<button data-sidx="'+i+'" onclick="mPackSetStage(+this.dataset.sidx)" style="padding:4px 14px;border-radius:16px;flex-shrink:0;border:2px solid '+(active?s.color:'var(--border2)')+';background:'+(active?s.color+'22':'transparent')+';color:'+(active?s.color:'var(--muted)')+';font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">'+s.name+'</button>';
-    });
-    stageHtml+='</div>';
-  }
 
   var stageDevs=_mStages.length?(_mStages[_mCurrentStageIdx].devices||devices):devices;
 
@@ -1960,10 +1955,14 @@ function _mergeProjectNoConflict(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    Object.keys(data.spec_overrides).forEach(function(k){
-      if(!SPECS[k]) SPECS[k]={};
-      Object.assign(SPECS[k], data.spec_overrides[k]);
-    });
+    // Full replace — desktop spec list is truth
+    Object.keys(SPECS).forEach(function(k){delete SPECS[k];});
+    Object.keys(data.spec_overrides).forEach(function(k){SPECS[k]=data.spec_overrides[k];});
+  }
+  // Update cable types from desktop
+  if(Array.isArray(data.cable_types) && data.cable_types.length){
+    CABLE_TYPES.length=0;
+    data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
   if(data.pack_shared) _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared);
@@ -2050,10 +2049,14 @@ function _mergeSmartFromFile(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    Object.keys(data.spec_overrides).forEach(function(k){
-      if(!SPECS[k]) SPECS[k]={};
-      Object.assign(SPECS[k], data.spec_overrides[k]);
-    });
+    // Full replace — desktop spec list is truth
+    Object.keys(SPECS).forEach(function(k){delete SPECS[k];});
+    Object.keys(data.spec_overrides).forEach(function(k){SPECS[k]=data.spec_overrides[k];});
+  }
+  // Update cable types from desktop
+  if(Array.isArray(data.cable_types) && data.cable_types.length){
+    CABLE_TYPES.length=0;
+    data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
   if(data.pack_shared) _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared);
@@ -2641,12 +2644,17 @@ async function wPull(){
 async function wPush(silent){
   if(!_workerUrl||!_projectKey) return;
   var combinedLog=(window._remoteLog||[]).concat(window._activityLog||[]);
+  // Update current stage devices before pushing
+  if(_mStages.length){
+    _mStages[_mCurrentStageIdx].devices=devices;
+  }
   var payload={
     _format:'wtu-project',
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
-    _saved_by:window._riggerName||project.name||'mobile',
+    _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project),
+    stages:_mStages.length?JSON.parse(JSON.stringify(_mStages)):null,
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
@@ -2851,7 +2859,7 @@ async function _dbxPush(silent){
     _format:'wtu-project',
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
-    _saved_by:window._riggerName||'mobile',
+    _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project,{anbernic_ip:ip}),
     devices:devices,
     spec_overrides:_getSpecOverrides(),
