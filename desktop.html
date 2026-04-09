@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.826</title>
+<title>WTUniverse · Buildert Editor v3.829</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,16 +453,22 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.827</div>
+    <div>build v3.829</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
   <!-- File menu -->
   <div style="position:relative;flex-shrink:0" id="file-menu-wrap">
     <button class="btn btn-ghost" onclick="toggleFileMenu()" style="padding:5px 10px;font-size:12px">&#128196; File &#9662;</button>
-    <div id="file-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:180px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px">
+    <div id="file-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px">
       <div class="fm-item" onclick="fileNew()">&#128196; New project</div>
       <div class="fm-item" onclick="fileOpen()">&#128194; Open project…</div>
+      <div class="fm-item" id="fm-recent-item" style="position:relative" onmouseenter="showRecentMenu()" onmouseleave="hideRecentMenu()">&#128336; Open recent &#9658;
+        <div id="fm-recent-sub" style="display:none;position:absolute;left:100%;top:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:220px;z-index:501;box-shadow:0 4px 16px rgba(0,0,0,.4)">
+          <div id="fm-recent-list"></div>
+        </div>
+      </div>
+      <div class="fm-sep"></div>
       <div class="fm-item" onclick="fileSave()" id="fm-save">&#128190; Save <span style="color:var(--muted);font-size:10px">Cmd+S</span></div>
       <div class="fm-item" onclick="fileSaveAs()">&#128190; Save As…</div>
       <div class="fm-sep"></div>
@@ -479,6 +485,7 @@
     <span id="file-name" style="font-family:var(--mono);font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">no file — use File → New or Open</span>
     <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
   </div>
+  <button id="quicksave-btn" onclick="fileQuickSave()" title="Quick Save (download)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>
   <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
@@ -1257,7 +1264,7 @@ SOURCE_TYPES['Adapter']   = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
 
 var TYPE_ICON  = {}; TYPE_ICON[TYPE_LASER]='L'; TYPE_ICON[TYPE_SMOKE]='S'; TYPE_ICON[TYPE_DISTRO]='D'; TYPE_ICON[TYPE_PSU]='P';
 var TYPE_SHORT = {}; TYPE_SHORT[TYPE_LASER]='LP'; TYPE_SHORT[TYPE_SMOKE]='SM'; TYPE_SHORT[TYPE_DISTRO]='DI'; TYPE_SHORT[TYPE_PSU]='PSU';
-var TYPE_KEY   = {}; TYPE_KEY[TYPE_LASER]='laser'; TYPE_KEY[TYPE_SMOKE]='smoke'; TYPE_KEY[TYPE_DISTRO]='distro'; TYPE_KEY[TYPE_PSU]='psu';
+var TYPE_KEY   = {}; TYPE_KEY[TYPE_LASER]='laser'; TYPE_KEY[TYPE_SMOKE]='smoke'; TYPE_KEY[TYPE_DISTRO]='distro'; TYPE_KEY[TYPE_PSU]='psu'; TYPE_KEY['Adapter']='adapter';
 
 // ── State ─────────────────────────────────────────────────────────────
 var devices    = [];
@@ -1387,6 +1394,7 @@ function today() { return new Date().toISOString().slice(0,10); }
 
 function checksFor(type) {
   if (type === TYPE_LASER)  return LASER_CHECKS;
+  if (type === TYPE_ADAPTER || type === 'Adapter') return [];
   if (type === TYPE_SMOKE)  return SMOKE_CHECKS;
   if (type === TYPE_DISTRO) return DISTRO_CHECKS;
   if (type === TYPE_PSU)    return PSU_CHECKS;
@@ -1627,6 +1635,20 @@ var CONNECTOR_LABELS = {
 
 // Cable types — each has power connector, optional data connector, and lengths
 // ft lengths shown with metre equivalent in label
+// Extract model key from device_id — handles multi-word models like "32A PC Distro"
+function modelFromId(device_id) {
+  if (!device_id) return '';
+  var id = device_id.trim().toUpperCase();
+  // Try longest matching known model key first
+  var best = '';
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    var ku = k.toUpperCase();
+    if((id === ku || id.startsWith(ku+' ')) && ku.length > best.length) best = k;
+  });
+  if(best) return best;
+  return (id.split(/\s+/)[0] || '');
+}
+
 var CABLE_TYPES = [
   {key:'powercat',label:'PowerCAT',pwr_a:'TR1',pwr_b:'TR1',data_a:'Ethercon',data_b:'Ethercon',
    lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
@@ -2058,8 +2080,8 @@ function syncDeviceId() {
   if (model && editIndex === -1) {
     var takenNums = {};
     devices.forEach(function(d) {
-      var p = (d.device_id || '').trim().toUpperCase().split(/\s+/);
-      if (p[0] === model.toUpperCase()) { var n=parseInt(p[1],10); if(!isNaN(n)) takenNums[n]=true; }
+      var dm = modelFromId(d.device_id||'');
+      if (dm.toUpperCase() === model.toUpperCase()) { var rest=(d.device_id||'').slice(dm.length).trim(); var n=parseInt(rest,10); if(!isNaN(n)) takenNums[n]=true; }
     });
     var next = 1;
     while (takenNums[next]) next++;
@@ -6465,6 +6487,7 @@ function _loadFromText(text, name){
     _setFileName(name);
     _markSaved();
     _updateProjectBadge();
+    _recentAdd(name);
     showToast('Opened: '+name+' ('+_stages.length+' stage'+ (_stages.length>1?'s':'')+')', 'ok');
     setTimeout(function(){wPush(true);},800);
   }catch(e){showToast('Parse error: '+e.message,'warn');console.error(e);}
@@ -6474,13 +6497,18 @@ function _loadFromText(text, name){
 async function fileSave(){
   document.getElementById('file-menu').style.display='none';
   if(_fileHandle){
+    // Chrome with File System Access — write in-place
     await _writeToHandle(_fileHandle);
-  } else if(_lastOpenedFileName){
-    // No File System Access API (Safari) — re-download with same filename
-    _fileSaveDownload(_lastOpenedFileName);
   } else {
-    await fileSaveAs();
+    // All other browsers / no file opened — silent download
+    var name = _lastOpenedFileName || (_fileName && !_fileName.includes('unsaved') ? _fileName : null) || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
+    _fileSaveDownload(name);
   }
+}
+function fileQuickSave(){
+  // Always silent download — no dialog ever
+  var name = _lastOpenedFileName || (_fileName && !_fileName.includes('unsaved') && !_fileName.includes('no file') ? _fileName : null) || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
+  _fileSaveDownload(name);
 }
 async function fileSaveAs(){
   document.getElementById('file-menu').style.display='none';
@@ -6552,7 +6580,7 @@ function fileImportCSV(){
 
 // ── Keyboard shortcuts ────────────────────────────────────────────
 document.addEventListener('keydown',function(e){
-  if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();fileSave();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();fileQuickSave();}
   if((e.metaKey||e.ctrlKey)&&e.key==='o'){e.preventDefault();fileOpen();}
   if((e.metaKey||e.ctrlKey)&&e.key==='n'){e.preventDefault();fileNew();}
 });
@@ -7180,6 +7208,56 @@ function _fileSaveDownload(name){
   _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
   showToast('Saved · '+name,'ok');
   wPush(true);
+}
+
+
+// ── Recent files ──────────────────────────────────────────────────
+var _recentFiles = [];
+try{var _rf=localStorage.getItem('brt_recent');if(_rf)_recentFiles=JSON.parse(_rf);}catch(e){}
+
+function _recentAdd(name){
+  if(!name||name.includes('unsaved')||name.includes('no file')) return;
+  _recentFiles=_recentFiles.filter(function(r){return r.name!==name;});
+  _recentFiles.unshift({name:name, ts:Date.now(), project:_projectMeta.name||''});
+  if(_recentFiles.length>8) _recentFiles=_recentFiles.slice(0,8);
+  try{localStorage.setItem('brt_recent',JSON.stringify(_recentFiles));}catch(e){}
+}
+function showRecentMenu(){
+  var sub=document.getElementById('fm-recent-sub');
+  var list=document.getElementById('fm-recent-list');
+  if(!sub||!list) return;
+  if(!_recentFiles.length){
+    list.innerHTML='<div style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)">No recent files</div>';
+  } else {
+    list.innerHTML=_recentFiles.map(function(r,i){
+      var ago=_timeAgo(r.ts);
+      var label=r.project||r.name;
+      return '<div class="fm-item" data-ridx="'+i+'" onclick="recentOpen(+this.dataset.ridx)" style="display:flex;flex-direction:column;gap:1px">'
+        +'<span style="font-size:12px">'+label+'</span>'
+        +'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+r.name+' &middot; '+ago+'</span>'
+        +'</div>';
+    }).join('');
+  }
+  sub.style.display='block';
+}
+function hideRecentMenu(){
+  setTimeout(function(){
+    var sub=document.getElementById('fm-recent-sub');
+    if(sub&&!sub.matches(':hover')&&!document.getElementById('fm-recent-item').matches(':hover')) sub.style.display='none';
+  },150);
+}
+function recentOpen(idx){
+  document.getElementById('file-menu').style.display='none';
+  var r=_recentFiles[idx]; if(!r) return;
+  // Can't re-open from disk automatically — prompt user to open the file
+  showToast('Use File → Open to open: '+r.name,'warn');
+}
+function _timeAgo(ts){
+  var s=Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'just now';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
 }
 
 </script>
