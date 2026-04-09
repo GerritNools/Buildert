@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.820</title>
+<title>WTU · Buildert v3.824</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.820</small></div>
+  <div class="logo">WTU <small>v3.824</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -768,6 +768,8 @@ function _cableOpts(val, reqConn){
 // ── State ──────────────────────────────────────────────────────────
 var devices=[], project={name:'',venue:''};
 var _packSpares=[];
+var _packShared={toolcase:[],office:[],spares:[]};
+try{var _psh=localStorage.getItem('brt_psh');if(_psh)_packShared=Object.assign({toolcase:[],office:[],spares:[]},JSON.parse(_psh));}catch(e){}
 
 // ── Multi-stage state ─────────────────────────────────────────────
 var _mStages = [];          // full stages array from Worker
@@ -1108,124 +1110,98 @@ function renderPack(){
   var cont=document.getElementById('card-list');
   var empty=document.getElementById('empty-state');
   updateBanner();
-  if(!devices.length){cont.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
 
-  var TYPE_ORDER=[TL,TS,TD,TP];
-  var TYPE_LABELS={'Laser projector':'Laser Projectors','Smoke machine':'Smoke Machines','Distro':'Distros','Power supply':'Power Supplies'};
-  var TYPE_COLS={'Laser projector':'var(--laser)','Smoke machine':'var(--smoke)','Distro':'var(--distro)','Power supply':'var(--psu)'};
+  var catCols={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
+  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros',psu:'Power Supplies'};
 
-  var sig=_packSignatures[_packWorkflow]||'';
-  // Check for missing cable lengths
-  var missingCables=devices.filter(function(d){return d.device_id&&!(d.cable_in||d.cable);});
-  var html='<div style="padding:0 2px">';
-  if(missingCables.length){
-    html+='<div style="background:rgba(245,166,35,.1);border:1px solid var(--warn);border-radius:8px;'
-      +'padding:10px 14px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--warn)">'
-      +'⚠ '+missingCables.length+' device'+(missingCables.length>1?'s have':' has')+' no cable IN assigned: '
-      +missingCables.slice(0,5).map(function(d){return d.device_id;}).join(', ')
-      +(missingCables.length>5?' …':'')
-      +'</div>';
+  // Stage tabs
+  var stageHtml='';
+  if(_mStages.length>1){
+    stageHtml='<div style="display:flex;gap:6px;overflow-x:auto;padding:8px 12px 4px;-webkit-overflow-scrolling:touch">';
+    _mStages.forEach(function(s,i){
+      var active=(i===_mCurrentStageIdx);
+      stageHtml+='<button data-sidx="'+i+'" onclick="mPackSetStage(+this.dataset.sidx)" style="padding:4px 14px;border-radius:16px;flex-shrink:0;border:2px solid '+(active?s.color:'var(--border2)')+';background:'+(active?s.color+'22':'transparent')+';color:'+(active?s.color:'var(--muted)')+';font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">'+s.name+'</button>';
+    });
+    stageHtml+='</div>';
   }
-    // Workflow selector
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">'
-    +_packWorkflows.map(function(w){
-      var active=w===_packWorkflow;
-      return '<button onclick="_packWorkflow=\'' + w + '\';renderPack()" '
-        +'style="padding:7px 14px;border-radius:20px;border:1px solid '+(active?'var(--accent)':'var(--border)')+';'
-        +'background:'+(active?'rgba(0,212,255,.12)':'var(--panel)')+';color:'+(active?'var(--accent)':'var(--muted)')+';'
-        +'font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">'+w+'</button>';
-    }).join('')
-    +'</div>'
-    // Sign-off
-    +'<div style="display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px">'
-    +'<span style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--muted)">SIGNED BY</span>'
-    +'<input id="pack-sig-input" type="text" placeholder="Name..." value="'+sig.replace(/"/g,'&quot;')+'" '
-    +'style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--cond);font-weight:700;font-size:14px;padding:6px 10px;border-radius:5px;letter-spacing:1px" '
-    +'oninput="_packSignatures[_packWorkflow]=this.value" />'
-    +'<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">'+(sig?'✓ '+new Date().toLocaleDateString():'—')+'</span>'
-    +'</div>';
 
-  // Devices — grouped by model
-  html+='<div class="pack-section"><div class="pack-section-title">Devices</div>'
-    +'<table class="pack-table"><thead><tr>'
-    +'<th></th><th style="width:40px">Qty</th><th>Model</th><th>Cable IN</th><th>Cable OUT</th>'
-    +'</tr></thead><tbody>';
-  var totalDev=0;
-  TYPE_ORDER.forEach(function(type){
-    var grp=devices.filter(function(d){return d.type===type;});
-    if(!grp.length)return;
+  var stageDevs=_mStages.length?(_mStages[_mCurrentStageIdx].devices||devices):devices;
+
+  // Group by category
+  var byType={},typeOrder=[];
+  stageDevs.forEach(function(d){
+    var sp=specFor(d)||{};
+    var cat=(sp.category||d.type||'other').toLowerCase();
+    if(!byType[cat]){byType[cat]=[];typeOrder.push(cat);}
+    byType[cat].push(d);
+  });
+
+  var devHtml='<div style="padding:0 12px"><div class="pack-section"><div class="pack-section-title">Devices</div>'
+    +'<table class="pack-table"><thead><tr><th></th><th style="width:40px">Qty</th><th>Model</th><th>Cable IN</th><th>Cable OUT</th></tr></thead><tbody>';
+  typeOrder.forEach(function(cat){
+    var grp=byType[cat];if(!grp.length)return;
+    var col=catCols[cat]||'var(--accent)';
+    var lbl=catLabels[cat]||(cat.charAt(0).toUpperCase()+cat.slice(1)+'s');
+    devHtml+='<tr><td colspan="5" style="padding:6px 8px 3px;font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:'+col+';border-top:1px solid var(--border)">'+lbl.toUpperCase()+'</td></tr>';
     var byM={},mOrd=[];
-    grp.forEach(function(d){var m=modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
-    html+='<tr><td colspan="5" style="padding:6px 8px 3px;font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:'+TYPE_COLS[type]+';border-top:1px solid var(--border)">'+TYPE_LABELS[type]+'</td></tr>';
+    grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
     mOrd.forEach(function(m){
-      var items=byM[m]; totalDev+=items.length;
+      var items=byM[m];
       var ccs={};
       items.forEach(function(d){var ci=_cableLabel(d.cable_in||d.cable||''),co=_cableLabel(d.cable_out||'');var k=ci+'||'+co;ccs[k]=(ccs[k]||0)+1;});
       var cks=Object.keys(ccs);
       cks.forEach(function(ck,ci2){
         var pts=ck.split('||'),cin=pts[0],cout=pts[1],cq=ccs[ck];
-        html+='<tr>'
-          +(ci2===0?'<td rowspan="'+cks.length+'"><input type="checkbox" class="pack-check"></td>'
-            +'<td rowspan="'+cks.length+'" class="pack-qty">'+items.length+'×</td>'
-            +'<td rowspan="'+cks.length+'" style="font-family:var(--cond);font-weight:700;color:'+TYPE_COLS[type]+'">'+m+'</td>':'')
-          +'<td style="font-size:11px;color:'+(cin?'var(--ok)':'var(--muted)')+'">'+
-            (cks.length>1?'<span style="color:var(--muted);font-size:9px">'+cq+'× </span>':'')+(cin||'—')+'</td>'
-          +'<td style="font-size:11px;color:'+(cout?'var(--smoke)':'var(--muted)')+'">'+( cout||'—')+'</td>'
-          +'</tr>';
+        devHtml+='<tr>'+(ci2===0?'<td rowspan="'+cks.length+'"><input type="checkbox" class="pack-check"></td><td rowspan="'+cks.length+'" class="pack-qty">'+items.length+'x</td><td rowspan="'+cks.length+'" style="font-family:var(--cond);font-weight:700;color:'+col+'">'+m+'</td>':'')+'<td style="font-size:11px;color:'+(cin?'var(--ok)':'var(--muted)')+'">'+cin+'</td><td style="font-size:11px;color:'+(cout?'var(--smoke)':'var(--muted)')+'">'+cout+'</td></tr>';
       });
     });
   });
-  html+='</tbody></table></div>';
+  devHtml+='</tbody></table></div>';
 
-  // Cable summary
+  // Cables
   var cc={};
-  devices.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||''].filter(Boolean).forEach(function(c){cc[c]=(cc[c]||0)+1;});});
-  var cks2=Object.keys(cc).sort();
-  html+='<div class="pack-section"><div class="pack-section-title">Cables</div>';
-  if(cks2.length){
-    html+='<table class="pack-table"><thead><tr><th></th><th>Qty</th><th>Type &amp; length</th></tr></thead><tbody>';
-    cks2.forEach(function(k){
+  stageDevs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+  var ckeys=Object.keys(cc).sort();
+  devHtml+='<div class="pack-section"><div class="pack-section-title">Cables</div>';
+  if(ckeys.length){
+    devHtml+='<table class="pack-table"><thead><tr><th></th><th>Qty</th><th>Type</th></tr></thead><tbody>';
+    ckeys.forEach(function(k){
       var ct=CABLE_TYPES.find(function(c){return k.indexOf(c.key+'-')===0;});
       var lv=parseFloat(k.split('-').slice(1).join('-'));
-      var ld=ct?ct.lengths.find(function(l){return Math.abs(l.v-lv)<0.01;}):null;
-      var lbl=ct?(ct.label+' '+(ld?ld.l:lv+'m')):k;
-      html+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+cc[k]+'×</td><td style="font-family:var(--mono);font-size:12px">'+lbl+'</td></tr>';
+      var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
+      var lbl=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
+      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+cc[k]+'x</td><td style="font-family:var(--mono);font-size:12px">'+lbl+'</td></tr>';
     });
-    html+='</tbody></table>';
-  } else html+='<p style="color:var(--muted);font-size:13px;padding:8px 0">No cables assigned yet.</p>';
-  // Warning: devices with cable type but no length, or no cable at all
-  var missingCable=devices.filter(function(d){
-    return d.type===TL||d.type===TS||d.type===TD||d.type===TP;
-  }).filter(function(d){
-    var cv=d.cable_in||d.cable||'';
-    return !cv; // no cable set at all
-  });
-  if(missingCable.length){
-    html+='<div style="background:rgba(245,166,35,.08);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;margin-top:8px">';
-    html+='<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px">⚠ MISSING CABLE IN ('+missingCable.length+' device'+(missingCable.length>1?'s':'')+')</div>';
-    html+=missingCable.map(function(d){
-      return '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:2px 0">' + d.device_id + (d.location?' · '+d.location:'') + '</div>';
-    }).join('');
-    html+='</div>';
-  }
-  html+='</div>';
+    devHtml+='</tbody></table>';
+  } else { devHtml+='<p style="color:var(--muted);font-size:13px;padding:6px 0">No cables yet.</p>'; }
+  devHtml+='</div></div>';
 
-  // Spares
-  html+='<div class="pack-section"><div class="pack-section-title" style="display:flex;justify-content:space-between;align-items:center">Spare items <button class="sb sb-ghost" style="padding:4px 12px;font-size:11px" onclick="packAddSpare()">+ Add</button></div>'
-    +'<table class="pack-table" id="mob-spares"><thead><tr><th></th><th>Qty</th><th>Description</th><th></th></tr></thead><tbody>';
-  _packSpares.forEach(function(s,i){
-    html+='<tr class="pack-spare-row">'
-      +'<td><input type="checkbox" class="pack-check"'+(s.checked?' checked':'')+'></td>'
-      +'<td><input type="number" min="1" value="'+s.qty+'" style="width:44px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:3px 5px;border-radius:5px" onchange="_packSpares['+i+'].qty=parseInt(this.value)||1"></td>'
-      +'<td><input type="text" value="'+s.desc.replace(/"/g,'&quot;')+'" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:3px 6px;border-radius:5px" onchange="_packSpares['+i+'].desc=this.value"></td>'
-      +'<td><button onclick="_packSpares.splice('+i+',1);renderPack()" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer">×</button></td>'
-      +'</tr>';
+  // Shared section
+  var CATS=[{key:'toolcase',label:'Toolcase',icon:'🧰',col:'var(--distro)'},{key:'office',label:'Office',icon:'📋',col:'var(--smoke)'},{key:'spares',label:'Spares',icon:'⚙️',col:'var(--laser)'}];
+  var sharedHtml='<div style="padding:0 12px 20px;margin-top:6px"><div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);padding:6px 0 8px">SHARED — ALL STAGES</div>';
+  CATS.forEach(function(cat){
+    var items=_packShared[cat.key]||[];
+    var done=items.filter(function(x){return x.checked;}).length;
+    sharedHtml+='<div class="pack-section"><div class="pack-section-title" style="display:flex;align-items:center;gap:6px;color:'+cat.col+'">'+cat.icon+' '+cat.label+(items.length?' <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+done+'/'+items.length+'</span>':'')+'<button data-pcat="'+cat.key+'" onclick="mPackSharedAdd(this.dataset.pcat)" style="margin-left:auto;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">+ Add</button></div>';
+    if(items.length){
+      sharedHtml+='<table class="pack-table"><thead><tr><th></th><th style="width:44px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
+      items.forEach(function(s,i){
+        sharedHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' data-pcat="'+cat.key+'" data-pidx="'+i+'" onclick="mPackSharedCheck(this.dataset.pcat,+this.dataset.pidx,this.checked)"></td><td><input type="number" min="1" value="'+s.qty+'" data-pcat="'+cat.key+'" data-pidx="'+i+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSharedQty(this.dataset.pcat,+this.dataset.pidx,this.value)"></td><td><input type="text" value="'+s.desc.replace(/"/g,'&quot;')+'" data-pcat="'+cat.key+'" data-pidx="'+i+'" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSharedDesc(this.dataset.pcat,+this.dataset.pidx,this.value)"></td><td><button data-pcat="'+cat.key+'" data-pidx="'+i+'" onclick="mPackSharedDel(this.dataset.pcat,+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td></tr>';
+      });
+      sharedHtml+='</tbody></table>';
+    } else { sharedHtml+='<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:3px 0">Empty</div>'; }
+    sharedHtml+='</div>';
   });
-  html+='</tbody></table></div></div>';
-  cont.innerHTML=html;
+  sharedHtml+='</div>';
+  cont.innerHTML=stageHtml+devHtml+sharedHtml;
 }
-
+function mPackSetStage(idx){if(!_mStages[idx])return;_mCurrentStageIdx=idx;devices=_mStages[idx].devices||[];_renderMobileStageBar();renderPack();}
+function mPackSharedCheck(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].checked=v;try{localStorage.setItem('brt_psh',JSON.stringify(_packShared));}catch(e){}}
+function mPackSharedQty(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].qty=parseInt(v)||1;try{localStorage.setItem('brt_psh',JSON.stringify(_packShared));}catch(e){}}
+function mPackSharedDesc(cat,i,v){if(_packShared[cat]&&_packShared[cat][i]!=null)_packShared[cat][i].desc=v;try{localStorage.setItem('brt_psh',JSON.stringify(_packShared));}catch(e){}}
+function mPackSharedDel(cat,i){if(_packShared[cat])_packShared[cat].splice(i,1);try{localStorage.setItem('brt_psh',JSON.stringify(_packShared));}catch(e){}renderPack();}
+function mPackSharedAdd(cat){if(!_packShared[cat])_packShared[cat]=[];_packShared[cat].push({qty:1,desc:'',checked:false});try{localStorage.setItem('brt_psh',JSON.stringify(_packShared));}catch(e){}renderPack();setTimeout(function(){var rows=document.querySelectorAll('[data-pcat="'+cat+'"]');if(rows.length){var last=rows[rows.length-1];var row=last.closest&&last.closest('tr');if(row){var inp=row.querySelector('input[type="text"]');if(inp)inp.focus();}}},60);}
 function packAddSpare(){_packSpares.push({qty:1,desc:'',checked:false});renderPack();}
 
 // ── Specs tab ─────────────────────────────────────────────────────
@@ -1984,11 +1960,27 @@ function _mergeProjectNoConflict(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    // Merge into live SPECS so model dropdowns and spec sheets see them
     Object.keys(data.spec_overrides).forEach(function(k){
       if(!SPECS[k]) SPECS[k]={};
       Object.assign(SPECS[k], data.spec_overrides[k]);
     });
+  }
+  // Load shared pack
+  if(data.pack_shared) _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared);
+  // Merge todos — add new ones from desktop, keep local edits
+  if(Array.isArray(data.todos) && data.todos.length){
+    _mTodosLoad();
+    var existIds={};
+    _mTodos.filter(function(t){return !t.auto;}).forEach(function(t){existIds[t.id]=true;});
+    data.todos.forEach(function(t){
+      if(!t.auto&&!existIds[t.id]){_mTodos.push(t);existIds[t.id]=true;}
+      else if(!t.auto&&existIds[t.id]){
+        // Update label/urgency from desktop if local not changed
+        var local=_mTodos.find(function(x){return x.id===t.id;});
+        if(local&&!local._localEdit){local.label=t.label;local.urgency=t.urgency;}
+      }
+    });
+    _mTodosSave();
   }
   _projectVersion=data._version||0;
   _projectBaseVersion=_projectVersion;
@@ -2058,11 +2050,27 @@ function _mergeSmartFromFile(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    // Merge into live SPECS so model dropdowns and spec sheets see them
     Object.keys(data.spec_overrides).forEach(function(k){
       if(!SPECS[k]) SPECS[k]={};
       Object.assign(SPECS[k], data.spec_overrides[k]);
     });
+  }
+  // Load shared pack
+  if(data.pack_shared) _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared);
+  // Merge todos — add new ones from desktop, keep local edits
+  if(Array.isArray(data.todos) && data.todos.length){
+    _mTodosLoad();
+    var existIds={};
+    _mTodos.filter(function(t){return !t.auto;}).forEach(function(t){existIds[t.id]=true;});
+    data.todos.forEach(function(t){
+      if(!t.auto&&!existIds[t.id]){_mTodos.push(t);existIds[t.id]=true;}
+      else if(!t.auto&&existIds[t.id]){
+        // Update label/urgency from desktop if local not changed
+        var local=_mTodos.find(function(x){return x.id===t.id;});
+        if(local&&!local._localEdit){local.label=t.label;local.urgency=t.urgency;}
+      }
+    });
+    _mTodosSave();
   }
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
@@ -2642,6 +2650,7 @@ async function wPush(silent){
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
   _projectVersion++;_projectBaseVersion=_projectVersion;
@@ -2847,6 +2856,7 @@ async function _dbxPush(silent){
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
   _projectVersion++;
@@ -3420,32 +3430,135 @@ function _mAutoTodos(){
   });
   _mTodos=keep.concat(autos);
 }
+var _mTodosShowAuto = true;
+
 function _renderTodosList(){
   var cont=document.getElementById('card-list'); if(!cont)return;
   var urgLabels={1:'Normal',2:'High',3:'Urgent'};
-  var urgCols={1:'var(--muted)',2:'var(--warn)',3:'var(--danger)'};
-  var html='<div style="padding:10px 12px 4px">'
-    +'<button class="sb sb-primary" onclick="mTodoAdd()" style="width:100%;margin-bottom:8px">+ Add todo</button>'
+  var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
+  var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.07)',3:'rgba(255,77,77,.07)'};
+
+  var manual=_mTodos.filter(function(t){return !t.auto;});
+  var auto=_mTodos.filter(function(t){return t.auto;});
+  var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
+  var autoSnDone=auto.filter(function(t){return t.id.startsWith('auto_sn')&&t.done;}).length;
+  var autoTotal=auto.length/2||0;
+  var doneCount=manual.filter(function(t){return t.done;}).length;
+
+  var html='<div style="padding:10px 12px 6px;display:flex;gap:8px">'
+    +'<button class="sb sb-primary" onclick="mTodoAdd()" style="flex:1">+ Add</button>'
+    +(doneCount?'<button class="sb sb-ghost" onclick="mTodoClearDone()" style="font-size:12px">Clear done</button>':'')
     +'</div>';
-  [3,2,1].forEach(function(urg){
-    var group=_mTodos.filter(function(t){return t.urgency===urg;});
-    if(!group.length)return;
-    html+='<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:'+urgCols[urg]+';padding:6px 14px 2px">'+urgLabels[urg].toUpperCase()+'</div>';
-    group.forEach(function(t){
-      var col=t.done?'var(--muted)':'var(--text)';
-      var decor=t.done?'line-through':'none';
-      var autoNote=t.auto?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px;margin-left:4px">AUTO</span>':'';
-      html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border2)">'
-        +'<input type="checkbox" '+(t.done?'checked':'')+(t.auto?' disabled':'')
-        +' onclick="mTodoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:20px;height:20px;accent-color:'+urgCols[t.urgency]+';cursor:'+(t.auto?'default':'pointer')+'">'
-        +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+col+';text-decoration:'+decor+'">'+t.label+'</span>'
-        +autoNote
-        +(t.auto?'':'<button onclick="mTodoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>')
-        +'</div>';
-    });
+
+  // Auto progress bars
+  if(auto.length){
+    html+='<div style="background:var(--panel);margin:0 12px 10px;border-radius:8px;padding:10px 12px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<span style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted)">AUTO PROGRESS</span>'
+      +'<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--muted)">'
+      +'<input type="checkbox" '+ (_mTodosShowAuto?'checked':'')+' onclick="_mTodosShowAuto=this.checked;_renderTodosList()" style="accent-color:var(--muted)"> show auto</label>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">MOUNTED</div>'
+      +'<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:3px">'
+      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84"></div></div>'
+      +'<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</div>'
+      +'</div>'
+      +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">SERIALS</div>'
+      +'<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:3px">'
+      +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff"></div></div>'
+      +'<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</div>'
+      +'</div></div></div>';
+
+    if(_mTodosShowAuto){
+      html+='<div style="padding:0 12px 8px">'
+        +'<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:4px">AUTO TODOS</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">';
+      auto.forEach(function(t){
+        html+='<div style="display:flex;align-items:center;gap:5px;background:var(--panel);border-radius:4px;padding:4px 7px">'
+          +'<span style="font-size:11px">'+(t.done?'✅':'⬜')+'</span>'
+          +'<span style="font-family:var(--mono);font-size:10px;color:'+(t.done?'var(--muted)':'var(--text)')+';text-decoration:'+(t.done?'line-through':'none')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.label+'</span>'
+          +'</div>';
+      });
+      html+='</div></div>';
+    }
+  }
+
+  // Sort manual todos: by time first, then urgency desc, then created
+  manual.sort(function(a,b){
+    var at=a.label.match(/^(\d+):(\d+)/),bt=b.label.match(/^(\d+):(\d+)/);
+    var an=at?parseInt(at[1])*60+parseInt(at[2]):9999;
+    var bn=bt?parseInt(bt[1])*60+parseInt(bt[2]):9999;
+    if(an!==bn) return an-bn;
+    return (b.urgency||1)-(a.urgency||1);
   });
-  if(!_mTodos.length) html+='<div style="padding:40px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
+
+  // Render manual todos
+  if(manual.length){
+    [3,2,1].forEach(function(urg){
+      var group=manual.filter(function(t){return t.urgency===urg;});
+      if(!group.length)return;
+      var urgIcon={1:'',2:'⚠️ ',3:'🔴 '};
+      html+='<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:'+urgCols[urg]+';padding:8px 14px 3px;opacity:.8">'+urgIcon[urg]+urgLabels[urg].toUpperCase()+'</div>';
+      group.forEach(function(t){
+        var done=t.done;
+        var timePart=t.label.match(/^(\d+:\d+)\s—\s/);
+        var dispLabel=timePart?t.label.slice(timePart[0].length):t.label;
+        var timeTag=timePart?'<span style="font-family:var(--mono);font-size:10px;color:var(--accent);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:4px;padding:1px 6px;margin-right:6px">'+timePart[1]+'</span>':'';
+        html+='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 8px 6px;'
+          +'background:'+(done?'var(--surface)':urgBg[urg])+';'
+          +'border:1px solid '+(done?'var(--border2)':'rgba('+({1:'255,255,255',2:'245,166,35',3:'255,77,77'}[urg])+',.2)')+';'
+          +'border-radius:8px">'
+          +'<input type="checkbox" '+(done?'checked':'')+' data-id="'+t.id+'" onclick="mTodoToggle(this.dataset.id)"'
+          +' style="width:22px;height:22px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[urg]+'">'
+          +'<div style="flex:1;min-width:0">'
+          +timeTag
+          +'<span style="font-family:var(--cond);font-size:16px;color:'+(done?'var(--muted)':urgCols[urg])+';text-decoration:'+(done?'line-through':'none')+'">'+dispLabel+'</span>'
+          +'</div>'
+          +'<button data-id="'+t.id+'" onclick="mTodoEdit(this.dataset.id)" style="background:none;border:none;color:var(--muted);font-size:16px;padding:4px 6px;cursor:pointer;flex-shrink:0">✎</button>'
+          +'<button data-id="'+t.id+'" onclick="mTodoDelete(this.dataset.id)" style="background:none;border:none;color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer;flex-shrink:0">✕</button>'
+          +'</div>';
+      });
+    });
+  }
+
+  if(!manual.length && !auto.length){
+    html+='<div style="padding:40px 14px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">No todos yet</div>';
+  }
   cont.innerHTML=html;
+}
+
+function mTodoClearDone(){
+  _mTodos=_mTodos.filter(function(t){return t.auto||!t.done;}); _mTodosSave(); _renderTodosList();
+}
+
+function mTodoEdit(id){
+  var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
+  var curTime=t.label.match(/^(\d+:\d+)/)?t.label.match(/^(\d+:\d+)/)[1]:'';
+  var curLabel=t.label.replace(/^\d+:\d+\s—\s/,'');
+  var tOpts='<option value="">No time</option>';
+  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'"'+(curTime===h+':'+('0'+m).slice(-2)?' selected':'')+'>'+h+':'+('0'+m).slice(-2)+'</option>';});}
+  var cont=document.getElementById('card-list');if(!cont)return;
+  var form='<div id="ta-form" style="background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:12px;margin:10px 12px;">'
+    +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">EDIT TODO</div>'
+    +'<input id="ta-lbl" type="text" value="'+curLabel.replace(/"/g,'&quot;')+'" autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
+    +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+    +'<select id="ta-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px"><option value="1"'+(t.urgency===1?' selected':'')+'>Normal</option><option value="2"'+(t.urgency===2?' selected':'')+'>High</option><option value="3"'+(t.urgency===3?' selected':'')+'>Urgent</option></select>'
+    +'<select id="ta-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px">'+tOpts+'</select>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<button id="ta-save-edit" class="sb sb-primary" style="flex:1">Save</button>'
+    +'<button onclick="renderTodosMobile()" class="sb sb-ghost" style="flex:1">Cancel</button>'
+    +'</div></div>';
+  cont.innerHTML=form+cont.innerHTML;
+  document.getElementById('ta-save-edit').onclick=function(){
+    var lbl=(document.getElementById('ta-lbl').value||'').trim();if(!lbl)return;
+    var urg=parseInt(document.getElementById('ta-urg').value)||1;
+    var time=document.getElementById('ta-time').value||'';
+    t.label=time?time+' — '+lbl:lbl; t.urgency=urg; t._localEdit=true;
+    _mTodosSave(); renderTodosMobile(); autoSave();
+  };
+  setTimeout(function(){var el=document.getElementById('ta-lbl');if(el){el.focus();el.select();}},100);
 }
 function renderTodosMobile(){
   updateBanner();
@@ -3457,39 +3570,63 @@ function renderTodosMobile(){
 function mTodoToggle(id){
   var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
   if(t.auto){showToast('Auto todo — tick in device card','warn');return;}
-  t.done=!t.done; _mTodosSave();
-  // Re-render without reloading from storage
+  t.done=!t.done; t._localEdit=true; _mTodosSave();
   _mSyncAutoTodos(); _renderTodosList();
   autoSave();
 }
 function mTodoDelete(id){
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
 }
-function mTodoAdd(){
-  var cont=document.getElementById('card-list');if(!cont)return;
-  var tOpts='<option value="">No time</option>';
-  for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'">'+h+':'+('0'+m).slice(-2)+'</option>';});}
-  var form='<div id="ta-form" style="background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:12px;margin:10px 12px;">'
-    +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">NEW TODO</div>'
-    +'<input id="ta-lbl" type="text" placeholder="Description..." autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box">'
-    +'<div style="display:flex;gap:6px;margin-bottom:8px">'
-    +'<select id="ta-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select>'
-    +'<select id="ta-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px">'+tOpts+'</select>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px">'
-    +'<button onclick="mTodoSave()" class="sb sb-primary" style="flex:1">Save</button>'
-    +'<button onclick="renderTodosMobile()" class="sb sb-ghost" style="flex:1">Cancel</button>'
-    +'</div></div>';
-  cont.innerHTML=form+cont.innerHTML;
-  setTimeout(function(){var el=document.getElementById('ta-lbl');if(el)el.focus();},100);
+var _mTodoEditId = null; // null = new, string = editing existing
+
+function _mTodoOpenSheet(editId){
+  _mTodoEditId = editId||null;
+  var title=document.getElementById('todo-sheet-title');
+  var lbl=document.getElementById('ta-lbl');
+  var urg=document.getElementById('ta-urg');
+  var tm=document.getElementById('ta-time');
+  if(!lbl||!urg||!tm) return;
+  // Populate time options
+  if(tm.options.length<2){
+    for(var h=6;h<=24;h++){['00','30'].forEach(function(m){
+      var o=document.createElement('option');
+      o.value=h+':'+('0'+m).slice(-2);
+      o.textContent=h+':'+('0'+m).slice(-2);
+      tm.appendChild(o);
+    });}
+  }
+  if(editId){
+    var t=_mTodos.find(function(x){return x.id===editId;});
+    if(!t)return;
+    if(title) title.textContent='Edit Todo';
+    var curTime=t.label.match(/^(\d+:\d+)/)?t.label.match(/^(\d+:\d+)/)[1]:'';
+    var curLabel=t.label.replace(/^\d+:\d+\s—\s/,'');
+    lbl.value=curLabel;
+    urg.value=t.urgency||1;
+    tm.value=curTime;
+  } else {
+    if(title) title.textContent='Add Todo';
+    lbl.value=''; urg.value='1'; tm.value='';
+  }
+  document.getElementById('ta-save-btn').onclick=mTodoSave;
+  openSheet('todo');
+  setTimeout(function(){lbl.focus();},300);
 }
+
+function mTodoAdd(){ _mTodoOpenSheet(null); }
+
 function mTodoSave(){
   var lbl=(document.getElementById('ta-lbl').value||'').trim();if(!lbl)return;
   var urg=parseInt(document.getElementById('ta-urg').value)||1;
   var t=document.getElementById('ta-time').value||'';
   var full=t?t+' — '+lbl:lbl;
-  _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
-  _mTodosSave();renderTodosMobile();
+  if(_mTodoEditId){
+    var todo=_mTodos.find(function(x){return x.id===_mTodoEditId;});
+    if(todo){todo.label=full;todo.urgency=urg;todo._localEdit=true;}
+  } else {
+    _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,done:false,auto:false,created:new Date().toISOString()});
+  }
+  _mTodosSave(); closeSheet('todo'); renderTodosMobile(); autoSave();
 }
 
 
@@ -3859,5 +3996,34 @@ function _snScanTick() {
   <div class="sheet-body" id="devspecs-body" style="padding-bottom:24px"></div>
 </div>
 
+
+<!-- Todo add/edit sheet -->
+<div class="ovl" id="ovl-todo" onclick="closeSheet('todo')"></div>
+<div class="sheet" id="sheet-todo">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="todo-sheet-title">Add Todo</div>
+  <div class="sheet-body">
+    <input id="ta-lbl" type="text" placeholder="Description..." autocomplete="off"
+           style="font-size:16px;font-family:var(--cond);font-weight:700;letter-spacing:.5px;margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div>
+        <label style="font-size:10px;color:var(--muted);letter-spacing:1px">URGENCY</label>
+        <select id="ta-urg" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px;width:100%;margin-top:4px">
+          <option value="1">Normal</option>
+          <option value="2">High</option>
+          <option value="3">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--muted);letter-spacing:1px">TIME</label>
+        <select id="ta-time" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px;font-size:13px;width:100%;margin-top:4px">
+          <option value="">No time</option>
+        </select>
+      </div>
+    </div>
+    <button id="ta-save-btn" class="sb sb-primary" style="width:100%;padding:14px;font-size:16px">Save</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
 </body>
 </html>
