@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.818</title>
+<title>WTUniverse · Buildert Editor v3.820</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.818</div>
+    <div>build v3.820</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -557,6 +557,7 @@
       <option value="Smoke machine">&#128168; Smoke</option>
       <option value="Distro">&#9889; Distro</option>
       <option value="Power supply">&#128267; PSU</option>
+      <option value="Adapter">&#128260; Adapter</option>
     </select>
     <select class="sort-select" id="qa-model" onchange="qaUpdatePreview()" style="min-width:120px">
       <option value="">&#8212; model &#8212;</option>
@@ -760,6 +761,7 @@
       <option>Smoke machine</option>
       <option>Distro</option>
       <option>Power supply</option>
+      <option>Adapter</option>
     </select>
 
     <label>Serial Number <span style="color:var(--muted);font-size:10px">&#8212; scanned by rigger</span></label>
@@ -1250,11 +1252,11 @@ var POINTED_OPTS    = ['','FOH','Straight','Other'];
 
 // What upstream types each device can connect FROM
 var SOURCE_TYPES = {};
-SOURCE_TYPES[TYPE_LASER]  = [TYPE_DISTRO, TYPE_LASER];
-SOURCE_TYPES[TYPE_SMOKE]  = [TYPE_DISTRO, TYPE_PSU];
-SOURCE_TYPES[TYPE_DISTRO] = [TYPE_DISTRO, TYPE_PSU, '_foh'];
-SOURCE_TYPES[TYPE_PSU]    = [];
-SOURCE_TYPES[TYPE_ADAPTER]= [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, TYPE_ADAPTER];
+SOURCE_TYPES[TYPE_LASER]  = [TYPE_DISTRO, TYPE_LASER, TYPE_PSU, 'Adapter'];
+SOURCE_TYPES[TYPE_SMOKE]  = [TYPE_DISTRO, TYPE_PSU, 'Adapter'];
+SOURCE_TYPES[TYPE_DISTRO] = ['_foh', TYPE_DISTRO, TYPE_PSU];
+SOURCE_TYPES[TYPE_PSU]    = ['_foh', TYPE_DISTRO];
+SOURCE_TYPES['Adapter']   = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
 
 var TYPE_ICON  = {}; TYPE_ICON[TYPE_LASER]='L'; TYPE_ICON[TYPE_SMOKE]='S'; TYPE_ICON[TYPE_DISTRO]='D'; TYPE_ICON[TYPE_PSU]='P';
 var TYPE_SHORT = {}; TYPE_SHORT[TYPE_LASER]='LP'; TYPE_SHORT[TYPE_SMOKE]='SM'; TYPE_SHORT[TYPE_DISTRO]='DI'; TYPE_SHORT[TYPE_PSU]='PSU';
@@ -1297,6 +1299,8 @@ function switchStage(idx){
   try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
   try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
   _renderStageBar(); renderTable(); _updateProjectBadge(); autoSave();
+  if(currentTab==='todos') renderTodosPanel();
+  if(currentTab==='pack')  renderPackList();
 }
 
 function addStage(){
@@ -2180,8 +2184,11 @@ function updateModalForType() {
   var opts = sourceOptions(type, currentId);
   var grp = document.getElementById('source-group');
   var sel = document.getElementById('m-source');
-  if (opts.length === 0) { grp.style.display = 'none'; return; }
   grp.style.display = '';
+  if (opts.length === 0) {
+    sel.innerHTML = '<option value="">— no compatible sources in stage —</option>';
+    return;
+  }
   sel.innerHTML = '<option value="">&#8212; not set &#8212;</option>'
     + opts.map(function(o){
         var isSelf = (o.id === currentId);
@@ -3603,12 +3610,12 @@ function _rebuildModelLists(){
     if(!MODEL_KEYS_BY_TYPE[type]) MODEL_KEYS_BY_TYPE[type]=[];
     if(MODEL_KEYS_BY_TYPE[type].indexOf(k)<0) MODEL_KEYS_BY_TYPE[type].push(k);
   });
-  // Also add Adapter type if any exist
-  if((MODEL_KEYS_BY_TYPE['Adapter']||[]).length > 0){
-    SOURCE_TYPES['Adapter'] = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
-  }
+  // Ensure Adapter source type exists
+  if(!SOURCE_TYPES['Adapter']) SOURCE_TYPES['Adapter']=[TYPE_DISTRO,TYPE_PSU,TYPE_LASER,'Adapter'];
   if(typeof qaUpdateModel==='function') qaUpdateModel();
-  if(typeof populateTypeDropdown==='function') populateTypeDropdown();
+  // Also update edit modal model dropdown if modal is open
+  var mtype=document.getElementById('m-type');
+  if(mtype && typeof populateModelDropdown==='function') populateModelDropdown(mtype.value, '');
 }
 function saveSpecsToStorage() {
   try { localStorage.setItem('buildert_specs', JSON.stringify(_specsOverrides)); } catch(e){}
@@ -3827,9 +3834,8 @@ function nodeAutoLayout() {
   _nodePositions = {};
   var curY = 50;
 
-  // Layout order: Lasers at top → Smoke → Distro → PSU → FOH at bottom
-  // First pass: calculate heights to place FOH at very bottom
-  var TYPE_ORDER_LAYOUT = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
+  // Layout order: Lasers (top) → Distro → PSU → Smoke (bottom, signal chain) → FOH
+  var TYPE_ORDER_LAYOUT = [TYPE_LASER, TYPE_DISTRO, TYPE_PSU, TYPE_SMOKE];
   TYPE_ORDER_LAYOUT.forEach(function(type){
     var typeDevices = devices.filter(function(d){ return d.type===type && d.device_id; });
     if (!typeDevices.length) return;
@@ -6077,10 +6083,13 @@ function _updateTodosBadge(){
   if(el){ el.style.display=open?'':'none'; el.textContent=open; }
 }
 function _autoTodos(){
-  // Generate auto todos from devices: Mount + Serial per device
   var keep=_todos.filter(function(t){return !t.auto;});
   var autos=[];
-  devices.forEach(function(d){
+  // Use all stages devices for auto todos (total view)
+  var allDevs=[];
+  if(_stages.length) _stages.forEach(function(s){allDevs=allDevs.concat(s.devices||[]);});
+  else allDevs=devices;
+  allDevs.forEach(function(d){
     if(!d.device_id) return;
     var mounted=!!(d.checks&&d.checks['Mounted']);
     var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
