@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.828</title>
+<title>WTU · Buildert v3.829</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.828</small></div>
+  <div class="logo">WTU <small>v3.829</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -697,6 +697,7 @@ var _saveT=null, _pushT=null;
 var _mNPos={};  // node positions — declared early to avoid undefined errors
 
 
+
 var SPECS = {
   // ── Lasers ───────────────────────────────────────────────────────────────────────────────────────
   'RGB20':          {category:'laser',alt:'RGCB20',              phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:20,  weight_kg:18.0, inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'192.168.10.X',scanners:'SM506',  angle:'40°',scanrate_kpps:23,ops_diode:'Diode',            desc:'20W RGB laser — gele sticker',                                notes:''},
@@ -751,6 +752,7 @@ MODELS[TL]=['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HU
 MODELS[TS]=['PEASOUP','SHOCKFOG','FAN'];
 MODELS[TD]=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
 MODELS[TP]=[];
+
 
 
 var CABLE_TYPES = [
@@ -818,9 +820,14 @@ function checksFor(t){return t===TL?LC:t===TS?SC:t===TD?DC:t===TP?PC:[];}
 function modelFromId(id){return id?(id.trim().split(/\s+/)[0]||'').toUpperCase():'';}
 function specFor(d){return SPECS[d.model||modelFromId(d.device_id)]||null;}
 function pct(d){
-  var ch=checksFor(d.type),done=ch.filter(function(c){return d.checks&&d.checks[c];}).length;
-  var ex=(d.type===TL&&d.pointed)?1:0,tot=ch.length+(d.type===TL?1:0);
-  return tot>0?Math.round((done+ex)/tot*100):0;
+  // 5 milestones × 20% — Mounted, Cabled, Pointed/Placed/Racked, Serial, Online
+  var pts=0;
+  if(d.checks&&(d.checks['Mounted']||d.checks['Placed']||d.checks['Racked'])) pts+=20;
+  if(d.checks&&d.checks['Cabled']) pts+=20;
+  if(d.checks&&d.checks['Pointed']||d.pointed) pts+=20;
+  if(d.serial&&d.serial.replace(/-/g,'').trim()) pts+=20;
+  if(d.status==='Online') pts+=20;
+  return pts;
 }
 function filtered(){
   var m={laser:TL,smoke:TS,distro:TD,psu:TP};
@@ -1974,7 +1981,18 @@ function _applyProjectLoad(data){
 }
 
 function _mergeProjectNoConflict(data){
-  if(data.devices && data.devices.length>0) devices=data.devices;  // never wipe with empty
+  if(data.devices && data.devices.length>0){
+    // Preserve mobile-owned fields over incoming flat device list
+    var MFIELDS=['serial','status','checks','pointed','notes','cable_in','cable','note_opts'];
+    var _curMap={}; devices.forEach(function(d){ if(d.device_id) _curMap[d.device_id]=d; });
+    devices=data.devices.map(function(d){
+      var local=_curMap[d.device_id];
+      if(!local) return d;
+      var merged=Object.assign({},d);
+      MFIELDS.forEach(function(f){ if(local[f]!==undefined&&local[f]!==null&&local[f]!=='') merged[f]=local[f]; });
+      return merged;
+    });
+  }
   _packSpares=data.pack_spares||[];
   if(data.project){
     project=Object.assign(project,data.project);
@@ -2016,8 +2034,28 @@ function _mergeProjectNoConflict(data){
   _persistProjectMeta();
   // Handle multi-stage data from desktop
   if(Array.isArray(data.stages) && data.stages.length){
+    var MOBILE_FIELDS=['serial','status','checks','pointed','notes','cable_in','cable','note_opts'];
     var wasEmpty = !_mStages.length;
+    // Build lookup of current local device state before overwriting
+    var _localDevMap = {};
+    _mStages.forEach(function(s){
+      (s.devices||[]).forEach(function(d){
+        if(d.device_id) _localDevMap[d.device_id]=d;
+      });
+    });
+    // Also capture in-memory current stage devices
+    (devices||[]).forEach(function(d){ if(d.device_id) _localDevMap[d.device_id]=d; });
     _mStages = data.stages;
+    // Re-apply local mobile fields over incoming data
+    _mStages.forEach(function(s){
+      (s.devices||[]).forEach(function(d){
+        var local=_localDevMap[d.device_id];
+        if(!local) return;
+        MOBILE_FIELDS.forEach(function(f){
+          if(local[f]!==undefined && local[f]!==null && local[f]!=='') d[f]=local[f];
+        });
+      });
+    });
     // Only reset current stage on first load — never interrupt user browsing
     if(wasEmpty){
       var assignedIdx = 0;
@@ -2110,8 +2148,28 @@ function _mergeSmartFromFile(data){
   _persistProjectMeta();
   // Handle multi-stage data from desktop
   if(Array.isArray(data.stages) && data.stages.length){
+    var MOBILE_FIELDS=['serial','status','checks','pointed','notes','cable_in','cable','note_opts'];
     var wasEmpty = !_mStages.length;
+    // Build lookup of current local device state before overwriting
+    var _localDevMap = {};
+    _mStages.forEach(function(s){
+      (s.devices||[]).forEach(function(d){
+        if(d.device_id) _localDevMap[d.device_id]=d;
+      });
+    });
+    // Also capture in-memory current stage devices
+    (devices||[]).forEach(function(d){ if(d.device_id) _localDevMap[d.device_id]=d; });
     _mStages = data.stages;
+    // Re-apply local mobile fields over incoming data
+    _mStages.forEach(function(s){
+      (s.devices||[]).forEach(function(d){
+        var local=_localDevMap[d.device_id];
+        if(!local) return;
+        MOBILE_FIELDS.forEach(function(f){
+          if(local[f]!==undefined && local[f]!==null && local[f]!=='') d[f]=local[f];
+        });
+      });
+    });
     // Only reset current stage on first load — never interrupt user browsing
     if(wasEmpty){
       var assignedIdx = 0;
