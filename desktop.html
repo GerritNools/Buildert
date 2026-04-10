@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.829</div>
+    <div>build v3.830</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -693,6 +693,7 @@
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
         <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
+        <button class="btn btn-ghost" onclick="packPrint(true)" style="padding:5px 11px;font-size:12px">&#128438; Print all</button>
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
       </div>
     </div>
@@ -1402,11 +1403,21 @@ function checksFor(type) {
 }
 
 function completionPct(d) {
-  var ch = checksFor(d.type);
-  var done = ch.filter(function(c) { return d.checks && d.checks[c]; }).length;
-  var extra = (d.type === TYPE_LASER && d.pointed) ? 1 : 0;
-  var total = ch.length + (d.type === TYPE_LASER ? 1 : 0);
-  return total > 0 ? Math.round((done + extra) / total * 100) : 0;
+  // 5 milestones × 20% each = 100%
+  // 1. Mounted (check), 2. Cabled (check), 3. Pointed/Placed (check),
+  // 4. Serial filled, 5. Online status
+  var pts = 0;
+  var hasMounted = d.checks && d.checks['Mounted'];
+  var hasCabled  = d.checks && d.checks['Cabled'];
+  var hasPointed = d.checks && (d.checks['Pointed'] || d.checks['Placed'] || d.checks['Racked']);
+  var hasSerial  = !!(d.serial && d.serial.replace(/-/g,'').trim());
+  var isOnline   = d.status === 'Online';
+  if(hasMounted) pts += 20;
+  if(hasCabled)  pts += 20;
+  if(hasPointed) pts += 20;
+  if(hasSerial)  pts += 20;
+  if(isOnline)   pts += 20;
+  return pts;
 }
 
 function filteredDevices() {
@@ -4043,15 +4054,15 @@ function renderNodeView() {
     // Device ID label
     // Status LED in node
     var stCol = isFoh ? '#00d4ff' :
-      (st==='Online'||st==='Mounted') ? '#3ddc84' :
+      (st==='Online'||st==='Mounted') ? '#22bb66' :
       (st==='GoAndCheck'||st==='Swap') ? '#f5a623' :
       (st==='Offline'||st==='Swapped') ? '#ff4d4d' : '#55606e';
     nodeHtml += '<circle cx="'+(NODE_W-12)+'" cy="12" r="5" fill="'+stCol+'" style="pointer-events:none"'+(stCol!=='#55606e'?' filter="url(#led-glow)"':'')+'/>';
-    nodeHtml += '<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
+    nodeHtml += '<text x="10" y="20" fill="#fff" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+label+'</text>';
     // Model name
     if (sub1) {
-      nodeHtml += '<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
+      nodeHtml += '<text x="10" y="36" fill="#dde" font-size="11" font-weight="600" opacity="0.9"'
         +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+sub1+'</text>';
     }
     // Location / status
@@ -4435,21 +4446,36 @@ function nodePrint() {
     .replace(/fill="var\(--warn\)"/g, 'fill="#cc7700"')
     .replace(/stroke="var\(--muted\)"/g, 'stroke="#999"')
     .replace(/fill="var\(--muted\)"/g, 'fill="#999"')
-    .replace(/fill="var\(--text\)"/g, 'fill="#222"');
+    .replace(/fill="var\(--text\)"/g, 'fill="#222"')
+    .replace(/fill="#fff"/g, 'fill="#222"')
+    .replace(/fill="#dde"/g, 'fill="#444"')
+    .replace(/fill="#7a8694"/g, 'fill="#555"')
+    .replace(/fill="#22bb66"/g, 'fill="#006633"')
+    .replace(/fill="#ffffff"/g, 'fill="#222"');
 
-  var win = window.open('', '_blank', 'width=900,height=700');
+  var projName=_projectMeta.name||'Project';
+  var stageName=(_stages[_currentStageIdx]||{}).name||'';
+  var fileTitle=(projName+(stageName?' - '+stageName:'')+' - Node View').replace(/[^a-zA-Z0-9_\- ]/g,'');
+  var win = window.open('', '_blank', 'width=1100,height=800');
   win.document.write(
-    '<html><head><title>Buildert Node View</title>'
+    '<html><head><title>'+fileTitle+'</title>'
     + '<style>'
     + '@page { size: A4 landscape; margin: 8mm; }'
-    + 'body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }'
-    + 'h2 { font-size: 13px; margin: 0 0 2px; color: #222; }'
-    + 'p  { font-size: 10px; color: #666; margin: 0 0 6px; }'
-    + 'svg { display: block; width: 100%; height: auto; max-height: 93vh; }'
-    + '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }'
+    + 'body { margin: 0; padding: 8px 12px; background: #fff; font-family: Arial, sans-serif; }'
+    + '.hdr { display:flex; align-items:baseline; gap:16px; margin-bottom:6px; border-bottom:2px solid #333; padding-bottom:4px; }'
+    + 'h2 { font-size:15px; margin:0; color:#000; font-weight:900; letter-spacing:1px; }'
+    + '.meta { font-size:10px; color:#555; }'
+    + '.fn  { font-size:9px; color:#999; margin-bottom:4px; font-family:monospace; }'
+    + 'svg { display:block; width:100%; height:auto; }'
+    + 'text { font-size: 12px; }'
+    + '@media print { body{-webkit-print-color-adjust:exact;print-color-adjust:exact} .fn{display:none} }'
     + '</style></head><body>'
-    + '<h2>Buildert Node View</h2>'
-    + '<p>' + new Date().toLocaleString() + ' &nbsp;&middot;&nbsp; ' + devices.length + ' devices</p>'
+    + '<div class="hdr"><h2>'+projName.toUpperCase()+'</h2>'
+    + '<span class="meta">'+( stageName?'Stage: '+stageName+' &nbsp;&middot;&nbsp; ':'')
+    +  (_projectMeta.venue?'Venue: '+_projectMeta.venue+' &nbsp;&middot;&nbsp; ':'')
+    +  (_projectMeta.date?'Date: '+_projectMeta.date+' &nbsp;&middot;&nbsp; ':'')
+    + devices.length+' devices &nbsp;&middot;&nbsp; Printed: '+new Date().toLocaleString()+'</span></div>'
+    + '<div class="fn">Suggested filename: <b>'+fileTitle+'.pdf</b></div>'
     + svgStr
     + '</body></html>'
   );
@@ -4589,29 +4615,62 @@ function packAddSpare() {
   }
 }
 
-function packPrint() {
+function packPrint(printAll) {
   var content = document.getElementById('pack-content');
   if (!content) { window.print(); return; }
+  var projName=_projectMeta.name||'Project';
+  var stageIdx=_currentStageIdx;
+  var stageName=(_stages[stageIdx]||{}).name||'';
+  var isAll=printAll||_packShowAll;
+  var stageLabel=isAll?'All Stages':('Stage: '+stageName);
+  var fileTitle=(projName+(isAll?'':(' - '+stageName))+' - Packing List').replace(/[^a-zA-Z0-9_\- ]/g,'');
+  // Build all-stages content if needed
+  var htmlBody=content.innerHTML;
+  if(isAll){
+    // generate combined content for all stages
+    var tmpEl=document.createElement('div');
+    _stages.forEach(function(s,i){
+      var hdr='<div style="font-size:13px;font-weight:bold;color:#333;border-top:3px solid #333;padding:8px 0 4px;margin-top:16px">Stage: '+s.name+'</div>';
+      var old_currentStageIdx=_currentStageIdx;
+      var old_devices=devices;
+      _currentStageIdx=i; devices=s.devices;
+      var stEl=document.createElement('div'); stEl.id='pack-content';
+      document.body.appendChild(stEl);
+      renderPackList(); // renders into pack-content
+      var stHtml=stEl.innerHTML;
+      document.body.removeChild(stEl);
+      _currentStageIdx=old_currentStageIdx; devices=old_devices;
+      tmpEl.innerHTML+=hdr+stHtml;
+    });
+    htmlBody=tmpEl.innerHTML;
+  }
   var win = window.open('','_blank','width=900,height=700');
-  win.document.write('<html><head><title>Packing List — Buildert</title>'
-    +'<style>body{margin:24px 32px;font-family:Arial,sans-serif;font-size:13px;color:#000;}'
-    +'h2{font-size:16px;margin:0 0 4px}p.meta{color:#666;font-size:11px;margin:0 0 20px}'
-    +'.pack-section{margin-bottom:20px}'
-    +'.pack-section-title{font-weight:bold;font-size:11px;letter-spacing:2px;text-transform:uppercase;'
-    +'color:#555;border-bottom:1px solid #ccc;padding-bottom:4px;margin-bottom:8px}'
-    +'table{width:100%;border-collapse:collapse;font-size:12px}'
-    +'th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#666;'
-    +'padding:4px 8px;text-align:left;border-bottom:1px solid #ccc}'
-    +'td{padding:4px 8px;border-bottom:1px solid #eee}'
+  win.document.write('<html><head><title>'+fileTitle+'</title>'
+    +'<style>body{margin:20px 28px;font-family:Arial,sans-serif;font-size:12px;color:#000}'
+    +'h2{font-size:17px;margin:0;font-weight:900;letter-spacing:1px}'
+    +'.hdr{border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:4px}'
+    +'.meta{font-size:10px;color:#555;margin:2px 0 16px}'
+    +'.fn{font-size:9px;color:#aaa;margin-bottom:12px;font-family:monospace}'
+    +'.pack-section{margin-bottom:16px}'
+    +'.pack-section-title{font-weight:bold;font-size:10px;letter-spacing:2px;text-transform:uppercase;'
+    +'color:#555;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:6px}'
+    +'table{width:100%;border-collapse:collapse;font-size:11px}'
+    +'th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#666;padding:3px 6px;text-align:left;border-bottom:1px solid #ccc}'
+    +'td{padding:3px 6px;border-bottom:1px solid #eee}'
     +'tr:last-child td{border-bottom:none}'
-    +'.pack-qty{font-weight:bold;font-size:14px}'
-    +'input[type=checkbox]{width:14px;height:14px}'
-    +'@media print{button{display:none}}'
+    +'.pack-qty{font-weight:bold}'
+    +'input[type=checkbox]{width:12px;height:12px}'
+    +'@media print{button{display:none}.fn{display:none}}'
     +'</style></head><body>'
-    +'<h2>Buildert Packing List</h2>'
-    +'<p class="meta">Generated '+new Date().toLocaleString()+' &nbsp;·&nbsp; '
-    +devices.length+' devices</p>'
-    +content.innerHTML
+    +'<div class="hdr"><h2>'+projName.toUpperCase()+'</h2></div>'
+    +'<div class="meta">'
+    +(stageLabel?'<b>'+stageLabel+'</b> &nbsp;&middot;&nbsp; ':'')
+    +(_projectMeta.venue?'Venue: '+_projectMeta.venue+' &nbsp;&middot;&nbsp; ':'')
+    +(_projectMeta.date?'Date: '+_projectMeta.date+' &nbsp;&middot;&nbsp; ':'')
+    +'Printed: '+new Date().toLocaleString()
+    +'</div>'
+    +'<div class="fn">Suggested filename: <b>'+fileTitle+'.pdf</b></div>'
+    +htmlBody
     +'</body></html>');
   win.document.close(); win.focus();
   setTimeout(function(){ win.print(); win.close(); }, 400);
@@ -5879,7 +5938,7 @@ function _renderDiagSVG() {
     var dstCol=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
     nodeHtml += '<circle cx="'+(NW-12)+'" cy="12" r="5" fill="'+dstCol+'" style="pointer-events:none"/>';
     if(!isFoh&&st) nodeHtml += '<text x="'+(NW-12)+'" y="24" text-anchor="middle" fill="'+dstCol+'" font-size="8" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,8)+'</text>';
-    nodeHtml += '<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
+    nodeHtml += '<text x="10" y="20" fill="#fff" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
     if (sub1) nodeHtml += '<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+sub1+'</text>';
