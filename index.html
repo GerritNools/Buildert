@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.831</title>
+<title>WTU · Buildert v3.832</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.831</small></div>
+  <div class="logo">WTU <small>v3.832</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1029,6 +1029,7 @@ function tapStatus(gi,status){
   showToast(devices[gi].device_id+' → '+status,'ok');
 }
 function tapCheck(gi,check){
+  if(_mPeekMode){showToast('Read only — no edit rights','warn');return;}
   if(!devices[gi].checks) devices[gi].checks={};
   devices[gi].checks[check]=!devices[gi].checks[check];
   if(check==='Mounted'){
@@ -1039,6 +1040,7 @@ function tapCheck(gi,check){
   renderCards(); autoSave();
 }
 function tapPointed(gi,val){
+  if(_mPeekMode){showToast('Read only — no edit rights','warn');return;}
   devices[gi].pointed=devices[gi].pointed===val?'':val;
   if(devices[gi].pointed) _logActivity(devices[gi].device_id, 'Pointed: '+devices[gi].pointed);
   renderCards(); autoSave();
@@ -3939,7 +3941,8 @@ function mSwitchStage(idx){
 
 function _logActivity(deviceId,action){
   var by=window._riggerName||project.name||'mobile';
-  var entry={by:by,at:new Date().toISOString(),device:deviceId||'',action:action||''};
+  var stageId=(_mStages[_mCurrentStageIdx]||{}).id||'';
+  var entry={by:by,at:new Date().toISOString(),device:deviceId||'',action:action||'',stage:stageId};
   window._activityLog.push(entry);
   var cnt=document.getElementById('rigger-log-count');
   if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
@@ -3971,6 +3974,7 @@ function _handleShareParam(){
 
 // ── Diagram view ──────────────────────────────────────────────────────
 function openSNSheet(gi) {
+  if(_mPeekMode){showToast('Read only — tap a stage you can edit','warn');return;}
   _snGi = gi;
   var d = devices[gi];
   if (!d) return;
