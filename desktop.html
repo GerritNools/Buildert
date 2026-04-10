@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.829</title>
+<title>WTUniverse · Buildert Editor v3.831</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.830</div>
+    <div>build v3.831</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4425,7 +4425,8 @@ function nodePrint() {
 
   clone.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
   clone.setAttribute('width',  '100%');
-  clone.setAttribute('height', 'auto');
+  clone.setAttribute('height', '100%');
+  clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   clone.setAttribute('xmlns',  'http://www.w3.org/2000/svg');
   // White background rect
   clone.insertAdjacentHTML('afterbegin',
@@ -4466,8 +4467,7 @@ function nodePrint() {
     + 'h2 { font-size:15px; margin:0; color:#000; font-weight:900; letter-spacing:1px; }'
     + '.meta { font-size:10px; color:#555; }'
     + '.fn  { font-size:9px; color:#999; margin-bottom:4px; font-family:monospace; }'
-    + 'svg { display:block; width:100%; height:auto; }'
-    + 'text { font-size: 12px; }'
+    + 'svg { display:block; width:100%; height:auto; max-height:calc(100vh - 80px); }'
     + '@media print { body{-webkit-print-color-adjust:exact;print-color-adjust:exact} .fn{display:none} }'
     + '</style></head><body>'
     + '<div class="hdr"><h2>'+projName.toUpperCase()+'</h2>'
@@ -4616,65 +4616,112 @@ function packAddSpare() {
 }
 
 function packPrint(printAll) {
-  var content = document.getElementById('pack-content');
-  if (!content) { window.print(); return; }
-  var projName=_projectMeta.name||'Project';
-  var stageIdx=_currentStageIdx;
-  var stageName=(_stages[stageIdx]||{}).name||'';
-  var isAll=printAll||_packShowAll;
-  var stageLabel=isAll?'All Stages':('Stage: '+stageName);
-  var fileTitle=(projName+(isAll?'':(' - '+stageName))+' - Packing List').replace(/[^a-zA-Z0-9_\- ]/g,'');
-  // Build all-stages content if needed
-  var htmlBody=content.innerHTML;
-  if(isAll){
-    // generate combined content for all stages
-    var tmpEl=document.createElement('div');
-    _stages.forEach(function(s,i){
-      var hdr='<div style="font-size:13px;font-weight:bold;color:#333;border-top:3px solid #333;padding:8px 0 4px;margin-top:16px">Stage: '+s.name+'</div>';
-      var old_currentStageIdx=_currentStageIdx;
-      var old_devices=devices;
-      _currentStageIdx=i; devices=s.devices;
-      var stEl=document.createElement('div'); stEl.id='pack-content';
-      document.body.appendChild(stEl);
-      renderPackList(); // renders into pack-content
-      var stHtml=stEl.innerHTML;
-      document.body.removeChild(stEl);
-      _currentStageIdx=old_currentStageIdx; devices=old_devices;
-      tmpEl.innerHTML+=hdr+stHtml;
+  var projName  = _projectMeta.name||'Project';
+  var isAll     = printAll || _packShowAll;
+  var si        = _currentStageIdx;
+  var stageName = isAll ? 'All Stages' : ((_stages[si]||{}).name||'');
+  var fileTitle = (projName + (isAll ? '' : (' - '+stageName)) + ' - Packing List').replace(/[^a-zA-Z0-9_\- ]/g,'');
+
+  // Build HTML for one set of devices
+  function stageHtml(devs){
+    var TYPE_ORDER=[TYPE_LASER,TYPE_SMOKE,TYPE_DISTRO,TYPE_PSU];
+    var out='';
+    // Devices table
+    out+='<div class="section"><div class="sec-title">Devices</div>';
+    out+='<table><thead><tr><th></th><th>Qty</th><th>Model</th><th>ID</th><th>Cable IN</th><th>Status</th></tr></thead><tbody>';
+    TYPE_ORDER.forEach(function(type){
+      var grp=devs.filter(function(d){return d.type===type;});
+      if(!grp.length) return;
+      var typeLabel={};typeLabel[TYPE_LASER]='Lasers';typeLabel[TYPE_SMOKE]='Smoke';typeLabel[TYPE_DISTRO]='Distros';typeLabel[TYPE_PSU]='PSU';
+      out+='<tr><td colspan="6" style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;padding:6px 4px 2px;border-top:1px solid #ddd">'+typeLabel[type]+'</td></tr>';
+      // Group by model
+      var byM={},mOrd=[];
+      grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
+      mOrd.forEach(function(m){
+        var items=byM[m];
+        items.forEach(function(d,di){
+          var cIn=d.cable_in||d.cable||'';
+          var ct=cIn?CABLE_TYPES.find(function(c){return cIn.indexOf(c.key+'-')===0;}):null;
+          var lv=cIn?parseFloat(cIn.split('-').slice(1).join('-')):0;
+          var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
+          var cLabel=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):(cIn||'—');
+          out+='<tr>'+(di===0?'<td rowspan="'+items.length+'"><input type="checkbox"></td><td rowspan="'+items.length+'" style="font-weight:bold">'+items.length+'×</td><td rowspan="'+items.length+'">'+m+'</td>':'<td></td><td></td><td></td>')
+            +'<td style="font-family:monospace;font-size:11px">'+d.device_id+'</td>'
+            +'<td style="font-size:11px">'+cLabel+'</td>'
+            +'<td style="font-size:11px">'+( d.status||'Active')+'</td></tr>';
+        });
+      });
     });
-    htmlBody=tmpEl.innerHTML;
+    out+='</tbody></table></div>';
+    // Cables summary
+    var cc={};
+    devs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+    var ckeys=Object.keys(cc).sort();
+    if(ckeys.length){
+      out+='<div class="section"><div class="sec-title">Cables</div>';
+      out+='<table><thead><tr><th></th><th>Qty</th><th>Type</th></tr></thead><tbody>';
+      ckeys.forEach(function(k){
+        var ct=CABLE_TYPES.find(function(c){return k.indexOf(c.key+'-')===0;});
+        var lv=parseFloat(k.split('-').slice(1).join('-'));
+        var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
+        var lbl=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
+        out+='<tr><td><input type="checkbox"></td><td style="font-weight:bold">'+cc[k]+'×</td><td>'+lbl+'</td></tr>';
+      });
+      out+='</tbody></table></div>';
+    }
+    return out;
   }
-  var win = window.open('','_blank','width=900,height=700');
-  win.document.write('<html><head><title>'+fileTitle+'</title>'
-    +'<style>body{margin:20px 28px;font-family:Arial,sans-serif;font-size:12px;color:#000}'
-    +'h2{font-size:17px;margin:0;font-weight:900;letter-spacing:1px}'
-    +'.hdr{border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:4px}'
-    +'.meta{font-size:10px;color:#555;margin:2px 0 16px}'
-    +'.fn{font-size:9px;color:#aaa;margin-bottom:12px;font-family:monospace}'
-    +'.pack-section{margin-bottom:16px}'
-    +'.pack-section-title{font-weight:bold;font-size:10px;letter-spacing:2px;text-transform:uppercase;'
-    +'color:#555;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:6px}'
+
+  var bodyHtml='';
+  if(isAll && _stages.length>1){
+    _stages.forEach(function(s){
+      if(!(s.devices||[]).length) return;
+      bodyHtml+='<div class="stage-hdr">'+s.name+'</div>'+stageHtml(s.devices||[]);
+    });
+  } else {
+    bodyHtml=stageHtml((_stages[si]||{}).devices||devices);
+  }
+
+  // Shared items
+  var cats=[{key:'toolcase',label:'Toolcase'},{key:'office',label:'Office'},{key:'spares',label:'Spares'}];
+  cats.forEach(function(cat){
+    var items=_packShared[cat.key]||[];
+    if(!items.length) return;
+    bodyHtml+='<div class="section"><div class="sec-title">Shared — '+cat.label+'</div>';
+    bodyHtml+='<table><thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
+    items.forEach(function(s){bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td style="font-weight:bold">'+s.qty+'×</td><td>'+s.desc+'</td></tr>';});
+    bodyHtml+='</tbody></table></div>';
+  });
+
+  var win=window.open('','_blank','width=900,height=700');
+  win.document.write('<!DOCTYPE html><html><head><title>'+fileTitle+'</title>'
+    +'<style>'
+    +'body{margin:20px 28px;font-family:Arial,sans-serif;font-size:12px;color:#000}'
+    +'.hdr{border-bottom:3px solid #000;padding-bottom:6px;margin-bottom:4px}'
+    +'h2{font-size:18px;margin:0;font-weight:900;letter-spacing:1px}'
+    +'.meta{font-size:10px;color:#555;margin:3px 0 4px}'
+    +'.fn{font-size:9px;color:#aaa;margin-bottom:14px;font-family:monospace}'
+    +'.stage-hdr{font-size:13px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;'
+    +'border-bottom:2px solid #333;padding:12px 0 3px;margin-top:20px}'
+    +'.section{margin-bottom:18px}'
+    +'.sec-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#666;'
+    +'font-weight:bold;border-bottom:1px solid #ddd;padding-bottom:3px;margin-bottom:6px}'
     +'table{width:100%;border-collapse:collapse;font-size:11px}'
-    +'th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#666;padding:3px 6px;text-align:left;border-bottom:1px solid #ccc}'
+    +'th{font-size:9px;letter-spacing:1px;color:#888;padding:3px 6px;text-align:left;border-bottom:1px solid #ccc}'
     +'td{padding:3px 6px;border-bottom:1px solid #eee}'
     +'tr:last-child td{border-bottom:none}'
-    +'.pack-qty{font-weight:bold}'
-    +'input[type=checkbox]{width:12px;height:12px}'
-    +'@media print{button{display:none}.fn{display:none}}'
+    +'input[type=checkbox]{width:13px;height:13px}'
+    +'@media print{button,div.fn{display:none}}'
     +'</style></head><body>'
     +'<div class="hdr"><h2>'+projName.toUpperCase()+'</h2></div>'
-    +'<div class="meta">'
-    +(stageLabel?'<b>'+stageLabel+'</b> &nbsp;&middot;&nbsp; ':'')
-    +(_projectMeta.venue?'Venue: '+_projectMeta.venue+' &nbsp;&middot;&nbsp; ':'')
-    +(_projectMeta.date?'Date: '+_projectMeta.date+' &nbsp;&middot;&nbsp; ':'')
-    +'Printed: '+new Date().toLocaleString()
-    +'</div>'
-    +'<div class="fn">Suggested filename: <b>'+fileTitle+'.pdf</b></div>'
-    +htmlBody
+    +'<div class="meta">'+(stageName?'<b>'+stageName+'</b> &middot; ':'')+(_projectMeta.venue?_projectMeta.venue+' &middot; ':'')+(_projectMeta.date?_projectMeta.date+' &middot; ':'')+new Date().toLocaleString()+'</div>'
+    +'<div class="fn">Save as: <b>'+fileTitle+'.pdf</b></div>'
+    +'<button onclick="window.print()" style="margin-bottom:14px;padding:6px 18px;cursor:pointer">Print / Save PDF</button>'
+    +bodyHtml
     +'</body></html>');
   win.document.close(); win.focus();
-  setTimeout(function(){ win.print(); win.close(); }, 400);
 }
+
 
 // ── Specs CSV export/import & new model ──────────────────────────────
 function exportSpecsCsv() {
@@ -6899,11 +6946,37 @@ var _packActiveStageIdx = -1;
 var _packShowAll = false;
 
 function renderPackList() {
-  // stage selection via main stage bar
-  var si = _packActiveStageIdx<0 ? _currentStageIdx : _packActiveStageIdx;
-  var stageDevs = (_stages[si]||{}).devices || devices;
   var el = document.getElementById('pack-content');
-  if(el) { var res = renderPackStage(stageDevs); var st=document.getElementById('pack-stats'); if(st) st.textContent=res.devices+' devices · '+res.cables+' cables'; }
+  if(!el) return;
+  if(_packShowAll && _stages.length > 1){
+    // Aggregate all stages
+    var allDevs = [];
+    _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+    // Render each stage separately with a header
+    var html = '';
+    _stages.forEach(function(s){
+      var devs = s.devices||[];
+      if(!devs.length) return;
+      html += '<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;'
+        + 'color:'+s.color+';margin:18px 0 8px;padding-bottom:4px;border-bottom:2px solid '+s.color+'22">'
+        + s.name.toUpperCase()+'</div>';
+      var tempEl = document.createElement('div');
+      tempEl.id = 'pack-content';
+      document.body.appendChild(tempEl);
+      renderPackStage(devs);
+      html += tempEl.innerHTML;
+      document.body.removeChild(tempEl);
+    });
+    el.innerHTML = html;
+    var st = document.getElementById('pack-stats');
+    if(st) st.textContent = allDevs.length+' devices total across '+_stages.length+' stages';
+  } else {
+    var si = _packActiveStageIdx<0 ? _currentStageIdx : _packActiveStageIdx;
+    var stageDevs = (_stages[si]||{}).devices || devices;
+    var res = renderPackStage(stageDevs);
+    var st = document.getElementById('pack-stats');
+    if(st) st.textContent = res.devices+' devices · '+res.cables+' cables';
+  }
   renderPackShared();
 }
 
