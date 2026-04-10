@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.832</title>
+<title>WTUniverse · Buildert Editor v3.833</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.832</div>
+    <div>build v3.833</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5482,6 +5482,9 @@ function _renderActivityLog() {
   var el = document.getElementById('rigger-activity-log');
   if (!el) return;
   // _log lives in the project — populated by mobile riggers
+  // Populate stage filter dropdown
+  var stgSel=document.getElementById('sp-log-stage');
+  if(stgSel){ var cur=stgSel.value; stgSel.innerHTML='<option value="">All stages</option>'+_stages.map(function(s){return '<option value="'+s.id+'"'+(cur===s.id?' selected':'')+'>'+s.name+'</option>';}).join(''); }
   var log = (window._projectLog || []).slice().reverse(); // newest first
   if (!log.length) { el.innerHTML = '— no activity yet —'; return; }
   el.innerHTML = log.slice(0, 60).map(function(e) {
@@ -5643,6 +5646,26 @@ function _spRenderShares() {
       }).join('');
       if(pills) permsHtml = '<div style="margin-top:3px">'+pills+'</div>';
     }
+    // Build editable perm checkboxes per stage
+    var editablePerms='';
+    if(_stages.length){
+      editablePerms='<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px">';
+      _stages.forEach(function(st){
+        var p = sh.stagePerms ? sh.stagePerms[st.id] : null;
+        var isView = p && (p==='v'||p.view); var isEdit = p && (p==='e'||p.edit);
+        editablePerms += '<div style="display:flex;align-items:center;gap:5px;padding:2px 0">'
+          +'<div style="width:8px;height:8px;border-radius:50%;background:'+st.color+';flex-shrink:0"></div>'
+          +'<span style="font-family:var(--cond);font-weight:700;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+st.color+'">'+st.name+'</span>'
+          +'<label style="display:flex;align-items:center;gap:2px;font-size:9px;color:var(--muted);cursor:pointer">'
+          +'<input type="checkbox" data-shn="'+sh.name+'" data-stid="'+st.id+'" data-sperm="v" '+(isView||isEdit?'checked':'')
+          +' onchange="spEditPerm(this)" style="accent-color:var(--muted)"> V</label>'
+          +'<label style="display:flex;align-items:center;gap:2px;font-size:9px;color:var(--ok);cursor:pointer">'
+          +'<input type="checkbox" data-shn="'+sh.name+'" data-stid="'+st.id+'" data-sperm="e" '+(isEdit?'checked':'')
+          +' onchange="spEditPerm(this)" style="accent-color:var(--ok)"> E</label>'
+          +'</div>';
+      });
+      editablePerms+='</div>';
+    }
     return '<div style="padding:8px 0;border-bottom:1px solid var(--border2)">'
       + '<div style="display:flex;align-items:center;gap:8px">'
       + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700;font-size:14px;min-width:90px">' + sh.name + '</span>'
@@ -5651,7 +5674,7 @@ function _spRenderShares() {
       + '<button onclick="spRecopyLink(this.dataset.name)" data-name="' + sh.name + '" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">↻ Resend</button>'
       + '<button onclick="spDeleteShare(this.dataset.name)" data-name="' + sh.name + '" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'
       + '</div>'
-      + permsHtml
+      + editablePerms
       + '</div>';
   }).join('');
 }
@@ -5694,6 +5717,30 @@ function spRecopyLink(name) {
   }
 }
 
+
+function spEditPerm(el){
+  var name=el.dataset.shn, stid=el.dataset.stid, perm=el.dataset.sperm;
+  var sh=_spShares.find(function(x){return x.name===name;}); if(!sh) return;
+  if(!sh.stagePerms) sh.stagePerms={};
+  var cur=sh.stagePerms[stid]||'';
+  if(perm==='e'){
+    sh.stagePerms[stid]=el.checked?'e':(cur==='e'?'v':cur);
+    if(el.checked){
+      // auto-check view checkbox
+      el.closest('div').querySelectorAll('input[data-sperm="v"]').forEach(function(v){v.checked=true;});
+    }
+  } else {
+    if(!el.checked && cur==='e'){
+      // unchecking view should also remove edit
+      el.closest('div').querySelectorAll('input[data-sperm="e"]').forEach(function(e2){e2.checked=false;});
+      sh.stagePerms[stid]='';
+    } else {
+      sh.stagePerms[stid]=el.checked?(cur==='e'?'e':'v'):'';
+    }
+  }
+  try{localStorage.setItem('wtu_shares',JSON.stringify(_spShares));}catch(e){}
+  showToast('Permissions updated — use ↻ Resend to push new link to '+name,'ok');
+}
 function spDeleteShare(name) {
   _spShares = _spShares.filter(function(s){ return s.name !== name; });
   try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
@@ -5722,6 +5769,9 @@ function _spRenderLog() {
   var syncEl = document.getElementById('sp-last-sync');
   if (syncEl) syncEl.textContent = 'Last sync: ' + _hhmm();
 
+  // Populate stage filter dropdown
+  var stgSel=document.getElementById('sp-log-stage');
+  if(stgSel){ var cur=stgSel.value; stgSel.innerHTML='<option value="">All stages</option>'+_stages.map(function(s){return '<option value="'+s.id+'"'+(cur===s.id?' selected':'')+'>'+s.name+'</option>';}).join(''); }
   var log = (window._projectLog || []).slice().reverse();
 
   // Build unique rigger list for filter chips
@@ -5763,17 +5813,36 @@ function _spRenderLog() {
     return;
   }
 
-  el.innerHTML = filtered.slice(0, 200).map(function(e, i) {
-    var t = e.at ? new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-    var date = e.at ? new Date(e.at).toLocaleDateString([],{month:'short',day:'numeric'}) : '';
+  // Sort control
+  var sortEl = document.getElementById('sp-log-sort');
+  var sortBy = sortEl ? sortEl.value : 'time';
+  var stageFilter = document.getElementById('sp-log-stage') ? document.getElementById('sp-log-stage').value : '';
+
+  // Stage filter
+  if(stageFilter) filtered = filtered.filter(function(e){ return (e.stage||'') === stageFilter; });
+
+  // Sort
+  if(sortBy === 'stage') filtered = filtered.slice().sort(function(a,b){ return (a.stage||'').localeCompare(b.stage||''); });
+  else if(sortBy === 'rigger') filtered = filtered.slice().sort(function(a,b){ return (a.by||'').localeCompare(b.by||''); });
+  else if(sortBy === 'device') filtered = filtered.slice().sort(function(a,b){ return (a.device||'').localeCompare(b.device||''); });
+
+  el.innerHTML = filtered.slice(0, 300).map(function(e, i) {
+    var dt = e.at ? new Date(e.at) : null;
+    var t = dt ? dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+    var date = dt ? dt.toLocaleDateString([],{month:'short',day:'numeric'}) : '';
+    var stageName = '';
+    if(e.stage){ var st=_stages.find(function(s){return s.id===e.stage;}); stageName=st?st.name:e.stage; }
+    var stageCol = '';
+    if(e.stage){ var stc=_stages.find(function(s){return s.id===e.stage;}); stageCol=stc?stc.color:'var(--muted)'; }
     var bg = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.02)';
-    return '<div style="display:grid;grid-template-columns:52px 80px 100px 1fr;gap:0;'
-      + 'padding:7px 12px;background:' + bg + ';border-bottom:1px solid var(--border2);'
-      + 'font-family:var(--mono);font-size:12px;align-items:center">'
+    return '<div style="display:grid;grid-template-columns:70px 56px 90px 100px 1fr;gap:0;'
+      + 'padding:6px 12px;background:' + bg + ';border-bottom:1px solid var(--border2);'
+      + 'font-family:var(--mono);font-size:11px;align-items:center">'
+      + '<span style="color:var(--muted);font-size:10px">' + date + '</span>'
       + '<span style="color:var(--muted);font-size:10px">' + t + '</span>'
-      + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700">' + (e.by||'?') + '</span>'
-      + '<span style="color:var(--text)">' + (e.device||'') + '</span>'
-      + '<span style="color:var(--muted)">' + (e.action||'') + '</span>'
+      + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700;font-size:12px">' + (e.by||'?') + '</span>'
+      + '<span style="color:'+(stageCol||'var(--muted)')+';font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + stageName + '</span>'
+      + '<span style="color:var(--muted)">' + (e.device||'') + (e.action?' · '+e.action:'') + '</span>'
       + '</div>';
   }).join('');
 }
