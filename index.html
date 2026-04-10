@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.833</title>
+<title>WTU · Buildert v3.834</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.833</small></div>
+  <div class="logo">WTU <small>v3.834</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2101,15 +2101,13 @@ function _mergeProjectNoConflict(data){
       Object.keys(myShare.stagePerms).forEach(function(k){
         var v=myShare.stagePerms[k];
         // stagePerms can be {view,edit} object or "e"/"v" string
-        if(typeof v==='object') _mStagePerms[k]=v.edit?'e':v.view?'v':'';
-        else _mStagePerms[k]=v;
+        // Keep raw format — helpers handle both strings and objects
+        _mStagePerms[k]=v;
       });
       // Re-evaluate peek mode for current stage
       var curStage=_mStages[_mCurrentStageIdx];
       if(curStage){
-        var perm=_mStagePerms[curStage.id];
-        var noPerms=Object.keys(_mStagePerms).length===0;
-        _mPeekMode=noPerms?false:(perm!=='e');
+        _mPeekMode=!_permCanEdit(curStage.id);
       }
     }
   }
@@ -3820,8 +3818,7 @@ function openProjectSheet(){
   // ── Stages ────────────────────────────────────────────────────
   if(_mStages.length){
     var accessibleStages = _mStages.filter(function(s){
-      var perm = _mStagePerms[s.id];
-      return Object.keys(_mStagePerms).length===0 || perm;
+      return _permCanView(s.id);
     });
 
     if(accessibleStages.length > 0){
@@ -3889,6 +3886,24 @@ function openProjectSheet(){
 
   openSheet('conn');
 }
+
+// ── Permission helpers ────────────────────────────────────────────
+function _permCanView(stageId){
+  var noPerms = Object.keys(_mStagePerms).length===0;
+  if(noPerms) return true;
+  var p = _mStagePerms[stageId];
+  if(!p) return false;
+  if(typeof p==='string') return p==='e' || p==='v';
+  return !!(p.view || p.edit);
+}
+function _permCanEdit(stageId){
+  var noPerms = Object.keys(_mStagePerms).length===0;
+  if(noPerms) return true;
+  var p = _mStagePerms[stageId];
+  if(!p) return false;
+  if(typeof p==='string') return p==='e';
+  return !!p.edit;
+}
 function _renderMobileStageBar(){
   var bar = document.getElementById('mob-stage-bar');
   if(!bar) return;
@@ -3899,10 +3914,8 @@ function _renderMobileStageBar(){
     var isAssigned = (!_mAssignedStageId && i===0) || (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
     var pct = _stagePct(s);
     var pctCol = pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
-    var perm = _mStagePerms[s.id];
-    var noPerms = Object.keys(_mStagePerms).length===0;
-    if(!noPerms && !perm) return ''; // no access — hide pill
-    var canEdit = noPerms || perm==='e';
+    if(!_permCanView(s.id)) return ''; // no view right — hide pill
+    var canEdit = _permCanEdit(s.id);
     return '<button data-stageidx="'+i+'" style="'
       +'display:inline-flex;align-items:center;gap:5px;'
       +'margin-right:6px;padding:5px 12px;border-radius:16px;'
@@ -3943,14 +3956,9 @@ function mSwitchStage(idx){
   if(!_mStages[idx]) return;
   var s = _mStages[idx];
   // Check permissions
-  var perm = _mStagePerms[s.id]; // "e"=edit, "v"=view, undefined=no access
-  var hasPerms = Object.keys(_mStagePerms).length===0; // no perms = all allowed (legacy)
-  if(!hasPerms && !perm){ showToast('No access to '+s.name,'warn'); return; }
+  if(!_permCanView(s.id)){ showToast('No view access to '+s.name,'warn'); return; }
   _mCurrentStageIdx = idx;
-  // Determine edit rights purely from permissions
-  // If no perms at all (legacy link) — edit is allowed on all stages
-  var noPerms = Object.keys(_mStagePerms).length===0;
-  _mPeekMode = noPerms ? false : (perm !== 'e');
+  _mPeekMode = !_permCanEdit(s.id);
   devices = _mStages[idx].devices || [];
   var pos = _mStages[idx].nodePositions||{};
   var dpos = _mStages[idx].diagPositions||{};
