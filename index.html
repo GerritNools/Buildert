@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.827</title>
+<title>WTU · Buildert v3.828</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.827</small></div>
+  <div class="logo">WTU <small>v3.828</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -696,28 +696,55 @@ var _isPulling=false;
 var _saveT=null, _pushT=null;
 var _mNPos={};  // node positions — declared early to avoid undefined errors
 
-var SPECS={
-  'RGB20':{alt:'RGCB20',laser_w:20,consumption_w:500,weight_kg:18,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'SM506',angle:'40°',ops_diode:'Diode',notes:''},
-  'CYAN':{alt:'Green/Blue',laser_w:14,consumption_w:500,weight_kg:12.5,in_connector:'TRUE1',out_connector:'',scanners:'DT50',angle:'40°',ops_diode:'Gr=OPS Bl=Diode',notes:''},
-  'WHITE':{alt:'Yellow/Blue',laser_w:null,consumption_w:500,weight_kg:12.5,in_connector:'TRUE1',out_connector:'',scanners:'DT50',angle:'40°',ops_diode:'Y=OPS Bl=Diode',notes:''},
-  'RGBB':{alt:'RGBB',laser_w:14,consumption_w:1035,weight_kg:18,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'CT6215',angle:'60°',ops_diode:'OPS+dark blue',notes:''},
-  'RGB6':{alt:'RGB6',laser_w:6,consumption_w:300,weight_kg:7,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'SM506',angle:'40°',ops_diode:'Diode',notes:''},
-  'RGB10':{alt:'Kvant CM10',laser_w:10,consumption_w:300,weight_kg:15,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'SM506',angle:'40°',ops_diode:'Diode',notes:''},
-  'GOPSL':{alt:'Green OPS',laser_w:10,consumption_w:460,weight_kg:8.2,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'CT6215',angle:'60°',ops_diode:'OPS',notes:'Max 10A doorlus'},
-  'SUPERNOVA':{alt:'Supernova',laser_w:null,consumption_w:1900,weight_kg:37,in_connector:'TRUE1',out_connector:'',scanners:'CT6215',angle:'60°',ops_diode:'OPS',notes:''},
-  'HULK':{alt:'Hulk',laser_w:null,consumption_w:3600,weight_kg:65,in_connector:'TRUE1',out_connector:'',scanners:'SM',ops_diode:'',notes:'ALLEEN 230V'},
-  'PIKO35':{alt:'RTI Piko 35',laser_w:35,consumption_w:1000,weight_kg:null,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'CT6210',angle:'51°',notes:''},
-  'PIKO60':{alt:'RTI Piko 60',laser_w:60,consumption_w:1500,weight_kg:41,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'EMS-8000',notes:''},
-  'PIKO70':{alt:'RTI Piko 70',laser_w:70,consumption_w:null,weight_kg:null,in_connector:'TRUE1',out_connector:'TRUE1',notes:''},
-  'VIPER':{alt:'Coherent Viper',laser_w:20,consumption_w:850,weight_kg:35,in_connector:'TRUE1',out_connector:'TRUE1',scanners:'CT6215',angle:'60°',ops_diode:'OPS Fiber',notes:'Smalle beam'},
-  '32A':{alt:'32A Distro',consumption_w:null,outputs:6,inputs:3,phases:3,in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A'},
-  '32AFIBRE':{alt:'32A Fibre',consumption_w:null,outputs:6,fibre:true,phases:3,in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'Fibre mod'},
-  '8PORT':{alt:'8 Port',consumption_w:null,outputs:6,inputs:2,phases:1,in_connector:'Schuko',out_connector:'16ACEEBlue',notes:'Schuko 16A input'},
-  '4PORT':{alt:'4 Port',consumption_w:null,outputs:4,inputs:4,phases:1,in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
-  '3PORT':{alt:'3 Port',consumption_w:null,outputs:3,inputs:4,phases:1,in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
-  'PEASOUP':{alt:'Pea Soup',consumption_w:2200,in_connector:'Schuko',notes:'~1L oil/hr'},
-  'SHOCKFOG':{alt:'Shockfog',consumption_w:2200,in_connector:'Schuko',notes:'Glycol — no CO2'},
-  'FAN':{alt:'Fan unit',consumption_w:1000,in_connector:'Schuko',notes:''},
+
+var SPECS = {
+  // ── Lasers ───────────────────────────────────────────────────────────────────────────────────────
+  'RGB20':          {category:'laser',alt:'RGCB20',              phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:20,  weight_kg:18.0, inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'192.168.10.X',scanners:'SM506',  angle:'40°',scanrate_kpps:23,ops_diode:'Diode',            desc:'20W RGB laser — gele sticker',                                notes:''},
+  'CYAN':           {category:'laser',alt:'Green/Blue',          phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:14,  weight_kg:12.5, inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'DT50',   angle:'40°',scanrate_kpps:23,ops_diode:'Gr=OPS Bl=Diode',    desc:'GB — Gr=OPS  Bl=Diode',                                        notes:''},
+  'WHITE':          {category:'laser',alt:'Yellow/Blue',         phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:null,weight_kg:12.5, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'DT50',   angle:'40°',scanrate_kpps:23,ops_diode:'Y=OPS Bl=Diode',      desc:'YB — Y=OPS  Bl=Diode',                                         notes:''},
+  'RGBB':           {category:'laser',alt:'RGBB',                phases:1,consumption_w:1035,max_a_230:4.5, max_a_110:9.4, laser_w:14,  weight_kg:18.0, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS+dark blue Diode', desc:'OPS + dark blue Diode',                                            notes:''},
+  'GOPSL':          {category:'laser',alt:'Green OPS / G10',     phases:1,consumption_w:460, max_a_230:2.0, max_a_110:4.2, laser_w:10,  weight_kg:8.2,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS',                desc:'Green OPS laser',                                                  notes:'LET OP! Doorlus 0.7mm² — max 10A totale doorlus'},
+  'SUPERNOVA':      {category:'laser',alt:'Supernova',           phases:1,consumption_w:1900,max_a_230:8.1, max_a_110:17.3,laser_w:null,weight_kg:37.0, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'192.168.9.X', scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS',                desc:'Large OPS unit',                                                   notes:''},
+  'LI 13AS':        {category:'laser',alt:'LI 13AS',             phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'LW15':           {category:'laser',alt:'LW15',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'LW30':           {category:'laser',alt:'LW30',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'Tarm30 ip':      {category:'laser',alt:'Tarm30 ip',           phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'Tarm30 PPP':     {category:'laser',alt:'Tarm30 PPP',          phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'Tarm30 LIC':     {category:'laser',alt:'Tarm30 LIC',          phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'XS30':           {category:'laser',alt:'XS30',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'Silver bracket',                                                   notes:''},
+  'XS35':           {category:'laser',alt:'XS35',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'Black bracket',                                                    notes:''},
+  'PIKO35':         {category:'laser',alt:'RTI Piko 35',         phases:1,consumption_w:1000,max_a_230:null,max_a_110:null,laser_w:35,  weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'CT6210', angle:'51°',scanrate_kpps:30,ops_diode:null,              desc:'RTI Piko 35',                                                      notes:''},
+  'PIKO60':         {category:'laser',alt:'RTI Piko 60',         phases:1,consumption_w:1500,max_a_230:null,max_a_110:null,laser_w:60,  weight_kg:41.0,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'EMS-8000',angle:null, scanrate_kpps:null,ops_diode:null,              desc:'RTI Piko 60',                                                      notes:''},
+  'PIKO70':         {category:'laser',alt:'RTI Piko 70',         phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:70,  weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'RTI Piko 70',                                                      notes:''},
+  'PIKO120':        {category:'laser',alt:'RTI Piko 120',        phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:120, weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'PIKO135':        {category:'laser',alt:'RTI Piko 135',        phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:135, weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'Hexascan':       {category:'laser',alt:'Hexascan',            phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'',             data_in:'',              outputs:1,pwr_out:'',             data_out:'',              ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
+  'RGB6':           {category:'laser',alt:'RGB6',                phases:1,consumption_w:300, max_a_230:1.3, max_a_110:2.7, laser_w:6,   weight_kg:7.0,   inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'192.168.6.X', scanners:'SM506',  angle:'40°',scanrate_kpps:23,ops_diode:'Diode',            desc:'6W RGB laser',                                                     notes:''},
+  'HULK':           {category:'laser',alt:'Hulk',                phases:1,consumption_w:3600,max_a_230:16,  max_a_110:null,laser_w:null,weight_kg:65,    inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'SM',     angle:null, scanrate_kpps:30, ops_diode:null,               desc:'Grote unit met extra koel unit',                                   notes:'LET OP! ALLEEN 230V'},
+  'VIPER':          {category:'laser',alt:'Coherent Viper',      phases:1,consumption_w:850, max_a_230:3.7, max_a_110:7.8, laser_w:20,  weight_kg:35.0,  inputs:1,pwr_in:'TR1',          data_in:'',              outputs:1,pwr_out:'TR1',          data_out:'',              ip:'192.168.5.X', scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS Fiber',   desc:'Oude unit, plastic zijplaten',                                     notes:'Smalle beam'},
+  // ── Distros ──────────────────────────────────────────────────────────────────────────────────────
+  '32A PC Distro':    {category:'distro',alt:'32A Distro PC',    phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:12,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:12,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'12 out / 3 in / 3-phase / PC connectors',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
+  '32A PeliDistro PL':{category:'distro',alt:'32A Distro PL',   phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:12,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:12,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'12 out / 3 in / noodstop / 3-phase',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
+  '32AFIBRE PeliDistro PC':{category:'distro',alt:'32A Fibre Distro',phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:6,outlet_phases:'1-2:L1,3-4:L2,5-6:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:6,pwr_out:'16ACEEBlue',data_out:'',fibre:true,desc:'6 out / fibre media converter / 3-phase',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
+  'New 4port PC':   {category:'distro',alt:'4-Port PC Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:4,outlet_phases:'',inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:4,pwr_out:'TR1',data_out:'Ethercon',fibre:false,desc:'4 out / 1 in / 1-phase / PC connectors',in_connector:'TR1',out_connector:'TR1',notes:''},
+  '8-PORT PL':      {category:'distro',alt:'8-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:6,outlet_phases:'',inputs:2,pwr_in:'Schuko',data_in:'',outputs:6,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'6 out / 2 in / 1-phase / Schuko 16A',in_connector:'Schuko',out_connector:'16ACEEBlue',notes:'Schuko 16A input'},
+  '4-PORT PL':      {category:'distro',alt:'4-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:4,outlet_phases:'',inputs:4,pwr_in:'16ACEEBlue',data_in:'',outputs:4,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'4 out / 4 in / 1-phase',in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
+  '3-PORT PL':      {category:'distro',alt:'3-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:3,outlet_phases:'',inputs:4,pwr_in:'16ACEEBlue',data_in:'',outputs:3,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'3 out / 4 in / 1-phase',in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
+  // ── Smoke machines ───────────────────────────────────────────────────────────────────────────────
+  'PEASOUP':        {category:'smoke',alt:'Pea Soup',            phases:1,consumption_w:2200,max_a_230:10, max_a_110:20,  weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:'mineral',desc:'Low-lying fog — mineral oil',in_connector:'Schuko',out_connector:'',notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
+  'SHOCKFOG':       {category:'smoke',alt:'Shockfog',            phases:1,consumption_w:2200,max_a_230:10, max_a_110:20,  weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:'glycol', desc:'Hazer — glycol oil, no CO2',in_connector:'Schuko',out_connector:'',notes:'Glycol oil — no CO2 needed'},
+  'FAN':            {category:'smoke',alt:'Fan unit',            phases:1,consumption_w:1000,max_a_230:4.4, max_a_110:9,   weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:null,  desc:'Fan unit for smoke/haze',in_connector:'Schuko',out_connector:'',notes:''},
+  // ── Power supplies (wall power) ──────────────────────────────────────────────────────────────────
+  'RED32A CEE':     {category:'psu',alt:'32A CEE Wall',     phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'32ACEE',  data_out:'',desc:'32A 3-phase wall outlet',notes:''},
+  '230V Schuko':    {category:'psu',alt:'230V Schuko Wall', phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Schuko',   data_out:'',desc:'230V Schuko wall outlet',notes:''},
+  'L21-30 PSU':     {category:'psu',alt:'L21-30 Wall',      phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'L21-30',   data_out:'',desc:'L21-30 wall outlet',notes:''},
+  '16A CEE':        {category:'psu',alt:'16A CEE Wall',     phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'16ACEEBlue',data_out:'',desc:'16A CEE (blue) wall outlet',notes:''},
+  'Edison PSU':     {category:'psu',alt:'Edison Wall',      phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Edison',    data_out:'',desc:'Edison wall outlet',notes:''},
+  // ── Adapters ─────────────────────────────────────────────────────────────────────────────────────
+  'L21-30 to 32A CEE':{category:'adapter',alt:'L21-30 to CEE',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'L21-30',data_in:'',outputs:1,pwr_out:'32ACEE',data_out:'',desc:'L21-30 male to 32A CEE female',notes:''},
+  '16A CEE to Schuko':{category:'adapter',alt:'CEE to Schuko',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'16ACEEBlue',data_in:'',outputs:1,pwr_out:'Schuko',data_out:'',desc:'16A CEE to Schuko adapter',notes:''},
+  'PL to PC':       {category:'adapter',alt:'PowerLAN to PowerCAT',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'TR1',data_out:'Ethercon',desc:'PowerLAN female to PowerCAT male',notes:''},
+  'PC to PL':       {category:'adapter',alt:'PowerCAT to PowerLAN',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',desc:'PowerCAT female to PowerLAN male',notes:''},
 };
 var MODELS={};
 MODELS[TL]=['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HULK','PIKO35','PIKO60','PIKO70','VIPER'];
@@ -725,17 +752,18 @@ MODELS[TS]=['PEASOUP','SHOCKFOG','FAN'];
 MODELS[TD]=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
 MODELS[TP]=[];
 
-var CABLE_TYPES=[
+
+var CABLE_TYPES = [
   {key:'powercat',label:'PowerCAT',pwr_a:'TR1',pwr_b:'TR1',data_a:'Ethercon',data_b:'Ethercon',
-   lengths:[{val:0.3,lbl:'0.3 m',v:0.3,l:'0.3 m'},{val:7.5,lbl:'7.5 m',v:7.5,l:'7.5 m'},{val:15,lbl:'15 m',v:15,l:'15 m'},{val:35,lbl:'35 m',v:35,l:'35 m'},{val:80,lbl:'80 m',v:80,l:'80 m'}]},
+   lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
   {key:'powerlan',label:'PowerLAN',pwr_a:'HartingPushPull',pwr_b:'HartingPushPull',data_a:'HartingPushPull',data_b:'HartingPushPull',
-   lengths:[{val:0.3,lbl:'0.3 m',v:0.3,l:'0.3 m'},{val:7.5,lbl:'7.5 m',v:7.5,l:'7.5 m'},{val:15,lbl:'15 m',v:15,l:'15 m'},{val:35,lbl:'35 m',v:35,l:'35 m'},{val:80,lbl:'80 m',v:80,l:'80 m'}]},
+   lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
   {key:'l2130',label:'L21-30',pwr_a:'L21-30',pwr_b:'L21-30',data_a:'',data_b:'',
-   lengths:[{val:1.5,lbl:'Lunch box',v:1.5,l:'Lunch box'},{val:8,lbl:'25 ft (8m)',v:8,l:'25 ft (8m)'},{val:15,lbl:'50 ft (15m)',v:15,l:'50 ft (15m)'},{val:30,lbl:'100 ft (30m)',v:30,l:'100 ft (30m)'},{val:45,lbl:'150 ft (45m)',v:45,l:'150 ft (45m)'}]},
+   lengths:[{val:1.5,lbl:'Lunch box'},{val:8,lbl:'25 ft (8 m)'},{val:15,lbl:'50 ft (15 m)'},{val:30,lbl:'100 ft (30 m)'},{val:45,lbl:'150 ft (45 m)'}]},
   {key:'schuko',label:'Schuko',pwr_a:'Schuko',pwr_b:'Schuko',data_a:'',data_b:'',
-   lengths:[{val:10,lbl:'10 m',v:10,l:'10 m'},{val:25,lbl:'25 m',v:25,l:'25 m'},{val:50,lbl:'50 m',v:50,l:'50 m'}]},
-  {key:'cee32',label:'CEE 32A RED',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',
-   lengths:[{val:10,lbl:'10 m',v:10,l:'10 m'}]},
+   lengths:[{val:10,lbl:'10 m'},{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
+  {key:'cee32',label:'CEE 32A',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',
+   lengths:[{val:10,lbl:'10 m'}]},
 ];
 function _cableLabel(key){
   if(!key)return '';
