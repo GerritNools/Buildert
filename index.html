@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.830</title>
+<title>WTU · Buildert v3.831</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.830</small></div>
+  <div class="logo">WTU <small>v3.831</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4011,6 +4011,7 @@ function snToggleCheck(ch) {
   var d = devices[_snGi];
   if (!d.checks) d.checks = {};
   d.checks[ch] = !d.checks[ch];
+  if(window._activityLog) _logActivity(d.device_id, ch+': '+(d.checks[ch]?'checked':'unchecked'));
   // Immediately sync into _mStages so merge lookup is up to date
   if(_mStages.length) _mStages[_mCurrentStageIdx].devices = devices;
   // Update pill
@@ -4044,6 +4045,8 @@ function snConfirm() {
   // Sync into _mStages immediately before saving
   if(_mStages.length) _mStages[_mCurrentStageIdx].devices = devices;
   autoSave();
+  // Explicit push with short delay to ensure Worker receives the update
+  if(_workerUrl && _projectKey) setTimeout(function(){ wPush(true); }, 800);
   showToast((d.device_id||'Device') + ' updated ✓', 'ok');
   closeSNSheet();
   renderDiagram();
