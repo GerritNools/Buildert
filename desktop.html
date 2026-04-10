@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.834</title>
+<title>WTUniverse · Buildert Editor v3.835</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.834</div>
+    <div>build v3.835</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5722,24 +5722,27 @@ function spEditPerm(el){
   var name=el.dataset.shn, stid=el.dataset.stid, perm=el.dataset.sperm;
   var sh=_spShares.find(function(x){return x.name===name;}); if(!sh) return;
   if(!sh.stagePerms) sh.stagePerms={};
-  var cur=sh.stagePerms[stid]||'';
+  if(!sh.stagePerms[stid]) sh.stagePerms[stid]={view:false,edit:false};
+  var cur=sh.stagePerms[stid];
+  // Normalise: accept 'e'/'v' string format from old data
+  if(typeof cur==='string') cur=sh.stagePerms[stid]={view:cur==='e'||cur==='v',edit:cur==='e'};
   if(perm==='e'){
-    sh.stagePerms[stid]=el.checked?'e':(cur==='e'?'v':cur);
-    if(el.checked){
-      // auto-check view checkbox
-      el.closest('div').querySelectorAll('input[data-sperm="v"]').forEach(function(v){v.checked=true;});
-    }
+    cur.edit=el.checked;
+    if(el.checked) cur.view=true;
+    // Reflect view checkbox in UI
+    var row=el.closest('[data-shn]')||el.closest('div');
+    if(row){ var vChk=row.querySelector('input[data-sperm="v"][data-stid="'+stid+'"]'); if(vChk&&el.checked) vChk.checked=true; }
   } else {
-    if(!el.checked && cur==='e'){
-      // unchecking view should also remove edit
-      el.closest('div').querySelectorAll('input[data-sperm="e"]').forEach(function(e2){e2.checked=false;});
-      sh.stagePerms[stid]='';
-    } else {
-      sh.stagePerms[stid]=el.checked?(cur==='e'?'e':'v'):'';
+    cur.view=el.checked;
+    if(!el.checked){ cur.edit=false;
+      var row2=el.closest('[data-shn]')||el.closest('div');
+      if(row2){ var eChk=row2.querySelector('input[data-sperm="e"][data-stid="'+stid+'"]'); if(eChk) eChk.checked=false; }
     }
   }
   try{localStorage.setItem('wtu_shares',JSON.stringify(_spShares));}catch(e){}
-  showToast('Permissions updated — use ↻ Resend to push new link to '+name,'ok');
+  // Push to Worker so mobile gets updated perms without a new link
+  autoSave();
+  showToast('Permissions updated for '+name+' — syncing to Worker…','ok');
 }
 function spDeleteShare(name) {
   _spShares = _spShares.filter(function(s){ return s.name !== name; });
