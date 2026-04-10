@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.829</title>
+<title>WTU · Buildert v3.830</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.829</small></div>
+  <div class="logo">WTU <small>v3.830</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -693,6 +693,7 @@ var _workerUrl='', _projectKey='';
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
+var _lastLocalEdit=0; // timestamp of last local edit
 var _saveT=null, _pushT=null;
 var _mNPos={};  // node positions — declared early to avoid undefined errors
 
@@ -2038,13 +2039,27 @@ function _mergeProjectNoConflict(data){
     var wasEmpty = !_mStages.length;
     // Build lookup of current local device state before overwriting
     var _localDevMap = {};
+    // 1. From _mStages (most complete picture of all stages)
     _mStages.forEach(function(s){
       (s.devices||[]).forEach(function(d){
         if(d.device_id) _localDevMap[d.device_id]=d;
       });
     });
-    // Also capture in-memory current stage devices
+    // 2. From current in-memory devices (may be more recent than _mStages)
     (devices||[]).forEach(function(d){ if(d.device_id) _localDevMap[d.device_id]=d; });
+    // 3. From localStorage — written by autoSave within 300ms of any edit
+    try{
+      var _lsDevs=JSON.parse(localStorage.getItem('wtu_devices')||'[]');
+      _lsDevs.forEach(function(d){
+        if(!d.device_id) return;
+        var existing=_localDevMap[d.device_id];
+        if(!existing){ _localDevMap[d.device_id]=d; return; }
+        // Prefer localStorage value for MOBILE_FIELDS — it's written on every edit
+        MOBILE_FIELDS.forEach(function(f){
+          if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') existing[f]=d[f];
+        });
+      });
+    }catch(e){}
     _mStages = data.stages;
     // Re-apply local mobile fields over incoming data
     _mStages.forEach(function(s){
@@ -2152,13 +2167,27 @@ function _mergeSmartFromFile(data){
     var wasEmpty = !_mStages.length;
     // Build lookup of current local device state before overwriting
     var _localDevMap = {};
+    // 1. From _mStages (most complete picture of all stages)
     _mStages.forEach(function(s){
       (s.devices||[]).forEach(function(d){
         if(d.device_id) _localDevMap[d.device_id]=d;
       });
     });
-    // Also capture in-memory current stage devices
+    // 2. From current in-memory devices (may be more recent than _mStages)
     (devices||[]).forEach(function(d){ if(d.device_id) _localDevMap[d.device_id]=d; });
+    // 3. From localStorage — written by autoSave within 300ms of any edit
+    try{
+      var _lsDevs=JSON.parse(localStorage.getItem('wtu_devices')||'[]');
+      _lsDevs.forEach(function(d){
+        if(!d.device_id) return;
+        var existing=_localDevMap[d.device_id];
+        if(!existing){ _localDevMap[d.device_id]=d; return; }
+        // Prefer localStorage value for MOBILE_FIELDS — it's written on every edit
+        MOBILE_FIELDS.forEach(function(f){
+          if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') existing[f]=d[f];
+        });
+      });
+    }catch(e){}
     _mStages = data.stages;
     // Re-apply local mobile fields over incoming data
     _mStages.forEach(function(s){
@@ -2266,6 +2295,7 @@ function _persistProjectMeta(){
 
 // ── AutoSave ────────────────────────────────────────────────────
 function autoSave(){
+  _lastLocalEdit=Date.now(); // track for pull debounce
   clearTimeout(_saveT);
   _saveT=setTimeout(function(){
     try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
@@ -2707,9 +2737,10 @@ function _nodeStopScan(){
 
 // ── Cloudflare Worker sync ────────────────────────────────────────
 async function wPull(){
-  console.log("[SYNC] wPull url=",_workerUrl,"key=",_projectKey);
-  if(!_workerUrl||!_projectKey){console.warn("[SYNC] wPull: no url/key");return;}
+  if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
+  // Skip pull if user edited locally within last 5s — let push complete first
+  if(Date.now()-_lastLocalEdit < 5000){ console.log("[SYNC] wPull skipped — recent local edit"); return; }
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
@@ -3980,6 +4011,8 @@ function snToggleCheck(ch) {
   var d = devices[_snGi];
   if (!d.checks) d.checks = {};
   d.checks[ch] = !d.checks[ch];
+  // Immediately sync into _mStages so merge lookup is up to date
+  if(_mStages.length) _mStages[_mCurrentStageIdx].devices = devices;
   // Update pill
   var chkEl = document.getElementById('sn-checks');
   var checks = checksFor(d.type);
@@ -3987,9 +4020,10 @@ function snToggleCheck(ch) {
     chkEl.innerHTML = checks.map(function(c) {
       var on = d.checks && d.checks[c];
       return '<div class="sn-check' + (on ? ' ck-on' : '') + '" onclick="snToggleCheck(this.dataset.ch)" data-ch="' + c + '">'
-        + (on ? '✓ ' : '') + c + '</div>';
+        + (on ? '\u2713 ' : '') + c + '</div>';
     }).join('');
   }
+  autoSave(); // persist immediately so poll can't overwrite
 }
 
 function snConfirm() {
@@ -4007,6 +4041,8 @@ function snConfirm() {
     var n = new Date(), pad = function(v){return v<10?'0'+v:''+v;};
     d.mounted_at = pad(n.getHours()) + ':' + pad(n.getMinutes());
   }
+  // Sync into _mStages immediately before saving
+  if(_mStages.length) _mStages[_mCurrentStageIdx].devices = devices;
   autoSave();
   showToast((d.device_id||'Device') + ' updated ✓', 'ok');
   closeSNSheet();
