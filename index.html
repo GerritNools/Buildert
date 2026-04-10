@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.832</title>
+<title>WTU · Buildert v3.833</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -405,7 +405,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.832</small></div>
+  <div class="logo">WTU <small>v3.833</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2093,6 +2093,26 @@ function _mergeProjectNoConflict(data){
     if(data._node_positions && typeof data._node_positions==='object' && Object.keys(data._node_positions).length) _mNPos=data._node_positions;
     if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
   }
+  // Apply stage permissions from server shares list (no URL needed after first load)
+  if(Array.isArray(data.shares) && data.shares.length && window._riggerName){
+    var myShare=data.shares.find(function(sh){return sh.name===window._riggerName;});
+    if(myShare && myShare.stagePerms){
+      Object.keys(_mStagePerms).forEach(function(k){delete _mStagePerms[k];});
+      Object.keys(myShare.stagePerms).forEach(function(k){
+        var v=myShare.stagePerms[k];
+        // stagePerms can be {view,edit} object or "e"/"v" string
+        if(typeof v==='object') _mStagePerms[k]=v.edit?'e':v.view?'v':'';
+        else _mStagePerms[k]=v;
+      });
+      // Re-evaluate peek mode for current stage
+      var curStage=_mStages[_mCurrentStageIdx];
+      if(curStage){
+        var perm=_mStagePerms[curStage.id];
+        var noPerms=Object.keys(_mStagePerms).length===0;
+        _mPeekMode=noPerms?false:(perm!=='e');
+      }
+    }
+  }
   _renderMobileStageBar();
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
@@ -2836,6 +2856,7 @@ function _handleProjectParam(){
   if(rigger){
     window._riggerMode=true;
     window._riggerName=decodeURIComponent(rigger);
+    try{localStorage.setItem('brt_rigger_name',window._riggerName);}catch(e){}
   }
   // Store for persistence
   try{
@@ -3176,6 +3197,7 @@ function dbxDisconnect(){
 
 // ── Rigger mode ───────────────────────────────────────────────────
 window._riggerName='';
+try{var _rn=localStorage.getItem('brt_rigger_name');if(_rn){window._riggerName=_rn;window._riggerMode=true;}}catch(e){}
 window._activityLog=[];
 window._remoteLog=[];
 window._riggerMode=false;
