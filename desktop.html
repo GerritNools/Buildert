@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.831</title>
+<title>WTUniverse · Buildert Editor v3.832</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.831</div>
+    <div>build v3.832</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2912,13 +2912,13 @@ function _applyProjectLoad(data) {
   var localVer = _projectVersion;
   var baseVer  = _projectBaseVersion;
 
-  // Fast-forward: local has no new changes, or file is same/older
-  if (localVer <= baseVer || fileVer <= baseVer) {
-    _mergeProjectNoConflict(data);
-    return;
+  // Mobile always merges directly — never conflict for rigger updates
+  if(data._saved_by && data._saved_by !== 'desktop'){
+    _mergeProjectNoConflict(data); return;
   }
-
-  // Both sides changed since last common base — show conflict UI
+  if (localVer <= baseVer || fileVer <= baseVer) {
+    _mergeProjectNoConflict(data); return;
+  }
   _showProjectConflict(data, localVer, fileVer, baseVer);
 }
 
@@ -2988,6 +2988,8 @@ function _mergeProjectNoConflict(data) {
       _updateProjectBadge();
     }
     if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
+    if(currentTab==='node') renderNodeView();
+    if(currentTab==='todos') renderTodosPanel();
     return;
   }
 
@@ -6076,7 +6078,7 @@ function wSyncInit(){
   if(_workerUrl && _projectKey){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
     setTimeout(wPoll, 5000);  // delay startup pull — give time to load local data first
-    setInterval(function(){ if(!_dbxSyncing) wPull(); }, 20000);
+    setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
   }
 }
 
@@ -6086,8 +6088,7 @@ function wStopPolling(){
 async function wPull(){
   if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
-  // Don't overwrite local unsaved work — wait for push to complete first
-  if(_unsaved || _dbxPushDebounce){ _dbxSetStatus('Waiting to sync…','var(--muted)'); return; }
+  if(_dbxPushDebounce){ _dbxSetStatus('Pushing…','var(--muted)'); return; }
   _dbxSyncing=true;
   try{
     var resp = await fetch(_workerUrl+'/project?key='+_projectKey, {cache:'no-store'});
