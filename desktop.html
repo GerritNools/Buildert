@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.833</title>
+<title>WTUniverse · Buildert Editor v3.834</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.833</div>
+    <div>build v3.834</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -6194,6 +6194,9 @@ async function wPush(silent){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
+    pack_shared:_packShared,
+    todos:_todos.filter(function(t){return !t.auto;}),
+    shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:JSON.parse(np),
     _diag_positions:JSON.parse(dp),
@@ -6508,6 +6511,9 @@ function wPushLayout(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
+    pack_shared:_packShared,
+    todos:_todos.filter(function(t){return !t.auto;}),
+    shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:np_parsed,
     _diag_positions:dp_parsed,
@@ -6590,6 +6596,9 @@ function _buildFilePayload(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
+    pack_shared:_packShared,
+    todos:_todos.filter(function(t){return !t.auto;}),
+    shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
     _diag_positions:_stages[_currentStageIdx].diagPositions||{},
