@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.844</title>
+<title>WTUniverse · Buildert Editor v3.845</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.844</div>
+    <div>build v3.845</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1739,21 +1739,12 @@ function _oneCableSelect(gi, field, val) {
   CABLE_TYPES.forEach(function(ct) {
     ct.lengths.forEach(function(l) {
       var v = ct.key+'-'+l.val;
-      // pwr_b = device end, pwr_a = source end
-      var isDirect  = !reqConn || (ct.pwr_b === reqConn && ct.pwr_a === reqConn);
-      var isAdapter = reqConn && ct.pwr_b === reqConn && ct.pwr_a !== reqConn;
-      if (!isDirect && !isAdapter) return;
+      var isMatch = !reqConn || ct.pwr_a === reqConn; // pwr_a = device end
+      if (!isMatch) return;
       if (val===v) _valSeen = true;
-      var opt = '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-      if (isDirect) directOpts += opt;
-      else adapterOpts += opt;
+      opts += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
   });
-  opts += directOpts;
-  if (adapterOpts) {
-    opts += '<option disabled>\u2500\u2500 via adapter \u2500\u2500</option>';
-    opts += adapterOpts;
-  }
   if (!_valSeen && val) {
     var _ck=val.split('-')[0], _cdef=CABLE_TYPES.find(function(ct){return ct.key===_ck;});
     if(_cdef){var _lv=parseFloat(val.split('-').slice(1).join('-'));var _ld=_cdef.lengths.find(function(l){return Math.abs(l.val-_lv)<0.01;});opts+='<option value="'+val+'" selected>'+_cdef.label+' '+(_ld?_ld.lbl:_lv+'m')+' \u26a0</option>';}
@@ -1790,11 +1781,9 @@ function _populateCableSelects(cableIn, cableOut, inConnector) {
     CABLE_TYPES.forEach(function(ct) {
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
-        var isDirect = !reqConn || (ct.pwr_b === reqConn && ct.pwr_a === reqConn);
-        var isAdapter = reqConn && ct.pwr_b === reqConn && ct.pwr_a !== reqConn;
-        if(!isDirect && !isAdapter) return;
-        var opt='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-        if(isDirect) direct+=opt; else adapter+=opt;
+        var isMatch = !reqConn || ct.pwr_a === reqConn;
+        if(!isMatch) return;
+        o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
       });
     });
     o+=direct;
@@ -4025,11 +4014,8 @@ function renderNodeView() {
 
     var info     = cableInfo(d);
     var hasCable = !!(d.cable_in||d.cable);
-    var _ckey2=String(d.cable_in||d.cable||'').split('-')[0];
-    var _cdef2=hasCable?CABLE_TYPES.find(function(ct){return ct.key===_ckey2;}):null;
-    var isMixedCable=!!(_cdef2&&_cdef2.pwr_a!==_cdef2.pwr_b);
-    var adapterLabel=isMixedCable?_cdef2.label:(info.adapterNote||'');
-    var hasAdap=!!info.adapterNote||isMixedCable;
+    var hasAdap=!!info.adapterNote;
+    var adapterLabel=info.adapterNote||'';
     var stroke   = d.source==='FOH' ? 'var(--accent)'
                  : hasCable ? (hasAdap?'var(--warn)':'var(--ok)') : '#55606e';
     var marker   = d.source==='FOH' ? 'arrow-foh'
@@ -4347,7 +4333,7 @@ function nodeEdgeClick(e, gi) {
   var opts = '<option value="">— none —</option>';
   CABLE_TYPES.forEach(function(ct){
     // Filter: only show cables that match the device's input connector
-    if (_reqConn && ct.pwr_b !== _reqConn) return; // pwr_b = device end
+    if (_reqConn && ct.pwr_a !== _reqConn) return; // pwr_a = device end
     ct.lengths.forEach(function(l){
       var v=ct.key+'-'+l.val;
       var cur=d.cable_in||d.cable||'';
@@ -4616,31 +4602,6 @@ function _packStageHtml(stageDevices) {
     });
   });
   devHtml += '</tbody></table></div>';
-
-  // Adapters implied by mixed cables
-  var adapterCounts = {};
-  stageDevices.forEach(function(dv){
-    var ck=String(dv.cable_in||dv.cable||'').split('-')[0];
-    var cdef=CABLE_TYPES.find(function(ct){return ct.key===ck;});
-    if(cdef && cdef.pwr_a!==cdef.pwr_b){
-      var adName='';
-      Object.keys(DEVICE_SPECS).forEach(function(k){
-        var sp=DEVICE_SPECS[k];
-        if(sp&&sp.category==='adapter'&&(sp.pwr_in===cdef.pwr_a||sp.in_connector===cdef.pwr_a)&&(sp.pwr_out===cdef.pwr_b||sp.out_connector===cdef.pwr_b)) adName=k;
-      });
-      if(adName) adapterCounts[adName]=(adapterCounts[adName]||0)+1;
-    }
-  });
-  if(Object.keys(adapterCounts).length){
-    devHtml+='<div class="pack-section"><div class="pack-section-title" style="color:var(--warn)">⚠ Implied Adapters</div>'
-      +'<table class="pack-table"><thead><tr><th style="width:20px"></th><th style="width:40px">Qty</th><th>Adapter</th></tr></thead><tbody>';
-    Object.keys(adapterCounts).forEach(function(name){
-      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td>'
-        +'<td class="pack-qty">'+adapterCounts[name]+'&times;</td>'
-        +'<td style="font-family:var(--cond);font-weight:700;color:var(--warn)">'+name+'</td></tr>';
-    });
-    devHtml+='</tbody></table></div>';
-  }
 
   // Cable summary — aggregate by cable type+length
   var cableCounts = {};
