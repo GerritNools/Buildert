@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.843</title>
+<title>WTU · Buildert v3.845</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.843</small></div>
+  <div class="logo">WTU <small>v3.845</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -535,6 +535,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <button class="sb" style="background:rgba(77,230,184,.15);color:var(--smoke);border:1px solid var(--smoke);padding:18px 10px;font-size:14px" onclick="closeSheet('fab');openAddSheet('Smoke machine')">💨 Smoke</button>
     <button class="sb" style="background:rgba(245,166,35,.15);color:var(--distro);border:1px solid var(--distro);padding:18px 10px;font-size:14px" onclick="closeSheet('fab');openAddSheet('Distro')">⚡ Distro</button>
     <button class="sb" style="background:rgba(199,125,255,.15);color:var(--psu);border:1px solid var(--psu);padding:18px 10px;font-size:14px" onclick="closeSheet('fab');openAddSheet('Power supply')">🔌 PSU</button>
+    <button class="sb" style="background:rgba(245,166,35,.15);color:var(--warn);border:1px solid var(--warn);padding:18px 10px;font-size:14px" onclick="closeSheet('fab');openAddSheet('Adapter')">🔀 Adapter</button>
   </div>
   <div style="height:18px"></div>
 </div>
@@ -833,6 +834,7 @@ function checksFor(t){return t===TL?LC:t===TS?SC:t===TD?DC:t===TP?PC:[];}
 function modelFromId(id){return id?(id.trim().split(/\s+/)[0]||'').toUpperCase():'';}
 function specFor(d){return SPECS[d.model||modelFromId(d.device_id)]||null;}
 function pct(d){
+  if(d.type===TA) return 0; // adapters have no progress milestones
   // 5 milestones × 20% — Mounted, Cabled, Pointed/Placed/Racked, Serial, Online
   var pts=0;
   if(d.checks&&(d.checks['Mounted']||d.checks['Placed']||d.checks['Racked'])) pts+=20;
@@ -913,14 +915,14 @@ function setTab(tab){
   if(dw) dw.style.display=tab==='diagram'?'flex':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
-  if(tab==='diagram'){ renderDiagram(); return; }
+  if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
   renderMain();
 }
 
 // ── Render ─────────────────────────────────────────────────────────
 function renderMain(){
   if(currentTab==='nodes'||currentTab==='diagram'){
-    if(!_mDidFit){ _mDidFit=true; setTimeout(_mFitView,200); }
+    _mDidFit=true; setTimeout(_mFitView,250);
   }
   if(currentTab==='diagram'){
     _mNodeRender(); // live update without resetting positions
@@ -1094,7 +1096,7 @@ function renderPower(){
   document.querySelector('.chips').style.display='none';
   var empty=document.getElementById('empty-state');
   var cont=document.getElementById('card-list');
-  var roots=devices.filter(function(d){return d.type===TD||d.type===TP;});
+  var roots=devices.filter(function(d){return d.type===TD||d.type===TP||d.type===TA;});
   if(!roots.length){cont.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   roots.sort(function(a,b){
@@ -2456,7 +2458,7 @@ var _nodeCamActive=false, _nodeCamStream=null, _nodeDetector=null, _nodeScanLoop
 
 var MAP_NW=130, MAP_NH=62, MAP_HG=18, MAP_VG=52, MAP_PAD=28;
 var MAP_TYPE_ORDER=[TL,TS,TD,TP];
-var MAP_TYPE_COL={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
+var MAP_TYPE_COL={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff','Adapter':'#f5a623'};
 
 function renderMap(){
   document.querySelector('.chips').style.display='none';
@@ -3428,6 +3430,7 @@ function openDeviceSheet(gi){
   var col = d.type==='Laser projector'?'var(--laser)'
            :d.type==='Smoke machine'  ?'var(--smoke)'
            :d.type==='Distro'         ?'var(--distro)'
+           :d.type==='Adapter'        ?'var(--warn)'
                                       :'var(--psu)';
   var sp  = specFor(d)||{};
   var p   = pct(d);
@@ -3653,6 +3656,29 @@ function _udsCommit(gi,sheet){
 
 function _closeNodeTapSheet(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
 function _mNodeTap(gi){ openDeviceSheet(gi); }
+
+function _mFitView(){
+  // Auto-fit node view to show all nodes
+  var svg=document.getElementById('mob-node-svg'); if(!svg) return;
+  var devs=devices.filter(function(d){return d.device_id&&_mNPos[d.device_id];});
+  if(!devs.length) return;
+  var minX=9999,minY=9999,maxX=0,maxY=0;
+  var NW=120,NH=60;
+  devs.forEach(function(d){
+    var p=_mNPos[d.device_id];
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
+    if(p.x+NW>maxX)maxX=p.x+NW; if(p.y+NH>maxY)maxY=p.y+NH;
+  });
+  var cw=svg.clientWidth||window.innerWidth;
+  var ch=(svg.clientHeight||400);
+  var pad=24;
+  var fw=maxX-minX+pad*2, fh=maxY-minY+pad*2;
+  var sc=Math.min(cw/fw, ch/fh, 1.5);
+  _mNScale=sc;
+  _mNPanX=(cw-fw*sc)/2 - (minX-pad)*sc;
+  _mNPanY=(ch-fh*sc)/2 - (minY-pad)*sc;
+  _mNodeApplyTransform();
+}
 function _mNodeInitEvents() {
   var svg = document.getElementById('mob-node-svg');
   if (!svg || svg._mEventsAttached) return;
