@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.847</title>
+<title>WTUniverse · Buildert Editor v3.848</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.847</div>
+    <div>build v3.848</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1743,36 +1743,6 @@ function _oneCableSelect(gi, field, val) {
       opts += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
   });
-  // ── Via adapter: when srcConn known and differs from devConn ──
-  // Show cables that work from an adapter output → device, grouped by adapter
-  if (field==='cable_in' && srcConn && devConn && srcConn !== devConn) {
-    // Find adapters: srcConn → X, then cables X → devConn
-    var adapterGroups = [];
-    // Also find adapters: devConn → X (adapter on device side), then cables srcConn → X.pwr_in
-    Object.keys(DEVICE_SPECS).forEach(function(ak){
-      var asp = DEVICE_SPECS[ak];
-      if(!asp||asp.category!=='adapter') return;
-      var api = asp.pwr_in||asp.in_connector||'';
-      var apo = asp.pwr_out||asp.out_connector||'';
-      // Adapter input matches source → adapter output is new "virtual source" for device cable
-      if(api === srcConn){
-        var adCables=[];
-        CABLE_TYPES.forEach(function(ct){
-          var dm=!devConn||!ct.pwr_b||ct.pwr_b===devConn;
-          var sm=!apo||!ct.pwr_a||ct.pwr_a===apo;
-          if(dm&&sm) ct.lengths.forEach(function(l){ adCables.push({v:ct.key+'-'+l.val,lbl:ct.label+' '+l.lbl}); });
-        });
-        if(adCables.length) adapterGroups.push({name:ak,cables:adCables});
-      }
-    });
-    adapterGroups.forEach(function(ag){
-      opts += '<option disabled>── '+ag.name+' + cable ──</option>';
-      ag.cables.forEach(function(c){
-        if(val===c.v) _valSeen=true;
-        opts += '<option value="'+c.v+'"'+(val===c.v?' selected':'')+'> ↳ '+c.lbl+'</option>';
-      });
-    });
-  }
   if (!_valSeen && val) {
     var _ck=val.split('-')[0], _cdef=CABLE_TYPES.find(function(ct){return ct.key===_ck;});
     if(_cdef){var _lv=parseFloat(val.split('-').slice(1).join('-'));var _ld=_cdef.lengths.find(function(l){return Math.abs(l.val-_lv)<0.01;});opts+='<option value="'+val+'" selected>'+_cdef.label+' '+(_ld?_ld.lbl:_lv+'m')+' \u26a0</option>';}
@@ -4675,38 +4645,6 @@ function _packStageHtml(stageDevices) {
     cableHtmlStr += '<p style="color:var(--muted);font-size:13px">No cables assigned yet.</p>';
   }
   cableHtmlStr += '</div>';
-
-  // ── Adapters: detect from cable + source connector mismatch ───
-  var packAdapters = {};
-  stageDevices.forEach(function(dv){
-    var ckey=String(dv.cable_in||dv.cable||'').split('-')[0];
-    var cdef=CABLE_TYPES.find(function(ct){return ct.key===ckey;});
-    if(!cdef||!dv.source||dv.source==='FOH') return;
-    // Find source device
-    var srcDev=null;
-    _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===dv.source)srcDev=x;});});
-    if(!srcDev) return;
-    var srcSp=getSpec(srcDev.model||modelFromId(srcDev.device_id));
-    var srcOut=srcSp?(srcSp.pwr_out||srcSp.out_connector||''):'';
-    if(!srcOut||!cdef.pwr_a||srcOut===cdef.pwr_a) return; // no adapter needed
-    // Find adapter bridging srcOut → cdef.pwr_a
-    var adKey='';
-    Object.keys(DEVICE_SPECS).forEach(function(ak){
-      var asp=DEVICE_SPECS[ak];
-      if(asp&&asp.category==='adapter'&&(asp.pwr_in||asp.in_connector||'')===srcOut&&(asp.pwr_out||asp.out_connector||'')===cdef.pwr_a) adKey=ak;
-    });
-    if(adKey) packAdapters[adKey]=(packAdapters[adKey]||0)+1;
-  });
-  if(Object.keys(packAdapters).length){
-    cableHtmlStr += '<div class="pack-section"><div class="pack-section-title" style="color:var(--warn)">⚠ Adapters</div>'
-      +'<table class="pack-table"><thead><tr><th style="width:20px"></th><th style="width:40px">Qty</th><th>Adapter</th></tr></thead><tbody>';
-    Object.keys(packAdapters).forEach(function(name){
-      cableHtmlStr+='<tr><td><input type="checkbox" class="pack-check"></td>'
-        +'<td class="pack-qty">'+packAdapters[name]+'&times;</td>'
-        +'<td style="font-family:var(--cond);font-weight:700;color:var(--warn)">'+name+'</td></tr>';
-    });
-    cableHtmlStr+='</tbody></table></div>';
-  }
 
   return {html: devHtml + cableHtmlStr, devices: totalDevices, cables: totalCables};
 }
