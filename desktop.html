@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.848</title>
+<title>WTUniverse · Buildert Editor v3.850</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.848</div>
+    <div>build v3.850</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3891,6 +3891,7 @@ var _nodeConnectLine = null; // live wire while drag-connecting
 
 var NODE_W = 130, NODE_H = 62;
 var NODE_COLORS = {
+  'Adapter':         '#f5a623',
   'Laser projector': '#5b8fff',
   'Smoke machine':   '#4de6b8',
   'Distro':          '#f5a623',
@@ -3919,7 +3920,7 @@ function nodeAutoLayout() {
   var curY = 50;
 
   // Layout order: Lasers (top) → Distro → PSU → Smoke (bottom, signal chain) → FOH
-  var TYPE_ORDER_LAYOUT = [TYPE_LASER, TYPE_DISTRO, TYPE_PSU, TYPE_SMOKE];
+  var TYPE_ORDER_LAYOUT = [TYPE_LASER, TYPE_DISTRO, TYPE_PSU, TYPE_SMOKE, TYPE_ADAPTER];
   TYPE_ORDER_LAYOUT.forEach(function(type){
     var typeDevices = devices.filter(function(d){ return d.type===type && d.device_id; });
     if (!typeDevices.length) return;
@@ -4484,10 +4485,16 @@ function nodePrint() {
   var vbX = Math.max(0, minX - pad), vbY = Math.max(0, minY - pad);
   var vbW = maxX - vbX + pad, vbH = maxY - vbY + pad;
 
+  // Set explicit px dimensions so SVG user units → screen px ratio is known
+  var printW = 1050, printH = 700; // A4 landscape usable area at 96dpi
+  var scaleX = printW / vbW, scaleY = printH / vbH;
+  var printScale = Math.min(scaleX, scaleY, 1); // never enlarge
+  var svgPxW = Math.round(vbW * printScale);
+  var svgPxH = Math.round(vbH * printScale);
   clone.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
-  clone.setAttribute('width',  '100%');
-  clone.setAttribute('height', '100%');
-  clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  clone.setAttribute('width',  svgPxW);
+  clone.setAttribute('height', svgPxH);
+  clone.setAttribute('preserveAspectRatio', 'xMinYMin meet');
   clone.setAttribute('xmlns',  'http://www.w3.org/2000/svg');
   // White background rect
   clone.insertAdjacentHTML('afterbegin',
@@ -4555,11 +4562,18 @@ _packSharedLoad();
 
 function _packStageHtml(stageDevices) {
   // Returns {html, devices, cables} — does NOT touch the DOM
-  var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
+  // Sort devices according to _packSort
+  var devs = stageDevices.slice();
+  if(_packSort==='model')   devs.sort(function(a,b){return (a.model||modelFromId(a.device_id)||'').localeCompare(b.model||modelFromId(b.device_id)||'');});
+  else if(_packSort==='status') devs.sort(function(a,b){return (a.status||'').localeCompare(b.status||'');});
+  else if(_packSort==='alpha')  devs.sort(function(a,b){return (a.device_id||'').localeCompare(b.device_id||'');});
+  else if(_packSort==='stage')  { /* stage grouping handled by caller */ }
+  stageDevices = devs;
+  var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU, TYPE_ADAPTER];
   var TYPE_LABELS = {'Laser projector':'Laser Projectors','Smoke machine':'Smoke Machines',
-    'Distro':'Distros','Power supply':'Power Supplies'};
+    'Distro':'Distros','Power supply':'Power Supplies','Adapter':'Adapters'};
   var TYPE_COLS  = {'Laser projector':'var(--laser)','Smoke machine':'var(--smoke)',
-    'Distro':'var(--distro)','Power supply':'var(--psu)'};
+    'Distro':'var(--distro)','Power supply':'var(--psu)','Adapter':'var(--warn)'};
 
   var devHtml = '<div class="pack-section">'
     +'<div class="pack-section-title">Devices</div>'
@@ -4634,7 +4648,7 @@ function _packStageHtml(stageDevices) {
       var conn  = cdef ? ((cdef.pwr_a||'')+' \u2194 '+(cdef.pwr_b||'')) : '';
       totalCables += qty;
       cableHtmlStr += '<tr>'
-        +'<td><input type="checkbox" class="pack-check"></td>'
+        +'<td><input type="checkbox" class="pack-check" '+((_packChecked[m+'-dev-'+ci2])?'checked':'')+' onchange="_packSaveChecked(\'' + m+'-dev-'+ci2 + '\',this.checked)"></td>'
         +'<td class="pack-qty">'+qty+'\u00d7</td>'
         +'<td style="font-family:var(--mono);font-size:12px">'+lbl+'</td>'
         +'<td style="font-size:11px;color:var(--muted)">'+conn+'</td>'
@@ -4698,7 +4712,7 @@ function packPrint(printAll) {
 
   // Build HTML for one set of devices
   function stageHtml(devs){
-    var TYPE_ORDER=[TYPE_LASER,TYPE_SMOKE,TYPE_DISTRO,TYPE_PSU];
+    var TYPE_ORDER=[TYPE_LASER,TYPE_SMOKE,TYPE_DISTRO,TYPE_PSU,TYPE_ADAPTER];
     var out='';
     // Devices table
     out+='<div class="section"><div class="sec-title">Devices</div>';
@@ -6031,7 +6045,7 @@ function diagAutoLayout() {
   var curY = 50;
 
   // Lasers → Smoke → Distro → PSU at bottom, FOH below all
-  var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
+  var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU, TYPE_ADAPTER];
   TYPE_ORDER.forEach(function(type) {
     var typeDevices = devices.filter(function(d){ return d.type===type && d.device_id; });
     if (!typeDevices.length) return;
@@ -7138,6 +7152,9 @@ function _applySpecsJSON(data,name){
 var _packActiveStageIdx = -1;
 var _packShowAll = false;
 var _packSort = 'cat'; // cat|stage|model|status|alpha
+var _packChecked = {}; // {key: bool} — persist checkbox ticks
+try{var _pck=localStorage.getItem('brt_pack_checked');if(_pck)_packChecked=JSON.parse(_pck);}catch(e){}
+function _packSaveChecked(key,val){_packChecked[key]=val;try{localStorage.setItem('brt_pack_checked',JSON.stringify(_packChecked));}catch(e){}}
 var _packShowTotal = false; // flat total list — no stage breakdown
 
 function renderPackList() {
