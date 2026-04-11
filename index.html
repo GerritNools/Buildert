@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.837</title>
+<title>WTU · Buildert v3.839</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -102,6 +102,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hdr-h);
 /* status row — tappable status chips */
 .card-meta{padding:3px 14px 7px 17px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .stat-chips{display:flex;gap:4px;flex-wrap:wrap;}
+.sc-ok{background:rgba(61,220,132,.15)!important;color:var(--ok)!important;border-color:var(--ok)!important}
 .stat-chip{padding:5px 10px;border-radius:20px;border:1px solid var(--border);
   background:var(--panel);font-family:var(--cond);font-weight:700;font-size:10px;
   letter-spacing:.5px;color:var(--muted);cursor:pointer;white-space:nowrap;
@@ -405,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.837</small></div>
+  <div class="logo">WTU <small>v3.839</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -870,7 +871,7 @@ function chainW(id,vis){
   });
   return t;
 }
-function statClass(s){
+function statClass(s){ if(!s) return ''; 
   if(s==='Active'||s==='Mounted'||s==='Online') return 's-ok';
   if(s==='GoAndCheck'||s==='Swap') return 's-warn';
   if(s==='Swapped'||s==='Offline') return 's-danger';
@@ -2649,64 +2650,10 @@ function _mapInitEvents(){
 }
 
 // ── Node sheet (tap device on map → serial/status) ─────────────────
-function nodeSheetOpen(gi){
-  _nodeGi=gi;
-  var d=devices[gi];
-  var col=MAP_TYPE_COL[d.type]||'#55606e';
-  document.getElementById('node-sheet-title').textContent=d.device_id;
-  document.getElementById('node-serial-input').value=d.serial||'';
-  // info block
-  var hasSn=d.serial&&d.serial.replace(/-/g,'').trim();
-  document.getElementById('node-sheet-info').innerHTML=
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    +'<span style="font-family:var(--cond);font-size:12px;color:'+col+'">'+TSHORT[d.type]+'</span>'
-    +(d.location?'<span style="font-size:12px;color:var(--muted)">📍 '+d.location+'</span>':'')
-    +'<span style="font-family:var(--mono);font-size:11px;color:'+(hasSn?'#3ddc84':'#ff4d4d')+'">'+(hasSn?'SN: '+d.serial:'NO SERIAL')+'</span>'
-    +'</div>'
-    +'<div style="margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--muted)">Completion: '+pct(d)+'%</div>';
-  // status chips
-  var chips=STATUS_OPTS.map(function(s){
-    var active=d.status===s;
-    var sc=active?'stat-chip '+statClass(s):'stat-chip';
-    return '<span class="'+sc+'" onclick="nodeSetStatus(\''+s+'\')">'+s+'</span>';
-  }).join('');
-  document.getElementById('node-status-chips').innerHTML=chips;
-  document.getElementById('node-cam-status').textContent='';
-  // show sheet
-  var ovl=document.getElementById('ovl-node'),sh=document.getElementById('sheet-node');
-  ovl.classList.add('open');
-  requestAnimationFrame(function(){sh.classList.add('open');});
-  setTimeout(function(){document.getElementById('node-serial-input').focus();},300);
-}
-
-function nodeCloseSheet(){
-  _nodeStopScan();
-  var ovl=document.getElementById('ovl-node'),sh=document.getElementById('sheet-node');
-  if(sh)sh.classList.remove('open');
-  if(ovl)ovl.classList.remove('open');
-}
-
-function nodeSetStatus(s){
-  if(_nodeGi<0)return;
-  devices[_nodeGi].status=s;
-  // re-render chips
-  var chips=STATUS_OPTS.map(function(st){
-    var active=st===s;
-    return '<span class="'+(active?'stat-chip '+statClass(s):'stat-chip')+'" onclick="nodeSetStatus(\''+st+'\')">'+st+'</span>';
-  }).join('');
-  document.getElementById('node-status-chips').innerHTML=chips;
-}
-
-function nodeCommit(){
-  if(_nodeGi<0)return;
-  var val=document.getElementById('node-serial-input').value.trim().toUpperCase().slice(0,15);
-  if(val) devices[_nodeGi].serial=val;
-  // status already set live via nodeSetStatus
-  autoSave();
-  showToast(devices[_nodeGi].device_id+(val?' → '+val:''),'ok');
-  nodeCloseSheet();
-  renderMap(); // refresh node colors
-}
+function nodeSheetOpen(gi){ openDeviceSheet(gi); }
+function nodeCloseSheet(){ _closeUnifiedSheet(); }
+function nodeSetStatus(s){ /* handled by _udsSetStatus */ }
+function nodeCommit(){ /* handled by _udsCommit */ }
 
 // Camera scanning from the node sheet
 function nodeStartScan(){
@@ -3462,49 +3409,248 @@ function _mNodeRender() {
   _mNodeApplyTransform();
 }
 
-function _closeNodeTapSheet(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
-function _mNodeTap(gi) {
-  var d=devices[gi]; if(!d) return;
-  _closeNodeTapSheet();
-  var sheet=document.createElement('div');
-  sheet.id='node-tap-sheet';
-  sheet.style.cssText='position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);border-radius:16px 16px 0 0;z-index:3000;padding:12px;';
-  var col=d.type==='Laser projector'?'var(--laser)':d.type==='Smoke machine'?'var(--smoke)':d.type==='Distro'?'var(--distro)':'var(--psu)';
-  // Header
-  var hdr=document.createElement('div');
-  hdr.style.cssText='display:flex;align-items:center;gap:10px;padding:4px 0 10px;border-bottom:1px solid var(--border2);margin-bottom:8px';
-  hdr.innerHTML='<span style="font-family:var(--cond);font-weight:900;font-size:18px;color:'+col+'">'+d.device_id+'</span>'
-    +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+( d.location||'')+'</span>';
-  var closeBtn=document.createElement('button');
-  closeBtn.style.cssText='margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:0 4px';
-  closeBtn.innerHTML='&times;';
-  closeBtn.onclick=_closeNodeTapSheet;
-  hdr.appendChild(closeBtn);
-  sheet.appendChild(hdr);
-  // Action buttons
-  var grid=document.createElement('div');
-  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px';
-  var btns=[
-    {label:'&#9673; Serial', fn:function(){_closeNodeTapSheet();openSNSheet(gi);}},
-    {label:'&#128203; Specs',fn:function(){_closeNodeTapSheet();openSpecSheet(gi);}},
-    {label:'&#9998; Edit',   fn:function(){_closeNodeTapSheet();openEdit(gi);}},
-  ];
-  btns.forEach(function(b){
-    var btn=document.createElement('button');
-    btn.style.cssText='padding:12px 8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--cond);font-weight:700;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)';
-    btn.innerHTML=b.label;
-    btn.onclick=b.fn;
-    grid.appendChild(btn);
-  });
-  sheet.appendChild(grid);
-  document.body.appendChild(sheet);
-  setTimeout(function(){
-    document.addEventListener('touchstart',function _d(e){
-      if(!sheet.contains(e.target)){sheet.remove();document.removeEventListener('touchstart',_d);}
-    });
-  },100);
+
+// ── Unified device sheet (node + diagram tap) ─────────────────────
+var _devSheetGi = -1;
+// ── Unified device sheet — node view + diagram view ───────────────
+function _closeUnifiedSheet(){
+  var s=document.getElementById('unified-dev-sheet');
+  if(s) s.remove();
 }
 
+function openDeviceSheet(gi){
+  if(_mPeekMode){ showToast('Read only — no edit rights','warn'); return; }
+  var d=devices[gi]; if(!d) return;
+  _closeUnifiedSheet();
+
+  var col = d.type==='Laser projector'?'var(--laser)'
+           :d.type==='Smoke machine'  ?'var(--smoke)'
+           :d.type==='Distro'         ?'var(--distro)'
+                                      :'var(--psu)';
+  var sp  = specFor(d)||{};
+  var p   = pct(d);
+  var pCol= p===100?'var(--ok)':p>60?'var(--warn)':'var(--danger)';
+
+  /* ── root sheet ── */
+  var sheet=document.createElement('div');
+  sheet.id='unified-dev-sheet';
+  sheet.style.cssText='position:fixed;bottom:0;left:0;right:0;'
+    +'background:var(--surface);border-top:2px solid '+col+';'
+    +'border-radius:18px 18px 0 0;z-index:4000;'
+    +'max-height:88vh;overflow-y:auto;'
+    +'box-shadow:0 -8px 32px rgba(0,0,0,.55);'
+    +'-webkit-overflow-scrolling:touch';
+
+  /* ── header ── */
+  var hdr=document.createElement('div');
+  hdr.style.cssText='padding:14px 16px 10px;display:flex;align-items:center;gap:10px;'
+    +'position:sticky;top:0;background:var(--surface);z-index:1;'
+    +'border-bottom:1px solid var(--border2)';
+
+  var dot=document.createElement('div');
+  dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+col+';flex-shrink:0';
+
+  var idSpan=document.createElement('span');
+  idSpan.style.cssText='font-family:var(--cond);font-weight:900;font-size:20px;color:'+col;
+  idSpan.textContent=d.device_id;
+
+  var locSpan=document.createElement('span');
+  locSpan.style.cssText='font-family:var(--mono);font-size:11px;color:var(--muted)';
+  locSpan.textContent=d.location?('📍 '+d.location):'';
+
+  var pctSpan=document.createElement('span');
+  pctSpan.id='uds-pct';
+  pctSpan.style.cssText='font-family:var(--mono);font-size:13px;font-weight:700;color:'+pCol+';margin-left:auto';
+  pctSpan.textContent=p+'%';
+
+  var xBtn=document.createElement('button');
+  xBtn.style.cssText='background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer;padding:0 4px;line-height:1';
+  xBtn.innerHTML='&times;';
+  xBtn.onclick=_closeUnifiedSheet;
+
+  hdr.append(dot,idSpan,locSpan,pctSpan,xBtn);
+  sheet.appendChild(hdr);
+
+  /* ── body wrapper ── */
+  var body=document.createElement('div');
+  body.style.cssText='padding:0 0 8px';
+
+  /* status */
+  var secStatus=_udsSection('STATUS');
+  var statusRow=document.createElement('div');
+  statusRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px';
+  STATUS_OPTS.forEach(function(s){
+    var chip=document.createElement('span');
+    chip.className=(d.status===s)?'stat-chip '+statClass(s):'stat-chip';
+    chip.textContent=s;
+    chip.onclick=function(){ _udsSetStatus(gi,s,sheet); };
+    statusRow.appendChild(chip);
+  });
+  body.appendChild(secStatus); body.appendChild(statusRow);
+
+  /* checks */
+  var checks=checksFor(d.type)||[];
+  if(checks.length){
+    var secChk=_udsSection('CHECKS');
+    var chkRow=document.createElement('div');
+    chkRow.id='uds-checks';
+    chkRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px';
+    checks.forEach(function(ch){
+      var on=d.checks&&d.checks[ch];
+      var chip=document.createElement('span');
+      chip.className=on?'stat-chip sc-ok':'stat-chip';
+      chip.textContent=(on?'✓ ':'')+ch;
+      chip.onclick=function(){ _udsToggleCheck(gi,ch,sheet); };
+      chkRow.appendChild(chip);
+    });
+    body.appendChild(secChk); body.appendChild(chkRow);
+  }
+
+  /* serial */
+  var secSn=_udsSection('SERIAL');
+  var snRow=document.createElement('div');
+  snRow.style.cssText='display:flex;gap:8px;align-items:center;padding:0 16px 12px';
+  var snInp=document.createElement('input');
+  snInp.id='uds-sn';
+  snInp.type='text'; snInp.maxLength=15;
+  snInp.placeholder='scan or type…';
+  snInp.value=d.serial||'';
+  snInp.style.cssText='flex:1;font-family:var(--mono);font-size:20px;letter-spacing:4px;'
+    +'text-transform:uppercase;background:var(--panel);border:1px solid var(--border);'
+    +'color:var(--text);border-radius:6px;padding:8px 12px';
+  snInp.oninput=function(){ this.value=this.value.toUpperCase().slice(0,15); };
+  snInp.onkeydown=function(ev){ if(ev.key==='Enter') _udsCommit(gi,sheet); };
+  var saveBtn=document.createElement('button');
+  saveBtn.style.cssText='background:var(--accent);color:#000;border:none;border-radius:6px;'
+    +'padding:10px 18px;font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer;flex-shrink:0';
+  saveBtn.textContent='✓ Save';
+  saveBtn.onclick=function(){ _udsCommit(gi,sheet); };
+  snRow.append(snInp,saveBtn);
+  body.appendChild(secSn); body.appendChild(snRow);
+
+  /* notes */
+  var secNotes=_udsSection('NOTES');
+  var notesInp=document.createElement('input');
+  notesInp.type='text'; notesInp.placeholder='Rigger note…';
+  notesInp.value=d.notes||'';
+  notesInp.style.cssText='width:100%;box-sizing:border-box;background:var(--panel);'
+    +'border:1px solid var(--border);color:var(--text);border-radius:6px;'
+    +'padding:7px 10px;font-size:13px;margin:0 0 10px';
+  notesInp.oninput=function(){ devices[gi].notes=this.value; autoSave(); };
+  var notesWrap=document.createElement('div');
+  notesWrap.style.cssText='padding:0 16px 10px';
+  notesWrap.appendChild(notesInp);
+  body.appendChild(secNotes); body.appendChild(notesWrap);
+
+  /* bottom row: spec summary + small Specs / Edit buttons */
+  var specParts=[];
+  if(sp.laser_w) specParts.push(sp.laser_w+'W ⚡');
+  if(sp.consumption_w) specParts.push(sp.consumption_w+'W 🔌');
+  if(sp.weight_kg) specParts.push(sp.weight_kg+'kg');
+  var actRow=document.createElement('div');
+  actRow.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 16px 16px;'
+    +'border-top:1px solid var(--border2);margin-top:4px';
+  var specInfo=document.createElement('span');
+  specInfo.style.cssText='font-family:var(--mono);font-size:10px;color:var(--muted);flex:1';
+  specInfo.textContent=specParts.join('  ');
+  var sBtn=document.createElement('button');
+  sBtn.style.cssText='padding:7px 14px;background:var(--panel);border:1px solid var(--border);'
+    +'color:var(--muted);border-radius:6px;font-family:var(--cond);font-weight:700;'
+    +'font-size:12px;cursor:pointer;flex-shrink:0';
+  sBtn.innerHTML='📋 Specs';
+  sBtn.onclick=function(){ _closeUnifiedSheet(); openSpecSheet(gi); };
+  var eBtn=document.createElement('button');
+  eBtn.style.cssText=sBtn.style.cssText;
+  eBtn.innerHTML='✎ Edit';
+  eBtn.onclick=function(){ _closeUnifiedSheet(); openEdit(gi); };
+  actRow.append(specInfo,sBtn,eBtn);
+  body.appendChild(actRow);
+
+  sheet.appendChild(body);
+  document.body.appendChild(sheet);
+
+  /* auto-focus serial */
+  setTimeout(function(){ snInp.focus(); },200);
+
+  /* dismiss on outside tap */
+  setTimeout(function(){
+    function _ud(e){ if(!sheet.contains(e.target)){ sheet.remove(); document.removeEventListener('touchstart',_ud); } }
+    document.addEventListener('touchstart',_ud);
+  },150);
+}
+
+/* helpers */
+function _udsSection(label){
+  var el=document.createElement('div');
+  el.style.cssText='font-family:var(--mono);font-size:9px;letter-spacing:2px;'
+    +'color:var(--muted);padding:8px 16px 4px';
+  el.textContent=label;
+  return el;
+}
+function _udsRefreshPct(gi,sheet){
+  var el=sheet?sheet.querySelector('#uds-pct'):null;
+  if(!el) return;
+  var p=pct(devices[gi]);
+  var pCol=p===100?'var(--ok)':p>60?'var(--warn)':'var(--danger)';
+  el.textContent=p+'%'; el.style.color=pCol;
+}
+function _udsSetStatus(gi,s,sheet){
+  if(_mPeekMode) return;
+  devices[gi].status=s;
+  _logActivity(devices[gi].device_id,'Status: '+s);
+  if(_mStages.length) _mStages[_mCurrentStageIdx].devices=devices;
+  autoSave();
+  /* refresh chips */
+  sheet.querySelectorAll('.stat-chip[data-udstype="status"]').forEach(function(){});
+  /* simpler: re-colour all status chips */
+  var chips=sheet.querySelectorAll('.stat-chip');
+  /* only status section chips — iterate STATUS_OPTS by textContent */
+  chips.forEach(function(chip){
+    if(STATUS_OPTS.indexOf(chip.textContent)>=0){
+      chip.className=(chip.textContent===s)?'stat-chip '+statClass(s):'stat-chip';
+    }
+  });
+  _udsRefreshPct(gi,sheet);
+  if(currentTab==='diagram'||currentTab==='map') renderMain();
+  else renderMain();
+}
+function _udsToggleCheck(gi,ch,sheet){
+  if(_mPeekMode) return;
+  if(!devices[gi].checks) devices[gi].checks={};
+  devices[gi].checks[ch]=!devices[gi].checks[ch];
+  if(ch==='Mounted'&&devices[gi].checks[ch]){
+    var n=new Date(),pad=function(v){return v<10?'0'+v:''+v;};
+    devices[gi].mounted_at=pad(n.getHours())+':'+pad(n.getMinutes());
+  }
+  _logActivity(devices[gi].device_id,ch+': '+(devices[gi].checks[ch]?'checked':'unchecked'));
+  if(_mStages.length) _mStages[_mCurrentStageIdx].devices=devices;
+  autoSave();
+  /* refresh check chips */
+  var row=sheet.querySelector('#uds-checks');
+  if(row){ row.querySelectorAll('.stat-chip').forEach(function(chip){
+    var label=chip.textContent.replace(/^✓ /,'');
+    if(label===ch){
+      var on=devices[gi].checks[ch];
+      chip.className=on?'stat-chip sc-ok':'stat-chip';
+      chip.textContent=(on?'✓ ':'')+ch;
+    }
+  }); }
+  _udsRefreshPct(gi,sheet);
+}
+function _udsCommit(gi,sheet){
+  var inp=document.getElementById('uds-sn');
+  var val=inp?inp.value.trim().toUpperCase().slice(0,15):'';
+  if(val){ devices[gi].serial=val; _logActivity(devices[gi].device_id,'Serial: '+val); }
+  if(_mStages.length) _mStages[_mCurrentStageIdx].devices=devices;
+  autoSave();
+  if(_workerUrl&&_projectKey) setTimeout(function(){ wPush(true); },500);
+  showToast(devices[gi].device_id+(val?' SN: '+val:'')+' ✓','ok');
+  _closeUnifiedSheet();
+  renderMain();
+}
+
+function _closeNodeTapSheet(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
+function _mNodeTap(gi){ openDeviceSheet(gi); }
 function _mNodeInitEvents() {
   var svg = document.getElementById('mob-node-svg');
   if (!svg || svg._mEventsAttached) return;
