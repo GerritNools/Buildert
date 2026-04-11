@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.835</title>
+<title>WTUniverse · Buildert Editor v3.839</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.835</div>
+    <div>build v3.839</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -470,7 +470,8 @@
       </div>
       <div class="fm-sep"></div>
       <div class="fm-item" onclick="fileSave()" id="fm-save">&#128190; Save <span style="color:var(--muted);font-size:10px">Cmd+S</span></div>
-      <div class="fm-item" onclick="fileSaveAs()">&#128190; Save As…</div>
+      <div class="fm-item" onclick="fileDownload()">&#8681; Download .buildert…</div>
+      <div class="fm-item" onclick="fileSaveAs()">&#128190; Save As… <span style="color:var(--muted);font-size:10px">(Chrome only)</span></div>
       <div class="fm-sep"></div>
       <div class="fm-item" onclick="fileLoadSpecs()">&#128203; Import Specs (CSV)…</div>
       <div class="fm-item" onclick="fileExportSpecs()">&#128229; Export Specs (CSV)…</div>
@@ -485,7 +486,7 @@
     <span id="file-name" style="font-family:var(--mono);font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">no file — use File → New or Open</span>
     <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
   </div>
-  <button id="quicksave-btn" onclick="fileQuickSave()" title="Quick Save (download)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>
+  <button id="quicksave-btn" onclick="fileQuickSave()" title="Save to browser (Cmd+S)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>  <button onclick="fileDownload()" title="Download .buildert file" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#8681; DL</button>
   <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
@@ -690,9 +691,12 @@
   <div id="pack-panel" style="display:none">
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0 8px;flex-wrap:wrap">
       <span style="font-family:var(--cond);font-weight:900;font-size:15px;letter-spacing:2px;color:var(--accent)">PACKING LIST</span>
+      <div id="pack-workflow-btns" style="display:flex;gap:4px"></div>
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-ghost" onclick="packSignOff()" style="padding:5px 11px;font-size:11px">&#9998; Sign off</button>
         <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
+        <select id="pack-sort-sel" onchange="_packSort=this.value;renderPackList()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;font-size:11px;font-family:var(--mono)"><option value="cat">By type</option><option value="stage">By stage</option><option value="model">By model</option><option value="status">By status</option><option value="alpha">A&#x2013;Z</option></select>
         <button class="btn btn-ghost" onclick="packPrint(true)" style="padding:5px 11px;font-size:12px">&#128438; Print all</button>
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
       </div>
@@ -1492,7 +1496,7 @@ function setTab(tab) {
 
   if (tab === 'devices'){ if (tw) tw.style.display=''; renderDeviceCatBar(); renderTable(); sizeTableWrap(); }
   else if (tab === 'node')  { if (ncw) ncw.style.display='block'; renderNodeView(); }
-  else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; renderPackList(); }
+  else if (tab === 'pack')  { if (pcw) pcw.style.display='block'; _renderPackWorkflowBtns(); renderPackList(); }
   else if (tab === 'specs')  { if (sv)  sv.style.display='block';  renderSpecs(); sizeTableWrap(); }
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
   else if (tab === 'todos')   { if (tdv) tdv.style.display='block'; renderTodosPanel(); }
@@ -1568,55 +1572,56 @@ function distroLoadW(id) { return chainLoadW(id); }
 // DEVICE_SPECS — sourced from devices.xlsx
 // Key = first word of device_id (uppercase). e.g. "RGBB 3" → key "RGBB"
 var DEVICE_SPECS = {
-  // ── Lasers ───────────────────────────────────────────────────────────────────────────────────────
-  'RGB20':          {category:'laser',alt:'RGCB20',              phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:20,  weight_kg:18.0, inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'192.168.10.X',scanners:'SM506',  angle:'40°',scanrate_kpps:23,ops_diode:'Diode',            desc:'20W RGB laser — gele sticker',                                notes:''},
-  'CYAN':           {category:'laser',alt:'Green/Blue',          phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:14,  weight_kg:12.5, inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'DT50',   angle:'40°',scanrate_kpps:23,ops_diode:'Gr=OPS Bl=Diode',    desc:'GB — Gr=OPS  Bl=Diode',                                        notes:''},
-  'WHITE':          {category:'laser',alt:'Yellow/Blue',         phases:1,consumption_w:500, max_a_230:2.2, max_a_110:4.6, laser_w:null,weight_kg:12.5, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'DT50',   angle:'40°',scanrate_kpps:23,ops_diode:'Y=OPS Bl=Diode',      desc:'YB — Y=OPS  Bl=Diode',                                         notes:''},
-  'RGBB':           {category:'laser',alt:'RGBB',                phases:1,consumption_w:1035,max_a_230:4.5, max_a_110:9.4, laser_w:14,  weight_kg:18.0, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS+dark blue Diode', desc:'OPS + dark blue Diode',                                            notes:''},
-  'GOPSL':          {category:'laser',alt:'Green OPS / G10',     phases:1,consumption_w:460, max_a_230:2.0, max_a_110:4.2, laser_w:10,  weight_kg:8.2,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS',                desc:'Green OPS laser',                                                  notes:'LET OP! Doorlus 0.7mm² — max 10A totale doorlus'},
-  'SUPERNOVA':      {category:'laser',alt:'Supernova',           phases:1,consumption_w:1900,max_a_230:8.1, max_a_110:17.3,laser_w:null,weight_kg:37.0, inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'192.168.9.X', scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS',                desc:'Large OPS unit',                                                   notes:''},
-  'LI 13AS':        {category:'laser',alt:'LI 13AS',             phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'LW15':           {category:'laser',alt:'LW15',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'LW30':           {category:'laser',alt:'LW30',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'Tarm30 ip':      {category:'laser',alt:'Tarm30 ip',           phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'Tarm30 PPP':     {category:'laser',alt:'Tarm30 PPP',          phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'Tarm30 LIC':     {category:'laser',alt:'Tarm30 LIC',          phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'XS30':           {category:'laser',alt:'XS30',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'Silver bracket',                                                   notes:''},
-  'XS35':           {category:'laser',alt:'XS35',                phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'Black bracket',                                                    notes:''},
-  'PIKO35':         {category:'laser',alt:'RTI Piko 35',         phases:1,consumption_w:1000,max_a_230:null,max_a_110:null,laser_w:35,  weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'CT6210', angle:'51°',scanrate_kpps:30,ops_diode:null,              desc:'RTI Piko 35',                                                      notes:''},
-  'PIKO60':         {category:'laser',alt:'RTI Piko 60',         phases:1,consumption_w:1500,max_a_230:null,max_a_110:null,laser_w:60,  weight_kg:41.0,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:'EMS-8000',angle:null, scanrate_kpps:null,ops_diode:null,              desc:'RTI Piko 60',                                                      notes:''},
-  'PIKO70':         {category:'laser',alt:'RTI Piko 70',         phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:70,  weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'RTI Piko 70',                                                      notes:''},
-  'PIKO120':        {category:'laser',alt:'RTI Piko 120',        phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:120, weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'PIKO135':        {category:'laser',alt:'RTI Piko 135',        phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:135, weight_kg:null,  inputs:1,pwr_in:'TR1',          data_in:'Ethercon',      outputs:1,pwr_out:'TR1',          data_out:'Ethercon',      ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'Hexascan':       {category:'laser',alt:'Hexascan',            phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,  inputs:1,pwr_in:'',             data_in:'',              outputs:1,pwr_out:'',             data_out:'',              ip:'',            scanners:null,     angle:null, scanrate_kpps:null,ops_diode:null,               desc:'',                                                                 notes:''},
-  'RGB6':           {category:'laser',alt:'RGB6',                phases:1,consumption_w:300, max_a_230:1.3, max_a_110:2.7, laser_w:6,   weight_kg:7.0,   inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'192.168.6.X', scanners:'SM506',  angle:'40°',scanrate_kpps:23,ops_diode:'Diode',            desc:'6W RGB laser',                                                     notes:''},
-  'HULK':           {category:'laser',alt:'Hulk',                phases:1,consumption_w:3600,max_a_230:16,  max_a_110:null,laser_w:null,weight_kg:65,    inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',            data_out:'',              ip:'',            scanners:'SM',     angle:null, scanrate_kpps:30, ops_diode:null,               desc:'Grote unit met extra koel unit',                                   notes:'LET OP! ALLEEN 230V'},
-  'VIPER':          {category:'laser',alt:'Coherent Viper',      phases:1,consumption_w:850, max_a_230:3.7, max_a_110:7.8, laser_w:20,  weight_kg:35.0,  inputs:1,pwr_in:'TR1',          data_in:'',              outputs:1,pwr_out:'TR1',          data_out:'',              ip:'192.168.5.X', scanners:'CT6215', angle:'60°',scanrate_kpps:30,ops_diode:'OPS Fiber',   desc:'Oude unit, plastic zijplaten',                                     notes:'Smalle beam'},
-  // ── Distros ──────────────────────────────────────────────────────────────────────────────────────
-  '32A PC Distro':    {category:'distro',alt:'32A Distro PC',    phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:12,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:12,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'12 out / 3 in / 3-phase / PC connectors',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
-  '32A PeliDistro PL':{category:'distro',alt:'32A Distro PL',   phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:12,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:12,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'12 out / 3 in / noodstop / 3-phase',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
-  '32AFIBRE PeliDistro PC':{category:'distro',alt:'32A Fibre Distro',phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:6,outlet_phases:'1-2:L1,3-4:L2,5-6:L3',inputs:3,pwr_in:'32ACEE',data_in:'',outputs:6,pwr_out:'16ACEEBlue',data_out:'',fibre:true,desc:'6 out / fibre media converter / 3-phase',in_connector:'32ACEE',out_connector:'16ACEEBlue',notes:'CEE RED 32A 3P+N+E'},
-  'New 4port PC':   {category:'distro',alt:'4-Port PC Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:4,outlet_phases:'',inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:4,pwr_out:'TR1',data_out:'Ethercon',fibre:false,desc:'4 out / 1 in / 1-phase / PC connectors',in_connector:'TR1',out_connector:'TR1',notes:''},
-  '8-PORT PL':      {category:'distro',alt:'8-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:6,outlet_phases:'',inputs:2,pwr_in:'Schuko',data_in:'',outputs:6,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'6 out / 2 in / 1-phase / Schuko 16A',in_connector:'Schuko',out_connector:'16ACEEBlue',notes:'Schuko 16A input'},
-  '4-PORT PL':      {category:'distro',alt:'4-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:4,outlet_phases:'',inputs:4,pwr_in:'16ACEEBlue',data_in:'',outputs:4,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'4 out / 4 in / 1-phase',in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
-  '3-PORT PL':      {category:'distro',alt:'3-Port PL Distro',  phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:3,outlet_phases:'',inputs:4,pwr_in:'16ACEEBlue',data_in:'',outputs:3,pwr_out:'16ACEEBlue',data_out:'',fibre:false,desc:'3 out / 4 in / 1-phase',in_connector:'16ACEEBlue',out_connector:'16ACEEBlue',notes:''},
-  // ── Smoke machines ───────────────────────────────────────────────────────────────────────────────
-  'PEASOUP':        {category:'smoke',alt:'Pea Soup',            phases:1,consumption_w:2200,max_a_230:10, max_a_110:20,  weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:'mineral',desc:'Low-lying fog — mineral oil',in_connector:'Schuko',out_connector:'',notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
-  'SHOCKFOG':       {category:'smoke',alt:'Shockfog',            phases:1,consumption_w:2200,max_a_230:10, max_a_110:20,  weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:'glycol', desc:'Hazer — glycol oil, no CO2',in_connector:'Schuko',out_connector:'',notes:'Glycol oil — no CO2 needed'},
-  'FAN':            {category:'smoke',alt:'Fan unit',            phases:1,consumption_w:1000,max_a_230:4.4, max_a_110:9,   weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',outputs:0,pwr_out:'',data_out:'',ip:'',oil_type:null,  desc:'Fan unit for smoke/haze',in_connector:'Schuko',out_connector:'',notes:''},
-  // ── Power supplies (wall power) ──────────────────────────────────────────────────────────────────
-  'RED32A CEE':     {category:'psu',alt:'32A CEE Wall',     phases:3,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'32ACEE',  data_out:'',desc:'32A 3-phase wall outlet',notes:''},
-  '230V Schuko':    {category:'psu',alt:'230V Schuko Wall', phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Schuko',   data_out:'',desc:'230V Schuko wall outlet',notes:''},
-  'L21-30 PSU':     {category:'psu',alt:'L21-30 Wall',      phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'L21-30',   data_out:'',desc:'L21-30 wall outlet',notes:''},
-  '16A CEE':        {category:'psu',alt:'16A CEE Wall',     phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'16ACEEBlue',data_out:'',desc:'16A CEE (blue) wall outlet',notes:''},
-  'Edison PSU':     {category:'psu',alt:'Edison Wall',      phases:1,consumption_w:null,weight_kg:null,ip:'',outlets:1,outlet_phases:'',inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Edison',    data_out:'',desc:'Edison wall outlet',notes:''},
-  // ── Adapters ─────────────────────────────────────────────────────────────────────────────────────
-  'L21-30 to 32A CEE':{category:'adapter',alt:'L21-30 to CEE',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'L21-30',data_in:'',outputs:1,pwr_out:'32ACEE',data_out:'',desc:'L21-30 male to 32A CEE female',notes:''},
-  '16A CEE to Schuko':{category:'adapter',alt:'CEE to Schuko',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'16ACEEBlue',data_in:'',outputs:1,pwr_out:'Schuko',data_out:'',desc:'16A CEE to Schuko adapter',notes:''},
-  'PL to PC':       {category:'adapter',alt:'PowerLAN to PowerCAT',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'TR1',data_out:'Ethercon',desc:'PowerLAN female to PowerCAT male',notes:''},
-  'PC to PL':       {category:'adapter',alt:'PowerCAT to PowerLAN',phases:1,consumption_w:null,weight_kg:null,ip:'',inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',desc:'PowerCAT female to PowerLAN male',notes:''},
+  // ── LASERS (PL = HartingPushPull, PC = TR1+Ethercon) ─────────────────────────────────────────
+  'RGB20':     {category:'laser',alt:'RGCB20',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:20,weight_kg:18,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'192.168.10.X',scanners:'SM506',angle:'40°',ops_diode:'Diode',desc:'20W RGB laser — gele sticker',notes:''},
+  'CYAN':      {category:'laser',alt:'Green/Blue',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:14,weight_kg:12.5,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'DT50',angle:'40°',ops_diode:'Gr=OPS Bl=Diode',desc:'GB — Gr=OPS Bl=Diode',notes:''},
+  'WHITE':     {category:'laser',alt:'Yellow/Blue',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:null,weight_kg:12.5,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'',data_out:'',ip:'',scanners:'DT50',angle:'40°',ops_diode:'Y=OPS Bl=Diode',desc:'YB — Y=OPS Bl=Diode',notes:''},
+  'RGBB':      {category:'laser',alt:'RGBB',phases:1,consumption_w:1035,max_a_230:4.5,max_a_110:9.4,laser_w:14,weight_kg:18,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'',data_out:'',ip:'',scanners:'CT6215',angle:'60°',ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',notes:''},
+  'GOPSL':     {category:'laser',alt:'Green OPS / G10',phases:1,consumption_w:460,max_a_230:2,max_a_110:4.2,laser_w:10,weight_kg:8.2,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'CT6215',angle:'60°',ops_diode:'OPS',desc:'Green OPS laser',notes:'LET OP! Doorlus 0.7mm² — max 10A totale doorlus'},
+  'SUPERNOVA': {category:'laser',alt:'Supernova',phases:1,consumption_w:1900,max_a_230:8.1,max_a_110:17.3,laser_w:null,weight_kg:37,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:2,pwr_out:'',data_out:'',ip:'192.168.9.X',scanners:'CT6215',angle:'60°',ops_diode:'OPS',desc:'Large OPS unit',notes:''},
+  'LI 13AS':   {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'LW15':      {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'LW30':      {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 ip': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 PPP':{category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 LIC':{category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'XS30':      {category:'laser',alt:'Phaenon XS 30 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Silver bracket',notes:''},
+  'XS35':      {category:'laser',alt:'Phaenon XS 35 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Black bracket',notes:''},
+  'PIKO35':    {category:'laser',alt:'RTI Piko 35',phases:1,consumption_w:1000,max_a_230:null,max_a_110:null,laser_w:35,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'CT6210',angle:'51°',ops_diode:'',desc:'RTI Piko 35',notes:''},
+  'PIKO60':    {category:'laser',alt:'RTI Piko 60',phases:1,consumption_w:1500,max_a_230:null,max_a_110:null,laser_w:60,weight_kg:41,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'EMS-8000',angle:'',ops_diode:'',desc:'RTI Piko 60',notes:''},
+  'PIKO70':    {category:'laser',alt:'RTI Piko 70',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:70,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'RTI Piko 70',notes:''},
+  'PIKO120':   {category:'laser',alt:'RTI Piko 120',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:120,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'PIKO135':   {category:'laser',alt:'RTI Piko 135',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:135,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'TR1',data_out:'Ethercon',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Hexascan':  {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',outputs:1,pwr_out:'',data_out:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'RGB6':      {category:'laser',alt:'RGB6',phases:1,consumption_w:300,max_a_230:1.3,max_a_110:2.7,laser_w:6,weight_kg:7,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',ip:'192.168.6.X',scanners:'SM506',angle:'40°',ops_diode:'Diode',desc:'6W RGB laser',notes:''},
+  'HULK':      {category:'laser',alt:'Hulk',phases:1,consumption_w:3600,max_a_230:16,max_a_110:null,laser_w:null,weight_kg:65,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:0,pwr_out:'',data_out:'',ip:'',scanners:'SM',angle:'',ops_diode:'',desc:'Grote unit met extra koel unit',notes:'LET OP! ALLEEN 230V'},
+  'VIPER':     {category:'laser',alt:'Coherent Viper',phases:1,consumption_w:850,max_a_230:3.7,max_a_110:7.8,laser_w:20,weight_kg:35,inputs:1,pwr_in:'TR1',data_in:'',outputs:1,pwr_out:'TR1',data_out:'',ip:'192.168.5.X',scanners:'CT6215',angle:'60°',ops_diode:'OPS Fiber',desc:'Oude unit, plastic zijplaten',notes:'Smalle beam'},
+  // ── DISTROS (PC=TR1+Ethercon, PL=HartingPushPull) ────────────────────────────────────────────
+  '32A PC Distro':          {category:'distro',alt:'2026 big',phases:3,outlets:12,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',inputs:1,pwr_in:'32ACEE',data_in:'Ethercon',outputs:12,pwr_out:'TR1',data_out:'Ethercon',in_connector:'32ACEE',out_connector:'TR1',desc:'12 out TR1 / 3-phase / PC connectors',notes:'CEE RED 32A 3P+N+E'},
+  '32A PeliDistro PL':      {category:'distro',alt:'32A Distro',phases:3,outlets:12,outlet_phases:'1-2:L1,3-4:L2,5-6:L3',inputs:1,pwr_in:'32ACEE',data_in:'HartingPushPull',outputs:6,pwr_out:'HartingPushPull',data_out:'HartingPushPull',in_connector:'32ACEE',out_connector:'HartingPushPull',desc:'6 out PL / noodstop / 3-phase',notes:'CEE RED 32A 3P+N+E'},
+  '32AFIBRE PeliDistro PC': {category:'distro',alt:'32A Distro fibre',phases:3,outlets:3,outlet_phases:'1:L1,2:L2,3:L3',inputs:1,pwr_in:'32ACEE',data_in:'HartingPushPull',outputs:3,pwr_out:'HartingPushPull',data_out:'HartingPushPull',in_connector:'32ACEE',out_connector:'HartingPushPull',desc:'3 out PL / fibre media converter / 3-phase',notes:'CEE RED 32A 3P+N+E'},
+  'New 4port PC':           {category:'distro',alt:'2026 small',phases:1,outlets:3,outlet_phases:'',inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:3,pwr_out:'TR1',data_out:'Ethercon',in_connector:'TR1',out_connector:'TR1',desc:'3 out TR1 / 1-phase / PC',notes:''},
+  '8-PORT PL':              {category:'distro',alt:'8 Port Distro',phases:1,outlets:6,outlet_phases:'',inputs:1,pwr_in:'Schuko',data_in:'HartingPushPull',outputs:6,pwr_out:'HartingPushPull',data_out:'HartingPushPull',in_connector:'Schuko',out_connector:'HartingPushPull',desc:'6 out PL / 1-phase / Schuko 16A',notes:'Schuko 16A input'},
+  '4-PORT PL':              {category:'distro',alt:'4 Port Distro',phases:1,outlets:4,outlet_phases:'',inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:4,pwr_out:'HartingPushPull',data_out:'HartingPushPull',in_connector:'HartingPushPull',out_connector:'HartingPushPull',desc:'4 out PL / 1-phase',notes:''},
+  '3-PORT PL':              {category:'distro',alt:'3 Port Distro',phases:1,outlets:3,outlet_phases:'',inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:3,pwr_out:'HartingPushPull',data_out:'HartingPushPull',in_connector:'HartingPushPull',out_connector:'HartingPushPull',desc:'3 out PL / 1-phase',notes:''},
+  // ── SMOKE (now using TR1 / PC32 connectors) ───────────────────────────────────────────────────
+  'PEASOUP':   {category:'smoke',alt:'Pea Soup',phases:1,consumption_w:2200,max_a_230:10,max_a_110:20,inputs:1,pwr_in:'TR1',data_in:'',outputs:1,pwr_out:'TR1',data_out:'',desc:'Low-lying fog — mineral oil. Also accepts PC32.',notes:'Oil: ~1L/hr @ 3.5 bar | CO2: ~1kg/hr @ 3.5 bar'},
+  'SHOCKFOG':  {category:'smoke',alt:'Shockfog',phases:1,consumption_w:2200,max_a_230:10,max_a_110:20,inputs:1,pwr_in:'TR1',data_in:'',outputs:1,pwr_out:'TR1',data_out:'',desc:'Hazer — glycol oil, no CO2',notes:'Glycol oil — no CO2 needed'},
+  'FAN':        {category:'smoke',alt:'Fan unit',phases:1,consumption_w:1000,max_a_230:4.4,max_a_110:9,inputs:1,pwr_in:'TR1',data_in:'',outputs:0,pwr_out:'',data_out:'',desc:'Fan unit for smoke/haze',notes:''},
+  // ── POWER SUPPLIES ────────────────────────────────────────────────────────────────────────────
+  'RED32A CEE': {category:'psu',alt:'32A Red',phases:3,inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'32ACEE',data_out:'',desc:'32A 3-phase wall outlet',notes:''},
+  '230V Schuko':{category:'psu',alt:'230V Schuko',phases:1,inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Schuko',data_out:'',desc:'230V Schuko wall outlet',notes:''},
+  'L21-30 PSU': {category:'psu',alt:'L21-30 Wall',phases:3,inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'L21-30',data_out:'',desc:'L21-30 wall outlet',notes:''},
+  '16A CEE':    {category:'psu',alt:'16 Blue',phases:1,inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'16ACEEBlue',data_out:'',desc:'16A CEE blue wall outlet',notes:''},
+  'Edison PSU': {category:'psu',alt:'Edison',phases:1,inputs:0,pwr_in:'',data_in:'',outputs:1,pwr_out:'Edison',data_out:'',desc:'Edison wall outlet',notes:''},
+  // ── ADAPTERS ─────────────────────────────────────────────────────────────────────────────────
+  'L21-30 to 32A CEE': {category:'adapter',alt:'',phases:3,inputs:1,pwr_in:'L21-30',data_in:'',outputs:1,pwr_out:'32ACEE',data_out:'',desc:'L21-30 male to 32A CEE female',notes:''},
+  '16A CEE to Schuko':  {category:'adapter',alt:'',phases:1,inputs:1,pwr_in:'16ACEEBlue',data_in:'',outputs:1,pwr_out:'Schuko',data_out:'',desc:'16A CEE to Schuko',notes:''},
+  'PL to PC':          {category:'adapter',alt:'Plastic box to convert HartingPushPull to TR1/Ethercon',phases:1,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',outputs:1,pwr_out:'TR1',data_out:'Ethercon',desc:'PL→PC adapter',notes:''},
+  'PC to PL':          {category:'adapter',alt:'Plastic box to convert TR1/Ethercon to HartingPushPull',phases:1,inputs:1,pwr_in:'TR1',data_in:'Ethercon',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',desc:'PC→PL adapter',notes:''},
+  'Schuko to TR1':     {category:'adapter',alt:'',phases:1,inputs:1,pwr_in:'Schuko',data_in:'',outputs:1,pwr_out:'TR1',data_out:'',desc:'Schuko to TR1 adapter',notes:''},
+  'L21-30 to PC32':    {category:'adapter',alt:'',phases:1,inputs:1,pwr_in:'L21-30',data_in:'',outputs:1,pwr_out:'PC32',data_out:'',desc:'L21-30 to PC32 adapter',notes:''},
 };
-
 
 // ── Cable & connector system ──────────────────────────────────────────
 // Power connectors
@@ -1661,18 +1666,28 @@ function modelFromId(device_id) {
 }
 
 var CABLE_TYPES = [
-  {key:'powercat',label:'PowerCAT',pwr_a:'TR1',pwr_b:'TR1',data_a:'Ethercon',data_b:'Ethercon',
+  // PC = TR1+Ethercon | PL = HartingPushPull
+  {key:'powercat', label:'PowerCAT', pwr_a:'TR1', pwr_b:'TR1', data_a:'Ethercon', data_b:'Ethercon',
+   lengths:[{val:0.3,lbl:'0.3 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
+  {key:'powerlan', label:'PowerLAN', pwr_a:'HartingPushPull', pwr_b:'HartingPushPull', data_a:'HartingPushPull', data_b:'HartingPushPull',
    lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
-  {key:'powerlan',label:'PowerLAN',pwr_a:'HartingPushPull',pwr_b:'HartingPushPull',data_a:'HartingPushPull',data_b:'HartingPushPull',
-   lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
-  {key:'l2130',label:'L21-30',pwr_a:'L21-30',pwr_b:'L21-30',data_a:'',data_b:'',
+  {key:'pc_pl', label:'PC→PL (mixed)', pwr_a:'TR1', pwr_b:'HartingPushPull', data_a:'Ethercon', data_b:'HartingPushPull',
+   lengths:[{val:7.5,lbl:'7.5 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
+  {key:'pl_pc', label:'PL→PC (mixed)', pwr_a:'HartingPushPull', pwr_b:'TR1', data_a:'HartingPushPull', data_b:'Ethercon',
+   lengths:[{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:80,lbl:'80 m'}]},
+  {key:'l2130',   label:'L21-30',    pwr_a:'L21-30', pwr_b:'L21-30', data_a:'', data_b:'',
    lengths:[{val:1.5,lbl:'Lunch box'},{val:8,lbl:'25 ft (8 m)'},{val:15,lbl:'50 ft (15 m)'},{val:30,lbl:'100 ft (30 m)'},{val:45,lbl:'150 ft (45 m)'}]},
-  {key:'schuko',label:'Schuko',pwr_a:'Schuko',pwr_b:'Schuko',data_a:'',data_b:'',
-   lengths:[{val:10,lbl:'10 m'},{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
-  {key:'cee32',label:'CEE 32A',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',
+  {key:'schuko',  label:'Schuko',    pwr_a:'Schuko', pwr_b:'Schuko', data_a:'', data_b:'',
+   lengths:[{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
+  {key:'cee32',   label:'CEE 32A',   pwr_a:'32ACEE', pwr_b:'32ACEE', data_a:'', data_b:'',
    lengths:[{val:10,lbl:'10 m'}]},
+  {key:'cat',     label:'CAT Ethercon', pwr_a:'', pwr_b:'', data_a:'Ethercon', data_b:'Ethercon',
+   lengths:[{val:115,lbl:'115 m'}]},
+  {key:'combidmx',label:'CombiDMX',  pwr_a:'', pwr_b:'', data_a:'', data_b:'',
+   lengths:[{val:2.5,lbl:'2.5 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:10,lbl:'10 m'}]},
+  {key:'fiber',   label:'Fiber',     pwr_a:'', pwr_b:'', data_a:'', data_b:'',
+   lengths:[{val:1,lbl:'various'}]},
 ];
-
 
 // Returns {css, label, adapterNote} for a device given its source
 function cableInfo(d) {
@@ -2069,7 +2084,7 @@ var MODEL_KEYS_BY_TYPE = {
   'Smoke machine':   ['PEASOUP','SHOCKFOG','FAN'],
   'Distro':          ['32A PC Distro','32A PeliDistro PL','32AFIBRE PeliDistro PC','New 4port PC','8-PORT PL','4-PORT PL','3-PORT PL'],
   'Power supply':    ['RED32A CEE','230V Schuko','L21-30 PSU','16A CEE','Edison PSU'],
-  'Adapter':         ['L21-30 to 32A CEE','16A CEE to Schuko','PL to PC','PC to PL'],
+  'Adapter':         ['L21-30 to 32A CEE','16A CEE to Schuko','PL to PC','PC to PL','Schuko to TR1','L21-30 to PC32'],
 };
 
 function populateModelDropdown(type, currentModel) {
@@ -2087,10 +2102,13 @@ function populateModelDropdown(type, currentModel) {
 function syncDeviceId() {
   var model = (document.getElementById('m-model-key').value || '').trim();
   var numEl = document.getElementById('m-unit-num');
-  // Auto-suggest lowest available number for this model
+  // Auto-suggest lowest available number for this model — search ALL stages
   if (model && editIndex === -1) {
     var takenNums = {};
-    devices.forEach(function(d) {
+    var allDevs = [];
+    _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+    if(!allDevs.length) allDevs = devices;
+    allDevs.forEach(function(d) {
       var dm = modelFromId(d.device_id||'');
       if (dm.toUpperCase() === model.toUpperCase()) { var rest=(d.device_id||'').slice(dm.length).trim(); var n=parseInt(rest,10); if(!isNaN(n)) takenNums[n]=true; }
     });
@@ -2255,8 +2273,12 @@ function saveDevice() {
   var type     = document.getElementById('m-type').value;
   var deviceId = document.getElementById('m-device-id').value.trim().toUpperCase();
   if (!deviceId) { showToast('Device ID is required','warn'); document.getElementById('m-device-id').focus(); return; }
-  var idConflict = devices.some(function(d,idx){ return d.device_id === deviceId && idx !== editIndex; });
-  if (idConflict) { showToast('ID "'+deviceId+'" already exists — pick a different number','warn'); return; }
+  // Check for duplicate ID across ALL stages
+  var allDevs = [];
+  _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+  if(!allDevs.length) allDevs = devices;
+  var idConflict = allDevs.some(function(d,idx){ return d.device_id === deviceId && d !== (devices[editIndex]); });
+  if (idConflict) { showToast('ID "'+deviceId+'" already exists in this project — pick a different number','warn'); return; }
 
   var chList   = checksFor(type);
   var secId    = TYPE_KEY[type] || 'laser';
@@ -2496,11 +2518,18 @@ function qaUpdatePreview() {
   var model = document.getElementById('qa-model').value || '';
   var prev  = document.getElementById('qa-id-preview');
   if (!model) { prev.textContent = '—'; return; }
-  // Find next available unit number for this model
+  // Search all stages for taken numbers (not just current stage)
   var taken = {};
-  devices.forEach(function(d) {
-    var p = (d.device_id||'').trim().toUpperCase().split(/\s+/);
-    if (p[0] === model.toUpperCase()) { var n=parseInt(p[1],10); if(!isNaN(n)) taken[n]=true; }
+  var allDevs = [];
+  _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+  if(!allDevs.length) allDevs = devices;
+  allDevs.forEach(function(d) {
+    var dm = modelFromId(d.device_id||'');
+    if (dm.toUpperCase() === model.toUpperCase()) {
+      var rest = (d.device_id||'').slice(dm.length).trim();
+      var n = parseInt(rest, 10);
+      if (!isNaN(n)) taken[n] = true;
+    }
   });
   var next = 1;
   while (taken[next]) next++;
@@ -4497,6 +4526,16 @@ _packSharedLoad();
 function renderPackStage(stageDevices) {
   var el = document.getElementById('pack-content');
   if (!el) return;
+  // Phase + signatures header
+  var _phHdr='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px">'
+    +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+_packPhase.toUpperCase()+'</span>';
+  var _sigs=_packSignatures[_packPhase]||[];
+  if(_sigs.length){
+    _phHdr+=_sigs.map(function(s){var dt=new Date(s.ts);return '<span style="font-family:var(--mono);font-size:11px;color:var(--ok)">✓ '+s.name+' '+dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>';}).join('');
+  } else {
+    _phHdr+='<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Not signed — use ✎ Sign off</span>';
+  }
+  _phHdr+='</div>';
 
   // ── Devices section — grouped by model with qty ─────────────────────
   var TYPE_ORDER = [TYPE_LASER, TYPE_SMOKE, TYPE_DISTRO, TYPE_PSU];
@@ -5103,6 +5142,7 @@ try{
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){document.getElementById('device-ip').value=params.get('ip');startPolling();}
 loadSpecsFromStorage();
+_rebuildModelLists();
 _loadNodePositions();
 setTab('devices');
 _updateProjectBadge();
@@ -6682,20 +6722,35 @@ function _loadFromText(text, name){
 }
 
 // ── Save ──────────────────────────────────────────────────────────
-async function fileSave(){
+function fileSave(){
   document.getElementById('file-menu').style.display='none';
-  if(_fileHandle){
-    // Chrome with File System Access — write in-place
-    await _writeToHandle(_fileHandle);
-  } else {
-    // All other browsers / no file opened — silent download
-    var name = _lastOpenedFileName || (_fileName && !_fileName.includes('unsaved') ? _fileName : null) || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
+  fileQuickSave();
+}
+function fileQuickSave(){
+  // Save to localStorage + push to Worker — no browser dialog ever
+  var payload=_buildFilePayload();
+  _projectVersion++;
+  _projectBaseVersion=_projectVersion;
+  payload._version=_projectVersion;
+  _updateProjectBadge();
+  try{
+    localStorage.setItem('brt_project_snapshot', JSON.stringify(payload));
+    _lastOpenedFileName = _lastOpenedFileName || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
+    _setFileName(_lastOpenedFileName);
+    _markSaved();
+    _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+    showToast('Saved ✓ (use ⇩ Download to get the file)','ok');
+    wPush(true);
+  }catch(e){
+    // localStorage full — fall back to download
+    showToast('Local save failed — downloading instead','warn');
+    var name=_lastOpenedFileName||'project.buildert';
     _fileSaveDownload(name);
   }
 }
-function fileQuickSave(){
-  // Always silent download — no dialog ever
-  var name = _lastOpenedFileName || (_fileName && !_fileName.includes('unsaved') && !_fileName.includes('no file') ? _fileName : null) || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
+function fileDownload(){
+  // Explicit download — this is the only place browser dialog can appear
+  var name = _lastOpenedFileName || ((_projectMeta.name||'project').replace(/[^a-zA-Z0-9_-]/g,'_')+'.buildert');
   _fileSaveDownload(name);
 }
 async function fileSaveAs(){
@@ -6788,6 +6843,11 @@ _startAutosave();
 
 
 // ── Overview ──────────────────────────────────────────────────────
+function _stagePctDesktop(devs){
+  if(!devs.length) return 0;
+  var total=devs.reduce(function(sum,dev){return sum+completionPct(dev);},0);
+  return Math.round(total/devs.length);
+}
 function renderOverview(){
   var el=document.getElementById('overview-panel'); if(!el)return;
   _ensureStages();
@@ -6796,6 +6856,7 @@ function renderOverview(){
   var totalDevs=allDevices.length;
   var totalMounted=allDevices.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
   var totalSn=allDevices.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
+  var totalOnline=allDevices.filter(function(d){return d.status==='Online';}).length;
 
   var html='<div style="margin-bottom:16px;display:flex;align-items:baseline;gap:12px">'
     +'<div style="font-family:var(--cond);font-weight:900;font-size:22px;letter-spacing:2px">PROJECT OVERVIEW</div>'
@@ -6803,10 +6864,10 @@ function renderOverview(){
     +'</div>';
 
   // Total progress bar
-  var totPct=totalDevs?Math.round((totalMounted+totalSn)/totalDevs/2*100):0;
+  var totPct=totalDevs?Math.round(allDevices.reduce(function(s,dv){return s+completionPct(dv);},0)/totalDevs):0;
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">'
     +'<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px">'
-    +'<span>TOTAL PROGRESS</span><span>'+totalMounted+'/'+totalDevs+' mounted · '+totalSn+'/'+totalDevs+' serials</span></div>'
+    +'<span>TOTAL PROGRESS · '+totPct+'%</span><span>'+totalMounted+' mounted · '+totalSn+' serials · '+totalOnline+' online</span></div>'
     +'<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">'
     +'<div style="height:100%;width:'+totPct+'%;background:#3ddc84;border-radius:4px;transition:width .3s"></div></div></div>';
 
@@ -6816,7 +6877,8 @@ function renderOverview(){
     var devs=s.devices;
     var mounted=devs.filter(function(d){return d.checks&&d.checks['Mounted'];}).length;
     var sn=devs.filter(function(d){return d.serial&&d.serial.replace(/-/g,'').trim();}).length;
-    var pct=devs.length?Math.round((mounted+sn)/devs.length/2*100):0;
+    var online=devs.filter(function(d){return d.status==='Online';}).length;
+    var pct=_stagePctDesktop(devs);
     var stCol=pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
     // Count by status
     var statusCounts={};
@@ -6830,9 +6892,10 @@ function renderOverview(){
     cardHtml+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:10px">';
     cardHtml+='<div style="height:100%;width:'+pct+'%;background:'+stCol+';border-radius:3px"></div></div>';
     cardHtml+='<div style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:14px;margin-bottom:6px">';
-    cardHtml+='<span>'+devs.length+' devices</span>';
-    cardHtml+='<span style="color:'+(mounted>0?'#3ddc84':'var(--muted)')+'">'+mounted+' mounted</span>';
-    cardHtml+='<span style="color:'+(sn>0?'#5b8fff':'var(--muted)')+'">'+sn+' serials</span>';
+    cardHtml+='<span>'+devs.length+' devs</span>';
+    cardHtml+='<span style="color:'+(mounted>0?'#3ddc84':'var(--muted)')+'">'+mounted+' ✓mount</span>';
+    cardHtml+='<span style="color:'+(sn>0?'#5b8fff':'var(--muted)')+'">'+sn+' serial</span>';
+    cardHtml+='<span style="color:'+(online>0?'var(--ok)':'var(--muted)')+'">'+online+' online</span>';
     cardHtml+='</div>';
     if(Object.keys(statusCounts).length){
       cardHtml+='<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">';
@@ -7026,6 +7089,7 @@ function _applySpecsJSON(data,name){
 
 var _packActiveStageIdx = -1;
 var _packShowAll = false;
+var _packSort = 'cat'; // cat|stage|model|status|alpha
 
 function renderPackList() {
   var el = document.getElementById('pack-content');
@@ -7463,8 +7527,25 @@ function hideRecentMenu(){
 function recentOpen(idx){
   document.getElementById('file-menu').style.display='none';
   var r=_recentFiles[idx]; if(!r) return;
-  // Can't re-open from disk automatically — prompt user to open the file
-  showToast('Use File → Open to open: '+r.name,'warn');
+  // Try to load from localStorage snapshot first
+  try{
+    var snap=localStorage.getItem('brt_project_snapshot');
+    if(snap){
+      var data=JSON.parse(snap);
+      if(data&&data._format==='wtu-project'){
+        if(_unsaved && !confirm('Discard unsaved changes?')) return;
+        _isReceiving=true;
+        try{ _mergeProjectNoConflict(data); }finally{ _isReceiving=false; }
+        _lastOpenedFileName=r.name;
+        _setFileName(r.name);
+        _markSaved();
+        showToast('Loaded: '+r.name+' v'+_projectVersion,'ok');
+        return;
+      }
+    }
+  }catch(e){}
+  // No snapshot — prompt user
+  showToast('Tip: use File → Open to re-open: '+r.name,'warn');
 }
 function _timeAgo(ts){
   var s=Math.floor((Date.now()-ts)/1000);
@@ -7472,6 +7553,41 @@ function _timeAgo(ts){
   if(s<3600) return Math.floor(s/60)+'m ago';
   if(s<86400) return Math.floor(s/3600)+'h ago';
   return Math.floor(s/86400)+'d ago';
+}
+
+
+// ── Pack workflow ─────────────────────────────────────────────────
+var PACK_PHASES = ['Checkout','Onsite','Loadout','Checkin'];
+var _packPhase = localStorage.getItem('brt_pack_phase') || 'Checkout';
+var _packSignatures = {}; // {phase: [{name, ts}]}
+try{var _pss=localStorage.getItem('brt_pack_sigs');if(_pss)_packSignatures=JSON.parse(_pss);}catch(e){}
+
+function _renderPackWorkflowBtns(){
+  var el=document.getElementById('pack-workflow-btns'); if(!el) return;
+  el.innerHTML=PACK_PHASES.map(function(ph){
+    var active=ph===_packPhase;
+    return '<button onclick="_setPackPhase(this.dataset.ph)" data-ph="'+ph+'" style="'
+      +'padding:3px 10px;border-radius:12px;font-size:11px;cursor:pointer;font-family:var(--mono);'
+      +'border:1px solid '+(active?'var(--accent)':'var(--border2)')+';'
+      +'background:'+(active?'rgba(0,212,255,.12)':'transparent')+';'
+      +'color:'+(active?'var(--accent)':'var(--muted)')+'">'+ph+'</button>';
+  }).join('');
+}
+function _setPackPhase(ph){
+  _packPhase=ph;
+  try{localStorage.setItem('brt_pack_phase',ph);}catch(e){}
+  _renderPackWorkflowBtns();
+  renderPackList();
+}
+function packSignOff(){
+  var name=prompt('Sign off '+_packPhase+' as:','');
+  if(!name||!name.trim()) return;
+  name=name.trim();
+  if(!_packSignatures[_packPhase]) _packSignatures[_packPhase]=[];
+  _packSignatures[_packPhase].push({name:name,ts:new Date().toISOString()});
+  try{localStorage.setItem('brt_pack_sigs',JSON.stringify(_packSignatures));}catch(e){}
+  renderPackList();
+  showToast(_packPhase+' signed by '+name+' ✓','ok');
 }
 
 </script>
