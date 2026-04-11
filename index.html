@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.842</title>
+<title>WTU · Buildert v3.843</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.842</small></div>
+  <div class="logo">WTU <small>v3.843</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -680,14 +680,15 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <script>
 // ── Constants ────────────────────────────────────────────────────────
-var TL='Laser projector',TS='Smoke machine',TD='Distro',TP='Power supply';
+var TL='Laser projector',TS='Smoke machine',TD='Distro',TP='Power supply',TA='Adapter';
 var LC=['Mounted','Pointed','Cabled'],SC=['Placed','Fan','CO2','Regulator','Power cable'],DC=['Racked','Cabled','Labelled','Tested'],PC=['Placed','Cabled','Tested'];
 var SNOTES=['Needs: power source','Change 230v/110v','Needs: tube'],POINTED=['FOH','Straight','Other'];
-var TKEY={};TKEY[TL]='laser';TKEY[TS]='smoke';TKEY[TD]='distro';TKEY[TP]='psu';
-var TSHORT={};TSHORT[TL]='LP';TSHORT[TS]='SM';TSHORT[TD]='DI';TSHORT[TP]='PSU';
-var TICON={};TICON[TL]='L';TICON[TS]='S';TICON[TD]='D';TICON[TP]='P';
+var TKEY={};TKEY[TL]='laser';TKEY[TS]='smoke';TKEY[TD]='distro';TKEY[TP]='psu';TKEY[TA]='adapter';
+var TSHORT={};TSHORT[TL]='LP';TSHORT[TS]='SM';TSHORT[TD]='DI';TSHORT[TP]='PSU';TSHORT[TA]='AD';
+var TICON={};TICON[TL]='L';TICON[TS]='S';TICON[TD]='D';TICON[TP]='P';TICON[TA]='A';
 var SRCTYPE={};
 SRCTYPE[TL]=[TD,TL];SRCTYPE[TS]=[TD,TP];SRCTYPE[TD]=[TD,TP,'_foh'];SRCTYPE[TP]=[];
+SRCTYPE[TA]=[TD,TP,TL,TA];
 
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
@@ -756,6 +757,7 @@ MODELS[TL]=['RGB20','CYAN','WHITE','RGBB','RGB6','GOPSL','SUPERNOVA','LI 13AS','
 MODELS[TS]=['PEASOUP','SHOCKFOG','FAN'];
 MODELS[TD]=['32A PC Distro','32A PeliDistro PL','32AFIBRE PeliDistro PC','New 4port PC','8-PORT PL','4-PORT PL','3-PORT PL'];
 MODELS[TP]=['RED32A CEE','230V Schuko','L21-30 PSU','16A CEE','Edison PSU'];
+MODELS[TA]=['L21-30 to 32A CEE','16A CEE to Schuko','PL to PC','PC to PL','Schuko to TR1','L21-30 to PC32'];
 
 
 
@@ -841,7 +843,7 @@ function pct(d){
   return pts;
 }
 function filtered(){
-  var m={laser:TL,smoke:TS,distro:TD,psu:TP};
+  var m={laser:TL,smoke:TS,distro:TD,psu:TP,adapter:TA};
   if(currentTab==='all'||currentTab==='scan'||currentTab==='power'||currentTab==='zones') return devices.slice();
   return devices.filter(function(d){return d.type===m[currentTab];});
 }
