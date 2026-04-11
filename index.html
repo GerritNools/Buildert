@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.840</title>
+<title>WTU · Buildert v3.841</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.840</small></div>
+  <div class="logo">WTU <small>v3.841</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -792,26 +792,21 @@ function _cableLabel(key){
   var ld=ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;});
   return ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m');
 }
-function _cableOpts(val, reqConn){
-  // Match cable by pwr_in connector on device
-  var allowed = null;
-  if(reqConn){
-    // Only match pwr_a (device-side end of cable)
-    allowed = CABLE_TYPES.filter(function(ct){
-      return ct.pwr_a===reqConn;
-    }).map(function(ct){return ct.key;});
-    if(!allowed.length) allowed=null; // fallback: show all
-  }
+function _cableOpts(val, devConn, srcConn){
+  // pwr_b = device end, pwr_a = source end
+  // Filter cables that match device's input (pwr_b) AND source's output (pwr_a)
   var o='<option value="">-- none --</option>';
   CABLE_TYPES.forEach(function(ct){
-    if(allowed && allowed.indexOf(ct.key)<0) return;
+    var devMatch = !devConn || !ct.pwr_b || ct.pwr_b === devConn;
+    var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
+    if(!devMatch || !srcMatch) return;
     ct.lengths.forEach(function(l){
-      var lval=l.val||l.v;
-      var llbl=l.lbl||l.l||lval+'m';
-      var v=ct.key+'-'+lval;
+      var lval=l.val||l.v, llbl=l.lbl||l.l||lval+'m', v=ct.key+'-'+lval;
       o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+llbl+'</option>';
     });
   });
+  // Fallback: if nothing matches both, drop source filter
+  if(o==='<option value="">-- none --</option>' && devConn && srcConn) return _cableOpts(val, devConn, '');
   return o;
 }
 
@@ -1737,7 +1732,14 @@ function openEdit(gi){
   document.getElementById('m-status').value=d.status||'Active';
   document.getElementById('m-notes').value=d.notes||'';
   var _sp=specFor(d);
-  document.getElementById('m-cable-in').innerHTML=_cableOpts(d.cable_in||d.cable||'',_sp?(_sp.pwr_in||_sp.in_connector):'');
+  var _srcConnM=''; // source device output connector
+  if(d.source && d.source!=='FOH'){
+    var _srcDM=null;
+    _mStages.forEach(function(s){(s.devices||[]).forEach(function(x){if(x.device_id===d.source)_srcDM=x;});});
+    if(!_srcDM) _srcDM=devices.find(function(x){return x.device_id===d.source;});
+    if(_srcDM){var _sspM=specFor(_srcDM);_srcConnM=_sspM?(_sspM.pwr_out||_sspM.out_connector||''):'';}
+  }
+  document.getElementById('m-cable-in').innerHTML=_cableOpts(d.cable_in||d.cable||'',_sp?(_sp.pwr_in||_sp.in_connector||''):'',_srcConnM);
   // cable-out is read-only (computed from children)
   populateChecksSheet(d.type,d.checks||{},d.pointed||'',d.note_opts||[]);
   updateSrcSel(d.type,d.device_id,d.source||'');
