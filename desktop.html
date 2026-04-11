@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.845</title>
+<title>WTUniverse · Buildert Editor v3.846</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.845</div>
+    <div>build v3.846</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1721,12 +1721,11 @@ function cableInfo(d) {
 function _oneCableSelect(gi, field, val) {
   var d    = devices[gi];
   var info = (field==='cable_in') ? cableInfo(d) : {css: val?'cable-ok':'cable-none', adapterNote:''};
-  // Device-side connector
-  var reqConn = '', srcConn = '';
+  // pwr_b = device end, pwr_a = source end
+  var devConn = '', srcConn = '';
   if (d && d.device_id) {
     var sp = getSpec(d.model || modelFromId(d.device_id));
-    if (sp) reqConn = field==='cable_in' ? (sp.pwr_in||sp.in_connector||'') : (sp.pwr_out||sp.out_connector||'');
-    // Source device output connector — for "via adapter" cable group
+    if (sp) devConn = field==='cable_in' ? (sp.pwr_in||sp.in_connector||'') : (sp.pwr_out||sp.out_connector||'');
     if (field==='cable_in' && d.source && d.source!=='FOH') {
       var _srcD=null;
       _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcD=x;});});
@@ -1735,12 +1734,14 @@ function _oneCableSelect(gi, field, val) {
   }
   var opts = '<option value="">— —</option>';
   var _valSeen = !val;
-  var directOpts='', adapterOpts='';
   CABLE_TYPES.forEach(function(ct) {
     ct.lengths.forEach(function(l) {
       var v = ct.key+'-'+l.val;
-      var isMatch = !reqConn || ct.pwr_a === reqConn; // pwr_a = device end
-      if (!isMatch) return;
+      // Device end: pwr_b must match device connector (or cable has no pwr_b = data-only)
+      var devMatch = !devConn || !ct.pwr_b || ct.pwr_b === devConn;
+      // Source end: pwr_a must match source connector — only filter if source is known
+      var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
+      if (!devMatch || !srcMatch) return;
       if (val===v) _valSeen = true;
       opts += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
@@ -1775,34 +1776,35 @@ function setCable(gi, val) {  // legacy shim kept for any old saved data
 
 // Populate cable selects in modal
 function _populateCableSelects(cableIn, cableOut, inConnector) {
-  function mkOpts(val, reqConn, srcConn) {
+  function mkOpts(val, devConn, srcConn) {
     var o = '<option value="">— none —</option>';
-    var direct='', adapter='';
     CABLE_TYPES.forEach(function(ct) {
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
-        var isMatch = !reqConn || ct.pwr_a === reqConn;
-        if(!isMatch) return;
-        o+='<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+        var devMatch = !devConn || !ct.pwr_b || ct.pwr_b === devConn;
+        var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
+        if (!devMatch || !srcMatch) return;
+        o += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
       });
     });
-    o+=direct;
-    if(adapter){ o+='<option disabled>── via adapter (source side) ──</option>'; o+=adapter; }
-    if(o==='<option value="">— none —</option>' && reqConn) return mkOpts(val,'','');
+    // If nothing matched both constraints, fall back to device-end only
+    if (o === '<option value="">— none —</option>' && devConn && srcConn) return mkOpts(val, devConn, '');
+    // If still nothing, show all
+    if (o === '<option value="">— none —</option>' && devConn) return mkOpts(val, '', '');
     return o;
   }
   var si = document.getElementById('m-cable-in');
   var so = document.getElementById('m-cable-out');
-  // Get source connector for "via adapter" options
-  var srcConnForModal='';
-  var srcSelVal=document.getElementById('m-source')&&document.getElementById('m-source').value;
-  if(srcSelVal&&srcSelVal!=='FOH'){
-    var _srcDev=null;
+  // Get source connector from modal source select
+  var srcConnForModal = '';
+  var srcSelVal = document.getElementById('m-source') && document.getElementById('m-source').value;
+  if (srcSelVal && srcSelVal !== 'FOH') {
+    var _srcDev = null;
     _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcSelVal)_srcDev=x;});});
-    if(_srcDev){var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id));srcConnForModal=_srcSp?(_srcSp.pwr_out||_srcSp.out_connector||''):'';}
+    if (_srcDev) { var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id)); srcConnForModal=_srcSp?(_srcSp.pwr_out||_srcSp.out_connector||''):''; }
   }
   if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'', srcConnForModal);
-  if (so) so.innerHTML = mkOpts(cableOut||'', '','');
+  if (so) so.innerHTML = mkOpts(cableOut||'', '', '');
 }
 
 
@@ -4329,11 +4331,19 @@ function nodeEdgeClick(e, gi) {
     +'min-width:210px;box-shadow:0 8px 32px rgba(0,0,0,.6);'
     +'left:'+(e.clientX-rect.left+8)+'px;top:'+(e.clientY-rect.top-20)+'px;';
   var _edgeSp = getSpec(d.model || modelFromId(d.device_id||''));
-  var _reqConn = _edgeSp ? (_edgeSp.in_connector || '') : '';
+  var _devConn = _edgeSp ? (_edgeSp.pwr_in || _edgeSp.in_connector || '') : '';
+  // Also get source connector
+  var _srcConn = '';
+  if (d.source && d.source !== 'FOH') {
+    var _srcDevE = null;
+    _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevE=x;});});
+    if (_srcDevE) { var _sSpE=getSpec(_srcDevE.model||modelFromId(_srcDevE.device_id)); _srcConn=_sSpE?(_sSpE.pwr_out||_sSpE.out_connector||''):''; }
+  }
   var opts = '<option value="">— none —</option>';
   CABLE_TYPES.forEach(function(ct){
-    // Filter: only show cables that match the device's input connector
-    if (_reqConn && ct.pwr_a !== _reqConn) return; // pwr_a = device end
+    var devMatch = !_devConn || !ct.pwr_b || ct.pwr_b === _devConn;
+    var srcMatch = !_srcConn || !ct.pwr_a || ct.pwr_a === _srcConn;
+    if (!devMatch || !srcMatch) return;
     ct.lengths.forEach(function(l){
       var v=ct.key+'-'+l.val;
       var cur=d.cable_in||d.cable||'';
