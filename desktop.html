@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.841</title>
+<title>WTUniverse · Buildert Editor v3.842</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.841</div>
+    <div>build v3.842</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -695,7 +695,8 @@
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
         <button class="btn btn-ghost" onclick="packSignOff()" style="padding:5px 11px;font-size:11px">&#9998; Sign off</button>
-        <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
+        <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;_packShowTotal=false;document.getElementById('pack-total-btn').style.background='';this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
+        <button id="pack-total-btn" class="btn btn-ghost" onclick="_packShowTotal=!_packShowTotal;_packShowAll=false;document.getElementById('pack-all-btn').style.background='';this.style.background=_packShowTotal?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#931; Total</button>
         <select id="pack-sort-sel" onchange="_packSort=this.value;renderPackList()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;font-size:11px;font-family:var(--mono)"><option value="cat">By type</option><option value="stage">By stage</option><option value="model">By model</option><option value="status">By status</option><option value="alpha">A&#x2013;Z</option></select>
         <button class="btn btn-ghost" onclick="packPrint(true)" style="padding:5px 11px;font-size:12px">&#128438; Print all</button>
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
@@ -4663,6 +4664,7 @@ function packAddSpare() {
 function packPrint(printAll) {
   var projName  = _projectMeta.name||'Project';
   var isAll     = printAll || _packShowAll;
+  var isTotal   = !isAll && _packShowTotal;
   var si        = _currentStageIdx;
   var stageName = isAll ? 'All Stages' : ((_stages[si]||{}).name||'');
   var fileTitle = (projName + (isAll ? '' : (' - '+stageName)) + ' - Packing List').replace(/[^a-zA-Z0-9_\- ]/g,'');
@@ -4718,7 +4720,11 @@ function packPrint(printAll) {
   }
 
   var bodyHtml='';
-  if(isAll && _stages.length>1){
+  if(isTotal){
+    var allDevs2=[];
+    _stages.forEach(function(s){ allDevs2=allDevs2.concat(s.devices||[]); });
+    bodyHtml=stageHtml(allDevs2);
+  } else if(isAll && _stages.length>1){
     _stages.forEach(function(s){
       if(!(s.devices||[]).length) return;
       bodyHtml+='<div class="stage-hdr">'+s.name+'</div>'+stageHtml(s.devices||[]);
@@ -7094,6 +7100,7 @@ function _applySpecsJSON(data,name){
 var _packActiveStageIdx = -1;
 var _packShowAll = false;
 var _packSort = 'cat'; // cat|stage|model|status|alpha
+var _packShowTotal = false; // flat total list — no stage breakdown
 
 function renderPackList() {
   _renderPackWorkflowBtns();
@@ -7106,6 +7113,18 @@ function renderPackList() {
     +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+_packPhase.toUpperCase()+'</span>'
     +(_sigs.length?_sigs.map(function(s){var dt=new Date(s.ts);return '<span style="font-family:var(--mono);font-size:11px;color:var(--ok)">✓ '+s.name+' '+dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>';}).join(''):'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Not signed — use ✎ Sign off</span>')
     +'</div>';
+
+  if(_packShowTotal){
+    // TOTAL view: flat aggregate of ALL devices across all stages — no stage headers
+    var allDevs=[];
+    _stages.forEach(function(s){ allDevs=allDevs.concat(s.devices||[]); });
+    var res=_packStageHtml(allDevs);
+    el.innerHTML=_phHdr+res.html;
+    var st=document.getElementById('pack-stats');
+    if(st) st.textContent=res.devices+' devices total · '+res.cables+' cables total';
+    renderPackShared();
+    return;
+  }
 
   if(_packShowAll && _stages.length > 1){
     // ALL STAGES view — per-stage breakdown + aggregated cable totals
