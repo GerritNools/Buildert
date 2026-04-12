@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.845</title>
+<title>WTU · Buildert v3.846</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.845</small></div>
+  <div class="logo">WTU <small>v3.846</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -816,6 +816,8 @@ var devices=[], project={name:'',venue:''};
 var _packSpares=[];
 var _packShared={toolcase:[],office:[],spares:[]};
 try{var _psh=localStorage.getItem('brt_psh');if(_psh)_packShared=Object.assign({toolcase:[],office:[],spares:[]},JSON.parse(_psh));}catch(e){}
+// Restore spec overrides on top of baked specs
+try{var _sov=localStorage.getItem('buildert_specs_overrides');if(_sov){var _sovObj=JSON.parse(_sov);Object.keys(_sovObj).forEach(function(k){if(SPECS[k])Object.assign(SPECS[k],_sovObj[k]);else SPECS[k]=_sovObj[k];});}}catch(e){}
 
 // ── Multi-stage state ─────────────────────────────────────────────
 var _mStages = [];          // full stages array from Worker
@@ -2027,12 +2029,14 @@ function _mergeProjectNoConflict(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    // Full replace — desktop spec list is truth
-    Object.keys(SPECS).forEach(function(k){delete SPECS[k];});
-    Object.keys(data.spec_overrides).forEach(function(k){SPECS[k]=data.spec_overrides[k];});
+    // Apply overrides on top of baked specs — never wipe the full list
+    Object.keys(data.spec_overrides).forEach(function(k){
+      if(SPECS[k]) Object.assign(SPECS[k], data.spec_overrides[k]);
+      else SPECS[k] = data.spec_overrides[k];
+    });
   }
-  // Update cable types from desktop
-  if(Array.isArray(data.cable_types) && data.cable_types.length){
+  // Update cable types from desktop only if it sends a full list
+  if(Array.isArray(data.cable_types) && data.cable_types.length > 5){
     CABLE_TYPES.length=0;
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
@@ -2173,12 +2177,14 @@ function _mergeSmartFromFile(data){
   }
   if(data.spec_overrides){
     try{localStorage.setItem('buildert_specs_overrides',JSON.stringify(data.spec_overrides));}catch(e){}
-    // Full replace — desktop spec list is truth
-    Object.keys(SPECS).forEach(function(k){delete SPECS[k];});
-    Object.keys(data.spec_overrides).forEach(function(k){SPECS[k]=data.spec_overrides[k];});
+    // Apply overrides on top of baked specs — never wipe the full list
+    Object.keys(data.spec_overrides).forEach(function(k){
+      if(SPECS[k]) Object.assign(SPECS[k], data.spec_overrides[k]);
+      else SPECS[k] = data.spec_overrides[k];
+    });
   }
-  // Update cable types from desktop
-  if(Array.isArray(data.cable_types) && data.cable_types.length){
+  // Update cable types from desktop only if it sends a full list
+  if(Array.isArray(data.cable_types) && data.cable_types.length > 5){
     CABLE_TYPES.length=0;
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
