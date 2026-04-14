@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.851</title>
+<title>WTUniverse · Buildert Editor v3.852</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -449,26 +449,11 @@
 </style>
 </head>
 <body>
-<div id="unlock-screen" style="display:none;position:fixed;inset:0;background:#0a0c0f;z-index:99999;align-items:center;justify-content:center">
-  <div style="background:#141618;border:1px solid #2a2f35;border-radius:14px;padding:36px 40px;width:360px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.8)">
-    <div style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:36px;letter-spacing:5px;color:#00d4ff;margin-bottom:4px">BUILDERT</div>
-    <div style="font-family:Share Tech Mono,monospace;font-size:11px;color:#55606e;margin-bottom:28px">Desktop Editor — restricted access</div>
-    <input id="unlock-pw" type="password" placeholder="enter access token"
-      autocomplete="off" onkeydown="if(event.key==='Enter')_unlockTry()"
-      style="width:100%;background:#0a0c0f;border:1px solid #2a2f35;color:#e8eaed;border-radius:7px;padding:12px 14px;font-family:Share Tech Mono,monospace;font-size:14px;box-sizing:border-box;text-align:center;letter-spacing:3px;outline:none;margin-bottom:8px">
-    <div id="unlock-err" style="color:#ff4d4d;font-family:Share Tech Mono,monospace;font-size:11px;height:16px;margin-bottom:8px"></div>
-    <button onclick="_unlockTry()" style="width:100%;background:#00d4ff;color:#0a0c0f;border:none;border-radius:7px;padding:12px;font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:16px;letter-spacing:2px;cursor:pointer">UNLOCK</button>
-    <div style="margin-top:20px;font-family:Share Tech Mono,monospace;font-size:10px;color:#3a4550;line-height:1.6">
-      No token configured?<br>Leave blank and click Unlock,<br>then set token in ⚙ Settings.
-    </div>
-  </div>
-</div>
-
 
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.851</div>
+    <div>build v3.852</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1134,10 +1119,9 @@
     <div class="modal-section">Sync (Cloudflare Worker)</div>
     <label>Worker URL <span style="color:var(--muted);font-size:10px">— from Cloudflare dashboard</span></label>
     <input id="worker-url-inp" type="url" placeholder="https://buildert.yourname.workers.dev"
+      <label style="font-size:11px;margin-top:10px;display:block;color:var(--muted)">Access Token <span style="font-size:10px">— set in Cloudflare Worker env vars</span></label>
+      <input id="worker-token-inp" type="password" placeholder="your BUILDERT_TOKEN value" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 10px;font-family:var(--mono);font-size:12px;box-sizing:border-box;margin-top:4px">
            style="font-family:var(--mono);font-size:12px;margin-bottom:8px">
-
-      <label style="font-size:11px;margin-top:10px;display:block;color:var(--muted)">Access Token <span style="color:var(--muted);font-size:10px">— from your Worker settings</span></label>
-      <input id="worker-token-inp" type="password" placeholder="paste secret token here" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 10px;font-family:var(--mono);font-size:12px;box-sizing:border-box;margin-top:4px">
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
       <div id="proj-key-display" style="font-family:var(--mono);font-size:14px;letter-spacing:3px;
            background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:8px 12px;flex:1"></div>
@@ -7801,37 +7785,6 @@ function _impliedAdapter(d){
   return adapters.length?adapters[0].key:null;
 }
 
-
-// ── Access control ───────────────────────────────────────────────
-function _unlockShow(){
-  var el=document.getElementById('unlock-screen');
-  if(el){ el.style.display='flex'; setTimeout(function(){document.getElementById('unlock-pw').focus();},100); }
-}
-function _unlockHide(){
-  var el=document.getElementById('unlock-screen');
-  if(el) el.style.display='none';
-}
-function _unlockTry(){
-  var pw=(document.getElementById('unlock-pw').value||'').trim();
-  // If no token is set, unlock immediately (first-time setup)
-  if(!_workerToken || pw===_workerToken){
-    if(pw && !_workerToken){
-      // Save as token on first entry
-      _workerToken=pw;
-      try{localStorage.setItem('buildert_worker_token',_workerToken);}catch(e){}
-    }
-    _unlockHide();
-    wSyncInit();
-  } else {
-    var err=document.getElementById('unlock-err');
-    if(err){err.textContent='Wrong token';setTimeout(function(){err.textContent='';},2000);}
-    document.getElementById('unlock-pw').value='';
-  }
-}
-window.addEventListener('DOMContentLoaded',function(){
-  // Show unlock screen — skip only if no token AND no worker configured (pure first run)
-  if(_workerToken || _workerUrl){ _unlockShow(); } else { wSyncInit(); }
-});
 </script>
 </body>
 </html>
