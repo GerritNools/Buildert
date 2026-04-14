@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.854</title>
+<title>WTUniverse · Buildert Editor v3.855</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.854</div>
+    <div>build v3.855</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -745,13 +745,13 @@
   <div class="modal">
     <h2 id="modal-title">Add Device</h2>
 
-    <label>Device ID <span style="color:var(--accent);font-size:10px">&#8212; model + unit number</span></label>
+    <label>Device ID <span id="modal-id-hint" style="color:var(--accent);font-size:10px">&#8212; model + unit number</span></label>
     <div style="display:flex;gap:8px;align-items:center">
       <select id="m-model-key" onchange="syncDeviceId()"
               style="flex:0 0 160px;font-family:var(--cond);font-weight:700;letter-spacing:1px">
         <option value="">&#8212; pick model &#8212;</option>
       </select>
-      <span style="color:var(--muted);font-size:18px">#</span>
+      <span style="color:var(--muted);font-size:18px" id="m-unit-hash">#</span>
       <input id="m-unit-num" type="number" min="1" max="99" placeholder="1"
              style="flex:0 0 64px;font-size:18px;font-family:var(--mono);text-align:center"
              oninput="syncDeviceId()"
@@ -759,6 +759,11 @@
       <span style="flex:1;font-family:var(--mono);font-weight:700;font-size:16px;
                    color:var(--accent);letter-spacing:2px;padding-left:4px"
             id="m-device-id-preview">—</span>
+      <input id="m-device-id-edit" type="text" placeholder="Device ID"
+             style="display:none;flex:1;font-family:var(--mono);font-weight:700;font-size:16px;
+                    color:var(--accent);letter-spacing:2px;background:var(--bg);
+                    border:1px solid var(--accent);border-radius:5px;padding:5px 10px"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();saveDevice();}">
     </div>
     <input id="m-device-id" type="hidden" value="">
     <div id="m-spec-info" style="display:none;font-size:11px;font-family:var(--mono);
@@ -2130,7 +2135,7 @@ function populateModelDropdown(type, currentModel) {
 function syncDeviceId() {
   var model = (document.getElementById('m-model-key').value || '').trim();
   var numEl = document.getElementById('m-unit-num');
-  // Auto-suggest lowest available number for this model — search ALL stages
+  // Auto-suggest lowest available number — only when adding a new device
   if (model && editIndex === -1) {
     var takenNums = {};
     var allDevs = [];
@@ -2144,10 +2149,14 @@ function syncDeviceId() {
     while (takenNums[next]) next++;
     numEl.value = next;
   }
-  var num   = (numEl.value || '').trim();
-  var id    = model ? (model + (num ? ' ' + num : '')) : '';
-  document.getElementById('m-device-id').value       = id.toUpperCase();
-  document.getElementById('m-device-id-preview').textContent = id.toUpperCase() || '\u2014';
+  // Only update the device ID field when adding (not editing)
+  // In edit mode the user keeps their existing ID — model change is independent
+  if (editIndex === -1) {
+    var num = (numEl.value || '').trim();
+    var id  = model ? (model + (num ? ' ' + num : '')) : '';
+    document.getElementById('m-device-id').value            = id.toUpperCase();
+    document.getElementById('m-device-id-preview').textContent = id.toUpperCase() || '\u2014';
+  }
   // Show spec chip
   var sp = model ? DEVICE_SPECS[model] : null;
   var info = document.getElementById('m-spec-info');
@@ -2192,6 +2201,11 @@ function openAddModal(type) {
   document.getElementById('modal-title').textContent = 'Add Device';
   document.getElementById('modal-delete-btn').style.display = 'none';
   document.getElementById('m-device-id').value = '';
+  // Add mode: show auto-generated preview, hide manual edit field
+  document.getElementById('m-device-id-preview').style.display = '';
+  document.getElementById('m-unit-hash').style.display = '';
+  document.getElementById('m-device-id-edit').style.display = 'none';
+  document.getElementById('modal-id-hint').textContent = '— model + unit number';
   var nextNum = 1;
   document.getElementById('m-type').value = type;
   document.getElementById('m-serial').value = '';
@@ -2214,8 +2228,18 @@ function openEditModal(gi) {
   document.getElementById('modal-title').textContent = 'Edit  ' + (d.device_id||d.serial||'???');
   document.getElementById('modal-delete-btn').style.display = '';
   var parts = (d.device_id||'').trim().split(/\s+/);
-  var modelKey = parts[0] || '';
+  // Use explicitly stored model if set, fall back to parsing device ID only if no model stored
+  var modelKey = d.model || parts[0] || '';
   var unitNum  = parts.slice(1).join(' ') || '';
+  document.getElementById('m-device-id').value  = d.device_id||'';
+  document.getElementById('m-unit-num').value   = unitNum;
+  // In edit mode: show editable ID text field, hide the auto-generated preview
+  document.getElementById('m-device-id-preview').style.display = 'none';
+  document.getElementById('m-unit-hash').style.display = 'none';
+  var editIdEl = document.getElementById('m-device-id-edit');
+  editIdEl.style.display = '';
+  editIdEl.value = d.device_id||'';
+  document.getElementById('modal-id-hint').textContent = '— edit ID and model independently';
   document.getElementById('m-device-id').value  = d.device_id||'';
   document.getElementById('m-unit-num').value   = unitNum;
   document.getElementById('m-type').value        = d.type;
@@ -2300,7 +2324,11 @@ function populateChecks(ex, exOpts) {
 
 function saveDevice() {
   var type     = document.getElementById('m-type').value;
-  var deviceId = document.getElementById('m-device-id').value.trim().toUpperCase();
+  // In edit mode, use the editable ID field; in add mode use the hidden auto-generated field
+  var _idEditEl = document.getElementById('m-device-id-edit');
+  var deviceId = (editIndex >= 0 && _idEditEl && _idEditEl.style.display !== 'none')
+    ? (_idEditEl.value.trim().toUpperCase() || document.getElementById('m-device-id').value.trim().toUpperCase())
+    : document.getElementById('m-device-id').value.trim().toUpperCase();
   if (!deviceId) { showToast('Device ID is required','warn'); document.getElementById('m-device-id').focus(); return; }
   // Check for duplicate ID across ALL stages
   var allDevs = [];
@@ -2323,6 +2351,7 @@ function saveDevice() {
 
   var d = {
     device_id:     deviceId,
+    model:         document.getElementById('m-model-key').value.trim() || '',
     serial:        document.getElementById('m-serial').value.trim().toUpperCase().slice(0,6),
     type:          type,
     location:      document.getElementById('m-location').value.trim(),
