@@ -1437,9 +1437,11 @@ function filteredDevices() {
   var f = currentDeviceFilter;
   // f is either 'all' or a device type string (from category→type map or direct type match)
   var list = (f==='all') ? devices.slice() : devices.filter(function(d){
+    // Use stored type first — don't let spec category override an explicitly set type
+    if(d.type) return d.type===f || (TYPE_KEY[d.type]||'').toLowerCase()===f;
     var sp=specsForDevice(d)||{};
     var cat=(sp.category||'').toLowerCase();
-    return cat===f || d.type===f;
+    return cat===f;
   });
   if (!sortField) return list;
   return list.sort(function(a,b) {
@@ -2334,7 +2336,9 @@ function saveDevice() {
   var allDevs = [];
   _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
   if(!allDevs.length) allDevs = devices;
-  var idConflict = allDevs.some(function(d,idx){ return d.device_id === deviceId && d !== (devices[editIndex]); });
+  // In edit mode, ignore the device being edited (match by device_id, not object reference)
+  var _editingId = editIndex >= 0 ? (devices[editIndex]||{}).device_id||'' : '';
+  var idConflict = allDevs.some(function(x){ return x.device_id === deviceId && x.device_id !== _editingId; });
   if (idConflict) { showToast('ID "'+deviceId+'" already exists in this project — pick a different number','warn'); return; }
 
   var chList   = checksFor(type);
