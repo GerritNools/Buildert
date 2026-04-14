@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.853</title>
+<title>WTUniverse · Buildert Editor v3.854</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.853</div>
+    <div>build v3.854</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3040,7 +3040,7 @@ function _mergeProjectNoConflict(data) {
       _updateProjectBadge();
     }
     if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
-    if(currentTab==='node') renderNodeView();
+    if(currentTab==='node' && !_nodeDrag) renderNodeView();
     if(currentTab==='todos') renderTodosPanel();
     return;
   }
@@ -3051,10 +3051,18 @@ function _mergeProjectNoConflict(data) {
     _stages = data.stages;
     _currentStageIdx = Math.min(_currentStageIdx, _stages.length-1);
     devices = _stages[_currentStageIdx].devices;
-    _nodePositions = _stages[_currentStageIdx].nodePositions||{};
-    _diagPositions = _stages[_currentStageIdx].diagPositions||{};
-    try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
-    try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
+    // Don't overwrite node/diag positions from remote if user is actively in node view
+    // Local positions are always more current than whatever was last pushed
+    if(currentTab !== 'nodes' && currentTab !== 'diagram'){
+      _nodePositions = _stages[_currentStageIdx].nodePositions||{};
+      _diagPositions = _stages[_currentStageIdx].diagPositions||{};
+      try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
+      try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
+    } else {
+      // Keep local positions — but update stages' stored positions from local for consistency
+      _stages[_currentStageIdx].nodePositions = _nodePositions;
+      _stages[_currentStageIdx].diagPositions = _diagPositions;
+    }
     _renderStageBar();
   } else if(Array.isArray(data.devices) && data.devices.length){
     // Legacy single-stage
