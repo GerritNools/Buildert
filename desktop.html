@@ -1824,7 +1824,13 @@ function editSpecField(k, f, val) {
 }
 
 function renderTable() {
-  if (currentTab === 'node') { renderNodeView(); return; }
+  if (currentTab === 'node') {
+    // Don't re-render node view if we're in the middle of receiving a sync pull
+    // (positions would have just been (correctly) preserved but a re-render would
+    // wipe them if anything in the data changed the stage structure)
+    if (!_isReceiving) renderNodeView();
+    return;
+  }
   if (currentTab === 'devices') renderDeviceCatBar();
   var head  = document.getElementById('table-head');
   var body  = document.getElementById('table-body');
@@ -3053,7 +3059,7 @@ function _mergeProjectNoConflict(data) {
     devices = _stages[_currentStageIdx].devices;
     // Don't overwrite node/diag positions from remote if user is actively in node view
     // Local positions are always more current than whatever was last pushed
-    if(currentTab !== 'nodes' && currentTab !== 'diagram'){
+    if(currentTab !== 'node' && currentTab !== 'diagram'){
       _nodePositions = _stages[_currentStageIdx].nodePositions||{};
       _diagPositions = _stages[_currentStageIdx].diagPositions||{};
       try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
