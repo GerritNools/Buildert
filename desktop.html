@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.855</title>
+<title>WTUniverse · Buildert Editor v3.856</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -453,7 +453,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.855</div>
+    <div>build v3.856</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2206,6 +2206,7 @@ function openAddModal(type) {
   // Add mode: show auto-generated preview, hide manual edit field
   document.getElementById('m-device-id-preview').style.display = '';
   document.getElementById('m-unit-hash').style.display = '';
+  document.getElementById('m-unit-num').style.display = '';
   document.getElementById('m-device-id-edit').style.display = 'none';
   document.getElementById('modal-id-hint').textContent = '— model + unit number';
   var nextNum = 1;
@@ -2238,6 +2239,7 @@ function openEditModal(gi) {
   // In edit mode: show editable ID text field, hide the auto-generated preview
   document.getElementById('m-device-id-preview').style.display = 'none';
   document.getElementById('m-unit-hash').style.display = 'none';
+  document.getElementById('m-unit-num').style.display = 'none';
   var editIdEl = document.getElementById('m-device-id-edit');
   editIdEl.style.display = '';
   editIdEl.value = d.device_id||'';
@@ -2280,7 +2282,9 @@ function openEditModal(gi) {
 
 function updateModalForType() {
   var type      = document.getElementById('m-type').value;
-  var currentId = document.getElementById('m-device-id').value.trim().toUpperCase();
+  var currentId = (editIndex>=0&&document.getElementById('m-device-id-edit')&&document.getElementById('m-device-id-edit').style.display!=='none')
+    ? document.getElementById('m-device-id-edit').value.trim().toUpperCase()
+    : document.getElementById('m-device-id').value.trim().toUpperCase();
   document.getElementById('laser-section').style.display  = type===TYPE_LASER  ? '' : 'none';
   document.getElementById('smoke-section').style.display  = type===TYPE_SMOKE  ? '' : 'none';
   document.getElementById('distro-section').style.display = type===TYPE_DISTRO ? '' : 'none';
@@ -2355,7 +2359,7 @@ function saveDevice() {
 
   var d = {
     device_id:     deviceId,
-    model:         document.getElementById('m-model-key').value.trim() || '',
+    model:         document.getElementById('m-model-key').value.trim() || (editIndex>=0?(devices[editIndex]||{}).model||'':''),
     serial:        document.getElementById('m-serial').value.trim().toUpperCase().slice(0,6),
     type:          type,
     location:      document.getElementById('m-location').value.trim(),
@@ -7837,3 +7841,4 @@ function _impliedAdapter(d){
 </script>
 </body>
 </html>
+
