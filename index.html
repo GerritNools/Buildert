@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.846</title>
+<title>WTU · Buildert v3.847</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.846</small></div>
+  <div class="logo">WTU <small>v3.847</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -693,6 +693,7 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
+var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -2737,7 +2738,7 @@ async function wPull(){
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
-    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{cache:'no-store'});
+    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{cache:'no-store',headers:{'X-Buildert-Token':_mToken}});
     clearTimeout(_t);
     _dbxSyncing=false;
     if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
@@ -2816,6 +2817,8 @@ function _handleProjectParam(){
   // Worker URL: from param, or from localStorage (stored on first use)
   var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
   if(wurl){ _workerUrl=wurl; try{localStorage.setItem('buildert_worker_url',wurl);}catch(e){} }
+  var tok=params.get('token')||params.get('t')||'';
+  if(tok){ _mToken=tok; try{localStorage.setItem('brt_worker_token',tok);}catch(e){} }
   try{localStorage.setItem('buildert_project_key',key);}catch(e){}
   var stage=params.get('stage')||'';
   if(stage){ _mAssignedStageId=decodeURIComponent(stage); }
