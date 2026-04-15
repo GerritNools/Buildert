@@ -891,21 +891,25 @@
     </div>
     <label>Cable IN <span style="color:var(--muted);font-size:10px">— cable arriving at this device from its source</span></label>
     <select id="m-cable-in" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none;margin-bottom:6px" onchange="_onCableInChange()">
-      <div id="m-cable-signal" style="font-family:var(--mono);font-size:11px;margin-bottom:10px;min-height:16px"></div>
-    <!-- Separate power source shown when cable is data-only -->
-    <div id="m-sep-power-wrap" style="display:none">
-      <label>Power source <span style="color:var(--muted);font-size:10px">— separate power (cable above is data-only)</span></label>
-      <select id="m-sep-power-src" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:6px"></select>
-      <select id="m-sep-power-cable" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:10px"></select>
-    </div>
-    <!-- Separate data source shown when cable is power-only -->
-    <div id="m-sep-data-wrap" style="display:none">
-      <label>Data source <span style="color:var(--muted);font-size:10px">— separate data (cable above is power-only)</span></label>
-      <select id="m-sep-data-src" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:6px"></select>
-      <select id="m-sep-data-cable" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:10px"></select>
-    </div>
       <option value="">— none —</option>
     </select>
+    <div id="m-cable-signal" style="font-family:var(--mono);font-size:11px;margin-bottom:8px;min-height:14px;color:var(--muted)"></div>
+    <!-- Separate power source — shown when cable is data-only -->
+    <div id="m-sep-power-wrap" style="display:none;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.3);border-radius:6px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.5px;color:#f5a623;margin-bottom:8px">&#9889; SEPARATE POWER SOURCE</div>
+      <label style="font-size:11px;color:var(--muted)">Power source</label>
+      <select id="m-sep-power-src" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:5px;margin-bottom:6px;margin-top:3px"></select>
+      <label style="font-size:11px;color:var(--muted)">Power cable</label>
+      <select id="m-sep-power-cable" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:5px;margin-top:3px"></select>
+    </div>
+    <!-- Separate data source — shown when cable is power-only -->
+    <div id="m-sep-data-wrap" style="display:none;background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.3);border-radius:6px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.5px;color:#5b8fff;margin-bottom:8px">&#11044; SEPARATE DATA SOURCE</div>
+      <label style="font-size:11px;color:var(--muted)">Data source</label>
+      <select id="m-sep-data-src" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:5px;margin-bottom:6px;margin-top:3px"></select>
+      <label style="font-size:11px;color:var(--muted)">Data cable</label>
+      <select id="m-sep-data-cable" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:5px;margin-top:3px"></select>
+    </div>
     <label>Cable OUT <span style="color:var(--muted);font-size:10px">— read-only: set on downstream devices as their Cable IN</span></label>
     <div id="m-cable-out-display" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:8px 11px;border-radius:5px;margin-bottom:13px;min-height:36px">
       — no downstream devices —
