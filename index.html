@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -694,6 +694,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -761,7 +763,7 @@ var SPECS = {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1162,7 +1164,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1450,6 +1452,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -1466,7 +1470,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1867,7 +1871,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2155,6 +2159,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -2171,7 +2177,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -2572,7 +2578,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2860,6 +2866,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -2876,7 +2884,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3277,7 +3285,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3565,6 +3573,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -3581,7 +3591,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3982,7 +3992,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4270,6 +4280,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -4286,7 +4298,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -4687,7 +4699,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4975,6 +4987,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -4991,7 +5005,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -5392,7 +5406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -5680,6 +5694,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -5696,7 +5712,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -6097,7 +6113,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6385,6 +6401,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -6401,7 +6419,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -6802,7 +6820,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7090,6 +7108,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -7106,7 +7126,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.849</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -7507,7 +7527,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.849</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7795,6 +7815,8 @@ SRCTYPE[TA]=[TD,TP,TL,TA];
 // ── Sync state — declared early so init order doesn't matter ────
 var _workerUrl='', _projectKey='';
 var _mToken='';try{_mToken=localStorage.getItem('brt_worker_token')||'';}catch(e){}
+// Clear stale spec overrides if baked version changed
+try{if(localStorage.getItem('brt_specs_ver')!=='2026-04-15-v1'){localStorage.removeItem('buildert_specs_overrides');localStorage.setItem('brt_specs_ver','2026-04-15-v1');}}catch(e){}
 var _dbxToken='', _dbxPath='', _dbxPollTimer=null, _dbxLastRev='', _dbxSyncing=false;
 var _dbxRefreshToken='', _dbxAppKey='', _dbxTokenExpiry=0;
 var _isPulling=false;
@@ -7816,26 +7838,27 @@ MODELS[TA]=['L21-30 to 32A CEE','16A CEE to Schuko','PL to PC','PC to PL','Schuk
 
 
 
+
 var CABLE_TYPES = [
-  {key:'powercat',  label:'PowerCAT',     pwr_a:'TR1',              pwr_b:'TR1',              data_a:'Ethercon',      data_b:'Ethercon',
+  {key:'powercat',  label:'PowerCAT',     pwr_a:'TR1',             pwr_b:'TR1',             data_a:'Ethercon',       data_b:'Ethercon',
    lengths:[{val:0.3,lbl:'0.3 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
-  {key:'powerlan',  label:'PowerLAN',     pwr_a:'HartingPushPull',  pwr_b:'HartingPushPull',  data_a:'HartingPushPull', data_b:'HartingPushPull',
+  {key:'powerlan',  label:'PowerLAN',     pwr_a:'HartingPushPull', pwr_b:'HartingPushPull', data_a:'HartingPushPull',data_b:'HartingPushPull',
    lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
-  {key:'pc_pl',     label:'PC→PL',   pwr_a:'TR1',              pwr_b:'HartingPushPull',  data_a:'Ethercon',      data_b:'HartingPushPull',
+  {key:'pc_pl',     label:'PC→PL',  pwr_a:'TR1',             pwr_b:'HartingPushPull', data_a:'Ethercon',       data_b:'HartingPushPull',
    lengths:[{val:7.5,lbl:'7.5 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
-  {key:'pl_pc',     label:'PL→PC',   pwr_a:'HartingPushPull',  pwr_b:'TR1',              data_a:'HartingPushPull', data_b:'Ethercon',
+  {key:'pl_pc',     label:'PL→PC',  pwr_a:'HartingPushPull', pwr_b:'TR1',             data_a:'HartingPushPull',data_b:'Ethercon',
    lengths:[{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:80,lbl:'80 m'}]},
-  {key:'l2130',     label:'L21-30',       pwr_a:'L21-30',           pwr_b:'L21-30',           data_a:'',              data_b:'',
+  {key:'l2130',     label:'L21-30',       pwr_a:'L21-30',          pwr_b:'L21-30',          data_a:'',               data_b:'',
    lengths:[{val:1.5,lbl:'Lunch box'},{val:8,lbl:'25 ft (8 m)'},{val:15,lbl:'50 ft (15 m)'},{val:30,lbl:'100 ft (30 m)'},{val:45,lbl:'150 ft (45 m)'}]},
-  {key:'schuko',    label:'Schuko',       pwr_a:'Schuko',           pwr_b:'Schuko',           data_a:'',              data_b:'',
+  {key:'schuko',    label:'Schuko',       pwr_a:'Schuko',          pwr_b:'Schuko',          data_a:'',               data_b:'',
    lengths:[{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
-  {key:'cee32',     label:'CEE 32A',      pwr_a:'32ACEE',           pwr_b:'32ACEE',           data_a:'',              data_b:'',
+  {key:'cee32',     label:'CEE 32A',      pwr_a:'32ACEE',          pwr_b:'32ACEE',          data_a:'',               data_b:'',
    lengths:[{val:10,lbl:'10 m'},{val:25,lbl:'25 m'}]},
-  {key:'cat',       label:'CAT Ethercon', pwr_a:'',                 pwr_b:'',                 data_a:'Ethercon',      data_b:'Ethercon',
+  {key:'cat',       label:'CAT Ethercon', pwr_a:'',                pwr_b:'',                data_a:'Ethercon',       data_b:'Ethercon',
    lengths:[{val:115,lbl:'115 m'}]},
-  {key:'combidmx',  label:'CombiDMX',     pwr_a:'TR1',              pwr_b:'TR1',              data_a:'DMX5pin',       data_b:'DMX5pin',
+  {key:'combidmx',  label:'CombiDMX',     pwr_a:'TR1',             pwr_b:'TR1',             data_a:'DMX5pin',        data_b:'DMX5pin',
    lengths:[{val:2.5,lbl:'2.5 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:10,lbl:'10 m'}]},
-  {key:'fiber',     label:'Fiber',        pwr_a:'',                 pwr_b:'',                 data_a:'',              data_b:'',
+  {key:'fiber',     label:'Fiber',        pwr_a:'',                pwr_b:'',                data_a:'',               data_b:'',
    lengths:[{val:1,lbl:'various'}]},
 ];function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
