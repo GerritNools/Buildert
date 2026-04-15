@@ -1624,6 +1624,8 @@ function distroLoadW(id) { return chainLoadW(id); }
 // DEVICE_SPECS — sourced from devices.xlsx
 // Key = first word of device_id (uppercase). e.g. "RGBB 3" → key "RGBB"
 var SPECS_BAKED_VERSION='2026-04-15-v2';
+// Clear stale localStorage specs immediately — baked specs are always truth
+try{localStorage.removeItem('buildert_specs');localStorage.removeItem('buildert_specs_version');}catch(e){}
 var DEVICE_SPECS = {
   // ── LASER ──
   'RGB20': {category:'laser',alt:'RGCB20',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:20,weight_kg:18,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'192.168.10.X',scanners:'SM506',angle:'40°',ops_diode:'Diode',desc:'20W RGB laser — gele sticker',notes:''},
@@ -3214,13 +3216,19 @@ function _mergeProjectNoConflict(data) {
   }
   // Merge project spec_overrides ON TOP of loaded specs — never wipe imported specs
   if(data.spec_overrides && Object.keys(data.spec_overrides).length){
-    Object.assign(_specsOverrides, data.spec_overrides);
-    // Also merge into DEVICE_SPECS
-    Object.keys(data.spec_overrides).forEach(function(k){
-      if(!DEVICE_SPECS[k]) DEVICE_SPECS[k]={};
-      Object.assign(DEVICE_SPECS[k], data.spec_overrides[k]);
-    });
-    saveSpecsToStorage();
+    // Skip if this looks like a full CSV import (>5 models) — baked specs take priority
+    var _ov=data.spec_overrides;
+    var _ovKeys=Object.keys(_ov);
+    if(_ovKeys.length<=5){
+      // Small override — genuine per-field edit, apply it
+      Object.assign(_specsOverrides, _ov);
+      _ovKeys.forEach(function(k){
+        if(!DEVICE_SPECS[k]) DEVICE_SPECS[k]={};
+        Object.assign(DEVICE_SPECS[k], _ov[k]);
+      });
+      saveSpecsToStorage();
+    }
+    // else: full import in Worker — ignore, baked specs are truth
   }
   if(data.project){
     _projectMeta = Object.assign(_projectMeta, data.project);
@@ -3791,22 +3799,10 @@ function specsForDevice(d) {
 }
 
 function loadSpecsFromStorage() {
-  try {
-    if(localStorage.getItem('buildert_specs_version')!==SPECS_BAKED_VERSION){
-      localStorage.removeItem('buildert_specs');
-      localStorage.setItem('buildert_specs_version',SPECS_BAKED_VERSION);
-      _specsOverrides={};
-      return;
-    }
-    var s=localStorage.getItem('buildert_specs');
-    if(s){
-      _specsOverrides=JSON.parse(s);
-      Object.keys(_specsOverrides).forEach(function(k){
-        if(DEVICE_SPECS[k])Object.assign(DEVICE_SPECS[k],_specsOverrides[k]);
-        else DEVICE_SPECS[k]=_specsOverrides[k];
-      });
-    }
-  } catch(e){}
+  // Specs are baked into the HTML — baked DEVICE_SPECS is always the truth.
+  // Wipe any stale localStorage specs from old imports so they never override.
+  try { localStorage.removeItem('buildert_specs'); } catch(e){}
+  _specsOverrides = {};
 }
 
 function _rebuildModelLists(){
@@ -3833,7 +3829,8 @@ function _rebuildModelLists(){
   if(mtype && typeof populateModelDropdown==='function') populateModelDropdown(mtype.value, '');
 }
 function saveSpecsToStorage() {
-  try { localStorage.setItem('buildert_specs', JSON.stringify(_specsOverrides)); } catch(e){}
+  // Deliberately no-op: specs are baked in, not stored in localStorage.
+  // CSV imports apply in-memory only.
 }
 
 var SPEC_FIELDS = [
@@ -5254,8 +5251,10 @@ function renderSpecs(){
         +'<td>'+ed(k,'inputs',s.inputs!=null?s.inputs:'',25)+'</td>'
         +'<td>'+ed(k,'phases',s.phases!=null?s.phases:'',25)+'</td>'
         +'<td>'+b(s.fibre)+'</td>'
-        +'<td>'+ed(k,'in_connector',s.in_connector||'',60)+'</td>'
-        +'<td>'+ed(k,'out_connector',s.out_connector||'',60)+'</td>'
+        +'<td style="font-family:var(--mono);font-size:11px;color:var(--warn)">'+tg(s.pwr_in||'')+'</td>'
+        +'<td style="font-family:var(--mono);font-size:11px;color:var(--accent)">'+tg(s.data_in||'')+'</td>'
+        +'<td style="font-family:var(--mono);font-size:11px;color:var(--warn)">'+tg(s.pwr_out||'')+'</td>'
+        +'<td style="font-family:var(--mono);font-size:11px;color:var(--accent)">'+tg(s.data_out||'')+'</td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'desc',s.desc||'',100)+'</td>'
         +'<td>'+ed(k,'notes',s.notes||'',80)+'</td>'
         +'</tr>';
