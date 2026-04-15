@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.859</title>
+<title>WTUniverse · Buildert Editor v3.860</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.859</div>
+    <div>build v3.860</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -890,7 +890,20 @@
       </div>
     </div>
     <label>Cable IN <span style="color:var(--muted);font-size:10px">— cable arriving at this device from its source</span></label>
-    <select id="m-cable-in" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none;margin-bottom:13px">
+    <select id="m-cable-in" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none;margin-bottom:6px" onchange="_onCableInChange()">
+      <div id="m-cable-signal" style="font-family:var(--mono);font-size:11px;margin-bottom:10px;min-height:16px"></div>
+    <!-- Separate power source shown when cable is data-only -->
+    <div id="m-sep-power-wrap" style="display:none">
+      <label>Power source <span style="color:var(--muted);font-size:10px">— separate power (cable above is data-only)</span></label>
+      <select id="m-sep-power-src" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:6px"></select>
+      <select id="m-sep-power-cable" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:10px"></select>
+    </div>
+    <!-- Separate data source shown when cable is power-only -->
+    <div id="m-sep-data-wrap" style="display:none">
+      <label>Data source <span style="color:var(--muted);font-size:10px">— separate data (cable above is power-only)</span></label>
+      <select id="m-sep-data-src" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:6px"></select>
+      <select id="m-sep-data-cable" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:10px"></select>
+    </div>
       <option value="">— none —</option>
     </select>
     <label>Cable OUT <span style="color:var(--muted);font-size:10px">— read-only: set on downstream devices as their Cable IN</span></label>
@@ -2440,12 +2453,18 @@ function saveDevice() {
     cable_out:     editIndex >= 0 ? (devices[editIndex].cable_out||'') : '',  // computed field, not editable
     data_source:   (document.getElementById('m-data-source')||{value:''}).value||'',
     data_cable:    (document.getElementById('m-data-cable')||{value:''}).value||'',
-    source_power:  (document.getElementById('m-source-power')||{}).value||'',
-    cable_power_in:(document.getElementById('m-cable-power')||{}).value||'',
-    source_data:   (document.getElementById('m-source-data')||{}).value||'',
-    cable_data_in: (document.getElementById('m-cable-data')||{}).value||'',
-    source_data:   (document.getElementById('m-source-data')||{}).value||'',
-    cable_data_in: (document.getElementById('m-cable-data')||{}).value||'',
+    source_power:  (document.getElementById('m-source-power')||{}).value||(document.getElementById('m-sep-power-src')||{}).value||'',
+    cable_power_in:(document.getElementById('m-cable-power')||{}).value||(document.getElementById('m-sep-power-cable')||{}).value||'',
+    source_data:   (document.getElementById('m-source-data')||{}).value||(document.getElementById('m-sep-data-src')||{}).value||'',
+    cable_data_in: (document.getElementById('m-cable-data')||{}).value||(document.getElementById('m-sep-data-cable')||{}).value||'',
+    // Separate power when cable is data-only
+    _sep_power_src: (document.getElementById('m-sep-power-src')||{}).value||'',
+    _sep_power_cable:(document.getElementById('m-sep-power-cable')||{}).value||'',
+    source_data:   (document.getElementById('m-source-data')||{}).value||(document.getElementById('m-sep-data-src')||{}).value||'',
+    cable_data_in: (document.getElementById('m-cable-data')||{}).value||(document.getElementById('m-sep-data-cable')||{}).value||'',
+    // Separate power when cable is data-only
+    _sep_power_src: (document.getElementById('m-sep-power-src')||{}).value||'',
+    _sep_power_cable:(document.getElementById('m-sep-power-cable')||{}).value||'',
     outlet_port:   (function(){ var el=document.getElementById('m-outlet-port'); return el&&el.value?parseInt(el.value)||null:null; })(),
   };
 
@@ -4012,6 +4031,35 @@ function parsePayload(raw) {
   return {devices:[],specs:null};
 }
 
+
+// ── Signal type helpers ──────────────────────────────────────────
+function cableSignalType(cableKey) {
+  if (!cableKey) return 'none';
+  var ck = cableKey.split('-')[0];
+  var ct = CABLE_TYPES.find(function(c){ return c.key===ck; });
+  if (!ct) return 'none';
+  var hasPwr  = !!(ct.pwr_a  || ct.pwr_b);
+  var hasData = !!(ct.data_a || ct.data_b);
+  if (hasPwr && hasData) return 'combo';
+  if (hasPwr)  return 'power';
+  if (hasData) return 'data';
+  return 'none';
+}
+// Port positions on a node (x,y relative to node origin)
+// Returns {pwrIn, dataIn, pwrOut, dataOut} each {x,y}
+function nodePorts(x, y, nH) {
+  var NW = NODE_W;
+  var pY = y + nH * 0.38;   // power port y (upper third)
+  var dY = y + nH * 0.68;   // data port y  (lower third)
+  return {
+    pwrIn:  {x: x,      y: pY},
+    dataIn: {x: x,      y: dY},
+    pwrOut: {x: x + NW, y: pY},
+    dataOut:{x: x + NW, y: dY},
+    mid:    {x: x + NW/2, y: y + nH/2}
+  };
+}
+
 // ── Node View Engine ─────────────────────────────────────────────────
 var _nodePositions = {};   // device_id → {x,y}
 var _nodeDrag      = null; // {mode:'move'|'connect', id, ...}
@@ -4134,103 +4182,148 @@ function renderNodeView() {
 
   // ── Edges ─────────────────────────────────────────────────────────
   var edgeHtml = '';
-  var labelHtml = '';  // rendered in top layer so labels are never behind nodes
-  // ── Power-only edges (source_power, drawn first so they're behind) ────
-  devices.forEach(function(d){
-    if(!d.device_id||!d.source_power) return;
-    var sp=_nodePositions[d.source_power]; var dp=_nodePositions[d.device_id];
-    if(!sp||!dp) return;
-    var x1=sp.x+NODE_W/2, y1=sp.y, x2=dp.x+NODE_W/2, y2=dp.y+NODE_H;
-    var cy=(y1+y2)/2;
-    edgeHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
-      +' fill="none" stroke="#f5a623" stroke-width="2" stroke-dasharray="4,3" opacity="0.7"'
-      +' marker-end="url(#arrow-warn)"/>';
+  var labelHtml = '';
+
+  // Pre-compute node heights so port positions are accurate
+  var _nodeHeights = {};
+  allIds.forEach(function(id){
+    var dev2 = id==='FOH' ? null : devices.find(function(x){return x.device_id===id;});
+    var m2 = dev2 ? (dev2.model||modelFromId(dev2.device_id||'')) : '';
+    var s1 = m2||'', s2 = dev2?(dev2.location||dev2.status||''):'';
+    _nodeHeights[id] = (s1&&s2) ? NODE_H+10 : NODE_H;
   });
-  // ── Data-only edges (source_data for distros) ────────────────────────
-  devices.forEach(function(d){
-    if(!d.device_id||!d.source_data) return;
-    var sp=_nodePositions[d.source_data]; var dp=_nodePositions[d.device_id];
-    if(!sp||!dp) return;
-    var x1=sp.x+NODE_W/2, y1=sp.y, x2=dp.x+NODE_W/2, y2=dp.y+NODE_H;
+
+  function _ports(id) {
+    var pos = _nodePositions[id]; if(!pos) return null;
+    return nodePorts(pos.x, pos.y, _nodeHeights[id]||NODE_H);
+  }
+
+  function _bezier(x1,y1,x2,y2){
     var cy=(y1+y2)/2;
-    edgeHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
-      +' fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3,4" opacity="0.6"'
-      +' marker-end="url(#arrow-foh)"/>';
-  });
-  // ── Combined/data edges ────────────────────────────────────────────────
-  devices.forEach(function(d){
-    if (!d.device_id || !d.source) return;
-    var sp = _nodePositions[d.source];
-    var dp = _nodePositions[d.device_id];
-    if (!sp || !dp) return;
+    return 'M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2;
+  }
 
-    var info     = cableInfo(d);
-    var hasCable = !!(d.cable_in||d.cable);
-    var hasAdap=!!info.adapterNote;
-    var adapterLabel=info.adapterNote||'';
-    var stroke   = d.source==='FOH' ? 'var(--accent)'
-                 : hasCable ? (hasAdap?'var(--warn)':'var(--ok)') : '#55606e';
-    var marker   = d.source==='FOH' ? 'arrow-foh'
-                 : hasCable ? (hasAdap?'arrow-warn':'arrow-ok') : 'arrow-muted';
-
-    var x1=sp.x+NODE_W/2, y1=sp.y;
-    var x2=dp.x+NODE_W/2, y2=dp.y+NODE_H;
+  function _edgePower(x1,y1,x2,y2,dashed,marker){
+    marker=marker||'arrow-warn';
+    return '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="#f5a623" stroke-width="2"'
+      +(dashed?' stroke-dasharray="5,3"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
+  }
+  function _edgeData(x1,y1,x2,y2,dashed,marker){
+    marker=marker||'arrow-foh';
+    return '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
+      +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
+  }
+  function _edgeCombo(x1,y1,x2,y2,hasAdap,marker){
+    // Two parallel thin lines — amber+blue offset by 2px
     var cy=(y1+y2)/2;
-    var mx=(x1+x2)/2, my=(y1+y2)/2-4;
+    var path='M'+x1+','+(y1-2)+' C'+x1+','+(cy-2)+' '+x2+','+(cy-2)+' '+x2+','+(y2-2);
+    var pathD='M'+x1+','+(y1+2)+' C'+x1+','+(cy+2)+' '+x2+','+(cy+2)+' '+x2+','+(y2+2);
+    return '<path d="'+path+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+(hasAdap?' stroke-dasharray="5,3"':'')+' opacity="0.9"/>'
+          +'<path d="'+pathD+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+(hasAdap?' stroke-dasharray="5,3"':'')+' marker-end="url(#'+(marker||'arrow-ok')+')" opacity="0.9"/>';
+  }
 
-    edgeHtml += '<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
-      +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
-      +' marker-end="url(#'+marker+')"'+(hasAdap?' stroke-dasharray="5,3"':'')+'/>';
-
-    // Cable label — clickable to set cable
+  // ── Draw edges in order: power first, data, combo ──
+  devices.forEach(function(d){
+    if (!d.device_id) return;
+    var dp = _ports(d.device_id); if(!dp) return;
+    var sigType = cableSignalType(d.cable_in||d.cable||'');
     var gi = devices.indexOf(d);
-    var cLabel = '';
-    if (info.cdef) {
-      var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));
-      var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
-      cLabel = info.cdef.label+' '+(ld?ld.lbl:lv+'m');
-    } else {
-      cLabel = '+ set cable';
-    }
-    var lw = cLabel.length*5.5+8;
-    labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-      +' rx="3" fill="white" stroke="'+stroke+'" stroke-width="1.2"'
-      +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
-    labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
-      +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
-      +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
+    var info = cableInfo(d);
+    var hasAdap = !!info.adapterNote;
 
-    if (hasAdap) {
-      labelHtml += '<text x="'+mx+'" y="'+(my+16)+'" text-anchor="middle"'
-        +' fill="var(--warn)" font-size="8" font-family="Share Tech Mono,monospace">\u26a0 '+info.adapterNote+'</text>';
-    }
-  });
+    // ── Main source edge ──
+    if (d.source) {
+      var sp = _ports(d.source); if(!sp) return;
+      var hasCable = !!(d.cable_in||d.cable);
+      var isFoh = d.source==='FOH';
 
-  // ── Data edges — when data_source differs from power source ──
-  devices.forEach(function(d){
-    if (!d.device_id || !d.data_source || d.data_source === d.source) return;
-    var sp = _nodePositions[d.data_source];
-    var dp = _nodePositions[d.device_id];
-    if (!sp || !dp) return;
-    var x1=sp.x+NODE_W/2, y1=sp.y, x2=dp.x+NODE_W/2, y2=dp.y+NODE_H;
-    var cy=(y1+y2)/2, mx=(x1+x2)/2, my=(y1+y2)/2-4;
-    edgeHtml += '<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
-      +' fill="none" stroke="#5b8fff" stroke-width="1.5" stroke-dasharray="4,3"'
-      +' marker-end="url(#arrow-foh)" opacity="0.7"/>';
-    var dCableKey = (d.data_cable||'').split('-')[0];
-    var dCableDef = dCableKey ? CABLE_TYPES.find(function(ct){return ct.key===dCableKey;}) : null;
-    var dLbl = dCableDef ? dCableDef.label : 'data';
-    if(d.data_cable){
-      var lv2=parseFloat((d.data_cable||'').split('-').slice(1).join('-'));
-      var ld2=dCableDef?dCableDef.lengths.find(function(l){return Math.abs(l.val-lv2)<0.01;}):null;
-      dLbl = dCableDef?(dCableDef.label+' '+(ld2?ld2.lbl:lv2+'m')):'data';
+      if (!hasCable || sigType==='none' || isFoh) {
+        // No cable / FOH — single grey/cyan line, centre to centre
+        var stroke = isFoh?'var(--accent)':'#55606e';
+        var marker = isFoh?'arrow-foh':'arrow-muted';
+        edgeHtml += '<path d="'+_bezier(sp.mid.x,sp.mid.y,dp.mid.x,dp.mid.y)+'"'
+          +' fill="none" stroke="'+stroke+'" stroke-width="2" stroke-dasharray="4,3"'
+          +' marker-end="url(#'+marker+')" opacity="0.6"/>';
+
+      } else if (sigType==='combo') {
+        var marker2 = hasAdap?'arrow-warn':'arrow-ok';
+        edgeHtml += _edgeCombo(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, hasAdap, marker2);
+
+      } else if (sigType==='power') {
+        edgeHtml += _edgePower(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, hasAdap,'arrow-warn');
+
+      } else if (sigType==='data') {
+        edgeHtml += _edgeData(sp.dataOut.x,sp.dataOut.y, dp.dataIn.x,dp.dataIn.y, false,'arrow-foh');
+      }
+
+      // Cable label
+      var mx=(sp.mid.x+dp.mid.x)/2, my=(sp.mid.y+dp.mid.y)/2-4;
+      var cLabel = '';
+      if (info.cdef) {
+        var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));
+        var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
+        cLabel=info.cdef.label+' '+(ld?ld.lbl:lv+'m');
+      } else { cLabel='+ set cable'; }
+      var lbCol = sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#888':'#55606e';
+      if(isFoh) lbCol='var(--accent)';
+      if(hasAdap) lbCol='var(--warn)';
+      var lw=cLabel.length*5.5+8;
+      labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
+        +' rx="3" fill="white" stroke="'+lbCol+'" stroke-width="1.2"'
+        +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
+      labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
+        +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+        +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
+      if(hasAdap){
+        labelHtml+='<text x="'+mx+'" y="'+(my+16)+'" text-anchor="middle"'
+          +' fill="var(--warn)" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
+      }
     }
-    var dlw=dLbl.length*5.5+8;
-    labelHtml += '<rect x="'+(mx-dlw/2)+'" y="'+(my-8)+'" width="'+dlw+'" height="15"'
-      +' rx="3" fill="white" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
-    labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
-      +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
-      +' style="pointer-events:none">'+dLbl+'</text>';
+
+    // ── Separate power source (source_power field) ──
+    if (d.source_power && d.source_power !== d.source) {
+      var spp = _ports(d.source_power); if(!spp) return;
+      var pwrCableType = cableSignalType(d.cable_power_in||'');
+      edgeHtml += _edgePower(spp.pwrOut.x,spp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, true,'arrow-warn');
+      if(d.cable_power_in){
+        var pckey=(d.cable_power_in).split('-')[0];
+        var pcdef=CABLE_TYPES.find(function(ct){return ct.key===pckey;});
+        if(pcdef){
+          var plv=parseFloat(d.cable_power_in.split('-').slice(1).join('-'));
+          var pld=pcdef.lengths.find(function(l){return Math.abs(l.val-plv)<0.01;});
+          var pLbl=pcdef.label+' '+(pld?pld.lbl:plv+'m');
+          var pmx=(spp.pwrOut.x+dp.pwrIn.x)/2, pmy=(spp.pwrOut.y+dp.pwrIn.y)/2-4;
+          var plw=pLbl.length*5.5+8;
+          labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
+            +' rx="3" fill="white" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
+          labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
+            +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+            +' style="pointer-events:none">'+pLbl+'</text>';
+        }
+      }
+    }
+
+    // ── Separate data source (source_data field) ──
+    if (d.source_data && d.source_data !== d.source) {
+      var sdp = _ports(d.source_data); if(!sdp) return;
+      edgeHtml += _edgeData(sdp.dataOut.x,sdp.dataOut.y, dp.dataIn.x,dp.dataIn.y, true,'arrow-foh');
+      if(d.cable_data_in){
+        var dckey=d.cable_data_in.split('-')[0];
+        var dcdef=CABLE_TYPES.find(function(ct){return ct.key===dckey;});
+        if(dcdef){
+          var dlv=parseFloat(d.cable_data_in.split('-').slice(1).join('-'));
+          var dld=dcdef.lengths.find(function(l){return Math.abs(l.val-dlv)<0.01;});
+          var dLbl2=dcdef.label+' '+(dld?dld.lbl:dlv+'m');
+          var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
+          var dlw2=dLbl2.length*5.5+8;
+          labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
+            +' rx="3" fill="white" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
+          labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
+            +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+            +' style="pointer-events:none">'+dLbl2+'</text>';
+        }
+      }
+    }
   });
 
   // Live connect wire
@@ -4314,67 +4407,89 @@ function renderNodeView() {
         +' font-size="8" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+loadW+'W</text>';
     }
 
-    // ── Port indicators with connector type labels ─────────────────
+    // ── Power + Data port indicators ──────────────────────────────
     var sp = dev ? getSpec(m) : null;
-    var specIn  = sp ? (sp.inputs  != null ? sp.inputs  : null) : null;
-    var specOut = sp ? (sp.outputs != null ? sp.outputs : null) : null;
-    var specInConn  = sp ? (sp.in_connector  || '') : '';
-    var specOutConn = sp ? (sp.out_connector || '') : '';
-    var actualIncoming = isFoh ? 0 : (dev&&dev.source ? 1 : 0);
-    var actualOut = devices.filter(function(x){return x.source===id;}).length;
+    if (!isFoh && sp) {
+      var hasPwrIn   = !!(sp.pwr_in);
+      var hasDataIn  = !!(sp.data_in);
+      var hasPwrOut  = !!(sp.pwr_out);
+      var hasDataOut = !!(sp.data_out);
 
-    // Input ports — top of node
-    if (!isFoh && specIn != null) {
-      var inConflict = specIn > 0 && actualIncoming > specIn;
-      var inCol = inConflict ? '#ff4d4d' : (actualIncoming > 0 ? '#3ddc84' : col);
-      var inTip = (specInConn||'IN')+': '+specIn+' port(s), '+actualIncoming+' connected';
-      var portSpacing = Math.min(18, (NODE_W-20) / Math.max(specIn,1));
-      for (var pi=0; pi<Math.max(specIn,1); pi++) {
-        var px = (NODE_W/2) - ((Math.max(specIn,1)-1)*portSpacing)/2 + pi*portSpacing;
-        var portFill = pi < actualIncoming ? inCol : 'var(--bg)';
-        nodeHtml += '<rect x="'+(px-5)+'" y="'+(nH-1)+'" width="10" height="9" rx="2"'
-          +' fill="'+portFill+'" stroke="'+inCol+'" stroke-width="1.5"'
-          +' title="'+inTip+'" style="pointer-events:none"/>';
+      // Check what's connected
+      var mainSigType  = dev ? cableSignalType(dev.cable_in||dev.cable||'') : 'none';
+      var pwrInConn    = !!(mainSigType==='combo'||mainSigType==='power'||dev.cable_power_in);
+      var dataInConn   = !!(mainSigType==='combo'||mainSigType==='data'||dev.cable_data_in);
+      var pwrOutConns  = devices.filter(function(x){
+        var st=cableSignalType(x.cable_in||x.cable||'');
+        return x.source===id && (st==='combo'||st==='power');
+      }).length;
+      var dataOutConns = devices.filter(function(x){
+        var st=cableSignalType(x.cable_in||x.cable||'');
+        return (x.source===id&&(st==='combo'||st==='data'))||(x.source_data===id);
+      }).length;
+
+      var P_COL  = '#f5a623'; // amber = power
+      var D_COL  = '#5b8fff'; // blue  = data
+      var BG_COL = 'rgba(10,12,15,0.6)';
+
+      var PORT_W = 7, PORT_H = 11;
+      // Left side (inputs): pwr at y=nH*0.35, data at y=nH*0.65
+      var pwrInY  = nH * 0.35 - PORT_H/2;
+      var dataInY = nH * 0.65 - PORT_H/2;
+      // Right side (outputs): same y positions
+      var pwrOutY  = pwrInY;
+      var dataOutY = dataInY;
+
+      // Power IN port (left side)
+      if (hasPwrIn) {
+        var piCol = pwrInConn ? P_COL : BG_COL;
+        var piStr = pwrInConn ? P_COL : P_COL;
+        nodeHtml += '<rect x="-'+PORT_W+'" y="'+pwrInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+          +' fill="'+piCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
+          +' title="Pwr In: '+sp.pwr_in+(pwrInConn?' — connected':' — not connected')+'"/>';
+        nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(pwrInY+PORT_H/2)+'" dominant-baseline="middle"'
+          +' text-anchor="end" fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+          +' style="pointer-events:none">'+sp.pwr_in+'</text>';
       }
-      // Connector label above node
-      if (specInConn) {
-        nodeHtml += '<text x="'+(NODE_W/2)+'" y="'+(nH+18)+'" text-anchor="middle"'
-          +' fill="'+inCol+'" font-size="7" font-family="Share Tech Mono,monospace"'
-          +' style="pointer-events:none">'+specInConn+'</text>';
+      // Data IN port (left side)
+      if (hasDataIn) {
+        var diCol = dataInConn ? D_COL : BG_COL;
+        nodeHtml += '<rect x="-'+PORT_W+'" y="'+dataInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+          +' fill="'+diCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
+          +' title="Data In: '+sp.data_in+(dataInConn?' — connected':' — not connected')+'"/>';
+        nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(dataInY+PORT_H/2)+'" dominant-baseline="middle"'
+          +' text-anchor="end" fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+          +' style="pointer-events:none">'+sp.data_in+'</text>';
+      }
+      // Power OUT port (right side)
+      if (hasPwrOut) {
+        var poCol = pwrOutConns>0 ? P_COL : BG_COL;
+        nodeHtml += '<rect x="'+NODE_W+'" y="'+pwrOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+          +' fill="'+poCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
+          +' title="Pwr Out: '+sp.pwr_out+' — '+pwrOutConns+' connected"/>';
+        nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(pwrOutY+PORT_H/2)+'" dominant-baseline="middle"'
+          +' fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+          +' style="pointer-events:none">'+sp.pwr_out+'</text>';
+      }
+      // Data OUT port (right side)
+      if (hasDataOut) {
+        var doCol = dataOutConns>0 ? D_COL : BG_COL;
+        nodeHtml += '<rect x="'+NODE_W+'" y="'+dataOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+          +' fill="'+doCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
+          +' title="Data Out: '+sp.data_out+' — '+dataOutConns+' connected"/>';
+        nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(dataOutY+PORT_H/2)+'" dominant-baseline="middle"'
+          +' fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+          +' style="pointer-events:none">'+sp.data_out+'</text>';
       }
     }
 
-    // Output ports — bottom of node
-    if (specOut != null) {
-      var outConflict = actualOut > specOut;
-      var outCol = outConflict ? '#ff4d4d' : (actualOut > 0 ? '#3ddc84' : col);
-      var outTip = (specOutConn||'OUT')+': '+specOut+' port(s), '+actualOut+' used';
-      var oPortSpacing = Math.min(18, (NODE_W-20) / Math.max(specOut,1));
-      for (var po=0; po<Math.max(specOut,1); po++) {
-        var pox = (NODE_W/2) - ((Math.max(specOut,1)-1)*oPortSpacing)/2 + po*oPortSpacing;
-        var portFillO = po < actualOut ? outCol : 'var(--bg)';
-        nodeHtml += '<rect x="'+(pox-5)+'" y="-8" width="10" height="9" rx="2"'
-          +' fill="'+portFillO+'" stroke="'+outCol+'" stroke-width="1.5"'
-          +' title="'+outTip+'" style="pointer-events:none"/>';
-      }
-      // Connector label below node
-      if (specOutConn) {
-        nodeHtml += '<text x="'+(NODE_W/2)+'" y="-11" text-anchor="middle"'
-          +' fill="'+outCol+'" font-size="7" font-family="Share Tech Mono,monospace"'
-          +' style="pointer-events:none">'+specOutConn+'</text>';
-      }
-      if (outConflict) {
-        nodeHtml += '<text x="'+(NODE_W/2)+'" y="-22" text-anchor="middle"'
-          +' fill="#ff4d4d" font-size="8" font-family="Share Tech Mono,monospace"'
-          +' style="pointer-events:none">\u26a0 '+actualOut+'/'+specOut+'</text>';
-      }
-    }
-
-    // Cable dot (keep for backward compat)
-    var ci = dev?cableInfo(dev):null;
-    if (ci&&ci.cable) {
-      var dc=ci.adapterNote?'#f5a623':'#3ddc84';
-      nodeHtml += '<circle cx="'+(NODE_W-18)+'" cy="9" r="3.5" fill="'+dc+'" style="pointer-events:none"/>';
+    // Output count warning for distros/PSU
+    var actualOut = devices.filter(function(x){return x.source===id||x.source_power===id||x.source_data===id;}).length;
+    var specOut2 = (sp&&sp.outputs!=null) ? sp.outputs : null;
+    if (specOut2!==null && actualOut > specOut2) {
+      nodeHtml += '<text x="'+(NODE_W/2)+'" y="-14" text-anchor="middle"'
+        +' fill="#ff4d4d" font-size="8" font-family="Share Tech Mono,monospace"'
+        +' style="pointer-events:none">\u26a0 '+actualOut+'/'+specOut2+'</text>';
     }
     nodeHtml += '</g>';
   });
@@ -8070,6 +8185,90 @@ function _refreshDataCables() {
     ct.lengths.forEach(function(l){
       var v=ct.key+'-'+l.val;
       sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+    });
+  });
+}
+
+function _onCableInChange() {
+  var cableKey = (document.getElementById('m-cable-in')||{}).value||'';
+  var sigType = cableSignalType(cableKey);
+  var badge = document.getElementById('m-cable-signal');
+  if (badge) {
+    if (!cableKey) {
+      badge.innerHTML='<span style="color:var(--muted)">No cable — choose power and data source separately below</span>';
+    } else if (sigType==='combo') {
+      badge.innerHTML='<span style="color:#f5a623">&#9889;</span> <span style="color:#5b8fff">&#11044;</span> <span style="color:var(--ok);font-size:11px">Combo cable — carries both power &amp; data</span>';
+    } else if (sigType==='power') {
+      badge.innerHTML='<span style="color:#f5a623">&#9889; Power only</span> <span style="color:var(--muted);font-size:10px">— add a separate data source below</span>';
+    } else if (sigType==='data') {
+      badge.innerHTML='<span style="color:#5b8fff">&#11044; Data only</span> <span style="color:var(--muted);font-size:10px">— add a separate power source below</span>';
+    }
+  }
+
+  // Show/hide separate source panels
+  var sepPwr  = document.getElementById('m-sep-power-wrap');
+  var sepData = document.getElementById('m-sep-data-wrap');
+  if (sepPwr)  sepPwr.style.display  = (sigType==='data'  || !cableKey) ? '' : 'none';
+  if (sepData) sepData.style.display = (sigType==='power' || !cableKey) ? '' : 'none';
+
+  // Populate separate source dropdowns
+  if (sigType==='data' || !cableKey) _populateSepPowerDropdown();
+  if (sigType==='power'|| !cableKey) _populateSepDataDropdown();
+}
+
+function _populateSepPowerDropdown() {
+  var srcSel  = document.getElementById('m-sep-power-src');
+  var cblSel  = document.getElementById('m-sep-power-cable');
+  if (!srcSel||!cblSel) return;
+  var excludeId = (document.getElementById('m-device-id-edit')&&document.getElementById('m-device-id-edit').style.display!=='none')
+    ? document.getElementById('m-device-id-edit').value
+    : document.getElementById('m-device-id').value;
+  srcSel.innerHTML='<option value="">— no separate power source —</option>';
+  devices.filter(function(x){return x.type===TYPE_PSU&&x.device_id&&x.device_id!==excludeId;})
+    .forEach(function(x){srcSel.innerHTML+='<option value="'+x.device_id+'">⚡ '+x.device_id+'</option>';});
+  srcSel.onchange = function(){ _populateSepPowerCableDropdown(); };
+}
+function _populateSepPowerCableDropdown() {
+  var srcSel=document.getElementById('m-sep-power-src');
+  var cblSel=document.getElementById('m-sep-power-cable');
+  if(!srcSel||!cblSel) return;
+  var srcId=srcSel.value;
+  var srcDev=srcId?devices.find(function(x){return x.device_id===srcId;}):null;
+  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.pwr_out||''):'';})():'';
+  cblSel.innerHTML='<option value="">— no power cable —</option>';
+  CABLE_TYPES.forEach(function(ct){
+    if(!ct.pwr_a&&!ct.pwr_b) return; // data-only cable
+    if(srcConn&&ct.pwr_a&&ct.pwr_a!==srcConn) return;
+    ct.lengths.forEach(function(l){
+      cblSel.innerHTML+='<option value="'+ct.key+'-'+l.val+'">'+ct.label+' '+l.lbl+'</option>';
+    });
+  });
+}
+function _populateSepDataDropdown() {
+  var srcSel=document.getElementById('m-sep-data-src');
+  var cblSel=document.getElementById('m-sep-data-cable');
+  if(!srcSel||!cblSel) return;
+  var excludeId=(document.getElementById('m-device-id-edit')&&document.getElementById('m-device-id-edit').style.display!=='none')
+    ?document.getElementById('m-device-id-edit').value
+    :document.getElementById('m-device-id').value;
+  srcSel.innerHTML='<option value="">— no separate data source —</option><option value="FOH">FOH (controller)</option>';
+  devices.filter(function(x){return (x.type===TYPE_DISTRO||x.type===TYPE_PSU)&&x.device_id&&x.device_id!==excludeId;})
+    .forEach(function(x){srcSel.innerHTML+='<option value="'+x.device_id+'">'+( TYPE_ICON[x.type]||'')+' '+x.device_id+'</option>';});
+  srcSel.onchange=function(){_populateSepDataCableDropdown();};
+}
+function _populateSepDataCableDropdown() {
+  var srcSel=document.getElementById('m-sep-data-src');
+  var cblSel=document.getElementById('m-sep-data-cable');
+  if(!srcSel||!cblSel) return;
+  var srcId=srcSel.value;
+  var srcDev=srcId&&srcId!=='FOH'?devices.find(function(x){return x.device_id===srcId;}):null;
+  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.data_out||sp.pwr_out||''):'';})():'';
+  cblSel.innerHTML='<option value="">— no data cable —</option>';
+  CABLE_TYPES.forEach(function(ct){
+    if(!ct.data_a&&!ct.data_b) return; // power-only cable
+    if(srcConn&&ct.data_a&&ct.data_a!==srcConn) return;
+    ct.lengths.forEach(function(l){
+      cblSel.innerHTML+='<option value="'+ct.key+'-'+l.val+'">'+ct.label+' '+l.lbl+'</option>';
     });
   });
 }
