@@ -1342,7 +1342,7 @@ function _ensureStages(){
 }
 
 function _saveCurrentStageLayout(){
-  if(!_stages[_currentStageIdx]) return;
+  if(_currentStageIdx===-1||!_stages[_currentStageIdx]) return;
   _stages[_currentStageIdx].nodePositions=JSON.parse(JSON.stringify(_nodePositions));
   _stages[_currentStageIdx].diagPositions=JSON.parse(JSON.stringify(_diagPositions));
   _stages[_currentStageIdx].devices=JSON.parse(JSON.stringify(devices)); // true deep copy
@@ -1350,6 +1350,15 @@ function _saveCurrentStageLayout(){
 
 function switchStage(idx){
   _saveCurrentStageLayout();
+  if(idx===-1){
+    // TOTAL: show all devices across all stages
+    _currentStageIdx=-1;
+    devices=_stages.reduce(function(all,s){return all.concat(s.devices||[]);}, []);
+    _renderStageBar(); renderTable(); updateStats();
+    if(currentTab==='pack') renderPackList();
+    if(currentTab==='todos') renderTodosPanel();
+    return;
+  }
   _currentStageIdx=Math.max(0,Math.min(idx,_stages.length-1));
   devices=_stages[_currentStageIdx].devices;
   _nodePositions=_stages[_currentStageIdx].nodePositions||{};
@@ -1426,6 +1435,29 @@ function _renderStageBar(){
   add.title='Add stage (click)'; add.textContent='+';
   add.onclick=addStage;
   bar.appendChild(add);
+  // TOTAL button — shows all stages combined
+  var tot=document.createElement('button');
+  var isTotal=(_currentStageIdx===-1);
+  tot.style.cssText='padding:4px 14px;border-radius:20px;border:2px solid '+(isTotal?'#fff':'var(--border2)')+';'
+    +'background:'+(isTotal?'rgba(255,255,255,.12)':'transparent')+';color:'+(isTotal?'#fff':'var(--muted)')+';'
+    +'font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.5px;cursor:pointer;white-space:nowrap;';
+  tot.innerHTML='&#8721; Total';
+  tot.title='Show all stages combined';
+  tot.onclick=function(){
+    if(currentTab==='pack'){
+      _packShowTotal=true;_packShowAll=false;
+      var tb=document.getElementById('pack-total-btn');
+      var ab=document.getElementById('pack-all-btn');
+      if(tb)tb.style.background='rgba(0,212,255,.15)';
+      if(ab)ab.style.background='';
+      renderPackList();
+    } else if(currentTab==='todos'){
+      _todoStageFilter=null; renderTodosPanel();
+    } else {
+      switchStage(-1);
+    }
+  };
+  bar.appendChild(tot);
   var ov=document.createElement('button');
   ov.style.cssText='margin-left:auto;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer;';
   ov.textContent='◈ Overview';
@@ -2328,8 +2360,13 @@ function openEditModal(gi) {
   _populateConnectorSelects(d.connector_in||'', d.connector_out||'');
   var _d_sp = getSpec(d.model || modelFromId(d.device_id||''));
   var _pwrIn=_d_sp?(_d_sp.pwr_in||''):'', _dataIn=_d_sp?(_d_sp.data_in||''):'';
+  // Compute srcConn from the device's source
+  var _srcConnModal='';
+  if(d.source&&d.source!=='FOH'){
+    var _sm=null; _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_sm=x;});});
+    if(_sm){var _ssp=getSpec(_sm.model||modelFromId(_sm.device_id)); _srcConnModal=_ssp?(_ssp.data_out||_ssp.pwr_out||_ssp.out_connector||''):'';}}
   _populateCableSelects(d.cable_in||d.cable||'', d.cable_out||'', _pwrIn);
-  _populateDualCables(d.cable_pwr_in||d.cable_in||d.cable||'', d.cable_data_in||d.cable_in||d.cable||'', _pwrIn, _dataIn, srcConnForModal);
+  _populateDualCables(d.cable_pwr_in||d.cable_in||d.cable||'', d.cable_data_in||d.cable_in||d.cable||'', _pwrIn, _dataIn, _srcConnModal);
   populateChecks(d.checks||{}, d.note_opts||[]);
   populateModelDropdown(d.type, modelKey);
   updateModalForType();
@@ -8217,7 +8254,7 @@ function _refreshDataCables() {
   var srcId=(document.getElementById('m-source-data')||{}).value||'';
   var srcDev=srcId&&srcId!=='FOH'?null:null;
   if(srcId&&srcId!=='FOH') _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)srcDev=x;});});
-  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.pwr_out||sp.out_connector||''):'';})():'';
+  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.data_out||sp.pwr_out||sp.out_connector||''):'';})():'';
   // For FOH, accept any cable
   if(srcId==='FOH') srcConn='';
   // Find this distro's data_in connector
