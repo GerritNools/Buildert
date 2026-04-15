@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.861</title>
+<title>WTUniverse · Buildert Editor v3.862</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.861</div>
+    <div>build v3.862</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2386,6 +2386,9 @@ function updateModalForType() {
   if(type===TYPE_DISTRO){ setTimeout(function(){populateDataSourceDropdown();},50); }
   var _ddi=document.getElementById('distro-dual-input');
   if(_ddi) _ddi.style.display=(type===TYPE_DISTRO)?'':'none';
+  // For distros: hide single source field (they use dual pwr/data inputs)
+  var _sg=document.getElementById('source-group');
+  if(_sg) _sg.style.display=(type===TYPE_DISTRO)?'none':'';
   if(type===TYPE_DISTRO){ populateDataSourceDropdown(); }
   // Distro dual input: power from PSU + data from upstream
   var ddiEl=document.getElementById('distro-dual-input');
@@ -8185,7 +8188,7 @@ function _refreshPowerCables() {
   var srcId=(document.getElementById('m-source-power')||{}).value||'';
   var srcDev=null;
   _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)srcDev=x;});});
-  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.pwr_out||sp.out_connector||''):'';})():'';
+  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.data_out||sp.pwr_out||sp.out_connector||''):'';})():'';
   var sel=document.getElementById('m-cable-power'); if(!sel) return;
   var cur=sel.value;
   sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
@@ -8203,7 +8206,8 @@ function populateDataSourceDropdown(currentVal) {
   var excludeId=(document.getElementById('m-device-id-edit')&&document.getElementById('m-device-id-edit').style.display!=='none')
     ?document.getElementById('m-device-id-edit').value:document.getElementById('m-device-id').value;
   sel.innerHTML='<option value="">&#8212; not set &#8212;</option><option value="FOH"'+(currentVal==='FOH'?' selected':'')+'>FOH (controller)</option>';
-  devices.filter(function(x){ return (x.type===TYPE_DISTRO||x.type===TYPE_PSU) && x.device_id && x.device_id!==excludeId; })
+  // Data source for distros: upstream distro or FOH only — never a PSU
+  devices.filter(function(x){ return x.type===TYPE_DISTRO && x.device_id && x.device_id!==excludeId; })
     .forEach(function(x){
       sel.innerHTML+='<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+( TYPE_ICON[x.type]||'')+' '+x.device_id+'</option>';
     });
@@ -8224,7 +8228,8 @@ function _refreshDataCables() {
   var cur=sel.value;
   sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
   CABLE_TYPES.forEach(function(ct){
-    // Cable must match distro data_in on device end (pwr_b or data_b)
+    // Data cable only — must carry data signal
+    if(!ct.data_a && !ct.data_b) return;
     var devMatch=!devDataConn||ct.data_b===devDataConn||ct.pwr_b===devDataConn;
     var srcMatch=!srcConn||ct.pwr_a===srcConn||ct.data_a===srcConn;
     if(!devMatch||!srcMatch) return;
