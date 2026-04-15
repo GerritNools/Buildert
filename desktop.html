@@ -2061,9 +2061,9 @@ function renderTable() {
              });
              // onchange: save field + if combo, sync the other
              var onP='setField('+gi+',\'cable_pwr_in\',this.value);'
-               +'if(this.value&&cableSignalType(this.value)==="combo"){ setField('+gi+',\'cable_data_in\',this.value); }';
+               +"if(this.value&&cableSignalType(this.value)==='combo'){setField("+gi+",'cable_data_in',this.value);}";
              var onD='setField('+gi+',\'cable_data_in\',this.value);'
-               +'if(this.value&&cableSignalType(this.value)==="combo"){ setField('+gi+',\'cable_pwr_in\',this.value); }';
+               +"if(this.value&&cableSignalType(this.value)==='combo'){setField("+gi+",'cable_pwr_in',this.value);}";
              return '<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onP+'">'+oPwr+'</select></td>'
                    +'<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onD+'">'+oDat+'</select></td>';
            })()
