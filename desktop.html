@@ -1622,6 +1622,15 @@ function distroLoadW(id) { return chainLoadW(id); }
 
 // DEVICE_SPECS — sourced from devices.xlsx
 // Key = first word of device_id (uppercase). e.g. "RGBB 3" → key "RGBB"
+var CONNECTOR_LABELS = {
+  'TR1':'TR1 (PowerCAT)', 'HartingPushPull':'HartingPushPull (PowerLAN)',
+  '32ACEE':'32A CEE (Red)', 'Schuko':'Schuko', 'L21-30':'L21-30',
+  'Ethercon':'Ethercon (CAT)', 'DMX5pin':'DMX 5-pin', 'Fiber':'Fiber',
+  '16ACEEBlue':'16A CEE (Blue)', 'PC32':'PC32', 'Edison':'Edison'
+};
+var PWR_CONNECTORS  = ['TR1','HartingPushPull','32ACEE','16ACEEBlue','Schuko','L21-30','PC32','Edison'];
+var DATA_CONNECTORS = ['Ethercon','HartingPushPull','DMX5pin','Fiber','TR1'];
+
 var SPECS_BAKED_VERSION='2026-04-15-v2';
 // Clear stale localStorage specs immediately — baked specs are always truth
 try{localStorage.removeItem('buildert_specs');localStorage.removeItem('buildert_specs_version');}catch(e){}
@@ -2027,15 +2036,36 @@ function renderTable() {
           : '<td>' + srcHtml + '</td>'
            +(function(){
              var pCbl=d.cable_pwr_in||d.cable_in||d.cable||'';
-             var dCbl=d.cable_data_in2||d.cable_data_in||d.cable_in||d.cable||'';
-             function _cl(v){
-               if(!v) return '<span style="color:var(--muted);font-size:11px">—</span>';
-               var ck=v.split('-')[0];var ct=CABLE_TYPES.find(function(x){return x.key===ck;});
-               var lv=parseFloat(v.split('-').slice(1).join('-'));
-               var ld=ct?ct.lengths.find(function(x){return Math.abs(x.val-lv)<0.01;}):null;
-               return '<span style="font-family:var(--mono);font-size:11px">'+(ct?(ct.label+(ld?' '+ld.lbl:'lm')):v)+'</span>';
-             }
-             return '<td>'+_cl(pCbl)+'</td><td>'+_cl(dCbl)+'</td>';
+             var dCbl=d.cable_data_in||d.cable_in||d.cable||'';
+             var sp2=specsForDevice(d)||{};
+             var devPIn=sp2.pwr_in||'', devDIn=sp2.data_in||'';
+             // Build power cable options
+             var oPwr='<option value="">—</option>';
+             CABLE_TYPES.forEach(function(ct){
+               if(!ct.pwr_a&&!ct.pwr_b) return;
+               ct.lengths.forEach(function(l){
+                 var v=ct.key+'-'+l.val;
+                 var match=!devPIn||!ct.pwr_b||ct.pwr_b===devPIn;
+                 if(match) oPwr+='<option value="'+v+'"'+(pCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+               });
+             });
+             if(oPwr==='<option value="">—</option>'){ CABLE_TYPES.forEach(function(ct){ if(!ct.pwr_a&&!ct.pwr_b)return; ct.lengths.forEach(function(l){ var v=ct.key+'-'+l.val; oPwr+='<option value="'+v+'"'+(pCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>'; }); }); }
+             // Build data cable options
+             var oDat='<option value="">—</option>';
+             CABLE_TYPES.forEach(function(ct){
+               if(!ct.data_a&&!ct.data_b) return;
+               ct.lengths.forEach(function(l){
+                 var v=ct.key+'-'+l.val;
+                 oDat+='<option value="'+v+'"'+(dCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+               });
+             });
+             // onchange: save field + if combo, sync the other
+             var onP='setField('+gi+',\'cable_pwr_in\',this.value);'
+               +'if(this.value&&cableSignalType(this.value)==="combo"){ setField('+gi+',\'cable_data_in\',this.value); }';
+             var onD='setField('+gi+',\'cable_data_in\',this.value);'
+               +'if(this.value&&cableSignalType(this.value)==="combo"){ setField('+gi+',\'cable_pwr_in\',this.value); }';
+             return '<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onP+'">'+oPwr+'</select></td>'
+                   +'<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onD+'">'+oDat+'</select></td>';
            })()
       )
       + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'  
