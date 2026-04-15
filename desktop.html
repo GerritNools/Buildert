@@ -3831,9 +3831,12 @@ function loadSpecsFromStorage() {
     var s=localStorage.getItem('buildert_specs');
     if(s){
       _specsOverrides=JSON.parse(s);
-      // Full replace — saved CSV is the truth
-      Object.keys(DEVICE_SPECS).forEach(function(k){ delete DEVICE_SPECS[k]; });
-      Object.keys(_specsOverrides).forEach(function(k){ DEVICE_SPECS[k]=_specsOverrides[k]; });
+      // Merge overrides ON TOP of baked specs — never wipe the full baked list
+      // (baked specs in DEVICE_SPECS are always the baseline truth)
+      Object.keys(_specsOverrides).forEach(function(k){
+        if(DEVICE_SPECS[k]) Object.assign(DEVICE_SPECS[k], _specsOverrides[k]);
+        else DEVICE_SPECS[k]=_specsOverrides[k];
+      });
     }
   } catch(e){}
 }
@@ -5369,7 +5372,13 @@ function renderSpecs(){
     });
     return h+'</tbody></table></div>';
   })()
-  el.innerHTML=lTbl+dTbl+sTbl+pTbl+aTbl+cTbl;
+  var resetBar='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);border-radius:8px 8px 0 0;margin-bottom:2px">'
+    +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Specs are baked from CSV. Edits here save as overrides in localStorage.</span>'
+    +'<button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:4px 12px;color:var(--danger);border-color:var(--danger)" '
+    +'onclick="if(confirm(\'Clear all spec overrides and reload baked specs?\')){localStorage.removeItem(\'buildert_specs\');location.reload();}">'
+    +'&#8635; Reset to baked specs</button>'
+    +'</div>';
+  el.innerHTML=resetBar+lTbl+dTbl+sTbl+pTbl+aTbl+cTbl;
 
   // Add any imported models not covered by the above sections
   var shown = lk.concat(dk).concat(sk).concat(pkList).concat(adkList);
