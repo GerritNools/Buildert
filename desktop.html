@@ -1753,7 +1753,9 @@ function _oneCableSelect(gi, field, val) {
     if (field==='cable_in' && d.source && d.source!=='FOH') {
       var _srcD=null;
       _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcD=x;});});
-      if(_srcD){var _sSp=getSpec(_srcD.model||modelFromId(_srcD.device_id));srcConn=_sSp?(_sSp.pwr_out||_sSp.out_connector||''):'';}
+      if(_srcD){var _sSp=getSpec(_srcD.model||modelFromId(_srcD.device_id));
+      // Use data_out if different from pwr_out — lasers connect to data output
+      srcConn=_sSp?(_sSp.data_out||_sSp.pwr_out||_sSp.out_connector||''):'';}
     }
   }
   var opts = '<option value="">— —</option>';
@@ -1824,7 +1826,7 @@ function _populateCableSelects(cableIn, cableOut, inConnector) {
   if (srcSelVal && srcSelVal !== 'FOH') {
     var _srcDev = null;
     _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcSelVal)_srcDev=x;});});
-    if (_srcDev) { var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id)); srcConnForModal=_srcSp?(_srcSp.pwr_out||_srcSp.out_connector||''):''; }
+    if (_srcDev) { var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id)); srcConnForModal=_srcSp?(_srcSp.data_out||_srcSp.pwr_out||_srcSp.out_connector||''):''; }
   }
   if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'', srcConnForModal);
   if (so) so.innerHTML = mkOpts(cableOut||'', '', '');
@@ -1874,14 +1876,15 @@ function renderTable() {
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
 
-  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial'), th('Pwr In','pwr_in'), th('Data In','data_in'), th('Pwr Out','pwr_out'), th('Data Out','data_out')];
+  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial')];
   if (isAll) cols.push(th('Type','type'));
+  cols.push(th('Location','location'));
   if(isDistro){
-    cols.push(th('Location','location'), th('Pwr src','source_power'), '<th>Pwr cable</th>',
-      th('Data src','source_data'), '<th>Data cable</th>', '<th>Status</th>');
+    cols.push(th('Pwr src','source_power'), '<th>Pwr cable</th>', th('Data src','source_data'), '<th>Data cable</th>');
   } else {
-    cols.push(th('Location','location'), th('Source','source'), '<th>Cable IN</th>', '<th>Cable OUT</th>', '<th>Status</th>');
+    cols.push(th('Source','source'), '<th>Cable IN</th>', '<th>Cable OUT</th>');
   }
+  cols.push('<th style="color:var(--warn);font-size:10px">Pwr In</th>', '<th style="color:var(--accent);font-size:10px">Data In</th>', '<th style="color:var(--warn);font-size:10px">Pwr Out</th>', '<th style="color:var(--accent);font-size:10px">Data Out</th>', '<th>Status</th>');
   // Per-type check columns — NOT shown in All view (too wide)
   if (isLaser)  cols.push('<th>Pointed</th>', '<th>Mounted</th>', '<th>Cabled</th>');
   if (isSmoke)  cols.push('<th>Placed</th>','<th>Fan</th>','<th>CO2</th>','<th>Reg</th>','<th>Pwr</th>');
@@ -2020,27 +2023,27 @@ function renderTable() {
       +   (d.serial||'') + '</span></td>'
       + (isAll ? '<td>' + badge + '</td>' : '')
       + '<td contenteditable="true" data-placeholder="location" style="min-width:80px"'
-      +   ' onblur="setField(' + gi + ',\'location\',this.innerText.trim())"'
+      +   ' onblur="setField(' + gi + ",'location',this.innerText.trim())"
       +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
       +   (d.location||'') + '</td>'
-      + '<td>' + (function(){
-          if(isDistro && d.type===TYPE_DISTRO){
-            // Power source cell
-            var pwrSrc=d.source_power||'';
-            return '<span style="font-family:var(--mono);font-size:11px;color:'+(pwrSrc?'var(--warn)':'var(--muted)')+'">'+( pwrSrc||'—')+'</span>';
-          }
-          return srcHtml;
-        })() + '</td>'
-      + '<td>' + (function(){
-          if(isDistro && d.type===TYPE_DISTRO){
-            var c=d.cable_power_in||''; return '<span style="font-family:var(--mono);font-size:11px;color:'+(c?'var(--ok)':'var(--muted)')+'">'+(_cableLabel(c)||'—')+'</span>';
-          }
-          return (function(){var _chg=window._mobileChanged&&window._mobileChanged[d.device_id];var _cls=_chg&&(_chg.indexOf('cable_in')>=0||_chg.indexOf('cable')>=0)?'mob-changed':'';return '<span class="'+_cls+'">'+_oneCableSelect(gi,'cable_in',d.cable_in||d.cable||'')+'</span>';})();
-        })() + '</td>'
-      + (isDistro ? '<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.source_data?'var(--accent)':'var(--muted)')+'">'+( d.source_data||'—')+'</span></td>' : '')
-      + (isDistro ? '<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.cable_data_in?'var(--ok)':'var(--muted)')+'">'+(_cableLabel(d.cable_data_in||'')||'—')+'</span></td>' : '')
-      + (isDistro ? '' : '<td style="color:var(--muted);font-size:11px;font-family:var(--mono)">' + _cableOutDisplay(d) + '</td>')
-      + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'
+      + (isDistro && d.type===TYPE_DISTRO
+          ? '<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.source_power?'var(--warn)':'var(--muted)')+'">'+(d.source_power||'—')+'</span></td>'
+           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.cable_power_in?'var(--ok)':'var(--muted)')+'">'+(d.cable_power_in?_cableLabel(d.cable_power_in):'—')+'</span></td>'
+           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.source_data?'var(--accent)':'var(--muted)')+'">'+(d.source_data||'—')+'</span></td>'
+           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.cable_data_in?'var(--ok)':'var(--muted)')+'">'+(d.cable_data_in?_cableLabel(d.cable_data_in):'—')+'</span></td>'
+          : '<td>' + srcHtml + '</td>'
+           +(function(){var _chg=window._mobileChanged&&window._mobileChanged[d.device_id];var _cls=_chg&&(_chg.indexOf('cable_in')>=0||_chg.indexOf('cable')>=0)?'mob-changed':'';return '<td class="'+_cls+'">'+_oneCableSelect(gi,'cable_in',d.cable_in||d.cable||'')+'</td>';})() 
+           +'<td style="color:var(--muted);font-size:11px;font-family:var(--mono)">' + _cableOutDisplay(d) + '</td>'
+      )
+      + (function(){
+          var sp=specsForDevice(d)||{};
+          function chip(v,c){return v?'<span style="font-family:var(--mono);font-size:10px;white-space:nowrap;color:'+c+'">'+v+'</span>':'<span style="color:var(--muted)">—</span>';}
+          return '<td>'+chip(sp.pwr_in||'','var(--warn)')+'</td>'
+               +'<td>'+chip(sp.data_in||'','var(--accent)')+'</td>'
+               +'<td>'+chip(sp.pwr_out||'','var(--warn)')+'</td>'
+               +'<td>'+chip(sp.data_out||'','var(--accent)')+'</td>';
+        })()
+      + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'  
       +   ['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'].map(function(s) { return '<option value="'+s+'"' + (d.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
       + '</select></td>'
       + chk
@@ -4531,7 +4534,7 @@ function nodeEdgeClick(e, gi) {
   if (d.source && d.source !== 'FOH') {
     var _srcDevE = null;
     _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevE=x;});});
-    if (_srcDevE) { var _sSpE=getSpec(_srcDevE.model||modelFromId(_srcDevE.device_id)); _srcConn=_sSpE?(_sSpE.pwr_out||_sSpE.out_connector||''):''; }
+    if (_srcDevE) { var _sSpE=getSpec(_srcDevE.model||modelFromId(_srcDevE.device_id)); _srcConn=_sSpE?(_sSpE.data_out||_sSpE.pwr_out||_sSpE.out_connector||''):''; }
   }
   var opts = '<option value="">— none —</option>';
   CABLE_TYPES.forEach(function(ct){
