@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.862</title>
+<title>WTUniverse · Buildert Editor v3.863</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.862</div>
+    <div>build v3.863</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1360,7 +1360,7 @@ function switchStage(idx){
     return;
   }
   _currentStageIdx=Math.max(0,Math.min(idx,_stages.length-1));
-  devices=_stages[_currentStageIdx].devices;
+  if(_stages[_currentStageIdx]) devices=_stages[_currentStageIdx].devices;
   _nodePositions=_stages[_currentStageIdx].nodePositions||{};
   _diagPositions=_stages[_currentStageIdx].diagPositions||{};
   try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
@@ -3183,6 +3183,8 @@ function _applyProjectLoad(data) {
 }
 
 function _mergeProjectNoConflict(data) {
+  // Exit Total view before merging — merge always targets a specific stage
+  if(_currentStageIdx===-1){ _currentStageIdx=0; }
   var fromMobile = data._saved_by && data._saved_by !== 'desktop' && data._saved_by !== '';
 
   if(fromMobile) {
@@ -3257,7 +3259,7 @@ function _mergeProjectNoConflict(data) {
   // Called from file open or wPull of desktop-saved data
   if(Array.isArray(data.stages) && data.stages.length){
     _stages = data.stages;
-    _currentStageIdx = Math.min(_currentStageIdx, _stages.length-1);
+    _currentStageIdx = Math.max(0, Math.min(_currentStageIdx, _stages.length-1));
     devices = _stages[_currentStageIdx].devices;
     // Don't overwrite node/diag positions from remote if user is actively in node view
     // Local positions are always more current than whatever was last pushed
@@ -6669,6 +6671,8 @@ async function wPull(){
 var _wPushT=null;
 async function wPush(silent){
   if(!_workerUrl||!_projectKey) return;
+  // Exit Total view before push
+  if(_currentStageIdx===-1){ _currentStageIdx=0; devices=_stages[0].devices; }
   var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
   var dp='{}'; try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
   // Save current stage before pushing
@@ -7076,7 +7080,8 @@ document.addEventListener('click',function(e){
 function _buildFilePayload(){
   // Save current stage layout before building payload
   _saveCurrentStageLayout();
-  _stages[_currentStageIdx].devices = devices;
+  // If in Total view, sync devices back to their respective stages before push
+  if(_currentStageIdx>=0) _stages[_currentStageIdx].devices = devices;
   return {
     _format:'wtu-project',
     _version:_projectVersion,
@@ -7151,6 +7156,7 @@ async function fileOpen(){
   }
 }
 function _loadFromText(text, name){
+  if(_currentStageIdx===-1) _currentStageIdx=0;
   try{
     var data=JSON.parse(text);
     if(data._format!=='buildert-project'&&data._format!=='wtu-project'){
