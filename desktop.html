@@ -1897,7 +1897,7 @@ function renderTable() {
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
 
-  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial')];
+  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial'), th('Pwr In','pwr_in'), th('Data In','data_in'), th('Pwr Out','pwr_out'), th('Data Out','data_out')];
   if (isAll) cols.push(th('Type','type'));
   if(isDistro){
     cols.push(th('Location','location'), th('Pwr src','source_power'), '<th>Pwr cable</th>',
