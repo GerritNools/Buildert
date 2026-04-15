@@ -1838,6 +1838,8 @@ function _populateCableSelects(cableIn, cableOut, inConnector) {
     if (_srcDev) { var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id)); srcConnForModal=_srcSp?(_srcSp.data_out||_srcSp.pwr_out||_srcSp.out_connector||''):''; }
   }
   if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'', srcConnForModal);
+  // Update signal badge and show/hide separate source panels based on current cable
+  if (typeof _onCableInChange === 'function') _onCableInChange();
   if (so) so.innerHTML = mkOpts(cableOut||'', '', '');
 }
 
