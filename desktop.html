@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.875</title>
+<title>WTUniverse · Buildert Editor v3.876</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.875</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.876</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4358,24 +4358,12 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1s,y1s,x2p,y2p,x2d,y2d,hasAdap){
-    // Single line from source → split point → two branches (pwr amber, data blue)
-    // Split at 70% of the journey, offset slightly
-    var sx=x1s, sy=y1s;
-    var spx=(sx+x2p)/2+((x2d-x2p)*0.15), spy=(sy+y2p*0.7+y2d*0.3)*0.85;
+    // Two parallel bezier lines: amber (power) + blue (data)
+    // Offset them slightly so they don't overlap
     var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    // Stem: source to split point (grey)
-    var cy1=(sy+spy)/2;
-    var stem='<path d="M'+sx+','+sy+' C'+sx+','+cy1+' '+spx+','+cy1+' '+spx+','+spy+'"'
-      +' fill="none" stroke="#888" stroke-width="2"'+dash+' opacity="0.8"/>';
-    // Branch 1: power (amber) — split to pwr port
-    var cpy=(spy+y2p)/2;
-    var pBranch='<path d="M'+spx+','+spy+' C'+spx+','+cpy+' '+x2p+','+cpy+' '+x2p+','+y2p+'"'
-      +' fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    // Branch 2: data (blue) — split to data port
-    var cdy=(spy+y2d)/2;
-    var dBranch='<path d="M'+spx+','+spy+' C'+spx+','+cdy+' '+x2d+','+cdy+' '+x2d+','+y2d+'"'
-      +' fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return stem+pBranch+dBranch;
+    var pBranch='<path d="'+_bezier(x1s,y1s-2,x2p,y2p-2)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dBranch='<path d="'+_bezier(x1s,y1s+2,x2d,y2d+2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return pBranch+dBranch;
   }
 
   // ── Draw edges in order: power first, data, combo ──
