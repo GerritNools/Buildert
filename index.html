@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -228,10 +228,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -491,7 +491,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -565,7 +565,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -763,7 +763,7 @@ var SPECS = {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -986,10 +986,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1164,7 +1164,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1249,7 +1249,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -1323,7 +1323,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -1470,7 +1470,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1693,10 +1693,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1871,7 +1871,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1956,7 +1956,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -2030,7 +2030,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -2177,7 +2177,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -2400,10 +2400,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -2578,7 +2578,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2663,7 +2663,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -2737,7 +2737,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -2884,7 +2884,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3107,10 +3107,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3285,7 +3285,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3370,7 +3370,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -3444,7 +3444,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -3591,7 +3591,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3814,10 +3814,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3992,7 +3992,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4077,7 +4077,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -4151,7 +4151,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -4298,7 +4298,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -4521,10 +4521,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -4699,7 +4699,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4784,7 +4784,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -4858,7 +4858,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -5005,7 +5005,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -5228,10 +5228,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -5406,7 +5406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -5491,7 +5491,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -5565,7 +5565,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -5712,7 +5712,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -5935,10 +5935,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6113,7 +6113,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6198,7 +6198,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -6272,7 +6272,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -6419,7 +6419,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -6642,10 +6642,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6820,7 +6820,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6905,7 +6905,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -6979,7 +6979,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -7126,7 +7126,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.891</title>
+<title>WTU · Buildert v3.850</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -7349,10 +7349,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
+  width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;
+  font-size:26px;font-weight:700;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:0 4px 18px rgba(0,212,255,.4);}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -7527,7 +7527,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.891</small></div>
+  <div class="logo">WTU <small>v3.850</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7612,7 +7612,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -7686,7 +7686,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     </div>
     <label>Status</label>
     <select id="m-status">
-      <option>Concept</option><option>Mounted</option><option>Online</option>
+      <option>Active</option><option>Mounted</option><option>Online</option>
       <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
     </select>
     <div id="laser-sec" style="display:none">
@@ -7927,7 +7927,7 @@ function renderCards(){
       +      '<div class="card-id id-'+tk+'" style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( d.device_id||'???' )+'</div>'
       +      (function(){ var m=d.model||modelFromId(d.device_id||''); return m?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted);flex-shrink:0">'+m+'</span>':''; })()
       +    '</div>'
-      +    '<div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'+(d.status==='Online'||d.status==='Mounted'?'var(--ok)':d.status==='GoAndCheck'||d.status==='Swap'?'var(--warn)':d.status==='Offline'||d.status==='Swapped'?'var(--danger)':'var(--muted)')+'">'+( d.status||'Concept')+(d.location?' · 📍'+d.location:'')+'</div>'
+      +    '<div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'+(d.status==='Online'||d.status==='Mounted'?'var(--ok)':d.status==='GoAndCheck'||d.status==='Swap'?'var(--warn)':d.status==='Offline'||d.status==='Swapped'?'var(--danger)':'var(--muted)')+'">'+( d.status||'Active')+(d.location?' · 📍'+d.location:'')+'</div>'
       +  '</div>'
       +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'" style="font-size:10px;flex-shrink:0">'+(hasSerial?d.serial:'-')+'</div>'
       +  '<button class="edit-btn" style="width:26px;height:26px;flex-shrink:0" onclick="event.stopPropagation();openSpecSheet('+gi+')" title="Specs">📋</button>'
@@ -8676,7 +8676,7 @@ function openAddSheet(type){
   document.getElementById('m-spec').style.display='none';
   document.getElementById('m-serial').value='';
   document.getElementById('m-location').value='';
-  document.getElementById('m-status').value='Concept';
+  document.getElementById('m-status').value='Active';
   document.getElementById('m-notes').value='';
   document.getElementById('m-cable-in').innerHTML=_cableOpts('','');
   // cable-out display only
@@ -8696,7 +8696,7 @@ function openEdit(gi){
   syncId();
   document.getElementById('m-serial').value=d.serial||'';
   document.getElementById('m-location').value=d.location||'';
-  document.getElementById('m-status').value=d.status||'Concept';
+  document.getElementById('m-status').value=d.status||'Active';
   document.getElementById('m-notes').value=d.notes||'';
   var _sp=specFor(d);
   var _srcConnM=''; // source device output connector
@@ -10762,7 +10762,7 @@ function _mSyncAutoTodos(){
     var mid='auto_mount_'+d.device_id;
     var sid='auto_sn_'+d.device_id;
     autos.push({id:mid,label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
-    autos.push({id:sid,label:'Flashback # '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+    autos.push({id:sid,label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
   });
   _mTodos=keep.concat(autos);
 }
@@ -10775,7 +10775,7 @@ function _mAutoTodos(){
     var mounted=!!(d.checks&&d.checks['Mounted']);
     var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
     autos.push({id:'auto_mount_'+d.device_id,label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
-    autos.push({id:'auto_sn_'+d.device_id,label:'Flashback # '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+    autos.push({id:'auto_sn_'+d.device_id,label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
   });
   _mTodos=keep.concat(autos);
 }
@@ -10845,7 +10845,7 @@ function _renderTodosList(){
       +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">MOUNTED</div>'
       +'<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg);border-radius:3px"><div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
       +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span></div></div>'
-      +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">FLASHBACK #</div>'
+      +'<div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px">SERIALS</div>'
       +'<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg);border-radius:3px"><div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
       +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#5b8fff">'+autoSnDone+'/'+autoTotal+'</span></div></div>'
       +'</div></div>';
@@ -11348,5 +11348,3 @@ function _snScanTick() {
 </div>
 </body>
 </html>
-
-        
