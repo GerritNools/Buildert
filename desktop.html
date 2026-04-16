@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.864</title>
+<title>WTUniverse · Buildert Editor v3.865</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.864</div>
+    <div>build v3.865</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1744,7 +1744,7 @@ var CABLE_TYPES = [
   {key:'l2130',    label:'L21-30',      pwr_a:'L21-30',          pwr_b:'L21-30',          data_a:'',               data_b:'',               lengths:[{val:1.5,lbl:'Lunch box'},{val:8,lbl:'25 ft (8 m)'},{val:15,lbl:'50 ft (15 m)'},{val:30,lbl:'100 ft (30 m)'},{val:45,lbl:'150 ft (45 m)'}]},
   {key:'schuko',   label:'Schuko',      pwr_a:'Schuko',          pwr_b:'Schuko',          data_a:'',               data_b:'',               lengths:[{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
   {key:'cee32',    label:'CEE 32A',     pwr_a:'32ACEE',          pwr_b:'32ACEE',          data_a:'',               data_b:'',               lengths:[{val:10,lbl:'10 m'},{val:25,lbl:'25 m'}]},
-  {key:'cat',      label:'CAT Ethercon',pwr_a:'',                pwr_b:'',                data_a:'Ethercon',       data_b:'Ethercon',       lengths:[{val:5,lbl:'5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'},{val:115,lbl:'115 m'}]},
+  {key:'cat',      label:'CAT Ethercon',pwr_a:'',                pwr_b:'',                data_a:'Ethercon',       data_b:'Ethercon',       lengths:[{val:115,lbl:'115 m'}]},
   {key:'combidmx', label:'CombiDMX',    pwr_a:'TR1',             pwr_b:'TR1',             data_a:'DMX5pin',        data_b:'DMX5pin',        lengths:[{val:2.5,lbl:'2.5 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:10,lbl:'10 m'}]},
   {key:'fiber',    label:'Fiber',       pwr_a:'',                pwr_b:'',                data_a:'',               data_b:'',               lengths:[{val:1,lbl:'various'}]},
 ];// Returns {css, label, adapterNote} for a device given its source
@@ -4351,7 +4351,8 @@ function renderNodeView() {
           var _srcPwr3=_srcSp3?(_srcSp3.pwr_out||_srcSp3.out_connector||''):'';
           var _devPwr3=_dSp3?(_dSp3.pwr_in||_dSp3.in_connector||''):'';
           if ((_srcPwr3&&_ct3.pwr_a&&_srcPwr3!==_ct3.pwr_a)||(_devPwr3&&_ct3.pwr_b&&_devPwr3!==_ct3.pwr_b)) {
-            sigType='data'; // Show as data-only blue line
+            sigType='data'; // Downgrade: combo cable used data-only (TR1 not connected)
+            d._sigDataLink=true; // flag so edge draws dashed
           }
         }
       }
@@ -4372,7 +4373,8 @@ function renderNodeView() {
         edgeHtml += _edgePower(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, hasAdap,'arrow-warn');
 
       } else if (sigType==='data') {
-        edgeHtml += _edgeData(sp.dataOut.x,sp.dataOut.y, dp.dataIn.x,dp.dataIn.y, false,'arrow-foh');
+        // _sigDataLink is set when a combo cable (PowerCAT) is used data-only — draw dashed
+        edgeHtml += _edgeData(sp.dataOut.x,sp.dataOut.y, dp.dataIn.x,dp.dataIn.y, !!d._sigDataLink,'arrow-foh');
       }
 
       // Cable label
@@ -4382,6 +4384,7 @@ function renderNodeView() {
         var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));
         var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
         cLabel=info.cdef.label+' '+(ld?ld.lbl:lv+'m');
+        if (d._sigDataLink) cLabel=info.cdef.label+' '+(ld?ld.lbl:lv+'m')+' ⟷';
       } else { cLabel='+ set cable'; }
       var lbCol = sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#888':'#55606e';
       if(isFoh) lbCol='var(--accent)';
@@ -4398,6 +4401,8 @@ function renderNodeView() {
           +' fill="var(--warn)" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
       }
     }
+    // Clean up temp render flag
+    delete d._sigDataLink;
 
     // ── Separate power source (source_power field) ──
     if (d.source_power && d.source_power !== d.source) {
