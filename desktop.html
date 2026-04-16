@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.863</title>
+<title>WTUniverse · Buildert Editor v3.864</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.863</div>
+    <div>build v3.864</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -697,7 +697,7 @@
       <div style="margin-left:auto;display:flex;gap:6px">
         <button class="btn btn-ghost" onclick="packSignOff()" style="padding:5px 11px;font-size:11px">&#9998; Sign off</button>
         <button id="pack-all-btn" class="btn btn-ghost" onclick="_packShowAll=!_packShowAll;_packShowTotal=false;document.getElementById('pack-total-btn').style.background='';this.style.background=_packShowAll?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#9783; All stages</button>
-        <button id="pack-total-btn" class="btn btn-ghost" onclick="_packShowTotal=!_packShowTotal;_packShowAll=false;document.getElementById('pack-all-btn').style.background='';this.style.background=_packShowTotal?'rgba(0,212,255,.15)':'';renderPackList()" style="padding:5px 11px;font-size:12px">&#931; Total</button>
+        <button id="pack-total-btn" class="btn btn-ghost" onclick="_packShowTotal=!_packShowTotal;_packShowAll=false;var _aBtn=document.getElementById('pack-all-btn');if(_aBtn)_aBtn.style.background='';this.style.background=_packShowTotal?'rgba(0,212,255,.15)':'';try{renderPackList();}catch(e){console.error('renderPackList error:',e);}" style="padding:5px 11px;font-size:12px">&#931; Total</button>
         <select id="pack-sort-sel" onchange="_packSort=this.value;renderPackList()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;font-size:11px;font-family:var(--mono)"><option value="cat">By type</option><option value="stage">By stage</option><option value="model">By model</option><option value="status">By status</option><option value="alpha">A&#x2013;Z</option></select>
         <button class="btn btn-ghost" onclick="packPrint(true)" style="padding:5px 11px;font-size:12px">&#128438; Print all</button>
         <button class="btn btn-ghost" onclick="packPrint()" style="padding:5px 11px;font-size:12px">&#128438; Print</button>
@@ -1833,21 +1833,27 @@ function setCable(gi, val) {  // legacy shim kept for any old saved data
 
 // Populate cable selects in modal
 function _populateCableSelects(cableIn, cableOut, inConnector) {
-  function mkOpts(val, devConn, srcConn) {
+  function mkOpts(val, devConn, srcConn, devDataConn) {
+    devDataConn = devDataConn || '';
     var o = '<option value="">— none —</option>';
     CABLE_TYPES.forEach(function(ct) {
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
-        var devMatch = !devConn || !ct.pwr_b || ct.pwr_b === devConn;
-        var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
+        // Device end: pwr_in matches pwr_b, OR data_in matches data_b
+        var devPwrMatch  = !devConn     || !ct.pwr_b  || ct.pwr_b  === devConn;
+        var devDataMatch = !devDataConn || !ct.data_b  || ct.data_b === devDataConn;
+        var devMatch = devPwrMatch || devDataMatch;
+        // Source end: srcConn is data_out||pwr_out; check both
+        var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn || ct.data_a === srcConn;
         if (!devMatch || !srcMatch) return;
         o += '<option value="'+v+'"'+(val===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
       });
     });
-    // If nothing matched both constraints, fall back to device-end only
-    if (o === '<option value="">— none —</option>' && devConn && srcConn) return mkOpts(val, devConn, '');
-    // If still nothing, show all
-    if (o === '<option value="">— none —</option>' && devConn) return mkOpts(val, '', '');
+    // Fallback: if nothing matched, widen to device-end only
+    if (o === '<option value="">— none —</option>' && (devConn||devDataConn) && srcConn)
+      return mkOpts(val, devConn, '', devDataConn);
+    if (o === '<option value="">— none —</option>' && (devConn||devDataConn))
+      return mkOpts(val, '', '', '');
     return o;
   }
   var si = document.getElementById('m-cable-in');
@@ -1860,7 +1866,11 @@ function _populateCableSelects(cableIn, cableOut, inConnector) {
     _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcSelVal)_srcDev=x;});});
     if (_srcDev) { var _srcSp=getSpec(_srcDev.model||modelFromId(_srcDev.device_id)); srcConnForModal=_srcSp?(_srcSp.data_out||_srcSp.pwr_out||_srcSp.out_connector||''):''; }
   }
-  if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'', srcConnForModal);
+  // Get data_in for the device in the modal (for data-link cable matching)
+  var _modalModelKey = document.getElementById('m-model-key') && document.getElementById('m-model-key').value;
+  var _modalSp = _modalModelKey ? DEVICE_SPECS[_modalModelKey] : null;
+  var _modalDataIn = _modalSp ? (_modalSp.data_in||'') : '';
+  if (si) si.innerHTML = mkOpts(cableIn||'', inConnector||'', srcConnForModal, _modalDataIn);
   _populateDualCables(cableIn||'', '', inConnector||'', '', srcConnForModal);
   // Update signal badge and show/hide separate source panels based on current cable
   if (so) so.innerHTML = mkOpts(cableOut||'', '', '');
@@ -4325,6 +4335,26 @@ function renderNodeView() {
       var hasCable = !!(d.cable_in||d.cable);
       var isFoh = d.source==='FOH';
 
+      // Detect data-link mode: PowerCAT used between distros — TR1 not actually connected.
+      // When pwr connectors don't chain (src pwr_out ≠ cable pwr_a OR dev pwr_in ≠ cable pwr_b),
+      // downgrade 'combo' to 'data' so node view shows blue data line only.
+      if (sigType === 'combo' && !isFoh && hasCable) {
+        var _ct3 = CABLE_TYPES.find(function(c){ return c.key===(d.cable_in||d.cable||'').split('-')[0]; });
+        if (_ct3 && (_ct3.pwr_a || _ct3.pwr_b)) {
+          var _srcD3=null;
+          _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcD3=x;});});
+          var _srcSp3=_srcD3?getSpec(_srcD3.model||modelFromId(_srcD3.device_id||'')):null;
+          var _dSp3=getSpec(d.model||modelFromId(d.device_id||''));
+          var _srcPwr3=_srcSp3?(_srcSp3.pwr_out||_srcSp3.out_connector||''):'';
+          var _devPwr3=_dSp3?(_dSp3.pwr_in||_dSp3.in_connector||''):'';
+          // If either power end doesn't match: this is a data-link, not a full combo
+          if ((_srcPwr3 && _ct3.pwr_a && _srcPwr3 !== _ct3.pwr_a) ||
+              (_devPwr3 && _ct3.pwr_b && _devPwr3 !== _ct3.pwr_b)) {
+            sigType = 'data'; // Render as data-only (blue line)
+          }
+        }
+      }
+
       if (!hasCable || sigType==='none' || isFoh) {
         // No cable / FOH — single grey/cyan line, centre to centre
         var stroke = isFoh?'var(--accent)':'#55606e';
@@ -5051,7 +5081,7 @@ function renderPackStage(stageDevices) {
   if (!el) return {devices:0,cables:0};
   // Phase + signatures header
   var _phHdr='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px">'
-    +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+_packPhase.toUpperCase()+'</span>';
+    +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+((typeof _packPhase==='string'&&_packPhase)?_packPhase:'Checkout').toUpperCase()+'</span>';
   var _sigs=_packSignatures[_packPhase]||[];
   if(_sigs.length){
     _phHdr+=_sigs.map(function(s){var dt=new Date(s.ts);return '<span style="font-family:var(--mono);font-size:11px;color:var(--ok)">\u2713 '+s.name+' '+dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>';}).join('');
@@ -6787,15 +6817,15 @@ function _updateTodosBadge(){
 function _autoTodos(){
   var keep=_todos.filter(function(t){return !t.auto;});
   var autos=[];
-  // Use current stage devices for auto todos (stage-specific view)
-  // _todosAllStages=true uses all stages
-  var devs;
-  if(_todosAllStages && _stages.length){
-    devs=[];
-    _stages.forEach(function(s){devs=devs.concat(s.devices||[]);});
-  } else {
-    devs=devices; // current stage
-  }
+  // Use all-stages or current stage depending on toggle
+  var devs=[];
+  try {
+    if(_todosAllStages && _stages && _stages.length){
+      _stages.forEach(function(s){devs=devs.concat(s.devices||[]);});
+    } else {
+      devs=(devices||[]).slice();
+    }
+  } catch(e){ devs=[]; }
   devs.forEach(function(d){
     if(!d.device_id) return;
     var mounted=!!(d.checks&&d.checks['Mounted']);
@@ -6814,9 +6844,10 @@ function renderTodosPanel(){
   var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
   var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.06)',3:'rgba(255,77,77,.06)'};
   var urgBdr={1:'var(--border2)',2:'rgba(245,166,35,.3)',3:'rgba(255,77,77,.3)'};
-  var curStageId=(_stages[_currentStageIdx]||{}).id||'';
-  var stageName=(_stages[_currentStageIdx]||{}).name||'';
-  var stageCol=(_stages[_currentStageIdx]||{}).color||'var(--accent)';
+  var _safeStg=(_stages&&_stages[_currentStageIdx])||{};
+  var curStageId=_safeStg.id||'';
+  var stageName=_safeStg.name||'';
+  var stageCol=_safeStg.color||'var(--accent)';
   var allManual=_todos.filter(function(t){return !t.auto;});
   var auto=_todos.filter(function(t){return t.auto;});
   var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
@@ -7551,14 +7582,19 @@ function _packSaveChecked(key,val){_packChecked[key]=val;try{localStorage.setIte
 var _packShowTotal = false; // flat total list — no stage breakdown
 
 function renderPackList() {
-  _renderPackWorkflowBtns();
+  // Safety guard — these vars live below this function in the file; guard against any early call
+  if (typeof _packPhase === 'undefined' || _packPhase === null) _packPhase = 'Checkout';
+  if (typeof _packSignatures === 'undefined') _packSignatures = {};
+  if (typeof PACK_PHASES === 'undefined') PACK_PHASES = ['Checkout','Onsite','Loadout','Checkin'];
+  try { _renderPackWorkflowBtns(); } catch(e) {}
   var el = document.getElementById('pack-content');
   if(!el) return;
 
   // Phase + signatures header
-  var _sigs=_packSignatures[_packPhase]||[];
+  var _safePh = (typeof _packPhase==='string'&&_packPhase) ? _packPhase : 'Checkout';
+  var _sigs=(_packSignatures&&_packSignatures[_safePh])||[];
   var _phHdr='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px">'
-    +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+_packPhase.toUpperCase()+'</span>'
+    +'<span style="font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:2px;color:var(--accent)">'+_safePh.toUpperCase()+'</span>'
     +(_sigs.length?_sigs.map(function(s){var dt=new Date(s.ts);return '<span style="font-family:var(--mono);font-size:11px;color:var(--ok)">✓ '+s.name+' '+dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>';}).join(''):'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Not signed — use ✎ Sign off</span>')
     +'</div>';
 
