@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -227,11 +227,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -415,11 +415,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   </div>
   <div class="conn-dot" id="conn-dot"></div>
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
-  <button onclick="_mDebugSync()" style="background:rgba(245,166,35,.2);border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:3px 8px;font-size:10px;font-family:var(--mono);cursor:pointer;flex-shrink:0">⟳ SYNC</button>
 </header>
 
+<div id="mob-stage-bar" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:4px 10px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
 <div class="banner">
-  <div id="mob-stage-bar" style="display:none;background:transparent;padding:0 4px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;flex:1"></div>
   <div class="ban-bar"><div class="ban-fill" id="ban-fill" style="width:0%"></div></div>
   <div class="ban-pct" id="ban-pct" style="color:var(--muted)">—</div>
   <div class="ban-segs" id="ban-segs"></div>
@@ -511,7 +510,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 </div>
 
 <button class="fab" id="fab" onclick="openSheet('fab')">+</button>
-<button id="sync-fab" onclick="_mDebugSync()" style="position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+52px);z-index:102;width:52px;height:28px;border-radius:14px;background:rgba(0,212,255,.15);color:var(--accent);font-size:11px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;font-family:var(--mono);display:flex;align-items:center;justify-content:center;">SYNC</button>
 <nav id="bottom-nav"></nav>
 
 <!-- Overlays -->
@@ -765,7 +763,7 @@ var SPECS = {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -987,11 +985,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1166,7 +1164,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1472,7 +1470,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1694,11 +1692,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1873,7 +1871,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2179,7 +2177,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -2401,11 +2399,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -2580,7 +2578,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2886,7 +2884,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3108,11 +3106,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3287,7 +3285,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3593,7 +3591,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3815,11 +3813,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3994,7 +3992,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4300,7 +4298,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -4522,11 +4520,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -4701,7 +4699,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -5007,7 +5005,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -5229,11 +5227,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -5408,7 +5406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -5714,7 +5712,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -5936,11 +5934,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6115,7 +6113,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6421,7 +6419,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -6643,11 +6641,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6822,7 +6820,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7128,7 +7126,7 @@ OCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.890</title>
+<title>WTU · Buildert v3.891</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -7350,11 +7348,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .ntab.active-zones{color:var(--psu);}
 
 /* ── FAB ── */
-.fab{position:fixed;left:14px;bottom:calc(var(--nav-h)+var(--sb)+14px);z-index:101;
-  width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.08);color:var(--accent);
-  font-size:14px;font-weight:700;border:1px solid rgba(0,212,255,.3);cursor:pointer;
+.fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
+  width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,.15);color:var(--accent);
+  font-size:18px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.5;}
+  box-shadow:none;opacity:0.7;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -7529,7 +7527,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.890</small></div>
+  <div class="logo">WTU <small>v3.891</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7802,102 +7800,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <div id="toast"></div>
 <a id="dl-link" style="display:none"></a>
 
-<script>// ── Complete global initialisation ──────────────────────────────────
-// The Cloudflare Worker cache scripts fail (embedded HTML → SyntaxError),
-// so ALL globals that main script needs must be initialised here.
-
-// Type constants
-var TL='Laser projector',TS='Smoke machine',TD='Distro',TP='Power supply',TA='Adapter';
-var LC=['Mounted','Pointed','Cabled'];
-var SC=['Placed','Fan','CO2','Regulator','Power cable'];
-var DC=['Racked','Cabled','Labelled','Tested'];
-var PC=['Placed','Cabled','Tested'];
-
-// Safe inits (won't overwrite if already set by cache script)
-(function(){
-  var defs={
-    SPECS:{}, CABLE_TYPES:[], SNOTES:['Needs: power source','Change 230v/110v','Needs: tube'],
-    POINTED:['FOH','Straight','Other'],
-    TKEY:{}, TSHORT:{}, TICON:{}, SRCTYPE:{},
-    devices:[], project:{},
-    _mStages:[], _mCurrentStageIdx:0, _mPeekMode:false,
-    _mAssignedStageId:'', _mStagePerms:{},
-    _mDidFit:false, _mDiagPos:{}, _mNPos:{},
-    _mNH:62, _mNPanX:0, _mNPanY:0, _mScale:1,
-    _mEventsAttached:false, _mapInitEvents:false,
-    _mapDPX:0,_mapDPY:0,_mapDX:0,_mapDY:0,_mapPX:0,_mapPY:0,
-    _dbxSyncing:false, _isPulling:false, _lastLocalEdit:0,
-    _projectVersion:0, _projectBaseVersion:0,
-    _packSpares:[], _packShared:{toolcase:[],office:[],spares:[]},
-    _workerUrl:'', _projectKey:'', _mToken:'',
-    _dbxPollTimer:null, _dbxRefreshToken:'', _dbxToken:'',
-    _dbxAppKey:'', _dbxPath:'/current.json',
-    _saveT:null, _pushT:null,
-    currentTab:'all',
-    _activityLog:[], _remoteLog:[],
-    expandedGis:{}
-  };
-  for(var k in defs){ if(typeof window[k]==='undefined') window[k]=defs[k]; }
-  // Set up type lookup tables
-  if(!TKEY[TL]){ TKEY[TL]='laser';TKEY[TS]='smoke';TKEY[TD]='distro';TKEY[TP]='psu';TKEY[TA]='adapter'; }
-  if(!TSHORT[TL]){ TSHORT[TL]='LP';TSHORT[TS]='SM';TSHORT[TD]='DI';TSHORT[TP]='PSU';TSHORT[TA]='AD'; }
-  if(!TICON[TL]){ TICON[TL]='L';TICON[TS]='S';TICON[TD]='D';TICON[TP]='P';TICON[TA]='A'; }
-  if(!SRCTYPE[TL]){ SRCTYPE[TL]=[TD,TL];SRCTYPE[TS]=[TD,TP];SRCTYPE[TD]=[TD,TP,'_foh'];SRCTYPE[TP]=[];SRCTYPE[TA]=[TD,TP,TL,TA]; }
-})();
-
-// TABS — bottom navigation definition (was Cloudflare-injected, now baked in)
-var TABS = [
-  {k:'all',     icon:'▪',  label:'All'},
-  {k:'laser',   icon:'💡', label:'Laser'},
-  {k:'smoke',   icon:'💨', label:'Smoke'},
-  {k:'distro',  icon:'⚡', label:'Distro'},
-  {k:'psu',     icon:'🔌', label:'PSU'},
-  {k:'diagram', icon:'☍',  label:'Node'},
-  {k:'pack',    icon:'📦', label:'Pack'},
-  {k:'todos',   icon:'☑',  label:'Todos'},
-];
-
-// ── Missing functions that Cloudflare Worker was supposed to inject ──
-function checksFor(type){
-  if(type===TL) return LC.slice();
-  if(type===TS) return SC.slice();
-  if(type===TD) return DC.slice();
-  if(type===TP) return PC.slice();
-  return [];
-}
-
-function pct(d){
-  if(!d||!d.type) return 0;
-  var checks = checksFor(d.type);
-  var done = checks.filter(function(c){ return d.checks&&d.checks[c]; }).length;
-  var hasSerial = !!(d.serial&&d.serial.replace(/-/g,'').trim());
-  var isActive  = d.status==='Mounted'||d.status==='Online';
-  var pts = 0;
-  if(hasSerial)   pts += 20;
-  if(isActive)    pts += 20;
-  if(checks.length) pts += Math.round((done/checks.length)*60);
-  return Math.min(100, pts);
-}
-
-function filtered(){
-  var f = currentTab||'all';
-  if(f==='all') return devices;
-  return devices.filter(function(d){ return (TKEY[d.type]||'')===f; });
-}
-
-function chainW(id){
-  if(!id) return 0;
-  var total = 0;
-  devices.forEach(function(d){
-    if(d.source===id||d.source_power===id){
-      var sp = SPECS[d.model]||{};
-      total += sp.consumption_w||0;
-    }
-  });
-  return total;
-}
-
-
+<script>
 // ── Constants ────────────────────────────────────────────────────────
 var TL='Laser projector',TS='Smoke machine',TD='Distro',TP='Power supply',TA='Adapter';
 var LC=['Mounted','Pointed','Cabled'],SC=['Placed','Fan','CO2','Regulator','Power cable'],DC=['Racked','Cabled','Labelled','Tested'],PC=['Placed','Cabled','Tested'];
@@ -8000,9 +7903,6 @@ function renderMain(){
 
 function renderCards(){
   updateBanner(); buildChips();
-  // Remove stale no-data message if devices now loaded
-  var _oldMsg = document.querySelector('.no-dev-msg');
-  if(_oldMsg) _oldMsg.remove();
   var list=filtered();
   var cont=document.getElementById('card-list');
   var empty=document.getElementById('empty-state');
@@ -9203,10 +9103,8 @@ function _mergeProjectNoConflict(data){
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
-  // Always switch to device list after sync
-  currentTab = 'all';
-  setTab('all');
-  showToast('Synced v'+_projectVersion+' · '+devices.length+' devices','ok');
+  renderMain();
+  showToast('Synced v'+_projectVersion+' from '+(data._saved_by||'?'),'ok');
   _updateMobileProjectBadge();
 }
 
@@ -9805,8 +9703,8 @@ async function wPull(){
     var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{cache:'no-store',headers:{'X-Buildert-Token':_mToken}});
     clearTimeout(_t);
     _dbxSyncing=false;
-    if(resp.status===404){_dbxSetStatus('Worker: no data yet — push from desktop','var(--warn)');return;}
-    if(!resp.ok){_dbxSetStatus('Worker error '+resp.status+' — check URL','var(--danger)');return;}
+    if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
+    if(!resp.ok){_dbxSetStatus('Error '+resp.status,'var(--danger)');return;}
     var data=await resp.json();
     _isPulling=true;
     try{
@@ -9815,7 +9713,7 @@ async function wPull(){
     }finally{_isPulling=false;}
     _dbxSetStatus('✓ '+_projectKey+' '+_hhmm(),'var(--ok)');
     _updateMobileProjectBadge();
-  }catch(e){clearTimeout(_t);_dbxSyncing=false;console.error('[SYNC] wPull error:',e);_dbxSetStatus('ERR:'+e.message.slice(0,40),'var(--danger)');alert('Sync error: '+e.message);}
+  }catch(e){clearTimeout(_t);_dbxSyncing=false;console.error('[SYNC] wPull error:',e);_dbxSetStatus('Error: '+e.message,'var(--danger)');}
 }
 
 async function wPush(silent){
@@ -9860,7 +9758,7 @@ function wStartPolling(){
   if(!_workerUrl||!_projectKey){console.error("[SYNC] Missing URL or key!");_dbxSetStatus("No Worker URL","var(--danger)");return;}
   if(_dbxPollTimer){clearInterval(_dbxPollTimer);_dbxPollTimer=null;}
   wPull();
-  _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},10000);
+  _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},20000);
 }
 
 // Handle ?project=key&worker=url&rigger=name params (Worker-based, zero-friction)
@@ -10131,126 +10029,7 @@ if(dbxPathEl) dbxPathEl.value=_dbxPath;
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){localStorage.setItem('wtu_ip',params.get('ip'));startPolling();}
 
-buildNav();
-
-// If no connection configured, show setup screen in main area
-function _showSetupScreenIfNeeded(){
-  if(_workerUrl && _projectKey) return; // already configured
-  var url = localStorage.getItem('buildert_worker_url')||'';
-  var key = localStorage.getItem('buildert_project_key')||'';
-  if(url && key){ _workerUrl=url; _projectKey=key; return; }
-  // Show setup overlay in the scroll area
-  var scroll = document.getElementById('scroll');
-  if(!scroll) return;
-  var existing = document.getElementById('_setup_screen');
-  if(existing) return;
-  var div = document.createElement('div');
-  div.id = '_setup_screen';
-  div.style.cssText = 'padding:30px 20px;text-align:center;';
-  div.innerHTML =
-    '<div style="font-size:40px;margin-bottom:16px">📡</div>'+
-    '<div style="font-family:var(--cond);font-weight:900;font-size:22px;color:var(--accent);margin-bottom:8px">CONNECT TO PROJECT</div>'+
-    '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:20px">Paste the full rigger link from desktop<br>or enter worker URL + project key</div>'+
-    '<textarea id="_setup_link" placeholder="Paste full link: https://...?project=KEY&w=URL" '+
-    'style="width:100%;height:70px;background:var(--panel);border:2px solid var(--accent);'+
-    'color:var(--text);font-family:var(--mono);font-size:11px;padding:10px;border-radius:8px;'+
-    'outline:none;resize:none;box-sizing:border-box;margin-bottom:12px"></textarea>'+
-    '<div style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-bottom:8px">— or enter separately —</div>'+
-    '<input id="_setup_url" type="url" placeholder="Worker URL: https://xxx.workers.dev" '+
-    'style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);'+
-    'font-family:var(--mono);font-size:11px;padding:10px;border-radius:8px;margin-bottom:8px;box-sizing:border-box" '+
-    'value="'+(url||'')+'" />'+
-    '<input id="_setup_key" type="text" placeholder="Project key: e.g. 4wrwpz42" '+
-    'style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);'+
-    'font-family:var(--mono);font-size:14px;letter-spacing:3px;padding:10px;border-radius:8px;'+
-    'margin-bottom:16px;box-sizing:border-box" '+
-    'value="'+(key||'')+'" />'+
-    '<button onclick="_applySetupScreen()" '+
-    'style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;'+
-    'padding:16px;font-family:var(--cond);font-weight:900;font-size:18px;letter-spacing:2px;cursor:pointer">'+
-    '▶ CONNECT</button>';
-  scroll.appendChild(div);
-}
-_showSetupScreenIfNeeded();
-
-// Auto-debug banner — shows connection state and triggers pull
-(function(){
-  var url = _workerUrl||localStorage.getItem('buildert_worker_url')||'';
-  var key = _projectKey||localStorage.getItem('buildert_project_key')||'';
-  
-  // Update LED immediately with known state
-  var dot = document.getElementById('dbx-led-dot');
-  var txt = document.getElementById('dbx-led-txt');
-  
-  if(!url || !key){
-    if(dot) dot.style.background = '#ff4d4d';
-    if(txt) txt.textContent = 'no key — setup below';
-    return; // setup screen will handle it
-  }
-  
-  // Has credentials — show them and start pulling
-  if(dot) dot.style.background = '#f5a623';
-  if(txt) txt.textContent = key.slice(0,8)+'… syncing';
-  
-  // Force pull right now with full error visibility  
-  setTimeout(function(){
-    fetch(url+'/project?key='+key, {cache:'no-store'})
-      .then(function(r){
-        if(!r.ok){
-          if(dot) dot.style.background='#ff4d4d';
-          if(txt) txt.textContent='HTTP '+r.status;
-          return null;
-        }
-        return r.json();
-      })
-      .then(function(data){
-        if(!data) return;
-        var devs=(data.devices||[]).length;
-        var stages=(data.stages||[]).length;
-        if(dot) dot.style.background='#3ddc84';
-        if(txt) txt.textContent='✓ '+devs+' devs '+stages+' stages';
-        _isPulling=true;
-        try{ _mergeProjectNoConflict(data); }finally{ _isPulling=false; }
-        // Switch to device list
-        if(devs > 0) setTimeout(function(){ setTab('all'); }, 200);
-      })
-      .catch(function(e){
-        if(dot) dot.style.background='#ff4d4d';
-        if(txt) txt.textContent=e.message.slice(0,20);
-      });
-  }, 500);
-})();
-
-function _applySetupScreen(){
-  // Try full link first
-  var linkVal = (document.getElementById('_setup_link')||{}).value||'';
-  if(linkVal.trim()){
-    try{
-      var u = new URL(linkVal.trim());
-      var k = u.searchParams.get('project');
-      var w = u.searchParams.get('w')||u.searchParams.get('worker');
-      if(k&&w){
-        _projectKey=k; _workerUrl=w;
-        try{localStorage.setItem('buildert_project_key',k);localStorage.setItem('buildert_worker_url',w);}catch(e){}
-        var s=document.getElementById('_setup_screen'); if(s)s.remove();
-        _dbxSetStatus('Connecting…','var(--muted)');
-        wStartPolling();
-        return;
-      }
-    }catch(e){}
-  }
-  // Try separate fields
-  var w2 = ((document.getElementById('_setup_url')||{}).value||'').trim().replace(/\/$/,'');
-  var k2 = ((document.getElementById('_setup_key')||{}).value||'').trim();
-  if(!w2||!k2){ alert('Enter worker URL and project key'); return; }
-  _workerUrl=w2; _projectKey=k2;
-  try{localStorage.setItem('buildert_worker_url',w2);localStorage.setItem('buildert_project_key',k2);}catch(e){}
-  var s=document.getElementById('_setup_screen'); if(s)s.remove();
-  _dbxSetStatus('Connecting…','var(--muted)');
-  wStartPolling();
-}
-
-setTab('diagram');
+buildNav(); setTab('diagram');
 _updateMobileProjectBadge();
 
 // ── Dropbox OAuth (PKCE) ──────────────────────────────────────────
@@ -10365,68 +10144,6 @@ window._riggerMode=false;
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 
 // ── Single init entry point — called after all setup ─────────────
-function _applyManualLink(){
-  var inp = document.getElementById('manual-link-inp');
-  if(!inp||!inp.value.trim()) return;
-  try{
-    var u = new URL(inp.value.trim());
-    var key = u.searchParams.get('project');
-    var wurl = u.searchParams.get('w')||u.searchParams.get('worker');
-    var tok = u.searchParams.get('token')||u.searchParams.get('t')||'';
-    if(!key||!wurl){_dbxSetStatus('Link missing project= or w= param','var(--danger)');return;}
-    _projectKey = key;
-    _workerUrl  = wurl;
-    if(tok) _mToken = tok;
-    try{
-      localStorage.setItem('buildert_project_key', key);
-      localStorage.setItem('buildert_worker_url',  wurl);
-      if(tok) localStorage.setItem('brt_worker_token', tok);
-    }catch(e){}
-    _dbxSetStatus('Connecting…','var(--muted)');
-    closeSheet('conn');
-    wStartPolling();
-  }catch(e){ _dbxSetStatus('Invalid link: '+e.message,'var(--danger)'); }
-}
-
-function _mDebugSync(){
-  var url = _workerUrl || localStorage.getItem('buildert_worker_url') || '';
-  var key = _projectKey || localStorage.getItem('buildert_project_key') || '';
-  if(!url || !key){
-    var msg = 'No connection:\nURL: '+(url||'EMPTY')+'\nKey: '+(key||'EMPTY')+'\n\nPaste your rigger link below.';
-    alert(msg);
-    openProjectSheet();
-    return;
-  }
-  // Force reload URL and key from storage
-  if(!_workerUrl) _workerUrl = url;
-  if(!_projectKey) _projectKey = key;
-  var dot = document.getElementById('dbx-led-dot');
-  var txt = document.getElementById('dbx-led-txt');
-  if(dot) dot.style.background = '#f5a623';
-  if(txt) txt.textContent = 'pulling…';
-  // Force a pull with direct feedback
-  fetch(url+'/project?key='+key, {cache:'no-store', headers:{'X-Buildert-Token':_mToken||''}})
-    .then(function(r){
-      if(r.status===404){ alert('Worker has no data for key "'+key+'"\nDesktop needs to push first.\n\nOn desktop: click ↑ PUSH button'); if(txt)txt.textContent='no data'; return null; }
-      if(!r.ok){ alert('Worker error: HTTP '+r.status+'\nURL: '+url); if(txt)txt.textContent='error '+r.status; return null; }
-      return r.json();
-    })
-    .then(function(data){
-      if(!data) return;
-      var devCount = (data.devices||[]).length;
-      var stageCount = (data.stages||[]).length;
-      _isPulling=true;
-      try{ _mergeProjectNoConflict(data); }finally{ _isPulling=false; }
-      if(txt) txt.textContent = '✓ '+devCount+' devs';
-      if(dot) dot.style.background = '#3ddc84';
-    })
-    .catch(function(e){
-      alert('Fetch error: '+e.message+'\nURL: '+url+'\nKey: '+key);
-      if(txt)txt.textContent='fetch error';
-      if(dot)dot.style.background='var(--danger)';
-    });
-}
-
 async function _initSync(){
   console.log("[INIT] start, url=",_workerUrl,"key=",_projectKey);
   // 1. Handle project/rigger params from URL
@@ -10480,42 +10197,6 @@ async function _initSync(){
   _dbxUpdateUI();
 }
 _initSync();
-
-// ── Re-sync when app comes back from background (iOS kills timers) ──
-document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'visible' && _workerUrl && _projectKey){
-    console.log('[SYNC] App visible — triggering pull');
-    // Restart polling in case timer was killed
-    if(_dbxPollTimer){ clearInterval(_dbxPollTimer); _dbxPollTimer = null; }
-    wPull();
-    _dbxPollTimer = setInterval(function(){ if(!_dbxSyncing) wPull(); }, 15000);
-  }
-});
-window.addEventListener('pageshow', function(e){
-  if(e.persisted && _workerUrl && _projectKey){
-    console.log('[SYNC] pageshow persisted — triggering pull');
-    wPull();
-  }
-});
-window.addEventListener('focus', function(){
-  if(_workerUrl && _projectKey) wPull();
-});
-// Show sync status more aggressively after load
-setTimeout(function(){
-  if(_workerUrl && _projectKey){
-    var dot = document.getElementById('dbx-led-dot');
-    var txt = document.getElementById('dbx-led-txt');
-    if(dot) dot.style.background = '#f5a623';
-    if(txt) txt.textContent = 'syncing…';
-    wPull();
-  } else {
-    var txt = document.getElementById('dbx-led-txt');
-    if(txt) txt.textContent = 'tap · no key set';
-    // Show prominent connect prompt
-    var dot2 = document.getElementById('dbx-led-dot');
-    if(dot2) dot2.style.background = 'var(--danger)';
-  }
-}, 1500);
 
 
 // ── Diagram view ──────────────────────────────────────────────────────
@@ -11342,24 +11023,15 @@ function openProjectSheet(){
       +devices.length+' devices loaded</div>';
   }
 
-  // ── Sync row + manual connect ─────────────────────────────────
+  // ── Sync row (minimal) ────────────────────────────────────────
   var syncTxt = (document.getElementById('dbx-led-txt')||{}).textContent || '—';
-  var hasWorker = !!(_workerUrl && _projectKey);
-  html += '<div style="border-top:1px solid var(--border2);padding-top:12px;margin-top:8px">'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    +'<div style="flex:1;font-family:var(--mono);font-size:10px;color:'+(hasWorker?'var(--ok)':'var(--danger)')+'">'
-    +(hasWorker?'🟢 '+_workerUrl.replace('https://','').split('/')[0]+' · '+(_projectKey||'')+' · '+syncTxt:'🔴 Not connected — paste link below')
-    +'</div>'
-    +(hasWorker?'<button class="sb sb-ghost" onclick="wPull();_dbxSetStatus(\'Syncing...\',\'var(--muted)\');closeSheet(\'conn\')" style="font-size:11px;padding:6px 12px;flex-shrink:0">↓ Sync</button>':'')
+  html += '<div style="border-top:1px solid var(--border2);padding-top:12px;margin-top:8px;'
+    +'display:flex;align-items:center;gap:8px">'
+    +'<div style="flex:1;font-family:var(--mono);font-size:10px;color:var(--muted)">'
+    +'🔗 '+(_projectKey||'no key')+' · '+syncTxt+'</div>'
+    +'<button class="sb sb-ghost" onclick="wPull();_dbxSetStatus(\'Syncing...\',\'var(--muted)\');closeSheet(\'conn\')" '
+    +'style="font-size:11px;padding:6px 12px;flex-shrink:0">↓ Sync</button>'
     +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
-    +'</div>'
-    +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">PASTE RIGGER LINK FROM DESKTOP ↓</div>'
-    +'<div style="display:flex;gap:6px">'
-    +'<input id="manual-link-inp" type="url" placeholder="https://…?project=KEY&w=WORKERURL" '
-    +'style="flex:1;background:var(--panel);border:1px solid var(--accent);color:var(--text);'
-    +'font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:6px;outline:none;min-width:0">'
-    +'<button class="sb" onclick="_applyManualLink()" style="flex-shrink:0;padding:8px 14px;font-size:12px">▶ Connect</button>'
-    +'</div>'
     +'</div>';
 
   body.innerHTML = html;
@@ -11453,9 +11125,7 @@ function mSwitchStage(idx){
   if(Object.keys(pos).length) _mNPos = pos; else _mNPos={};
   if(Object.keys(dpos).length) window._mDiagPos = dpos;
   _renderMobileStageBar();
-  // Always go to device list so user sees something
-  currentTab = 'all';
-  setTab('all');
+  renderMain();
   if(_mPeekMode) showToast('Peeking at '+_mStages[idx].name+' — read only','warn');
 }
 
@@ -11678,3 +11348,5 @@ function _snScanTick() {
 </div>
 </body>
 </html>
+
+        
