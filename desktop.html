@@ -1914,8 +1914,8 @@ function renderTable() {
 
   var isLaser  = currentDeviceFilter === 'laser';
   var isSmoke  = currentDeviceFilter === 'smoke';
-  var isDistro = currentTab === 'distro';
-  var isPsu    = currentTab === 'psu';
+  var isDistro = currentDeviceFilter === 'distro';
+  var isPsu    = currentDeviceFilter === 'psu';
   var isAll    = currentTab === 'all';
 
   function th(label, field) {
