@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.865</title>
+<title>WTUniverse · Buildert Editor v3.868</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div>build v3.865</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.868</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1916,13 +1916,20 @@ function renderTable() {
   var isSmoke  = currentDeviceFilter === 'smoke';
   var isDistro = currentDeviceFilter === 'distro';
   var isPsu    = currentDeviceFilter === 'psu';
-  var isAll    = currentTab === 'all';
+  var isAll    = currentDeviceFilter === 'all';
 
   function th(label, field) {
     var cls = field ? ('sortable' + (sortField===field ? ' sort-'+sortDir : '')) : '';
     var click = field ? ('onclick="sortByHeader(\'' + field + '\')"') : '';
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
+
+  // DEBUG: show active filter prominently
+  var _dbgBanner = document.getElementById('_debug_banner');
+  if(!_dbgBanner){ _dbgBanner=document.createElement('div'); _dbgBanner.id='_debug_banner';
+    _dbgBanner.style.cssText='position:fixed;bottom:10px;right:10px;z-index:9999;font-family:monospace;font-size:11px;padding:4px 10px;border-radius:6px;background:#111;border:1px solid #444;color:#0f0;pointer-events:none;';
+    document.body.appendChild(_dbgBanner); }
+  _dbgBanner.textContent='filter='+currentDeviceFilter+' isDistro='+isDistro+' isAll='+isAll;
 
   var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial')];
   if (isAll) cols.push(th('Type','type'));
