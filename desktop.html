@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.868</title>
+<title>WTUniverse · Buildert Editor v3.869</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.868</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.869</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1782,12 +1782,15 @@ function _oneCableSelect(gi, field, val) {
   if (d && d.device_id) {
     var sp = getSpec(d.model || modelFromId(d.device_id));
     if (sp) devConn = field==='cable_in' ? (sp.pwr_in||sp.in_connector||'') : (sp.pwr_out||sp.out_connector||'');
-    if (field==='cable_in' && d.source && d.source!=='FOH') {
-      var _srcD=null;
-      _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcD=x;});});
-      if(_srcD){var _sSp=getSpec(_srcD.model||modelFromId(_srcD.device_id));
-      // Use data_out if different from pwr_out — lasers connect to data output
-      srcConn=_sSp?(_sSp.data_out||_sSp.pwr_out||_sSp.out_connector||''):'';}
+    if (field==='cable_in') {
+      // Use source_data for data srcConn, source_power for power — fall back to legacy source
+      var _srcId = d.source_data || d.source || '';
+      if (_srcId && _srcId!=='FOH') {
+        var _srcD=null;
+        _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===_srcId)_srcD=x;});});
+        if(_srcD){var _sSp=getSpec(_srcD.model||modelFromId(_srcD.device_id));
+        srcConn=_sSp?(_sSp.data_out||_sSp.pwr_out||_sSp.out_connector||''):'';}
+      }
     }
   }
   var opts = '<option value="">— —</option>';
@@ -1924,21 +1927,16 @@ function renderTable() {
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
 
-  // DEBUG: show active filter prominently
-  var _dbgBanner = document.getElementById('_debug_banner');
-  if(!_dbgBanner){ _dbgBanner=document.createElement('div'); _dbgBanner.id='_debug_banner';
-    _dbgBanner.style.cssText='position:fixed;bottom:10px;right:10px;z-index:9999;font-family:monospace;font-size:11px;padding:4px 10px;border-radius:6px;background:#111;border:1px solid #444;color:#0f0;pointer-events:none;';
-    document.body.appendChild(_dbgBanner); }
-  _dbgBanner.textContent='filter='+currentDeviceFilter+' isDistro='+isDistro+' isAll='+isAll;
-
   var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial')];
   if (isAll) cols.push(th('Type','type'));
   cols.push(th('Location','location'));
-  if(isDistro){
-    cols.push(th('Pwr src','source_power'), '<th>Pwr cable</th>', th('Data src','source_data'), '<th>Data cable</th>');
-  } else {
-    cols.push(th('Source','source'), '<th style="color:#f5a623;font-size:10px">&#9889; Pwr</th>','<th style="color:#5b8fff;font-size:10px">&#11044; Data</th>');
-  }
+  // All device types: split PWR/DATA source + cable columns
+  cols.push(
+    '<th style="color:#f5a623;font-size:10px">&#9889; Pwr src</th>',
+    '<th style="color:#f5a623;font-size:10px">&#9889; Cable</th>',
+    '<th style="color:#5b8fff;font-size:10px">&#11044; Data src</th>',
+    '<th style="color:#5b8fff;font-size:10px">&#11044; Cable</th>'
+  );
   cols.push('<th>Status</th>');
   // Per-type check columns — NOT shown in All view (too wide)
   if (isLaser)  cols.push('<th>Pointed</th>', '<th>Mounted</th>', '<th>Cabled</th>');
@@ -2081,81 +2079,80 @@ function renderTable() {
       +   ' onblur="setField(' + gi + ",'location',this.innerText.trim())"
       +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
       +   (d.location||'') + '</td>'
-      + (isDistro && d.type===TYPE_DISTRO
-          ? (function(){
-              // ── PWR Source dropdown (PSU only) ──
-              var pwrSrcOpts='<option value="">—</option>';
-              devices.filter(function(x){return x.type===TYPE_PSU&&x.device_id&&x.device_id!==d.device_id;})
-                .forEach(function(x){ pwrSrcOpts+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
-              // On change: set source_power; auto-fill source_data if not yet set
-              var onPwrSrc='setField('+gi+',\'source_power\',this.value);'                +'if(this.value&&!devices['+gi+'].source_data){setField('+gi+',\'source_data\',devices['+gi+'].source||\'\')||setField('+gi+',\'source_data\',\'FOH\');}'                +'renderTable();';
-              // ── PWR Cable dropdown (power-carrying cables) ──
-              var pwrCblOpts='<option value="">—</option>';
-              var _dsp2=specsForDevice(d)||{};
-              CABLE_TYPES.forEach(function(ct){
-                if(!ct.pwr_a&&!ct.pwr_b) return;
-                ct.lengths.forEach(function(l){
-                  var v=ct.key+'-'+l.val;
-                  pwrCblOpts+='<option value="'+v+'"'+(d.cable_power_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-                });
-              });
-              var onPwrCbl='setField('+gi+',\'cable_power_in\',this.value);renderTable();';
-              // ── DATA Source dropdown (FOH + distros) ──
-              var datSrcOpts='<option value="">—</option><option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';
-              devices.filter(function(x){return x.type===TYPE_DISTRO&&x.device_id&&x.device_id!==d.device_id;})
-                .forEach(function(x){ datSrcOpts+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
-              var onDatSrc='setField('+gi+',\'source_data\',this.value);renderTable();';
-              // ── DATA Cable dropdown (data-carrying cables) ──
-              var datCblOpts='<option value="">—</option>';
-              var thisSp2=specsForDevice(d)||{};
-              var devDIn2=thisSp2.data_in||'';
-              CABLE_TYPES.forEach(function(ct){
-                if(!ct.data_a&&!ct.data_b) return;
-                ct.lengths.forEach(function(l){
-                  var v=ct.key+'-'+l.val;
-                  var dm=!devDIn2||ct.data_b===devDIn2||ct.pwr_b===devDIn2;
-                  if(dm) datCblOpts+='<option value="'+v+'"'+(d.cable_data_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-                });
-              });
-              var onDatCbl='setField('+gi+',\'cable_data_in\',this.value);renderTable();';
-              var ss='font-size:11px;font-family:var(--mono);max-width:120px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:3px;padding:2px 4px;';
-              return '<td><select style="'+ss+(d.source_power?'color:var(--warn)':'')+'" onchange="'+onPwrSrc+'">'+pwrSrcOpts+'</select></td>'                    +'<td><select style="'+ss+(d.cable_power_in?'color:var(--ok)':'')+'" onchange="'+onPwrCbl+'">'+pwrCblOpts+'</select></td>'                    +'<td><select style="'+ss+(d.source_data?'color:var(--accent)':'')+'" onchange="'+onDatSrc+'">'+datSrcOpts+'</select></td>'                    +'<td><select style="'+ss+(d.cable_data_in?'color:var(--ok)':'')+'" onchange="'+onDatCbl+'">'+datCblOpts+'</select></td>';
-            })()
-          : '<td>' + srcHtml + '</td>'
-           +(function(){
-             var pCbl=d.cable_pwr_in||d.cable_in||d.cable||'';
-             var dCbl=d.cable_data_in||d.cable_in||d.cable||'';
-             var sp2=specsForDevice(d)||{};
-             var devPIn=sp2.pwr_in||'', devDIn=sp2.data_in||'';
-             // Build power cable options
-             var oPwr='<option value="">—</option>';
-             CABLE_TYPES.forEach(function(ct){
-               if(!ct.pwr_a&&!ct.pwr_b) return;
-               ct.lengths.forEach(function(l){
-                 var v=ct.key+'-'+l.val;
-                 var match=!devPIn||!ct.pwr_b||ct.pwr_b===devPIn;
-                 if(match) oPwr+='<option value="'+v+'"'+(pCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-               });
-             });
-             if(oPwr==='<option value="">—</option>'){ CABLE_TYPES.forEach(function(ct){ if(!ct.pwr_a&&!ct.pwr_b)return; ct.lengths.forEach(function(l){ var v=ct.key+'-'+l.val; oPwr+='<option value="'+v+'"'+(pCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>'; }); }); }
-             // Build data cable options
-             var oDat='<option value="">—</option>';
-             CABLE_TYPES.forEach(function(ct){
-               if(!ct.data_a&&!ct.data_b) return;
-               ct.lengths.forEach(function(l){
-                 var v=ct.key+'-'+l.val;
-                 oDat+='<option value="'+v+'"'+(dCbl===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-               });
-             });
-             // onchange: save field + if combo, sync the other
-             var onP='setField('+gi+',\'cable_pwr_in\',this.value);'
-               +"if(this.value&&cableSignalType(this.value)==='combo'){setField("+gi+",'cable_data_in',this.value);}";
-             var onD='setField('+gi+',\'cable_data_in\',this.value);'
-               +"if(this.value&&cableSignalType(this.value)==='combo'){setField("+gi+",'cable_pwr_in',this.value);}";
-             return '<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onP+'">'+oPwr+'</select></td>'
-                   +'<td><select class="cable-select" style="font-size:11px;font-family:var(--mono);max-width:130px" onchange="'+onD+'">'+oDat+'</select></td>';
-           })()
-      )
+      + (function(){
+          // ── Universal 4-column: PwrSrc | PwrCable | DataSrc | DataCable ──
+          var sp3 = specsForDevice(d)||{};
+          var devPIn = sp3.pwr_in||'';
+          var devDIn = sp3.data_in||'';
+
+          // ── PWR Source options ──
+          // Distros + lasers from PSU; lasers/smoke can also use distro or another laser
+          var pwrSrcOpts='<option value="">—</option>';
+          var pwrAllowed = [TYPE_PSU, TYPE_DISTRO];
+          if(d.type===TYPE_LASER||d.type===TYPE_SMOKE) pwrAllowed=[TYPE_DISTRO,TYPE_PSU];
+          pwrAllowed.forEach(function(t){
+            devices.filter(function(x){return x.type===t&&x.device_id&&x.device_id!==d.device_id;})
+              .forEach(function(x){ pwrSrcOpts+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
+          });
+          var onPwrSrc='(function(v,gi){'
+            +'setField(gi,\'source_power\',v);'
+            +'if(v&&!devices[gi].source&&!devices[gi].source_data){setField(gi,\'source\',v);}' // keep legacy source in sync
+            +'renderTable();'
+            +'})(this.value,'+gi+')';
+
+          // ── PWR Cable options ──
+          var pwrCblOpts='<option value="">—</option>';
+          CABLE_TYPES.forEach(function(ct){
+            if(!ct.pwr_a&&!ct.pwr_b) return;
+            ct.lengths.forEach(function(l){
+              var v=ct.key+'-'+l.val;
+              var dm=!devPIn||!ct.pwr_b||ct.pwr_b===devPIn;
+              if(dm) pwrCblOpts+='<option value="'+v+'"'+(d.cable_power_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+            });
+          });
+          // fallback: show all power cables if none matched
+          if(pwrCblOpts==='<option value="">—</option>'){
+            CABLE_TYPES.forEach(function(ct){ if(!ct.pwr_a&&!ct.pwr_b)return; ct.lengths.forEach(function(l){ var v=ct.key+'-'+l.val; pwrCblOpts+='<option value="'+v+'"'+(d.cable_power_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>'; }); });
+          }
+          var onPwrCbl='(function(v,gi){'
+            +'setField(gi,\'cable_power_in\',v);'
+            +'setField(gi,\'cable_in\',v);setField(gi,\'cable\',v);' // keep legacy fields in sync
+            +'if(v&&cableSignalType(v)===\'combo\'){setField(gi,\'cable_data_in\',v);}'
+            +'renderTable();'
+            +'})(this.value,'+gi+')';
+
+          // ── DATA Source options ──
+          var datSrcOpts='<option value="">—</option><option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';
+          devices.filter(function(x){return x.type===TYPE_DISTRO&&x.device_id&&x.device_id!==d.device_id;})
+            .forEach(function(x){ datSrcOpts+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
+          var onDatSrc='(function(v,gi){'
+            +'setField(gi,\'source_data\',v);'
+            +'if(v&&!devices[gi].source){setField(gi,\'source\',v);}' // keep legacy source in sync
+            +'renderTable();'
+            +'})(this.value,'+gi+')';
+
+          // ── DATA Cable options (must carry data signal; filtered by device data_in) ──
+          var datCblOpts='<option value="">—</option>';
+          CABLE_TYPES.forEach(function(ct){
+            if(!ct.data_a&&!ct.data_b) return;
+            ct.lengths.forEach(function(l){
+              var v=ct.key+'-'+l.val;
+              var dm=!devDIn||ct.data_b===devDIn||ct.pwr_b===devDIn;
+              if(dm) datCblOpts+='<option value="'+v+'"'+(d.cable_data_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+            });
+          });
+          var onDatCbl='(function(v,gi){'
+            +'setField(gi,\'cable_data_in\',v);'
+            +'if(v&&cableSignalType(v)===\'combo\'){setField(gi,\'cable_power_in\',v);setField(gi,\'cable_in\',v);setField(gi,\'cable\',v);}'
+            +'renderTable();'
+            +'})(this.value,'+gi+')';
+
+          var ss='font-size:11px;font-family:var(--mono);max-width:115px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:3px;padding:2px 3px;';
+          return '<td><select style="'+ss+(d.source_power?'color:var(--warn)':'')+'" onchange="'+onPwrSrc+'">'+pwrSrcOpts+'</select></td>'
+                +'<td><select style="'+ss+(d.cable_power_in?'color:var(--ok)':'')+'" onchange="'+onPwrCbl+'">'+pwrCblOpts+'</select></td>'
+                +'<td><select style="'+ss+(d.source_data?'color:var(--accent)':'')+'" onchange="'+onDatSrc+'">'+datSrcOpts+'</select></td>'
+                +'<td><select style="'+ss+(d.cable_data_in?'color:var(--ok)':'')+'" onchange="'+onDatCbl+'">'+datCblOpts+'</select></td>';
+        })()
       + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'  
       +   ['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'].map(function(s) { return '<option value="'+s+'"' + (d.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
       + '</select></td>'
