@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.876</title>
+<title>WTUniverse · Buildert Editor v3.877</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.876</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.877</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -489,6 +489,7 @@
   </div>
   <button id="quicksave-btn" onclick="fileQuickSave()" title="Save to browser (Cmd+S)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>  <button onclick="fileDownload()" title="Download .buildert file" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#8681; DL</button>
   <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
+  <button onclick="wPush(false);showToast('Pushing to Worker…','ok')" id="hdr-push-btn" title="Push project to Worker now" style="display:none;background:rgba(61,220,132,.15);border:1px solid var(--ok);color:var(--ok);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono);font-weight:700">&#8593; Push</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
@@ -3402,6 +3403,10 @@ function _mergeProjectNoConflict(data) {
   saveSpecsToStorage();
   _persistProjectMeta();
   autoSave();
+  // Push to Worker immediately so mobile gets fresh data right away
+  if(_workerUrl && _projectKey){
+    setTimeout(function(){ wPush(false); }, 800);
+  }
   renderTable();
   showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
@@ -6721,10 +6726,14 @@ function _wGenKey(){
 function wSyncInit(){
   _workerUrl = localStorage.getItem('buildert_worker_url')||'';
   _projectKey = localStorage.getItem('buildert_project_key')||'';
+  var pb = document.getElementById('hdr-push-btn');
   if(_workerUrl && _projectKey){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
-    setTimeout(wPoll, 5000);  // delay startup pull — give time to load local data first
+    if(pb) pb.style.display='';
+    setTimeout(wPoll, 5000);
     setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
+  } else {
+    if(pb) pb.style.display='none';
   }
 }
 
@@ -6806,11 +6815,12 @@ function wApplySettings(){
   if(!_workerUrl||!_projectKey){showToast('Enter Worker URL first','warn');return;}
   var _ti=document.getElementById('worker-token-inp');if(_ti&&_ti.value.trim()){_workerToken=_ti.value.trim();}
   try{localStorage.setItem('buildert_worker_url',_workerUrl);localStorage.setItem('buildert_project_key',_projectKey);localStorage.setItem('buildert_worker_token',_workerToken);}catch(e){}
-  _dbxSetStatus('Worker configured','var(--ok)');
+  _dbxSetStatus('Worker configured — pushing…','var(--ok)');
   wSyncInit();
   _updateWorkerLinkPreview();
-  showToast('Worker sync enabled','ok');
-  // Don't auto-push — let user click Push now to avoid overwriting log
+  showToast('Worker sync enabled — pushing now','ok');
+  // Auto-push immediately so worker has data right away
+  setTimeout(function(){ wPush(false); }, 500);
 }
 function wGenNewKey(){
   _projectKey=_wGenKey();
