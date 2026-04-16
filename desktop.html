@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.880</title>
+<title>WTUniverse · Buildert Editor v3.893</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.880</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.893</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -489,7 +489,6 @@
   </div>
   <button id="quicksave-btn" onclick="fileQuickSave()" title="Save to browser (Cmd+S)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>  <button onclick="fileDownload()" title="Download .buildert file" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#8681; DL</button>
   <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
-  <button onclick="wPush(false)" id="hdr-push-btn" title="Push project to Worker so mobile can sync" style="display:none;background:rgba(61,220,132,.2);border:2px solid var(--ok);color:var(--ok);border-radius:6px;padding:5px 14px;font-size:13px;cursor:pointer;flex-shrink:0;font-family:var(--mono);font-weight:900;letter-spacing:1px">&#8593; PUSH</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
@@ -546,7 +545,7 @@
       <select class="sort-select" id="sort-select" onchange="setSortField(this.value)">
         <option value="">&#8212; none &#8212;</option>
         <option value="device_id">Device ID</option>
-        <option value="serial">Flashback #</option>
+        <option value="serial">Serial/Flashback #</option>
         <option value="type">Type</option>
         <option value="location">Location</option>
         <option value="source">Source</option>
@@ -1936,7 +1935,7 @@ function renderTable() {
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
 
-  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Flashback #','serial')];
+  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial/FB #','serial')];
   if (isAll) cols.push(th('Type','type'));
   cols.push(th('Location','location'));
   // All device types: split PWR/DATA source + cable columns
@@ -3403,10 +3402,6 @@ function _mergeProjectNoConflict(data) {
   saveSpecsToStorage();
   _persistProjectMeta();
   autoSave();
-  // Push to Worker immediately so mobile gets fresh data right away
-  if(_workerUrl && _projectKey){
-    setTimeout(function(){ wPush(false); }, 800);
-  }
   renderTable();
   showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
@@ -4347,9 +4342,12 @@ function renderNodeView() {
 
   function _bezier(x1,y1,x2,y2){
     var dx=x2-x1, dy=y2-y1;
-    var offx = Math.max(Math.abs(dx)*0.5, Math.abs(dy)*0.4, 50);
-    var s = dx >= 0 ? 1 : -1;
-    return 'M'+x1+','+y1+' C'+(x1+s*offx)+','+y1+' '+(x2-s*offx)+','+y2+' '+x2+','+y2;
+    var adx=Math.abs(dx), ady=Math.abs(dy);
+    // Always use horizontal S-curve: control points extend in X direction.
+    // This prevents ugly kinks when source is to the right of destination
+    // or when nodes are at similar heights.
+    var offx = Math.max(adx*0.5, ady*0.4, 50);
+    return 'M'+x1+','+y1+' C'+(x1+offx)+','+y1+' '+(x2-offx)+','+y2+' '+x2+','+y2;
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4363,12 +4361,24 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1s,y1s,x2p,y2p,x2d,y2d,hasAdap){
-    // Two parallel bezier lines: amber (power) + blue (data)
-    // Offset them slightly so they don't overlap
+    // Single line from source → split point → two branches (pwr amber, data blue)
+    // Split at 70% of the journey, offset slightly
+    var sx=x1s, sy=y1s;
+    var spx=(sx+x2p)/2+((x2d-x2p)*0.15), spy=(sy+y2p*0.7+y2d*0.3)*0.85;
     var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    var pBranch='<path d="'+_bezier(x1s,y1s-2,x2p,y2p-2)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dBranch='<path d="'+_bezier(x1s,y1s+2,x2d,y2d+2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return pBranch+dBranch;
+    // Stem: source to split point (grey)
+    var cy1=(sy+spy)/2;
+    var stem='<path d="M'+sx+','+sy+' C'+sx+','+cy1+' '+spx+','+cy1+' '+spx+','+spy+'"'
+      +' fill="none" stroke="#888" stroke-width="2"'+dash+' opacity="0.8"/>';
+    // Branch 1: power (amber) — split to pwr port
+    var cpy=(spy+y2p)/2;
+    var pBranch='<path d="M'+spx+','+spy+' C'+spx+','+cpy+' '+x2p+','+cpy+' '+x2p+','+y2p+'"'
+      +' fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    // Branch 2: data (blue) — split to data port
+    var cdy=(spy+y2d)/2;
+    var dBranch='<path d="M'+spx+','+spy+' C'+spx+','+cdy+' '+x2d+','+cdy+' '+x2d+','+y2d+'"'
+      +' fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return stem+pBranch+dBranch;
   }
 
   // ── Draw edges in order: power first, data, combo ──
@@ -6726,14 +6736,10 @@ function _wGenKey(){
 function wSyncInit(){
   _workerUrl = localStorage.getItem('buildert_worker_url')||'';
   _projectKey = localStorage.getItem('buildert_project_key')||'';
-  var pb = document.getElementById('hdr-push-btn');
   if(_workerUrl && _projectKey){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
-    if(pb) pb.style.display='';
-    setTimeout(wPoll, 5000);
+    setTimeout(wPoll, 5000);  // delay startup pull — give time to load local data first
     setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
-  } else {
-    if(pb) pb.style.display='none';
   }
 }
 
@@ -6800,18 +6806,11 @@ async function wPush(silent){
       body:JSON.stringify(payload,null,2),
     });
     if(resp.ok){
-      _dbxSetStatus('✓ Pushed v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
-      var pb=document.getElementById('hdr-push-btn');
-      if(pb){pb.textContent='✓ Pushed';pb.style.background='rgba(61,220,132,.25)';}
-      setTimeout(function(){var pb2=document.getElementById('hdr-push-btn');if(pb2){pb2.textContent='↑ Push';pb2.style.background='rgba(61,220,132,.15)';}},3000);
+      if(!silent) _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
     } else {
-      _dbxSetStatus('Push error '+resp.status+' — check Settings','var(--danger)');
-      alert('Push failed: HTTP '+resp.status+'\nCheck worker URL and key in Settings');
+      if(!silent) _dbxSetStatus('Save error '+resp.status,'var(--danger)');
     }
-  }catch(e){
-    _dbxSetStatus('Push failed: '+e.message,'var(--danger)');
-    alert('Push failed: '+e.message);
-  }
+  }catch(e){ if(!silent) _dbxSetStatus('Save failed','var(--warn)'); }
 }
 function wPoll(){ wPull(); }
 
@@ -6822,12 +6821,11 @@ function wApplySettings(){
   if(!_workerUrl||!_projectKey){showToast('Enter Worker URL first','warn');return;}
   var _ti=document.getElementById('worker-token-inp');if(_ti&&_ti.value.trim()){_workerToken=_ti.value.trim();}
   try{localStorage.setItem('buildert_worker_url',_workerUrl);localStorage.setItem('buildert_project_key',_projectKey);localStorage.setItem('buildert_worker_token',_workerToken);}catch(e){}
-  _dbxSetStatus('Worker configured — pushing…','var(--ok)');
+  _dbxSetStatus('Worker configured','var(--ok)');
   wSyncInit();
   _updateWorkerLinkPreview();
-  showToast('Worker sync enabled — pushing now','ok');
-  // Auto-push immediately so worker has data right away
-  setTimeout(function(){ wPush(false); }, 500);
+  showToast('Worker sync enabled','ok');
+  // Don't auto-push — let user click Push now to avoid overwriting log
 }
 function wGenNewKey(){
   _projectKey=_wGenKey();
@@ -6901,7 +6899,7 @@ function _autoTodos(){
     var mounted=!!(d.checks&&d.checks['Mounted']);
     var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
     autos.push({id:'auto_mount_'+d.device_id,type:'auto',label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
-    autos.push({id:'auto_sn_'+d.device_id,type:'auto',label:'Flashback # '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+    autos.push({id:'auto_sn_'+d.device_id,type:'auto',label:'Serial/FB # '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
   });
   _todos=keep.concat(autos);
 }
@@ -6983,7 +6981,7 @@ function renderTodosPanel(){
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
       +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span></div></div>'
       +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
-      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">FLASHBACK #</div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">SERIAL/FB #</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
