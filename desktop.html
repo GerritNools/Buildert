@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.872</title>
+<title>WTUniverse · Buildert Editor v3.873</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.872</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.873</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -545,7 +545,7 @@
       <select class="sort-select" id="sort-select" onchange="setSortField(this.value)">
         <option value="">&#8212; none &#8212;</option>
         <option value="device_id">Device ID</option>
-        <option value="serial">Serial</option>
+        <option value="serial">Flashback #</option>
         <option value="type">Type</option>
         <option value="location">Location</option>
         <option value="source">Source</option>
@@ -588,7 +588,7 @@
   <span style="color:var(--muted);font-size:10px;letter-spacing:1px">STATUS</span>
   <select id="bulk-status" class="cell-select" style="font-size:12px">
     <option value="">— pick —</option>
-    <option>Active</option><option>Mounted</option><option>Online</option>
+    <option>Concept</option><option>Mounted</option><option>Online</option>
     <option>Offline</option><option>GoAndCheck</option><option>Swap</option><option>Swapped</option>
   </select>
   <button class="icon-btn" style="padding:2px 10px;width:auto" onclick="applyBulkField('status')">Set</button>
@@ -780,7 +780,7 @@
       <option>Adapter</option>
     </select>
 
-    <label>Serial Number <span style="color:var(--muted);font-size:10px">&#8212; scanned by rigger</span></label>
+    <label>Flashback number <span style="color:var(--muted);font-size:10px">&#8212; scanned by rigger</span></label>
     <input id="m-serial" type="text" maxlength="6" placeholder="LA0042"
            style="text-transform:uppercase;font-size:18px;letter-spacing:4px"
            oninput="this.value=this.value.toUpperCase().slice(0,6)"
@@ -828,7 +828,7 @@
 
     <label>Status</label>
     <select id="m-status">
-      <option>Active</option>
+      <option>Concept</option>
       <option>Inactive</option>
       <option>Flagged</option>
     </select>
@@ -1813,8 +1813,21 @@ function _oneCableSelect(gi, field, val) {
     var _ck=val.split('-')[0], _cdef=CABLE_TYPES.find(function(ct){return ct.key===_ck;});
     if(_cdef){var _lv=parseFloat(val.split('-').slice(1).join('-'));var _ld=_cdef.lengths.find(function(l){return Math.abs(l.val-_lv)<0.01;});opts+='<option value="'+val+'" selected>'+_cdef.label+' '+(_ld?_ld.lbl:_lv+'m')+' \u26a0</option>';}
   }
+  // Add "Other…" option at bottom
+  var isOther = val && val.startsWith('other:');
+  opts += '<option value="other:"'+(isOther?' selected':'')+'>✏ Other…</option>';
   var warn = info.adapterNote ? ' title="\u26a0 '+info.adapterNote+'"' : '';
-  return '<select class="cable-select '+info.css+'" onchange="setField('+gi+',\''+field+'\',this.value)"'+warn+'>'+opts+'</select>';
+  var selId = 'csel-'+gi+'-'+field;
+  var txtId = 'ctxt-'+gi+'-'+field;
+  var txtVal = isOther ? val.slice(6) : '';
+  var txtStyle = isOther
+    ? 'display:inline-block;margin-left:3px;font-family:var(--mono);font-size:11px;width:90px;background:var(--bg);border:1px solid var(--accent);color:var(--text);border-radius:3px;padding:2px 5px;'
+    : 'display:none;margin-left:3px;font-family:var(--mono);font-size:11px;width:90px;background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:3px;padding:2px 5px;';
+  var selOnChange = 'var t=document.getElementById(\''+txtId+'\');'
+    +'if(this.value===\'other:\'){t.style.display=\'inline-block\';t.focus();}'
+    +'else{t.style.display=\'none\';setField('+gi+',\''+field+'\',this.value);}';
+  var txtOnChange = 'setField('+gi+',\''+field+'\',\'other:\'+this.value);';
+  return '<span style="display:inline-flex;align-items:center">'    +'<select id="'+selId+'" class="cable-select '+info.css+'" onchange="'+selOnChange+'"'+warn+'>'+opts+'</select>'    +'<input id="'+txtId+'" type="text" value="'+txtVal+'" placeholder="describe" style="'+txtStyle+'"'    +' onchange="'+txtOnChange+'" onkeydown="if(event.key===\'Enter\')this.blur()"></span>';
 }
 
 function cableHtml(gi, d) {
@@ -1922,7 +1935,7 @@ function renderTable() {
     return '<th class="' + cls + '" ' + click + '>' + label + '</th>';
   }
 
-  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Serial','serial')];
+  var cols = ['<th style="width:24px;text-align:center;padding:0 4px"><input type="checkbox" id="chk-all" title="Select all" onchange="toggleSelectAll(this.checked)" style="cursor:pointer"></th>', '<th>#</th>', th('Device ID','device_id'), th('Model','model'), th('Flashback #','serial')];
   if (isAll) cols.push(th('Type','type'));
   cols.push(th('Location','location'));
   // All device types: split PWR/DATA source + cable columns
@@ -2154,7 +2167,7 @@ function renderTable() {
                 +'<td><select style="'+ss+(d.cable_data_in?'color:var(--ok)':'')+'" onchange="'+onDatCbl+'">'+datCblOpts+'</select></td>';
         })()
       + '<td><select onchange="setField(' + gi + ',\'status\',this.value)" class="cell-select status-sel-' + (function(s){return s==='Mounted'||s==='Online'?'ok':s==='GoAndCheck'||s==='Swap'?'warn':s==='Swapped'||s==='Offline'?'danger':'';})((d.status||'')) + '">'  
-      +   ['Active','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'].map(function(s) { return '<option value="'+s+'"' + (d.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
+      +   ['Concept','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'].map(function(s) { return '<option value="'+s+'"' + (d.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
       + '</select></td>'
       + chk
       + '<td><div style="display:flex;align-items:center;gap:6px">'
@@ -2365,7 +2378,7 @@ function openAddModal(type) {
   document.getElementById('m-type').value = type;
   document.getElementById('m-serial').value = '';
   document.getElementById('m-location').value = '';
-  document.getElementById('m-status').value = 'Active';
+  document.getElementById('m-status').value = 'Concept';
   document.getElementById('m-pointed').value = '';
   document.getElementById('m-notes').value = '';
   _populateConnectorSelects('','');
@@ -2405,7 +2418,7 @@ function openEditModal(gi) {
   document.getElementById('m-type').value        = d.type;
   document.getElementById('m-serial').value      = d.serial||'';
   document.getElementById('m-location').value    = d.location||'';
-  document.getElementById('m-status').value      = d.status||'Active';
+  document.getElementById('m-status').value      = d.status||'Concept';
   document.getElementById('m-pointed').value     = d.pointed||'';
   document.getElementById('m-notes').value       = d.notes||'';
   var opEl=document.getElementById('m-outlet-port');if(opEl)opEl.value=d.outlet_port||'';
@@ -2648,7 +2661,7 @@ function parseCsv(text) {
       serial:    (row.serial||row.Serial||'').toUpperCase().slice(0,6),
       type: type, location: row.location||row.Location||'',
       source: row.source||row['Source']||row.connected_to||'',
-      status: row.status||row.Status||'Active', date: row.date||today(),
+      status: row.status||row.Status||'Concept', date: row.date||today(),
       mounted_at: row.mounted_at||'',
       checks: checks, note_opts: (row.note_opts||'').split('|').map(function(s){return s.trim();}).filter(Boolean),
       pointed: row.pointed||row.Pointed||'', notes: row.notes||row.Notes||'',
@@ -2868,7 +2881,7 @@ function quickAdd() {
     ch.forEach(function(ck){checks[ck]=false;});
     devices.push({
       device_id:id, serial:'', type:type, location:loc,
-      source:'', status:'Active', date:today(),
+      source:'', status:'Concept', date:today(),
       checks:checks, note_opts:[], pointed:'', notes:'',
       connector_in:'', connector_out:'', cable_in:'', cable_out:''
     });
@@ -6886,7 +6899,7 @@ function _autoTodos(){
     var mounted=!!(d.checks&&d.checks['Mounted']);
     var hasSn=!!(d.serial&&d.serial.replace(/-/g,'').trim());
     autos.push({id:'auto_mount_'+d.device_id,type:'auto',label:'Mount '+d.device_id,device_id:d.device_id,urgency:1,done:mounted,auto:true});
-    autos.push({id:'auto_sn_'+d.device_id,type:'auto',label:'Serial '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
+    autos.push({id:'auto_sn_'+d.device_id,type:'auto',label:'Flashback # '+d.device_id,device_id:d.device_id,urgency:1,done:hasSn,auto:true});
   });
   _todos=keep.concat(autos);
 }
@@ -6968,7 +6981,7 @@ function renderTodosPanel(){
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoMountDone/autoTotal*100):0)+'%;background:#3ddc84;border-radius:3px"></div></div>'
       +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#3ddc84">'+autoMountDone+'/'+autoTotal+'</span></div></div>'
       +'<div style="background:var(--bg);border-radius:6px;padding:8px 10px">'
-      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">SERIALS</div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">FLASHBACK #</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden">'
       +'<div style="height:100%;width:'+(autoTotal?Math.round(autoSnDone/autoTotal*100):0)+'%;background:#5b8fff;border-radius:3px"></div></div>'
@@ -7423,7 +7436,7 @@ function renderOverview(){
     var stCol=pct===100?'#3ddc84':pct>60?'#f5a623':'#ff4d4d';
     // Count by status
     var statusCounts={};
-    devs.forEach(function(d){statusCounts[d.status||'Active']=(statusCounts[d.status||'Active']||0)+1;});
+    devs.forEach(function(d){statusCounts[d.status||'Concept']=(statusCounts[d.status||'Concept']||0)+1;});
     var cardHtml='<div style="background:var(--surface);border:2px solid '+s.color+';border-radius:10px;padding:14px;cursor:pointer" onclick="switchStage('+i+');setTab(\'all\')">';
     cardHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
     cardHtml+='<div style="width:12px;height:12px;border-radius:50%;background:'+s.color+'"></div>';
