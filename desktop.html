@@ -2075,10 +2075,45 @@ function renderTable() {
       +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
       +   (d.location||'') + '</td>'
       + (isDistro && d.type===TYPE_DISTRO
-          ? '<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.source_power?'var(--warn)':'var(--muted)')+'">'+(d.source_power||'—')+'</span></td>'
-           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.cable_power_in?'var(--ok)':'var(--muted)')+'">'+(d.cable_power_in?_cableLabel(d.cable_power_in):'—')+'</span></td>'
-           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.source_data?'var(--accent)':'var(--muted)')+'">'+(d.source_data||'—')+'</span></td>'
-           +'<td><span style="font-family:var(--mono);font-size:11px;color:'+(d.cable_data_in?'var(--ok)':'var(--muted)')+'">'+(d.cable_data_in?_cableLabel(d.cable_data_in):'—')+'</span></td>'
+          ? (function(){
+              // ── PWR Source dropdown (PSU only) ──
+              var pwrSrcOpts='<option value="">—</option>';
+              devices.filter(function(x){return x.type===TYPE_PSU&&x.device_id&&x.device_id!==d.device_id;})
+                .forEach(function(x){ pwrSrcOpts+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
+              // On change: set source_power; auto-fill source_data if not yet set
+              var onPwrSrc='setField('+gi+',\'source_power\',this.value);'                +'if(this.value&&!devices['+gi+'].source_data){setField('+gi+',\'source_data\',devices['+gi+'].source||\'\')||setField('+gi+',\'source_data\',\'FOH\');}'                +'renderTable();';
+              // ── PWR Cable dropdown (power-carrying cables) ──
+              var pwrCblOpts='<option value="">—</option>';
+              var _dsp2=specsForDevice(d)||{};
+              CABLE_TYPES.forEach(function(ct){
+                if(!ct.pwr_a&&!ct.pwr_b) return;
+                ct.lengths.forEach(function(l){
+                  var v=ct.key+'-'+l.val;
+                  pwrCblOpts+='<option value="'+v+'"'+(d.cable_power_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+                });
+              });
+              var onPwrCbl='setField('+gi+',\'cable_power_in\',this.value);renderTable();';
+              // ── DATA Source dropdown (FOH + distros) ──
+              var datSrcOpts='<option value="">—</option><option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';
+              devices.filter(function(x){return x.type===TYPE_DISTRO&&x.device_id&&x.device_id!==d.device_id;})
+                .forEach(function(x){ datSrcOpts+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
+              var onDatSrc='setField('+gi+',\'source_data\',this.value);renderTable();';
+              // ── DATA Cable dropdown (data-carrying cables) ──
+              var datCblOpts='<option value="">—</option>';
+              var thisSp2=specsForDevice(d)||{};
+              var devDIn2=thisSp2.data_in||'';
+              CABLE_TYPES.forEach(function(ct){
+                if(!ct.data_a&&!ct.data_b) return;
+                ct.lengths.forEach(function(l){
+                  var v=ct.key+'-'+l.val;
+                  var dm=!devDIn2||ct.data_b===devDIn2||ct.pwr_b===devDIn2;
+                  if(dm) datCblOpts+='<option value="'+v+'"'+(d.cable_data_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+                });
+              });
+              var onDatCbl='setField('+gi+',\'cable_data_in\',this.value);renderTable();';
+              var ss='font-size:11px;font-family:var(--mono);max-width:120px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:3px;padding:2px 4px;';
+              return '<td><select style="'+ss+(d.source_power?'color:var(--warn)':'')+'" onchange="'+onPwrSrc+'">'+pwrSrcOpts+'</select></td>'                    +'<td><select style="'+ss+(d.cable_power_in?'color:var(--ok)':'')+'" onchange="'+onPwrCbl+'">'+pwrCblOpts+'</select></td>'                    +'<td><select style="'+ss+(d.source_data?'color:var(--accent)':'')+'" onchange="'+onDatSrc+'">'+datSrcOpts+'</select></td>'                    +'<td><select style="'+ss+(d.cable_data_in?'color:var(--ok)':'')+'" onchange="'+onDatCbl+'">'+datCblOpts+'</select></td>';
+            })()
           : '<td>' + srcHtml + '</td>'
            +(function(){
              var pCbl=d.cable_pwr_in||d.cable_in||d.cable||'';
@@ -4289,8 +4324,17 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    var cy=(y1+y2)/2;
-    return 'M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2;
+    var dx=x2-x1, dy=y2-y1;
+    var adx=Math.abs(dx), ady=Math.abs(dy);
+    if(ady > adx * 0.8){
+      // Mostly vertical: classic S-curve with 35% vertical offset
+      var off=Math.abs(dy)*0.35;
+      return 'M'+x1+','+y1+' C'+x1+','+(y1+off)+' '+x2+','+(y2-off)+' '+x2+','+y2;
+    } else {
+      // Mostly horizontal or diagonal: horizontal S-curve (control points offset along x)
+      var offx=Math.max(Math.abs(dx)*0.4, 60);
+      return 'M'+x1+','+y1+' C'+(x1+offx)+','+y1+' '+(x2-offx)+','+y2+' '+x2+','+y2;
+    }
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4334,6 +4378,11 @@ function renderNodeView() {
     var hasAdap = !!info.adapterNote;
 
     // ── Main source edge ──
+    // For distros that use split source_power/source_data instead of a single source:
+    // synthesise a d.source from source_data so the data line draws, and let the
+    // existing source_power block (further down) draw the power line.
+    var _hadNoSource = !d.source;
+    if (!d.source && d.source_data) { d.source = d.source_data; d._synthSource = true; }
     if (d.source) {
       var sp = _ports(d.source); if(!sp) return;
       var hasCable = !!(d.cable_in||d.cable);
@@ -4401,8 +4450,9 @@ function renderNodeView() {
           +' fill="var(--warn)" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
       }
     }
-    // Clean up temp render flag
+    // Clean up temp render flags
     delete d._sigDataLink;
+    if (d._synthSource) { d.source = ''; delete d._synthSource; }
 
     // ── Separate power source (source_power field) ──
     if (d.source_power && d.source_power !== d.source) {
