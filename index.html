@@ -228,10 +228,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -491,7 +491,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -707,52 +707,55 @@ var _mNPos={};  // node positions — declared early to avoid undefined errors
 
 
 var SPECS = {
-  'RGB20': {category: 'laser',alt: 'RGCB20',phases:1,consumption_w:500.0,max_a_230:2.2,max_a_110:4.6,laser_w:20.0,weight_kg:18.0,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '192.168.10.X',scanners: 'SM506',angle:"40\u00b0",ops_diode: 'Diode',desc:"20W RGB laser \u2014 gele sticker",notes: ''},
-  'CYAN': {category: 'laser',alt: 'Green/Blue',phases:1,consumption_w:500.0,max_a_230:2.2,max_a_110:4.6,laser_w:14.0,weight_kg:12.5,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: 'DT50',angle:"40\u00b0",ops_diode: 'Gr=OPS Bl=Diode',desc:"GB \u2014 Gr=OPS  Bl=Diode",notes: ''},
-  'WHITE': {category: 'laser',alt: 'Yellow/Blue',phases:1,consumption_w:500.0,max_a_230:2.2,max_a_110:4.6,laser_w:null,weight_kg:12.5,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: 'DT50',angle:"40\u00b0",ops_diode: 'Y=OPS Bl=Diode',desc:"YB \u2014 Y=OPS  Bl=Diode",notes: ''},
-  'RGBB': {category: 'laser',alt: 'RGBB',phases:1,consumption_w:1035.0,max_a_230:4.5,max_a_110:9.4,laser_w:14.0,weight_kg:18.0,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: 'CT6215',angle:"60\u00b0",ops_diode: 'OPS+dark blue Diode',desc: 'OPS + dark blue Diode',notes: ''},
-  'GOPSL': {category: 'laser',alt: 'Green OPS / G10',phases:1,consumption_w:460.0,max_a_230:2.0,max_a_110:4.2,laser_w:10.0,weight_kg:8.2,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: 'CT6215',angle:"60\u00b0",ops_diode: 'OPS',desc: 'Green OPS laser',notes:"LET OP! Doorlus 0.7mm\u00b2 \u2014 max 10A totale doorlus"},
-  'SUPERNOVA': {category: 'laser',alt: 'Supernova',phases:1,consumption_w:1900.0,max_a_230:8.1,max_a_110:17.3,laser_w:null,weight_kg:37.0,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:2,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '192.168.9.X',scanners: 'CT6215',angle:"60\u00b0",ops_diode: 'OPS',desc: 'Large OPS unit',notes: ''},
-  'LI 13AS': {category: 'laser',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'LW15': {category: 'laser',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'LW30': {category: 'laser',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Tarm30 ip': {category: 'laser',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Tarm30 PPP': {category: 'laser',alt: 'Tarm 30W PL',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Tarm30 LIC': {category: 'laser',alt: 'Tarm 30W PC',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'XS30': {category: 'laser',alt: 'Phaenon XS 30 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: 'Silver bracket',notes: ''},
-  'XS35': {category: 'laser',alt: 'Phaenon XS 35 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: 'Black bracket',notes: ''},
-  'PIKO35': {category: 'laser',alt: 'RTI Piko 35',phases:1,consumption_w:1000.0,max_a_230:null,max_a_110:null,laser_w:35.0,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: 'CT6210',angle:"51\u00b0",ops_diode: '',desc: 'RTI Piko 35',notes: ''},
-  'PIKO60': {category: 'laser',alt: 'RTI Piko 60',phases:1,consumption_w:1500.0,max_a_230:null,max_a_110:null,laser_w:60.0,weight_kg:41.0,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: 'EMS-8000',angle: '',ops_diode: '',desc: 'RTI Piko 60',notes: ''},
-  'PIKO70': {category: 'laser',alt: 'RTI Piko 70',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:70.0,weight_kg:null,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: 'RTI Piko 70',notes: ''},
-  'PIKO120': {category: 'laser',alt: 'RTI Piko 120',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:120.0,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'PIKO135': {category: 'laser',alt: 'RTI Piko 135',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:135.0,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Hexascan': {category: 'laser',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'DMX5pin',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: 'DMX5pin',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'RGB6': {category: 'laser',alt: 'RGB6',phases:1,consumption_w:300.0,max_a_230:1.3,max_a_110:2.7,laser_w:6.0,weight_kg:7.0,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '192.168.6.X',scanners: 'SM506',angle:"40\u00b0",ops_diode: 'Diode',desc: '6W RGB laser',notes: ''},
-  'HULK': {category: 'laser',alt: 'Hulk',phases:1,consumption_w:3600.0,max_a_230:16.0,max_a_110:null,laser_w:null,weight_kg:65.0,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:0,pwr_out: '',data_out: '',out_connector: '',outlets:null,outlet_phases: '',ip: '',scanners: 'SM',angle: '',ops_diode: '',desc: 'Grote unit met extra koel unit',notes: 'LET OP! ALLEEN 230V'},
-  'VIPER': {category: 'laser',alt: 'Coherent Viper',phases:1,consumption_w:850.0,max_a_230:3.7,max_a_110:7.8,laser_w:20.0,weight_kg:35.0,inputs:1,pwr_in: 'TR1',data_in: '',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: '',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '192.168.5.X',scanners: 'CT6215',angle:"60\u00b0",ops_diode: 'OPS Fiber',desc: 'Oude unit, plastic zijplaten',notes: 'Smalle beam'},
-  '32A PC Distro': {category: 'distro',alt: '2026 big',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '32ACEE',data_in: 'Ethercon',in_connector: '32ACEE',outputs:12,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '1-4:L1,5-8:L2,9-12:L3',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  '32A PeliDistro PL': {category: 'distro',alt: '32A Distro',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '32ACEE',data_in: 'HartingPushPull',in_connector: '32ACEE',outputs:6,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '1-2:L1,3-4:L2,5-6:L3',ip: '',scanners: '',angle: '',ops_diode: '',desc: '12 out / 3 in / noodstop / 3-phase',notes: 'CEE RED 32A 3P+N+E'},
-  '32AFIBRE PeliDistro PC': {category: 'distro',alt: '32A Distro fibre',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '32ACEE',data_in: 'HartingPushPull',in_connector: '32ACEE',outputs:3,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '1:L1,2:L2,3:L3',ip: '',scanners: '',angle: '',ops_diode: '',desc: '6 out / fibre media converter / 3-phase',notes: 'CEE RED 32A 3P+N+E'},
-  'New 4port PC': {category: 'distro',alt: '2026 small',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:3,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  '8-PORT PL': {category: 'distro',alt: '8 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'Schuko',data_in: 'HartingPushPull',in_connector: 'Schuko',outputs:6,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '6 out / 2 in / 1-phase / Schuko 16A',notes: 'Schuko 16A input Relais altijd 230v'},
-  '4-PORT PL': {category: 'distro',alt: '4 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:4,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '4 out / 4 in / 1-phase',notes: ''},
-  '3-PORT PL': {category: 'distro',alt: '3 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:3,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '3 out / 4 in / 1-phase',notes: ''},
-  'PEASOUP 110V': {category: 'smoke',alt: 'Pea Soup PC32 110V',phases:1,consumption_w:2200.0,max_a_230:null,max_a_110:20.0,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'PC32',data_in: '',in_connector: 'PC32',outputs:1,pwr_out: 'TR1',data_out: '',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: 'Mineral oil',notes: 'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
-  'PEASOUP 230V': {category: 'smoke',alt: 'Pea Soup TR1 230V',phases:1,consumption_w:2200.0,max_a_230:10.0,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: '',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: '',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'SHOCKFOG': {category: 'smoke',alt: 'Shockfog',phases:1,consumption_w:2200.0,max_a_230:10.0,max_a_110:20.0,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: '',in_connector: 'TR1',outputs:1,pwr_out: 'TR1',data_out: '',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc:"Hazer \u2014 glycol oil, no CO2",notes:"Glycol oil \u2014 no CO2 needed"},
-  'FAN': {category: 'smoke',alt: 'Fan unit',phases:1,consumption_w:1000.0,max_a_230:4.4,max_a_110:9.0,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: '',in_connector: 'TR1',outputs:0,pwr_out: '',data_out: '',out_connector: '',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: 'Fan unit for smoke/haze',notes: ''},
-  'SmokeTube': {category: 'smoke',alt: '',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:null,pwr_in: '',data_in: '',in_connector: '',outputs:null,pwr_out: '',data_out: '',out_connector: '',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'RED32A CEE': {category: 'psu',alt: '32A Red',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '',data_in: '',in_connector: '',outputs:1,pwr_out: '32ACEE',data_out: '',out_connector: '32ACEE',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  '230V Shucko': {category: 'psu',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '',data_in: '',in_connector: '',outputs:1,pwr_out: 'Schuko',data_out: '',out_connector: 'Schuko',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'L21-30': {category: 'psu',alt: '',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '',data_in: '',in_connector: '',outputs:1,pwr_out: 'L21-30',data_out: '',out_connector: 'L21-30',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  '16A CEE': {category: 'psu',alt: '16 Blue',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '',data_in: '',in_connector: '',outputs:1,pwr_out: '16ACEE',data_out: '',out_connector: '16ACEE',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Edison': {category: 'psu',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '',data_in: '',in_connector: '',outputs:1,pwr_out: 'Edison',data_out: '',out_connector: 'Edison',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'L21-30 to 32A CEE': {category: 'adapter',alt: '',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'L21-30',data_in: '',in_connector: 'L21-30',outputs:1,pwr_out: '32ACEE',data_out: '',out_connector: '32ACEE',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  '16A CEE to Shucko': {category: 'adapter',alt: '',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: '16ACEE',data_in: '',in_connector: '16ACEE',outputs:1,pwr_out: 'Schuko',data_out: '',out_connector: 'Schuko',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'PL to PC': {category: 'adapter',alt: 'Plastic box to convert HartingPushPull to TR1/Ethercon',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'HartingPushPull',data_in: 'HartingPushPull',in_connector: 'HartingPushPull',outputs:1,pwr_out: 'TR1',data_out: 'Ethercon',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'PC to PL': {category: 'adapter',alt: 'Plastic box to convert TR1/Ethercon to HartingPushPull',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'TR1',data_in: 'Ethercon',in_connector: 'TR1',outputs:1,pwr_out: 'HartingPushPull',data_out: 'HartingPushPull',out_connector: 'HartingPushPull',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'Shuko to TR1': {category: 'adapter',alt: '',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'Shuko',data_in: '',in_connector: 'Shuko',outputs:1,pwr_out: 'TR1',data_out: '',out_connector: 'TR1',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''},
-  'L21-30 to PC32': {category: 'adapter',alt: '',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in: 'L21-30',data_in: '',in_connector: 'L21-30',outputs:1,pwr_out: 'PC32',data_out: '',out_connector: 'PC32',outlets:null,outlet_phases: '',ip: '',scanners: '',angle: '',ops_diode: '',desc: '',notes: ''}
+  // ── LASER ──────────────────
+  'RGB20': {category:'laser',alt:'RGCB20',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:20,weight_kg:18,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'192.168.10.X',scanners:'SM506',angle:'40°',ops_diode:'Diode',desc:'20W RGB laser — gele sticker',notes:''},
+  'CYAN': {category:'laser',alt:'Green/Blue',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:14,weight_kg:12.5,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'DT50',angle:'40°',ops_diode:'Gr=OPS Bl=Diode',desc:'GB — Gr=OPS  Bl=Diode',notes:''},
+  'WHITE': {category:'laser',alt:'Yellow/Blue',phases:1,consumption_w:500,max_a_230:2.2,max_a_110:4.6,laser_w:null,weight_kg:12.5,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'DT50',angle:'40°',ops_diode:'Y=OPS Bl=Diode',desc:'YB — Y=OPS  Bl=Diode',notes:''},
+  'RGBB': {category:'laser',alt:'RGBB',phases:1,consumption_w:1035,max_a_230:4.5,max_a_110:9.4,laser_w:14,weight_kg:18,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'CT6215',angle:'60°',ops_diode:'OPS+dark blue Diode',desc:'OPS + dark blue Diode',notes:''},
+  'GOPSL': {category:'laser',alt:'Green OPS / G10',phases:1,consumption_w:460,max_a_230:2,max_a_110:4.2,laser_w:10,weight_kg:8.2,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'CT6215',angle:'60°',ops_diode:'OPS',desc:'Green OPS laser',notes:'LET OP! Doorlus 0.7mm² — max 10A totale doorlus'},
+  'SUPERNOVA': {category:'laser',alt:'Supernova',phases:1,consumption_w:1900,max_a_230:8.1,max_a_110:17.3,laser_w:null,weight_kg:37,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:2,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'192.168.9.X',scanners:'CT6215',angle:'60°',ops_diode:'OPS',desc:'Large OPS unit',notes:''},
+  'LI 13AS': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'LW15': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'LW30': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 ip': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 PPP': {category:'laser',alt:'Tarm 30W PL',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Tarm30 LIC': {category:'laser',alt:'Tarm 30W PC',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'XS30': {category:'laser',alt:'Phaenon XS 30 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Silver bracket',notes:''},
+  'XS35': {category:'laser',alt:'Phaenon XS 35 W',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Black bracket',notes:''},
+  'PIKO35': {category:'laser',alt:'RTI Piko 35',phases:1,consumption_w:1000,max_a_230:null,max_a_110:null,laser_w:35,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'CT6210',angle:'51°',ops_diode:'',desc:'RTI Piko 35',notes:''},
+  'PIKO60': {category:'laser',alt:'RTI Piko 60',phases:1,consumption_w:1500,max_a_230:null,max_a_110:null,laser_w:60,weight_kg:41,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'EMS-8000',angle:'',ops_diode:'',desc:'RTI Piko 60',notes:''},
+  'PIKO70': {category:'laser',alt:'RTI Piko 70',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:70,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'RTI Piko 70',notes:''},
+  'PIKO120': {category:'laser',alt:'RTI Piko 120',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:120,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'PIKO135': {category:'laser',alt:'RTI Piko 135',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:135,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Hexascan': {category:'laser',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'DMX5pin',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'DMX5pin',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'RGB6': {category:'laser',alt:'RGB6',phases:1,consumption_w:300,max_a_230:1.3,max_a_110:2.7,laser_w:6,weight_kg:7,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'192.168.6.X',scanners:'SM506',angle:'40°',ops_diode:'Diode',desc:'6W RGB laser',notes:''},
+  'HULK': {category:'laser',alt:'Hulk',phases:1,consumption_w:3600,max_a_230:16,max_a_110:null,laser_w:null,weight_kg:65,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:0,pwr_out:'',data_out:'',out_connector:'',outlets:null,outlet_phases:'',ip:'',scanners:'SM',angle:'',ops_diode:'',desc:'Grote unit met extra koel unit',notes:'LET OP! ALLEEN 230V'},
+  'VIPER': {category:'laser',alt:'Coherent Viper',phases:1,consumption_w:850,max_a_230:3.7,max_a_110:7.8,laser_w:20,weight_kg:35,inputs:1,pwr_in:'TR1',data_in:'',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'192.168.5.X',scanners:'CT6215',angle:'60°',ops_diode:'OPS Fiber',desc:'Oude unit, plastic zijplaten',notes:'Smalle beam'},
+  // ── DISTRO ──────────────────
+  '32A PC Distro': {category:'distro',alt:'2026 big',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'32ACEE',data_in:'Ethercon',in_connector:'32ACEE',outputs:12,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'1-4:L1,5-8:L2,9-12:L3',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  '32A PeliDistro PL': {category:'distro',alt:'32A Distro',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'32ACEE',data_in:'HartingPushPull',in_connector:'32ACEE',outputs:6,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'1-2:L1,3-4:L2,5-6:L3',ip:'',scanners:'',angle:'',ops_diode:'',desc:'12 out / 3 in / noodstop / 3-phase',notes:'CEE RED 32A 3P+N+E'},
+  '32AFIBRE PeliDistro PC': {category:'distro',alt:'32A Distro fibre',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'32ACEE',data_in:'HartingPushPull',in_connector:'32ACEE',outputs:3,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'1:L1,2:L2,3:L3',ip:'',scanners:'',angle:'',ops_diode:'',desc:'6 out / fibre media converter / 3-phase',notes:'CEE RED 32A 3P+N+E'},
+  'New 4port PC': {category:'distro',alt:'2026 small',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:3,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  '8-PORT PL': {category:'distro',alt:'8 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'HartingPushPull',in_connector:'Schuko',outputs:6,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'6 out / 2 in / 1-phase / Schuko 16A',notes:'Schuko 16A input Relais altijd 230v'},
+  '4-PORT PL': {category:'distro',alt:'4 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:4,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'4 out / 4 in / 1-phase',notes:''},
+  '3-PORT PL': {category:'distro',alt:'3 Port Distro',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:3,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'3 out / 4 in / 1-phase',notes:''},
+  // ── SMOKE ──────────────────
+  'PEASOUP': {category:'smoke',alt:'Pea Soup',phases:1,consumption_w:2200,max_a_230:10,max_a_110:20,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Mineral oil',notes:'Oil: ~1L/hr @ 3.5 bar  |  CO2: ~1kg/hr @ 3.5 bar'},
+  'SHOCKFOG': {category:'smoke',alt:'Shockfog',phases:1,consumption_w:2200,max_a_230:10,max_a_110:20,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'',in_connector:'TR1',outputs:1,pwr_out:'TR1',data_out:'',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Hazer — glycol oil, no CO2',notes:'Glycol oil — no CO2 needed'},
+  'FAN': {category:'smoke',alt:'Fan unit',phases:1,consumption_w:1000,max_a_230:4.4,max_a_110:9,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'',in_connector:'TR1',outputs:0,pwr_out:'',data_out:'',out_connector:'',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'Fan unit for smoke/haze',notes:''},
+  // ── PSU ──────────────────
+  'RED32A CEE': {category:'psu',alt:'32A Red',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',in_connector:'',outputs:1,pwr_out:'32ACEE',data_out:'',out_connector:'32ACEE',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  '230V Shucko': {category:'psu',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',in_connector:'',outputs:1,pwr_out:'Schuko',data_out:'',out_connector:'Schuko',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'L21-30': {category:'psu',alt:'',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',in_connector:'',outputs:1,pwr_out:'L21-30',data_out:'',out_connector:'L21-30',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  '16A CEE': {category:'psu',alt:'16 Blue',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',in_connector:'',outputs:1,pwr_out:'16ACEEBlue',data_out:'',out_connector:'16ACEEBlue',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Edison': {category:'psu',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'',data_in:'',in_connector:'',outputs:1,pwr_out:'Edison',data_out:'',out_connector:'Edison',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  // ── ADAPTER ──────────────────
+  'L21-30 to 32A CEE': {category:'adapter',alt:'',phases:3,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'L21-30',data_in:'',in_connector:'L21-30',outputs:1,pwr_out:'32ACEE',data_out:'',out_connector:'32ACEE',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  '16A CEE to Shucko': {category:'adapter',alt:'',phases:1,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'16ACEEBlue',data_in:'',in_connector:'16ACEEBlue',outputs:1,pwr_out:'Schuko',data_out:'',out_connector:'Schuko',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'PL to PC': {category:'adapter',alt:'Plastic box to convert HartingPushPull to TR1/Ethercon',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'HartingPushPull',data_in:'HartingPushPull',in_connector:'HartingPushPull',outputs:1,pwr_out:'TR1',data_out:'Ethercon',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'PC to PL': {category:'adapter',alt:'Plastic box to convert TR1/Ethercon to HartingPushPull',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'TR1',data_in:'Ethercon',in_connector:'TR1',outputs:1,pwr_out:'HartingPushPull',data_out:'HartingPushPull',out_connector:'HartingPushPull',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'Shuko to TR1': {category:'adapter',alt:'',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'Schuko',data_in:'',in_connector:'Schuko',outputs:1,pwr_out:'TR1',data_out:'',out_connector:'TR1',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
+  'L21-30 to PC32': {category:'adapter',alt:'',phases:null,consumption_w:null,max_a_230:null,max_a_110:null,laser_w:null,weight_kg:null,inputs:1,pwr_in:'L21-30',data_in:'',in_connector:'L21-30',outputs:1,pwr_out:'PC32',data_out:'',out_connector:'PC32',outlets:null,outlet_phases:'',ip:'',scanners:'',angle:'',ops_diode:'',desc:'',notes:''},
 };OCTYPE html>
 <html lang="en">
 <head>
@@ -983,10 +986,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1161,7 +1164,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1246,7 +1249,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -1690,10 +1693,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -1868,7 +1871,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1953,7 +1956,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -2397,10 +2400,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -2575,7 +2578,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2660,7 +2663,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -3104,10 +3107,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3282,7 +3285,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3367,7 +3370,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -3811,10 +3814,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -3989,7 +3992,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4074,7 +4077,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -4518,10 +4521,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -4696,7 +4699,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4781,7 +4784,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -5225,10 +5228,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -5403,7 +5406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -5488,7 +5491,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -5932,10 +5935,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6110,7 +6113,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6195,7 +6198,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -6639,10 +6642,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -6817,7 +6820,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -6902,7 +6905,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -7346,10 +7349,10 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── FAB ── */
 .fab{position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+12px);z-index:101;
-  width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.18);color:var(--accent);
-  font-size:18px;font-weight:700;border:1px solid var(--accent);cursor:pointer;
+  width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.12);color:var(--accent);
+  font-size:16px;font-weight:700;border:1px solid rgba(0,212,255,.4);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:none;opacity:0.7;}
+  box-shadow:none;opacity:0.65;}
 .fab:active{transform:scale(.93);}
 
 /* ── Sheets ── */
@@ -7524,7 +7527,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.874</small></div>
+  <div class="logo">WTU <small style="color:#3ddc84;font-weight:900">v3.874</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -7609,7 +7612,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div style="padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:5px" id="scan-active-label">TAP A DEVICE BELOW TO SELECT</div>
     <div style="display:flex;gap:8px">
-      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan serial here"
+      <input id="scan-main-input" type="text" maxlength="15" placeholder="Type or scan flashback # here"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
              style="flex:1;background:var(--bg);border:2px solid var(--accent);border-radius:8px;
                     padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:3px;
@@ -7837,14 +7840,26 @@ MODELS[TA]=['L21-30 to 32A CEE','16A CEE to Schuko','PL to PC','PC to PL','Schuk
 
 
 var CABLE_TYPES = [
-  {key: 'powercat', label: 'PowerCAT', pwr_a: 'TR1', pwr_b: 'TR1', data_a: 'Ethercon', data_b: 'Ethercon', lengths:[{'val': 0.3, 'lbl': '0.3 m'}, {'val': 5.0, 'lbl': '5 m'}, {'val': 7.5, 'lbl': '7.5 m'}, {'val': 15.0, 'lbl': '15 m'}, {'val': 35.0, 'lbl': '35 m'}, {'val': 80.0, 'lbl': '80 m'}]},
-  {key: 'powerlan', label: 'PowerLAN', pwr_a: 'HartingPushPull', pwr_b: 'HartingPushPull', data_a: 'HartingPushPull', data_b: 'HartingPushPull', lengths:[{'val': 0.3, 'lbl': '0.3 m'}, {'val': 7.5, 'lbl': '7.5 m'}, {'val': 15.0, 'lbl': '15 m'}, {'val': 35.0, 'lbl': '35 m'}, {'val': 80.0, 'lbl': '80 m'}]},
-  {key: 'pc_pl', label:"PC\u2192PL", pwr_a: 'TR1', pwr_b: 'HartingPushPull', data_a: 'Ethercon', data_b: 'HartingPushPull', lengths:[{'val': 7.5, 'lbl': '7.5 m'}, {'val': 35.0, 'lbl': '35 m'}]},
-  {key: 'pl_pc', label:"PL\u2192PC", pwr_a: 'HartingPushPull', pwr_b: 'TR1', data_a: 'HartingPushPull', data_b: 'Ethercon', lengths:[{'val': 7.5, 'lbl': '7.5 m'}, {'val': 15.0, 'lbl': '15m'}, {'val': 80.0, 'lbl': '80 m'}]},
-  {key: 'l2130', label: 'L21-30', pwr_a: 'L21-30', pwr_b: 'L21-30', data_a: '', data_b: '', lengths:[{'val': 1.5, 'lbl': 'Lunch box'}, {'val': 8.0, 'lbl': '8m'}, {'val': 15.0, 'lbl': '15m'}, {'val': 30.0, 'lbl': '30m'}, {'val': 45.0, 'lbl': '45m'}]},
-  {key: 'cee32', label: 'CEE 32A', pwr_a: '32ACEE', pwr_b: '32ACEE', data_a: '', data_b: '', lengths:[{'val': 10.0, 'lbl': '10 m'}, {'val': 25.0, 'lbl': '25 m'}]},
-  {key: 'cat', label: 'CAT Ethercon', pwr_a: '', pwr_b: '', data_a: 'Ethercon', data_b: 'Ethercon', lengths:[{'val': 115.0, 'lbl': '115 m'}]},
-  {key: 'fiber', label: 'Fiber', pwr_a: '', pwr_b: '', data_a: '', data_b: '', lengths:[{'val': 1, 'lbl': 'various'}]}
+  {key:'powercat',  label:'PowerCAT',     pwr_a:'TR1',             pwr_b:'TR1',             data_a:'Ethercon',       data_b:'Ethercon',
+   lengths:[{val:0.3,lbl:'0.3 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
+  {key:'powerlan',  label:'PowerLAN',     pwr_a:'HartingPushPull', pwr_b:'HartingPushPull', data_a:'HartingPushPull',data_b:'HartingPushPull',
+   lengths:[{val:0.3,lbl:'0.3 m'},{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
+  {key:'pc_pl',     label:'PC→PL',  pwr_a:'TR1',             pwr_b:'HartingPushPull', data_a:'Ethercon',       data_b:'HartingPushPull',
+   lengths:[{val:7.5,lbl:'7.5 m'},{val:35,lbl:'35 m'},{val:80,lbl:'80 m'}]},
+  {key:'pl_pc',     label:'PL→PC',  pwr_a:'HartingPushPull', pwr_b:'TR1',             data_a:'HartingPushPull',data_b:'Ethercon',
+   lengths:[{val:7.5,lbl:'7.5 m'},{val:15,lbl:'15 m'},{val:80,lbl:'80 m'}]},
+  {key:'l2130',     label:'L21-30',       pwr_a:'L21-30',          pwr_b:'L21-30',          data_a:'',               data_b:'',
+   lengths:[{val:1.5,lbl:'Lunch box'},{val:8,lbl:'25 ft (8 m)'},{val:15,lbl:'50 ft (15 m)'},{val:30,lbl:'100 ft (30 m)'},{val:45,lbl:'150 ft (45 m)'}]},
+  {key:'schuko',    label:'Schuko',       pwr_a:'Schuko',          pwr_b:'Schuko',          data_a:'',               data_b:'',
+   lengths:[{val:25,lbl:'25 m'},{val:50,lbl:'50 m'}]},
+  {key:'cee32',     label:'CEE 32A',      pwr_a:'32ACEE',          pwr_b:'32ACEE',          data_a:'',               data_b:'',
+   lengths:[{val:10,lbl:'10 m'},{val:25,lbl:'25 m'}]},
+  {key:'cat',       label:'CAT Ethercon', pwr_a:'',                pwr_b:'',                data_a:'Ethercon',       data_b:'Ethercon',
+   lengths:[{val:115,lbl:'115 m'}]},
+  {key:'combidmx',  label:'CombiDMX',     pwr_a:'TR1',             pwr_b:'TR1',             data_a:'DMX5pin',        data_b:'DMX5pin',
+   lengths:[{val:2.5,lbl:'2.5 m'},{val:5,lbl:'5 m'},{val:7.5,lbl:'7.5 m'},{val:10,lbl:'10 m'}]},
+  {key:'fiber',     label:'Fiber',        pwr_a:'',                pwr_b:'',                data_a:'',               data_b:'',
+   lengths:[{val:1,lbl:'various'}]},
 ];function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
     return '<button class="ntab" id="nt-'+t.k+'" onclick="setTab(\''+t.k+'\')">'
@@ -9237,7 +9252,7 @@ function _showMobileConflict(fileData, localVer, fileVer){
   var localById={};devices.forEach(function(d){if(d.device_id)localById[d.device_id]=d;});
   var allIds=Object.keys(Object.assign({},fileById,localById));
   var diffs=[];
-  var WATCH=['serial','status','location','source','source_power','source_data','cable_in','cable_power_in','cable_data_in','cable_out','pointed','notes'];
+  var WATCH=['serial','status','location','source','cable_in','cable_out','pointed','notes'];
   allIds.forEach(function(id){
     var ld=localById[id],fd=fileById[id];
     var changes=[];
@@ -9335,7 +9350,7 @@ function _renderMapFromPositions(positions){
     if(!sp||!tp) return;
     var hasCable=!!(d.cable_in||d.cable);
     var stroke=d.source==='FOH'?'#00d4ff':hasCable?'#3ddc84':'#55606e';
-    var dx=x2-x1,dy=y2-y1,offx=Math.max(Math.abs(dx)*0.5,Math.abs(dy)*0.4,50);return 'M'+x1+','+y1+' C'+(x1+offx)+','+y1+' '+(x2-offx)+','+y2+' '+x2+','+y2;
+    var x1=sp.x+NW/2,y1=sp.y,x2=tp.x+NW/2,y2=tp.y+NH,cy=(y1+y2)/2;
     eHtml+='<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
       +' fill="none" stroke="'+stroke+'" stroke-width="2" stroke-opacity="0.7"/>';
   });
@@ -11214,7 +11229,7 @@ function snConfirm() {
   if (val) {
     d.serial = val;
     // Log activity
-    _logActivity(d.device_id, 'Flashback # assigned: ' + val);
+    _logActivity(d.device_id, 'Serial assigned: ' + val);
   }
   // Save checks state (already toggled live)
   if (d.type === TL && d.checks && d.checks['Mounted']) {
@@ -11333,3 +11348,5 @@ function _snScanTick() {
 </div>
 </body>
 </html>
+
+      
