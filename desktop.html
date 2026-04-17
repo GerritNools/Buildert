@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.902</title>
+<title>WTUniverse · Buildert Editor v3.904</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -392,7 +392,7 @@
     color:var(--text);border-radius:4px;padding:4px 7px;font-family:var(--mono);text-align:center;}
 
   /* Node view */
-  #node-canvas-wrap{display:none;width:100%;background:var(--bg);
+  #node-canvas-wrap{display:none;width:100%;background:#0a0c0f;
     border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative;
     height:calc(100vh - 140px);min-height:400px;}
   #node-svg{display:block;width:100%;height:100%;cursor:grab;}
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.902</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.904</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -666,7 +666,8 @@
         <button class="btn btn-ghost" onclick="nodePrint()" style="padding:5px 10px;font-size:11px">&#128438; Print</button>
       </div>
     </div>
-    <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg">
+    <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="background:#0a0c0f;">
+      <rect id="node-bg" x="-9999" y="-9999" width="99999" height="99999" fill="#0a0c0f"/>
       <defs>
         <filter id="led-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <marker id="arrow-ok"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
@@ -717,7 +718,7 @@
   <div id="specs-view" style="display:none;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:300px;"></div>
 
   <!-- Diagram panel — SVG-based, independent positions -->
-  <div id="diag-panel" style="display:none">
+  <div id="diag-panel" style="display:none;background:#0a0c0f;min-height:calc(100vh - 140px);border-radius:8px;border:1px solid var(--border);overflow:hidden;">
     <div class="node-toolbar">
       <button class="btn btn-ghost" onclick="diagFitView()" style="padding:5px 11px;font-size:12px">&#8982; Fit view</button>
       <button class="btn btn-ghost" onclick="diagResetLayout()" style="padding:5px 11px;font-size:12px">&#8859; Reset layout</button>
@@ -726,7 +727,8 @@
       <button class="icon-btn" onclick="diagZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">&minus;</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom &nbsp;&middot;&nbsp; drag node to move &nbsp;&middot;&nbsp; drag background to pan</span>
     </div>
-    <svg id="diag-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;cursor:grab;">
+    <svg id="diag-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;cursor:grab;background:#0a0c0f;">
+      <rect id="diag-bg" x="-9999" y="-9999" width="99999" height="99999" fill="#0a0c0f"/>
       <defs>
         <marker id="darrow-ok"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
         <marker id="darrow-warn"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
@@ -4317,14 +4319,35 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1s,y1s,x2p,y2p,x2d,y2d,hasAdap){
-    // Two clean parallel beziers: amber (power) + blue (data), offset ±2px vertically
+    // Single grey stem → splits into amber (power) + blue (data) near destination
     var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    var pBranch='<path d="'+_bezier(x1s,y1s-2,x2p,y2p-2)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dBranch='<path d="'+_bezier(x1s,y1s+2,x2d,y2d+2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return pBranch+dBranch;
+    // Split point: 75% of the way along the main bezier
+    var spx=(x1s+x2p)/2, spy=(y1s*0.25+y2p*0.75);
+    // Stem: source to split point (grey)
+    var stem='<path d="'+_bezier(x1s,y1s,spx,spy)+'" fill="none" stroke="#8899bb" stroke-width="2.5"'+dash+' opacity="0.75"/>';
+    // Short branches from split point to each port (last 25% of route)
+    var pBranch='<path d="M'+spx+','+spy+' '+_bezier(spx,spy,x2p,y2p).slice(1)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dBranch='<path d="M'+spx+','+spy+' '+_bezier(spx,spy,x2d,y2d).slice(1)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return stem+pBranch+dBranch;
   }
 
   // ── Draw edges in order: power first, data, combo ──
+  // First draw unconnected port stubs (dashed grey lines going nowhere)
+  devices.forEach(function(d){
+    if (!d.device_id) return;
+    var dp = _ports(d.device_id); if(!dp) return;
+    // Show unconnected power input as short dashed stub
+    var hasPwrSrc = !!(d.source_power || d.source);
+    var hasDataSrc = !!(d.source_data || d.source);
+    if (!hasPwrSrc) {
+      edgeHtml += '<line x1="'+dp.pwrIn.x+'" y1="'+dp.pwrIn.y+'" x2="'+dp.pwrIn.x+'" y2="'+(dp.pwrIn.y+20)+'"'
+        +' stroke="#f5a623" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.35"/>';
+    }
+    if (!hasDataSrc) {
+      edgeHtml += '<line x1="'+dp.dataIn.x+'" y1="'+dp.dataIn.y+'" x2="'+dp.dataIn.x+'" y2="'+(dp.dataIn.y+20)+'"'
+        +' stroke="#5b8fff" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.35"/>';
+    }
+  });
   devices.forEach(function(d){
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
