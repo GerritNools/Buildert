@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.894</title>
+<title>WTUniverse · Buildert Editor v3.896</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.894</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.896</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2550,14 +2550,11 @@ function saveDevice() {
     ? (_idEditEl.value.trim().toUpperCase() || document.getElementById('m-device-id').value.trim().toUpperCase())
     : document.getElementById('m-device-id').value.trim().toUpperCase();
   if (!deviceId) { showToast('Device ID is required','warn'); document.getElementById('m-device-id').focus(); return; }
-  // Check for duplicate ID across ALL stages
-  var allDevs = [];
-  _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
-  if(!allDevs.length) allDevs = devices;
-  // In edit mode, ignore the device being edited (match by device_id, not object reference)
+  // Check for duplicate ID within the CURRENT STAGE only
+  // (same ID is allowed in different stages)
   var _editingId = editIndex >= 0 ? (devices[editIndex]||{}).device_id||'' : '';
-  var idConflict = allDevs.some(function(x){ return x.device_id === deviceId && x.device_id !== _editingId; });
-  if (idConflict) { showToast('ID "'+deviceId+'" already exists in this project — pick a different number','warn'); return; }
+  var idConflict = devices.some(function(x){ return x.device_id === deviceId && x.device_id !== _editingId; });
+  if (idConflict) { showToast('ID "'+deviceId+'" already exists in this stage — pick a different number','warn'); return; }
 
   var chList   = checksFor(type);
   var secId    = TYPE_KEY[type] || 'laser';
@@ -4343,12 +4340,10 @@ function renderNodeView() {
 
   function _bezier(x1,y1,x2,y2){
     var dx=x2-x1, dy=y2-y1;
-    var adx=Math.abs(dx), ady=Math.abs(dy);
-    // Always use horizontal S-curve: control points extend in X direction.
-    // This prevents ugly kinks when source is to the right of destination
-    // or when nodes are at similar heights.
-    var offx = Math.max(adx*0.5, ady*0.4, 50);
-    return 'M'+x1+','+y1+' C'+(x1+offx)+','+y1+' '+(x2-offx)+','+y2+' '+x2+','+y2;
+    var offx=Math.max(Math.abs(dx)*0.5, Math.abs(dy)*0.4, 50);
+    // Sign-aware: control points always pull TOWARD the midpoint
+    var s=dx>=0?1:-1;
+    return 'M'+x1+','+y1+' C'+(x1+s*offx)+','+y1+' '+(x2-s*offx)+','+y2+' '+x2+','+y2;
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4362,24 +4357,11 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1s,y1s,x2p,y2p,x2d,y2d,hasAdap){
-    // Single line from source → split point → two branches (pwr amber, data blue)
-    // Split at 70% of the journey, offset slightly
-    var sx=x1s, sy=y1s;
-    var spx=(sx+x2p)/2+((x2d-x2p)*0.15), spy=(sy+y2p*0.7+y2d*0.3)*0.85;
+    // Two clean parallel beziers: amber (power) + blue (data), offset ±2px vertically
     var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    // Stem: source to split point (grey)
-    var cy1=(sy+spy)/2;
-    var stem='<path d="M'+sx+','+sy+' C'+sx+','+cy1+' '+spx+','+cy1+' '+spx+','+spy+'"'
-      +' fill="none" stroke="#888" stroke-width="2"'+dash+' opacity="0.8"/>';
-    // Branch 1: power (amber) — split to pwr port
-    var cpy=(spy+y2p)/2;
-    var pBranch='<path d="M'+spx+','+spy+' C'+spx+','+cpy+' '+x2p+','+cpy+' '+x2p+','+y2p+'"'
-      +' fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    // Branch 2: data (blue) — split to data port
-    var cdy=(spy+y2d)/2;
-    var dBranch='<path d="M'+spx+','+spy+' C'+spx+','+cdy+' '+x2d+','+cdy+' '+x2d+','+y2d+'"'
-      +' fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return stem+pBranch+dBranch;
+    var pBranch='<path d="'+_bezier(x1s,y1s-2,x2p,y2p-2)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dBranch='<path d="'+_bezier(x1s,y1s+2,x2d,y2d+2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return pBranch+dBranch;
   }
 
   // ── Draw edges in order: power first, data, combo ──
@@ -4750,9 +4732,43 @@ function _nodeMouseUp(e) {
           }
         }
         if (_canConnect) {
-          tgt.source = srcId;
+          var _tgtSp = getSpec(tgt.model||modelFromId(tgt.device_id||''));
+          var _srcDev2 = srcId==='FOH' ? null : devices.find(function(x){return x.device_id===srcId;});
+          var _srcSp2  = _srcDev2 ? getSpec(_srcDev2.model||modelFromId(_srcDev2.device_id||'')) : null;
+          var _srcPwrOut = _srcSp2 ? (_srcSp2.pwr_out||_srcSp2.out_connector||'') : '';
+          var _tgtPwrIn  = _tgtSp  ? (_tgtSp.pwr_in ||_tgtSp.in_connector||'')   : '';
+
+          // Decide whether this is a power connection or data connection
+          // by checking if source connector matches target pwr_in
+          var _isPwrConn = _srcPwrOut && _tgtPwrIn && _srcPwrOut===_tgtPwrIn;
+          var _isDataConn = !_isPwrConn; // default to data if no pwr match
+
+          if (_isDataConn) {
+            tgt.source_data = srcId;
+            if (!tgt.source_power) tgt.source = srcId; // keep legacy source
+          } else {
+            tgt.source_power = srcId;
+            tgt.source = tgt.source_data || srcId;
+          }
+          // If no cable set yet, auto-pick the best matching cable
+          var _cableField = _isDataConn ? 'cable_data_in' : 'cable_power_in';
+          if (!tgt[_cableField]) {
+            var _srcDataOut = _srcSp2 ? (_srcSp2.data_out||'') : '';
+            var _tgtDataIn  = _tgtSp  ? (_tgtSp.data_in||'')  : '';
+            var _best = null;
+            CABLE_TYPES.forEach(function(ct){
+              if (_best) return;
+              var devMatch = !_tgtPwrIn  || !ct.pwr_b  || ct.pwr_b===_tgtPwrIn  || ct.data_b===_tgtDataIn;
+              var srcMatch = !_srcPwrOut || !ct.pwr_a  || ct.pwr_a===_srcPwrOut  || ct.data_a===_srcDataOut;
+              if (devMatch && srcMatch && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
+            });
+            if (_best) {
+              tgt[_cableField] = _best;
+              tgt.cable_in = _best; tgt.cable = _best;
+            }
+          }
           renderTable(); autoSave();
-          showToast(hit + ' → source set to ' + srcId, 'ok');
+          showToast(hit+' ← '+srcId+' ('+ (_isDataConn?'data':'power')+')', 'ok');
         }
       }
     }
@@ -4819,23 +4835,40 @@ function nodeEdgeClick(e, gi) {
     _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevE=x;});});
     if (_srcDevE) { var _sSpE=getSpec(_srcDevE.model||modelFromId(_srcDevE.device_id)); _srcConn=_sSpE?(_sSpE.data_out||_sSpE.pwr_out||_sSpE.out_connector||''):''; }
   }
-  var opts = '<option value="">— none —</option>';
-  CABLE_TYPES.forEach(function(ct){
-    var devMatch = !_devConn || !ct.pwr_b || ct.pwr_b === _devConn;
-    var srcMatch = !_srcConn || !ct.pwr_a || ct.pwr_a === _srcConn;
-    if (!devMatch || !srcMatch) return;
-    ct.lengths.forEach(function(l){
-      var v=ct.key+'-'+l.val;
-      var cur=d.cable_in||d.cable||'';
-      opts+='<option value="'+v+'"'+(cur===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+  // Build cable options filtered to what makes sense for this connection
+  var _edgeSp2 = _edgeSp;
+  var _devDataIn = _edgeSp2 ? (_edgeSp2.data_in||'') : '';
+  function _cableOpts(curVal, filterPwr, filterData){
+    var o='<option value="">— none —</option>';
+    CABLE_TYPES.forEach(function(ct){
+      var devPMatch = !_devConn    || !ct.pwr_b  || ct.pwr_b===_devConn;
+      var devDMatch = !!(devDataIn2 && ct.data_b && ct.data_b===_devDataIn);
+      var devMatch  = devPMatch || devDMatch;
+      var srcMatch  = !_srcConn || !ct.pwr_a || ct.pwr_a===_srcConn || ct.data_a===_srcConn;
+      if(!devMatch||!srcMatch) return;
+      ct.lengths.forEach(function(l){
+        var v=ct.key+'-'+l.val;
+        o+='<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
     });
-  });
-  pop.innerHTML = '<div style="font-family:var(--cond);font-weight:700;font-size:11px;'
-    +'letter-spacing:1px;color:var(--accent);margin-bottom:7px">CABLE IN — '+d.device_id+'</div>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);'
-    +'color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:4px"'
-    +' onchange="devices['+gi+'].cable_in=this.value;devices['+gi+'].cable=this.value;'
-    +'autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}">'+opts+'</select>';
+    return o;
+  }
+  var devDataIn2 = _devDataIn;
+  var pwrOpts  = _cableOpts(d.cable_power_in||d.cable_in||d.cable||'');
+  var dataOpts = _cableOpts(d.cable_data_in||d.cable_in||d.cable||'');
+  var save = 'autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}';
+  pop.innerHTML =
+    '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr source</label>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_power=v;devices['+gi+'].source=devices['+gi+'].source_data||v;'+save+'})(this.value)">'+(function(){var o='<option value="">— not set —</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
+    +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr cable</label>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_power_in=this.value;devices['+gi+'].cable_in=this.value;devices['+gi+'].cable=this.value;'+save+'">'+pwrOpts+'</select></div>'
+    +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_data=v;if(!devices['+gi+'].source)devices['+gi+'].source=v;'+save+'})(this.value)">'+(function(){var o='<option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
+    +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_data_in=this.value;'+save+'">'+dataOpts+'</select></div>'
+    +'</div>';
   wrap.appendChild(pop);
   _nodeCablePopover = pop;
   // Click outside closes
