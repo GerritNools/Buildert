@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.904</title>
+<title>WTUniverse · Buildert Editor v3.905</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -15,7 +15,7 @@
     --mono:'Share Tech Mono',monospace; --sans:'Barlow',sans-serif; --cond:'Barlow Condensed',sans-serif;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
+  html{background:#0a0c0f;}body{background:#0a0c0f;color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
   body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
     background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);}
 
@@ -89,7 +89,7 @@
     overflow:auto;-webkit-overflow-scrolling:touch;
     /* height is set by JS to fill remaining viewport below the toolbar */
     min-height:200px;}
-  table{width:100%;border-collapse:collapse;min-width:1020px;}
+  table{width:100%;border-collapse:collapse;min-width:1020px;background:var(--surface);}
   thead th{background:var(--panel);font-family:var(--cond);font-weight:700;font-size:11px;
     letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
     padding:9px 10px;text-align:left;border-bottom:2px solid var(--border);
@@ -100,7 +100,7 @@
   thead th.sortable:hover{color:var(--accent);}
   thead th.sort-asc::after{content:' ▲';font-size:8px;color:var(--accent);}
   thead th.sort-desc::after{content:' ▼';font-size:8px;color:var(--accent);}
-  tbody tr{border-bottom:1px solid var(--border2);transition:background .1s;}
+  tbody tr{border-bottom:1px solid var(--border2);transition:background .1s;background:var(--surface);}
   tbody tr:last-child{border-bottom:none;}
   tbody tr:hover{background:rgba(255,255,255,.025);}
   tbody tr.row-laser {border-left:3px solid var(--laser);}
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.904</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.905</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1540,7 +1540,7 @@ function setTab(tab) {
   if(catBar) catBar.style.display = 'none';
 
   // Show/hide quick-add buttons and qa-panel — only visible on list tabs
-  var isListTab = (tab === 'devices');
+  var isListTab = (tab === 'devices' || tab === 'node');
   var qaPanel = document.getElementById('qa-panel');
   if (qaPanel) qaPanel.style.display = isListTab ? '' : 'none';
 
@@ -2823,11 +2823,18 @@ function quickAdd() {
     locations = null; // plain location, repeated for all
   }
 
-  // Find starting unit number (skip already-taken numbers)
+  // Find starting unit number — use modelFromId so multi-word models work correctly
   var taken = {};
-  devices.forEach(function(d) {
-    var p = (d.device_id||'').trim().toUpperCase().split(/\s+/);
-    if (p[0] === model.toUpperCase()) { var n=parseInt(p[1],10); if(!isNaN(n)) taken[n]=true; }
+  var _allDevsQA = [];
+  _stages.forEach(function(s){ _allDevsQA = _allDevsQA.concat(s.devices||[]); });
+  if(!_allDevsQA.length) _allDevsQA = devices;
+  _allDevsQA.forEach(function(d) {
+    var dm = modelFromId(d.device_id||'');
+    if (dm.toUpperCase() === model.toUpperCase()) {
+      var rest = (d.device_id||'').slice(dm.length).trim();
+      var n = parseInt(rest, 10);
+      if (!isNaN(n)) taken[n] = true;
+    }
   });
   var next = 1;
   while (taken[next]) next++;
@@ -4362,11 +4369,14 @@ function renderNodeView() {
     // existing source_power block (further down) draw the power line.
     var _hadNoSource = !d.source;
     if (!d.source && d.source_data) { d.source = d.source_data; d._synthSource = true; }
+    // For distros: main source edge is ALWAYS data-only (blue) — power comes via source_power separately
+    if (d._synthSource || (d.type === TYPE_DISTRO && d.source_data)) d._forceDataOnly = true;
     if (d.source) {
       var sp = _ports(d.source); if(!sp) return;
       var hasCable = !!(d.cable_in||d.cable);
       var isFoh = d.source==='FOH';
-
+      // Force data-only for distros — their power comes via a separate source_power link
+      if (d._forceDataOnly && !isFoh) { sigType = 'data'; d._sigDataLink = true; }
       // Data-link detection: PowerCAT used between distros (TR1 unconnected, Ethercon only).
       // When pwr connectors don't chain, downgrade 'combo' to 'data' — renders as blue line only.
       if (sigType==='combo' && !isFoh && hasCable) {
@@ -4422,7 +4432,7 @@ function renderNodeView() {
         +' rx="3" fill="rgba(17,19,24,.9)" stroke="'+lbCol+'" stroke-width="1.2"'
         +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
       labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
-        +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+        +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
         +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
       if(hasAdap){
         labelHtml+='<text x="'+mx+'" y="'+(my+16)+'" text-anchor="middle"'
@@ -4431,6 +4441,7 @@ function renderNodeView() {
     }
     // Clean up temp render flags
     delete d._sigDataLink;
+    delete d._forceDataOnly;
     if (d._synthSource) { d.source = ''; delete d._synthSource; }
 
     // ── Separate power source (source_power field) ──
@@ -4450,7 +4461,7 @@ function renderNodeView() {
           labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
             +' rx="3" fill="rgba(17,19,24,.9)" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
-            +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+            +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+pLbl+'</text>';
         }
       }
@@ -4472,7 +4483,7 @@ function renderNodeView() {
           labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
             +' rx="3" fill="rgba(17,19,24,.9)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
-            +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
+            +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+dLbl2+'</text>';
         }
       }
