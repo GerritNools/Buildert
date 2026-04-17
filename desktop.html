@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.898</title>
+<title>WTUniverse · Buildert Editor v3.899</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.898</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.899</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4392,7 +4392,7 @@ function renderNodeView() {
       if(hasAdap) lbCol='var(--warn)';
       var lw=cLabel.length*5.5+8;
       labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-        +' rx="3" fill="#111" stroke="'+lbCol+'" stroke-width="1.2"'
+        +' rx="3" fill="rgba(10,12,15,.92)" stroke="'+lbCol+'" stroke-width="1.2"'
         +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
       labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
         +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
@@ -4421,7 +4421,7 @@ function renderNodeView() {
           var pmx=(spp.pwrOut.x+dp.pwrIn.x)/2, pmy=(spp.pwrOut.y+dp.pwrIn.y)/2-4;
           var plw=pLbl.length*5.5+8;
           labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
-            +' rx="3" fill="#111" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="rgba(10,12,15,.92)" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+pLbl+'</text>';
@@ -4443,7 +4443,7 @@ function renderNodeView() {
           var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
           var dlw2=dLbl2.length*5.5+8;
           labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
-            +' rx="3" fill="#111" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="rgba(10,12,15,.92)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+dLbl2+'</text>';
@@ -8314,12 +8314,12 @@ function _impliedAdapter(d){
 function populatePowerSourceDropdown(type, excludeId, currentVal) {
   var sel = document.getElementById('m-source-power'); if(!sel) return;
   sel.innerHTML = '<option value="">&#8212; not set &#8212;</option>';
-  // All device types can get power from distros or PSUs
-  [TYPE_PSU, TYPE_DISTRO].forEach(function(t){
+  // Which types can supply power to this device type?
+  var allowed = SOURCE_TYPES[type] || [TYPE_DISTRO, TYPE_PSU, TYPE_LASER];
+  allowed.filter(function(t){ return t!=='_foh'; }).forEach(function(t){
     devices.filter(function(x){ return x.type===t && x.device_id && x.device_id!==excludeId; })
       .forEach(function(x){
-        var prefix = t===TYPE_PSU ? 'PSU ' : 'D ';
-        sel.innerHTML += '<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+prefix+x.device_id+'</option>';
+        sel.innerHTML += '<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+x.device_id+'</option>';
       });
   });
   _refreshPowerCables();
@@ -8350,16 +8350,18 @@ function _refreshPowerCables() {
       sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
   });
-  // Fallback: if nothing matched, show all power cables
-  if(sel.options.length<=1){
-    sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
-    CABLE_TYPES.forEach(function(ct){
-      if(!ct.pwr_a && !ct.pwr_b) return;
-      ct.lengths.forEach(function(l){
-        var v=ct.key+'-'+l.val;
-        sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+  // Fallback: if source not set or no match, show all power cables
+  if(sel.options.length<=1 || !srcPwrOut){
+    if(!srcPwrOut){
+      sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
+      CABLE_TYPES.forEach(function(ct){
+        if(!ct.pwr_a && !ct.pwr_b) return;
+        ct.lengths.forEach(function(l){
+          var v=ct.key+'-'+l.val;
+          sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+        });
       });
-    });
+    }
   }
 }
 function populateDataSourceDropdown(currentVal) {
