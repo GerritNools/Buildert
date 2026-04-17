@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.899</title>
+<title>WTUniverse · Buildert Editor v3.900</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.899</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.900</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2070,7 +2070,10 @@ function renderTable() {
           });
           var onPwrSrc='(function(v,gi){'
             +'setField(gi,\'source_power\',v);'
-            +'if(v&&!devices[gi].source&&!devices[gi].source_data){setField(gi,\'source\',v);}' // keep legacy source in sync
+            +'if(devices[gi].type!==TYPE_DISTRO){'  // for lasers/smoke: copy pwr source to data source
+            +'  setField(gi,\'source_data\',v);'
+            +'  setField(gi,\'source\',v);'
+            +'} else if(v&&!devices[gi].source){setField(gi,\'source\',v);}'
             +'renderTable();'
             +'})(this.value,'+gi+')';
 
@@ -4392,7 +4395,7 @@ function renderNodeView() {
       if(hasAdap) lbCol='var(--warn)';
       var lw=cLabel.length*5.5+8;
       labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-        +' rx="3" fill="rgba(10,12,15,.92)" stroke="'+lbCol+'" stroke-width="1.2"'
+        +' rx="3" fill="rgba(17,19,24,.9)" stroke="'+lbCol+'" stroke-width="1.2"'
         +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
       labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
         +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
@@ -4421,7 +4424,7 @@ function renderNodeView() {
           var pmx=(spp.pwrOut.x+dp.pwrIn.x)/2, pmy=(spp.pwrOut.y+dp.pwrIn.y)/2-4;
           var plw=pLbl.length*5.5+8;
           labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
-            +' rx="3" fill="rgba(10,12,15,.92)" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="rgba(17,19,24,.9)" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+pLbl+'</text>';
@@ -4443,7 +4446,7 @@ function renderNodeView() {
           var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
           var dlw2=dLbl2.length*5.5+8;
           labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
-            +' rx="3" fill="rgba(10,12,15,.92)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="rgba(17,19,24,.9)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+dLbl2+'</text>';
@@ -5806,9 +5809,10 @@ function updateBulkBar() {
     cnt.textContent = selectedGis.length + ' selected';
     // Populate source dropdown from all known sources
     var bsrc = document.getElementById('bulk-source');
-    var allSrcs = devices.filter(function(d){return d.device_id&&(d.type==='Distro'||d.type==='Power supply');});
     bsrc.innerHTML = '<option value="">&#8212; Source &#8212;</option>'
-      + allSrcs.map(function(d){return '<option value="'+d.device_id+'">'+d.device_id+'</option>';}).join('');
+      + '<option value="FOH">FOH</option>'
+      + devices.filter(function(x){return x.device_id;})
+               .map(function(x){return '<option value="'+x.device_id+'">'+x.device_id+'</option>';}).join('');
     _populateBulkCableIn();
   } else {
     bar.style.display = 'none';
@@ -5827,6 +5831,8 @@ function applyBulkField(field) {
     if (!val) { showToast('Enter a location first','warn'); return; }
   } else if (field === 'source') {
     val = document.getElementById('bulk-source').value;
+  } else if (field === 'source_data') {
+    val = document.getElementById('bulk-source').value;
   } else if (field === 'cable_in') {
     val = document.getElementById('bulk-cable-in').value;
     if (!val) { showToast('Pick a cable first','warn'); return; }
@@ -5841,7 +5847,20 @@ function applyBulkField(field) {
     showToast('Set ' + chkName + ' on ' + selectedGis.length + ' device(s)', 'ok');
     return;
   }
-  selectedGis.forEach(function(gi) { devices[gi][field] = val; if(field==='cable_in') devices[gi].cable=val; });
+  selectedGis.forEach(function(gi) {
+    var dev = devices[gi];
+    if (field === 'source') {
+      // Set both pwr and data source (unless distro which has separate pwr source)
+      dev.source = val;
+      dev.source_data = val;
+      if (dev.type !== TYPE_DISTRO) dev.source_power = val;
+    } else if (field === 'cable_in') {
+      dev.cable_in = val; dev.cable = val;
+      dev.cable_power_in = val; dev.cable_data_in = val;
+    } else {
+      dev[field] = val;
+    }
+  });
   renderTable(); autoSave();
   showToast('Updated ' + field + ' on ' + selectedGis.length + ' device(s)', 'ok');
 }
