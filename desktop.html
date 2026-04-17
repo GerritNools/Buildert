@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.907</title>
+<title>WTUniverse · Buildert Editor v3.908</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.907</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.908</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1573,6 +1573,9 @@ function sortByHeader(field) {
 var _modelColorCache = {};
 function modelColor(modelKey, deviceType) {
   if (!modelKey) return 'var(--muted)';
+  // Custom color saved in specs takes priority over computed color
+  var _spForColor = DEVICE_SPECS[modelKey] || DEVICE_SPECS[(modelKey||'').toUpperCase()];
+  if (_spForColor && _spForColor.color) return _spForColor.color;
   if (_modelColorCache[modelKey]) return _modelColorCache[modelKey];
   var typeHueBase = {'Laser projector':210,'Smoke machine':155,'Distro':38,'Power supply':270};
   var base = typeHueBase[deviceType] || 210;
@@ -1871,8 +1874,13 @@ function _cableOutDisplay(d) {
 function editSpecField(k, f, val) {
   if (!_specsOverrides[k]) _specsOverrides[k] = {};
   _specsOverrides[k][f] = val;
+  // Also write to DEVICE_SPECS so in-session reads (modelColor etc.) see the new value
+  if (DEVICE_SPECS[k]) DEVICE_SPECS[k][f] = val;
+  // Bust the model color cache so nodes redraw with new color
+  if (f === 'color') { if (typeof _modelColorCache !== 'undefined') _modelColorCache = {}; }
   saveSpecsToStorage();
   autoSave();
+  renderNodeView();
   showToast('Spec updated: ' + k + ' · ' + f, 'ok');
 }
 
@@ -2081,7 +2089,10 @@ function renderTable() {
 
           // ── PWR Cable options — CEE32 excluded for distros (PSU feeds them, not pulled cable) ──
           var _isDistroDevice = (d.type === TYPE_DISTRO);
+          var _tblDevPwrIn = _sp ? (_sp.pwr_in||_sp.in_connector||'') : '';
           var pwrCblOpts='<option value="">—</option>';
+          // If device has no pwr_in defined in specs, show no cable options
+          if (_tblDevPwrIn || d.cable_power_in || d.cable_in) {
           CABLE_TYPES.forEach(function(ct){
             if(!ct.pwr_a&&!ct.pwr_b) return;
             if(_isDistroDevice && ct.key!=='cee32') return;
@@ -2099,6 +2110,7 @@ function renderTable() {
               ct.lengths.forEach(function(l){ var v=ct.key+'-'+l.val; pwrCblOpts+='<option value="'+v+'"'+(d.cable_power_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>'; });
             });
           }
+          } // end if _tblDevPwrIn
           var onPwrCbl='(function(v,gi){'
             +'setField(gi,\'cable_power_in\',v);'
             +'setField(gi,\'cable_in\',v);setField(gi,\'cable\',v);' // keep legacy fields in sync
@@ -4360,7 +4372,8 @@ function renderNodeView() {
   devices.forEach(function(d){
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
-    var sigType = cableSignalType(d.cable_in||d.cable||'');
+    var _mainCable = d.cable_data_in || d.cable_in || d.cable || '';
+    var sigType = cableSignalType(_mainCable);
     // Distro data-synth: the main source is source_data, cable is cable_data_in — force 'data' rendering
     if (_isDistroDataSynth) {
       var _dataSigType = cableSignalType(d.cable_data_in||'');
@@ -4532,8 +4545,9 @@ function renderNodeView() {
 
     nodeHtml += '<g data-id="'+id+'" transform="translate('+x+','+y+')">';
     // Background rect — drag to MOVE
+    var _isSelected = _nodeSelection.indexOf(id) >= 0;
     nodeHtml += '<rect x="0" y="0" width="'+NODE_W+'" height="'+nH+'"'
-      +' rx="6" fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5" style="cursor:move"'
+      +' rx="6" fill="'+bgTint+'" stroke="'+(_isSelected?'#00d4ff':col)+'" stroke-width="'+(_isSelected?'2.5':'1.5')+'" style="cursor:move"'
       +' onmousedown="nodeMouseDown(event,\''+id+'\',\'move\')"'
       +' ondblclick="nodeDoubleClick(\''+id+'\')"'
       +' ontouchstart="nodeTouchStart(event,\''+id+'\')"/>';
@@ -4674,12 +4688,26 @@ function renderNodeView() {
 }
 
 // ── Mouse/Touch handling ──────────────────────────────────────────────
+var _nodeSelection = []; // array of selected node IDs
+
 function nodeMouseDown(e, id, mode) {
   e.stopPropagation();
   var svg = document.getElementById('node-svg');
   var pos = _nodePositions[id]; if (!pos) return;
   var sc  = _svgCoords(svg, e.clientX, e.clientY);
-  _nodeDrag = {mode:mode||'move', id:id, startX:pos.x, startY:pos.y, mx:e.clientX, my:e.clientY, ex:sc.x, ey:sc.y};
+  // Shift+click: toggle selection
+  if (e.shiftKey && mode === 'move') {
+    var idx = _nodeSelection.indexOf(id);
+    if (idx >= 0) _nodeSelection.splice(idx, 1);
+    else _nodeSelection.push(id);
+    renderNodeView(); return;
+  }
+  // Click on unselected node without shift: clear selection
+  if (!e.shiftKey && _nodeSelection.indexOf(id) < 0) _nodeSelection = [];
+  // Snapshot positions of all selected nodes at drag start
+  var _selStarts = {};
+  _nodeSelection.forEach(function(sid) { if (_nodePositions[sid]) _selStarts[sid] = {x:_nodePositions[sid].x, y:_nodePositions[sid].y}; });
+  _nodeDrag = {mode:mode||'move', id:id, startX:pos.x, startY:pos.y, mx:e.clientX, my:e.clientY, ex:sc.x, ey:sc.y, _selStarts:_selStarts};
   document.addEventListener('mousemove', _nodeMouseMove);
   document.addEventListener('mouseup',   _nodeMouseUp);
 }
@@ -4689,9 +4717,15 @@ function _nodeMouseMove(e) {
   var svg = document.getElementById('node-svg');
   var sc  = _svgCoords(svg, e.clientX, e.clientY);
   if (_nodeDrag.mode==='move') {
-    // Divide by scale so 1px mouse move = 1px node move regardless of zoom
     var dx=(e.clientX-_nodeDrag.mx)/_nodeScale, dy=(e.clientY-_nodeDrag.my)/_nodeScale;
-    _nodePositions[_nodeDrag.id]={x:Math.max(0,_nodeDrag.startX+dx), y:Math.max(0,_nodeDrag.startY+dy)};
+    // If the dragged node is in the selection, move all selected nodes together
+    var toMove = (_nodeSelection.length > 1 && _nodeSelection.indexOf(_nodeDrag.id) >= 0)
+      ? _nodeSelection : [_nodeDrag.id];
+    toMove.forEach(function(nid) {
+      var base = _nodeDrag._selStarts && _nodeDrag._selStarts[nid];
+      if (base) _nodePositions[nid] = {x:Math.max(0,base.x+dx), y:Math.max(0,base.y+dy)};
+      else if (nid === _nodeDrag.id) _nodePositions[nid] = {x:Math.max(0,_nodeDrag.startX+dx), y:Math.max(0,_nodeDrag.startY+dy)};
+    });
   } else {
     _nodeDrag.ex=sc.x; _nodeDrag.ey=sc.y;
   }
@@ -4744,37 +4778,21 @@ function _nodeMouseUp(e) {
 
           if (_isDataConn) {
             tgt.source_data = srcId;
-            if (!tgt.source_power) tgt.source = srcId; // keep legacy source
+            if (!tgt.source_power) tgt.source = srcId;
           } else {
             tgt.source_power = srcId;
             tgt.source = tgt.source_data || srcId;
           }
-          // If no cable set yet, auto-pick the best matching cable
-          var _cableField = _isDataConn ? 'cable_data_in' : 'cable_power_in';
-          if (!tgt[_cableField]) {
-            var _srcDataOut = _srcSp2 ? (_srcSp2.data_out||'') : '';
-            var _tgtDataIn  = _tgtSp  ? (_tgtSp.data_in||'')  : '';
-            var _best = null;
-            // For data connections: prioritise cables matching data connectors
-            // For power connections: prioritise cables matching pwr connectors
-            CABLE_TYPES.forEach(function(ct){
-              if (_best) return;
-              if (_isDataConn) {
-                // Data link: cable must carry data and match data_in of target
-                if (!ct.data_a && !ct.data_b) return;
-                var devDataOk = !_tgtDataIn || !ct.data_b || ct.data_b===_tgtDataIn;
-                var srcDataOk = !_srcDataOut || !ct.data_a || ct.data_a===_srcDataOut;
-                if (devDataOk && srcDataOk && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
-              } else {
-                // Power link: cable must match pwr_in of target
-                var devPwrOk  = !_tgtPwrIn  || !ct.pwr_b  || ct.pwr_b===_tgtPwrIn;
-                var srcPwrOk  = !_srcPwrOut || !ct.pwr_a  || ct.pwr_a===_srcPwrOut;
-                if (devPwrOk && srcPwrOk && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
-              }
-            });
-            if (_best) {
-              tgt[_cableField] = _best;
-              tgt.cable_in = _best; tgt.cable = _best;
+          // Is target a 32A-type distro (separate pwr + data inputs)?
+          var _tgtIs32A = (_tgtSp && (_tgtSp.pwr_in||'').toUpperCase()==='32ACEE');
+          // DON'T auto-assign cable length — leave blank so user picks it in the popover
+          // But DO set the legacy cable_in for non-32A devices (combo cable)
+          if (!_tgtIs32A) {
+            var _cableField = _isDataConn ? 'cable_data_in' : 'cable_power_in';
+            // For regular (non-32A) devices, a drag-connect sets cable_in too (combo)
+            if (!tgt.cable_in) {
+              // Just mark the cable type without a length — user picks length
+              // (no auto-assign to avoid annoying 0.3m default)
             }
           }
           renderTable(); autoSave();
@@ -5067,6 +5085,7 @@ function nodePrint() {
   // Resolve CSS variables for print (they won't be defined in popup window)
   svgStr = svgStr
     .replace(/fill="rgba\([^"]*\)"/g, 'fill="white"')
+    .replace(/fill="#0a0c0f"/g, 'fill="white"')
     .replace(/fill="var\(--bg\)"/g, 'fill="white"')
     .replace(/fill="var\(--surface\)"/g, 'fill="white"')
     .replace(/fill="var\(--panel\)"/g, 'fill="#f5f5f5"')
@@ -5597,12 +5616,13 @@ function renderSpecs(){
 
   var lTbl='<div><div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors <span style="font-size:10px;opacity:.6;font-weight:400">— click any cell to edit</span></div>'
     +'<table class="sp-tbl"><thead><tr>'
-    +'<th>Model</th><th>Alt</th><th>Laser W</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
+    +'<th>Color</th><th>Model</th><th>Alt</th><th>Laser W</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
     +'<th>kg</th><th>Scanners</th><th>Angle</th><th>kpps</th><th>OPS/Diode</th>'
     +'<th style="color:var(--warn)">Pwr In</th><th style="color:var(--accent)">Data In</th><th style="color:var(--warn)">Pwr Out</th><th style="color:var(--accent)">Data Out</th><th>IP range</th><th>Notes</th>'
     +'</tr></thead><tbody>'
     +lk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
+        +'<td><input type="color" value="'+(s.color||modelColor(k,"Laser projector"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="laser-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td>'+ed(k,'laser_w',s.laser_w!=null?s.laser_w:'',30)+'</td>'
@@ -5625,11 +5645,12 @@ function renderSpecs(){
 
   var dTbl='<div><div class="sp-hdr" style="color:var(--distro)">⚡ Distros</div>'
     +'<table class="sp-tbl"><thead><tr>'
-    +'<th>Model</th><th>Alt</th><th>Outputs</th><th>Inputs</th><th>Phase</th><th>Fibre</th>'
+    +'<th>Color</th><th>Model</th><th>Alt</th><th>Outputs</th><th>Inputs</th><th>Phase</th><th>Fibre</th>'
     +'<th style="color:var(--warn)">Pwr In</th><th style="color:var(--accent)">Data In</th><th style="color:var(--warn)">Pwr Out</th><th style="color:var(--accent)">Data Out</th><th>Description</th><th>Notes</th>'
     +'</tr></thead><tbody>'
     +dk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
+        +'<td><input type="color" value="'+(s.color||modelColor(k,"Distro"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="distro-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td style="color:var(--ok);font-weight:700">'+ed(k,'outputs',s.outputs!=null?s.outputs:'',25)+'</td>'
@@ -7583,7 +7604,7 @@ function renderOverview(){
 
 
 // ── Specs CSV ─────────────────────────────────────────────────────
-var _SPECS_CSV_COLS = ['category','model','alt','phases','consumption_w','max_a_230','max_a_110','laser_w','weight_kg','inputs','pwr_in','data_in','outputs','pwr_out','data_out','outlets','outlet_phases','ip','scanners','angle','ops_diode','desc','notes'];
+var _SPECS_CSV_COLS = ['category','model','color','alt','phases','consumption_w','max_a_230','max_a_110','laser_w','weight_kg','inputs','pwr_in','data_in','outputs','pwr_out','data_out','outlets','outlet_phases','ip','scanners','angle','ops_diode','desc','notes'];
 // Map old field names to new
 var _SPECS_FIELD_MAP = {in_connector:'pwr_in',out_connector:'pwr_out'};
 
