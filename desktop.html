@@ -2089,7 +2089,7 @@ function renderTable() {
 
           // ── PWR Cable options — CEE32 excluded for distros (PSU feeds them, not pulled cable) ──
           var _isDistroDevice = (d.type === TYPE_DISTRO);
-          var _tblDevPwrIn = _sp ? (_sp.pwr_in||_sp.in_connector||'') : '';
+          var _tblDevPwrIn = sp ? (sp.pwr_in||sp.in_connector||'') : '';
           var pwrCblOpts='<option value="">—</option>';
           // If device has no pwr_in defined in specs, show no cable options
           if (_tblDevPwrIn || d.cable_power_in || d.cable_in) {
