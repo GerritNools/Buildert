@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.900</title>
+<title>WTUniverse · Buildert Editor v3.901</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.900</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.901</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4148,14 +4148,11 @@ function cableSignalType(cableKey) {
 // Returns {pwrIn, dataIn, pwrOut, dataOut} each {x,y}
 function nodePorts(x, y, nH) {
   var NW = NODE_W;
-  var pY = y + nH * 0.38;   // power port y (upper third)
-  var dY = y + nH * 0.68;   // data port y  (lower third)
   return {
-    pwrIn:  {x: x,      y: pY},
-    dataIn: {x: x,      y: dY},
-    pwrOut: {x: x + NW, y: pY},
-    dataOut:{x: x + NW, y: dY},
-    mid:    {x: x + NW/2, y: y + nH/2}
+    pwrIn:  {x: x + NW*0.35, y: y + nH},
+    dataIn: {x: x + NW*0.65, y: y + nH},
+    pwrOut: {x: x + NW*0.35, y: y},
+    dataOut:{x: x + NW*0.65, y: y},
   };
 }
 
@@ -4298,11 +4295,9 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    var dx=x2-x1, dy=y2-y1;
-    var offx=Math.max(Math.abs(dx)*0.5, Math.abs(dy)*0.4, 50);
-    // Sign-aware: control points always pull TOWARD the midpoint
-    var s=dx>=0?1:-1;
-    return 'M'+x1+','+y1+' C'+(x1+s*offx)+','+y1+' '+(x2-s*offx)+','+y2+' '+x2+','+y2;
+    // Orthogonal routing: exit upward, route at midY above both, enter downward
+    var midY = Math.min(y1,y2) - 50;
+    return 'M'+x1+','+y1+' L'+x1+','+midY+' L'+x2+','+midY+' L'+x2+','+y2;
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4402,7 +4397,7 @@ function renderNodeView() {
         +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
       if(hasAdap){
         labelHtml+='<text x="'+mx+'" y="'+(my+16)+'" text-anchor="middle"'
-          +' fill="var(--warn)" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
+          +' fill="#f5a623" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
       }
     }
     // Clean up temp render flags
@@ -4504,7 +4499,7 @@ function renderNodeView() {
       +' rx="3" fill="'+col+'" opacity="0.7" style="cursor:crosshair" title="Drag to connect"'
       +' onmousedown="nodeMouseDown(event,\''+id+'\',\'connect\')"/>';
     nodeHtml += '<text x="'+(NODE_W-5)+'" y="'+(nH/2+1)+'" text-anchor="middle"'
-      +' dominant-baseline="middle" fill="var(--bg)" font-size="9" style="pointer-events:none">\u21a6</text>';
+      +' dominant-baseline="middle" fill="#0a0c0f" font-size="9" style="pointer-events:none">\u21a6</text>';
     // Device ID label
     // Status LED in node
     var stCol = isFoh ? '#00d4ff' :
@@ -4562,18 +4557,17 @@ function renderNodeView() {
       var BG_COL = 'rgba(10,12,15,0.6)';
 
       var PORT_W = 7, PORT_H = 11;
-      // Left side (inputs): pwr at y=nH*0.35, data at y=nH*0.65
-      var pwrInY  = nH * 0.35 - PORT_H/2;
-      var dataInY = nH * 0.65 - PORT_H/2;
-      // Right side (outputs): same y positions
-      var pwrOutY  = pwrInY;
-      var dataOutY = dataInY;
+      // Outputs on TOP, Inputs on BOTTOM
+      var pwrInY   = nH - PORT_W;
+      var dataInY  = nH - PORT_W;
+      var pwrOutY  = 0;
+      var dataOutY = 0;
 
       // Power IN port (left side)
       if (hasPwrIn) {
         var piCol = pwrInConn ? P_COL : BG_COL;
         var piStr = pwrInConn ? P_COL : P_COL;
-        nodeHtml += '<rect x="-'+PORT_W+'" y="'+pwrInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(NODE_W*0.35-PORT_H/2)+'" y="'+(nH-PORT_W)+'" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+piCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Pwr In: '+sp.pwr_in+(pwrInConn?' — connected':' — not connected')+'"/>';
         nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(pwrInY+PORT_H/2)+'" dominant-baseline="middle"'
@@ -4583,7 +4577,7 @@ function renderNodeView() {
       // Data IN port (left side)
       if (hasDataIn) {
         var diCol = dataInConn ? D_COL : BG_COL;
-        nodeHtml += '<rect x="-'+PORT_W+'" y="'+dataInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(NODE_W*0.65-PORT_H/2)+'" y="'+(nH-PORT_W)+'" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+diCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Data In: '+sp.data_in+(dataInConn?' — connected':' — not connected')+'"/>';
         nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(dataInY+PORT_H/2)+'" dominant-baseline="middle"'
@@ -4593,7 +4587,7 @@ function renderNodeView() {
       // Power OUT port (right side)
       if (hasPwrOut) {
         var poCol = pwrOutConns>0 ? P_COL : BG_COL;
-        nodeHtml += '<rect x="'+NODE_W+'" y="'+pwrOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(NODE_W*0.35-PORT_H/2)+'" y="0" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+poCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Pwr Out: '+sp.pwr_out+' — '+pwrOutConns+' connected"/>';
         nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(pwrOutY+PORT_H/2)+'" dominant-baseline="middle"'
@@ -4603,7 +4597,7 @@ function renderNodeView() {
       // Data OUT port (right side)
       if (hasDataOut) {
         var doCol = dataOutConns>0 ? D_COL : BG_COL;
-        nodeHtml += '<rect x="'+NODE_W+'" y="'+dataOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(NODE_W*0.65-PORT_H/2)+'" y="0" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+doCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Data Out: '+sp.data_out+' — '+dataOutConns+' connected"/>';
         nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(dataOutY+PORT_H/2)+'" dominant-baseline="middle"'
@@ -4827,7 +4821,9 @@ function nodeEdgeClick(e, gi) {
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_data=v;if(!devices['+gi+'].source)devices['+gi+'].source=v;'+save+'})(this.value)">'+(function(){var o='<option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_data_in=this.value;'+save+'">'+dataOpts+'</select></div>'
-    +'</div>';
+    +'</div>'
+    +'<button style="width:100%;margin-top:8px;background:rgba(255,77,77,.12);border:1px solid #ff4d4d;color:#ff4d4d;border-radius:4px;padding:5px;font-family:monospace;font-size:11px;cursor:pointer"'
+    +' onclick="(function(gi){var dv=devices[gi];if(!dv)return;dv.source=\'\';dv.source_power=\'\';dv.source_data=\'\';dv.cable_in=\'\';dv.cable=\'\';dv.cable_power_in=\'\';dv.cable_data_in=\'\';autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}})('+gi+')">✕ Disconnect</button>';
   wrap.appendChild(pop);
   _nodeCablePopover = pop;
   // Click outside closes
@@ -4987,7 +4983,7 @@ function nodePrint() {
     .replace(/stroke="var\(--warn\)"/g, 'stroke="#cc7700"')
     .replace(/fill="var\(--warn\)"/g, 'fill="#cc7700"')
     .replace(/stroke="var\(--muted\)"/g, 'stroke="#999"')
-    .replace(/fill="var\(--muted\)"/g, 'fill="#999"')
+    .replace(/fill="var\(--muted\)"/g, 'fill="#fff"')
     .replace(/fill="var\(--text\)"/g, 'fill="#222"')
     .replace(/fill="#fff"/g, 'fill="#222"')
     .replace(/fill="#dde"/g, 'fill="#444"')
@@ -8525,21 +8521,13 @@ function _syncCableIn() {
   pop.innerHTML =
     '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-    // ⚡ Pwr source
-    +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr source</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px"'
-    +' onchange="(function(v){var d=devices['+_gi+'];d.source_power=v;if(!d.source_data)d.source=v;'+_save+'})(this.value)">'
-    +_srcOpts(d.source_power||'', _pwrSrcTypes)+'</select></div>'
+    // ⚡ Pwr cable — source set in list view or by drag-connect
     // ⚡ Pwr cable — never auto-syncs to data cable for distros
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr cable</label>'
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px"'
     +' onchange="(function(v){var d=devices['+_gi+'];d.cable_power_in=v;d.cable_in=v;d.cable=v;if(!d.type||d.type!==TYPE_DISTRO){if(cableSignalType(v)==='combo'){d.cable_data_in=v;}}'+_save+'})(this.value)">'
     +_cableOpts2(d.cable_power_in||d.cable_in||d.cable||'','pwr')+'</select></div>'
-    // ● Data source
-    +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px"'
-    +' onchange="(function(v){var d=devices['+_gi+'];d.source_data=v;if(!d.source_power)d.source=v;'+_save+'})(this.value)">'
-    +_srcOpts(d.source_data||'', _datSrcTypes)+'</select></div>'
+    // ● Data cable
     // ● Data cable — PowerCAT/PowerLAN/CAT Ethercon
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px"'
@@ -8705,7 +8693,7 @@ function nodePrint() {
     .replace(/stroke="var\(--warn\)"/g, 'stroke="#cc7700"')
     .replace(/fill="var\(--warn\)"/g, 'fill="#cc7700"')
     .replace(/stroke="var\(--muted\)"/g, 'stroke="#999"')
-    .replace(/fill="var\(--muted\)"/g, 'fill="#999"')
+    .replace(/fill="var\(--muted\)"/g, 'fill="#fff"')
     .replace(/fill="var\(--text\)"/g, 'fill="#222"')
     .replace(/fill="#fff"/g, 'fill="#222"')
     .replace(/fill="#dde"/g, 'fill="#444"')
