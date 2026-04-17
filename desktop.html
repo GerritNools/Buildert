@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.909</title>
+<title>WTUniverse · Buildert Editor v3.910</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.909</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.910</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4262,7 +4262,7 @@ function nodeAutoLayout() {
   }
 
   _saveNodePositions();
-  renderNodeView();
+  // Caller (renderNodeView) will continue rendering after this
 }
 
 
@@ -4293,7 +4293,8 @@ function renderNodeView() {
   var nodesG = document.getElementById('node-nodes');
   if (!svg || !edgesG || !nodesG) return;
 
-  if (!Object.keys(_nodePositions).length) { nodeAutoLayout(); return; }
+  if (!Object.keys(_nodePositions).length) { nodeAutoLayout(); }
+  if (!Object.keys(_nodePositions).length) return; // still empty = no devices, nothing to draw
 
   var needFoh = devices.some(function(d){return d.source==='FOH';});
   var nodeIds = devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;});
@@ -4485,24 +4486,26 @@ function renderNodeView() {
       }
     }
 
-    // ── Separate data source (source_data field) ──
+        // ── Separate data source (source_data field) ──
     if (d.source_data && d.source_data !== d.source) {
-      var sdp = _ports(d.source_data); if(!sdp) return;
-      edgeHtml += _edgeData(sdp.dataOut.x,sdp.dataOut.y, dp.dataIn.x,dp.dataIn.y, true,'arrow-foh');
-      if(d.cable_data_in){
-        var dckey=d.cable_data_in.split('-')[0];
-        var dcdef=CABLE_TYPES.find(function(ct){return ct.key===dckey;});
-        if(dcdef){
-          var dlv=parseFloat(d.cable_data_in.split('-').slice(1).join('-'));
-          var dld=dcdef.lengths.find(function(l){return Math.abs(l.val-dlv)<0.01;});
-          var dLbl2=dcdef.label+' '+(dld?dld.lbl:dlv+'m');
-          var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
-          var dlw2=dLbl2.length*5.5+8;
-          labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
-            +' rx="3" fill="rgba(17,19,24,.9)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
-          labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
-            +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
-            +' style="pointer-events:none">'+dLbl2+'</text>';
+      // PSUs have no data output — never draw a data edge from a PSU
+      var _sdDev=null; _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source_data)_sdDev=x;});});
+      if (!(_sdDev && _sdDev.type===TYPE_PSU)) {
+        var sdp = _ports(d.source_data); if(sdp) {
+          edgeHtml += _edgeData(sdp.dataOut.x,sdp.dataOut.y, dp.dataIn.x,dp.dataIn.y, true,'arrow-foh');
+          if(d.cable_data_in){
+            var dckey=d.cable_data_in.split('-')[0];
+            var dcdef=CABLE_TYPES.find(function(ct){return ct.key===dckey;});
+            if(dcdef){
+              var dlv=parseFloat(d.cable_data_in.split('-').slice(1).join('-'));
+              var dld=dcdef.lengths.find(function(l){return Math.abs(l.val-dlv)<0.01;});
+              var dLbl2=dcdef.label+' '+(dld?dld.lbl:dlv+'m');
+              var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
+              var dlw2=dLbl2.length*5.5+8;
+              labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'                +' rx="3" fill="rgba(17,19,24,.9)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
+              labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'                +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'                +' style="pointer-events:none">'+dLbl2+'</text>';
+            }
+          }
         }
       }
     }
@@ -12282,3 +12285,4 @@ function _syncCableIn() {
 </script>
 </body>
 </html>
+      }
