@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.910</title>
+<title>WTUniverse · Buildert Editor v3.911</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.910</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.911</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1869,6 +1869,19 @@ function _cableOutDisplay(d) {
   var ch = devices.filter(function(x){ return x.source === d.device_id && (x.cable_in || x.cable); });
   if (!ch.length) return d.cable_out || '—';
   return ch.map(function(x){ return (x.cable_in || x.cable) + ' → ' + x.device_id; }).join(', ');
+}
+
+function editCableColor(ckey, color) {
+  var ct = CABLE_TYPES.find(function(c){ return c.key === ckey; });
+  if (!ct) return;
+  ct.color = color;
+  // Bust model color cache
+  if (typeof _modelColorCache !== 'undefined') _modelColorCache = {};
+  renderNodeView();
+  renderDiagView && renderDiagView();
+  showToast('Cable color updated: ' + ckey, 'ok');
+  // Auto-save so the color persists in the project file
+  autoSave();
 }
 
 function editSpecField(k, f, val) {
@@ -4447,6 +4460,8 @@ function renderNodeView() {
       var lbCol = sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#888':'#55606e';
       if(isFoh) lbCol='var(--accent)';
       if(hasAdap) lbCol='var(--warn)';
+      // Override with cable custom color if set
+      if (info.cdef && info.cdef.color) lbCol = info.cdef.color;
       var lw=cLabel.length*5.5+8;
       labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
         +' rx="3" fill="rgba(17,19,24,.9)" stroke="'+lbCol+'" stroke-width="1.2"'
@@ -5671,11 +5686,12 @@ function renderSpecs(){
 
   var sTbl='<div><div class="sp-hdr" style="color:var(--smoke)">💨 Smoke Machines</div>'
     +'<table class="sp-tbl"><thead><tr>'
-    +'<th>Model</th><th>Alt</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
+    +'<th>Color</th><th>Model</th><th>Alt</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
     +'<th>Oil type</th><th>In conn.</th><th>Description</th><th>Notes</th>'
     +'</tr></thead><tbody>'
     +sk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
+        +'<td><input type="color" value="'+(s.color||modelColor(k,"Smoke machine"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="smoke-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
@@ -5692,10 +5708,11 @@ function renderSpecs(){
   var pTbl='';
   if(pkList.length){
     pTbl='<div><div class="sp-hdr" style="color:var(--psu)">🔌 Power Supplies</div>'
-      +'<table class="sp-tbl"><thead><tr><th>Model</th><th>Alt</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
+      +'<table class="sp-tbl"><thead><tr><th>Color</th><th>Model</th><th>Alt</th><th>Consump W</th><th>A @230V</th><th>A @110V</th>'
       +'<th>kg</th><th>Pwr In</th><th>Data In</th><th>Outlets</th><th>Phases</th><th>Description</th><th>Notes</th>'
       +'</tr></thead><tbody>'
       +pkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
+        +'<td><input type="color" value="'+(s.color||modelColor(k,"Power supply"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--psu)">'+k+'</span></td>'
         +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
         +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
@@ -5716,9 +5733,10 @@ function renderSpecs(){
   var aTbl='';
   if(adkList.length){
     aTbl='<div><div class="sp-hdr" style="color:var(--accent)">🔄 Adapters</div>'
-      +'<table class="sp-tbl"><thead><tr><th>Model</th><th>Alt</th><th>Pwr In</th><th>Data In</th><th>Pwr Out</th><th>Data Out</th><th>Description</th><th>Notes</th>'
+      +'<table class="sp-tbl"><thead><tr><th>Color</th><th>Model</th><th>Alt</th><th>Pwr In</th><th>Data In</th><th>Pwr Out</th><th>Data Out</th><th>Description</th><th>Notes</th>'
       +'</tr></thead><tbody>'
       +adkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
+        +'<td><input type="color" value="'+(s.color||modelColor(k,"Adapter"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--accent)">'+k+'</span></td>'
         +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
         +'<td>'+ed(k,'pwr_in',s.pwr_in||s.in_connector||'',50)+'</td>'
@@ -5739,7 +5757,11 @@ function renderSpecs(){
       lens.forEach(function(l,li){
         var ll=l.lbl||l.l||(l.val?l.val+"m":"--");
         h+='<tr style="'+(li===0?'border-top:2px solid var(--border)':'')+'">'
-          +'<td style="font-family:var(--cond);font-weight:700;color:var(--muted)">'+(li===0?ct.label:'')+'</td>'
+          +(li===0
+            ?'<td rowspan="'+lens.length+'" style="vertical-align:middle"><input type="color" value="'+(ct.color||'#55606e')+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Cable color" data-ckey="'+ct.key+'" onchange="editCableColor(this.dataset.ckey,this.value)"></td>'
+            :''
+          )
+          +'<td style="font-family:var(--cond);font-weight:700;color:'+(ct.color||'var(--muted)')+'">'+(li===0?ct.label:'')+'</td>'
           +'<td style="font-family:var(--mono);font-size:12px;font-weight:700">'+ll+'</td>'
           +'<td style="font-size:11px">'+ct.pwr_a+'</td>'
           +'<td style="font-size:11px">'+ct.pwr_b+'</td>'
@@ -7641,6 +7663,7 @@ function fileExportSpecs(){
       else if(col==='pwr_out') v=ct.pwr_b||'';
       else if(col==='data_in') v=ct.data_a||'';
       else if(col==='data_out') v=ct.data_b||'';
+      else if(col==='color') v=ct.color||'';
       else if(col==='notes') v=ct.lengths.map(function(l){return l.lbl;}).join(' | ');
       var s=String(v);
       return (s.indexOf(',')>=0||s.indexOf('"')>=0)?'"'+s.replace(/"/g,'""')+'"':s;
@@ -7726,6 +7749,7 @@ function _applySpecsCSV(csv,name){
           else if(h==='data_in') ct.data_a=v;
           else if(h==='data_out') ct.data_b=v;
           else if(h==='alt'||h==='desc') ct.label=v||ct.label;
+          else if(h==='color'&&v) ct.color=v;
         });
         cableUpdates.push(model);
       }
