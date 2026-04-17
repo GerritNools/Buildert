@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.893</title>
+<title>WTUniverse · Buildert Editor v3.894</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -454,7 +454,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.893</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.894</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -791,40 +791,40 @@
            list="location-suggestions" autocomplete="off"
            onkeydown="if(event.key==='Enter'){event.preventDefault();saveDevice();}">
 
-    <!-- Source group: label + select wrapped so BOTH hide together -->
-    <div class="field-group" id="source-group">
-      <label>Source <span style="color:var(--muted);font-size:10px">&#8212; upstream device this connects into</span></label>
-      <select id="m-source" onchange="updatePhaseLabel();_checkAdapterHint();_refreshModalCables()">
-        <option value="">&#8212; not set &#8212;</option>
-      </select>
-      <div id="adapter-hint" style="display:none;margin-top:4px;padding:6px 10px;background:rgba(245,166,35,.1);border:1px solid var(--warn);border-radius:5px;font-family:var(--mono);font-size:11px;color:var(--warn)"></div>
-    </div>
-
-    <!-- Distro dual input: Power (32A CEE from PSU) + Data (PL/PC from upstream distro) -->
-    <div id="distro-dual-input" style="display:none">
-      <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">&#9889; POWER INPUT — from PSU via 32A CEE</div>
-        <label>Power source <span style="color:var(--muted);font-size:10px">&#8212; PSU feeding this distro</span></label>
-        <select id="m-source-power" onchange="_refreshPowerCables()" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:8px">
+    <!-- Unified source/cable — same for ALL device types -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+      <div>
+        <label style="color:#f5a623">&#9889; Pwr source</label>
+        <select id="m-source-power" onchange="_refreshPowerCables();_syncLegacySource()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; not set &#8212;</option>
         </select>
-        <label>Power cable <span style="color:var(--muted);font-size:10px">&#8212; 32A CEE cable from PSU</span></label>
-        <select id="m-cable-power" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px">
+      </div>
+      <div>
+        <label style="color:#f5a623">&#9889; Pwr cable</label>
+        <select id="m-cable-power" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; none &#8212;</option>
         </select>
       </div>
-      <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">&#128268; DATA INPUT — from upstream distro via PL/PC/Fibre</div>
-        <label>Data source <span style="color:var(--muted);font-size:10px">&#8212; upstream distro or FOH feeding data</span></label>
-        <select id="m-source-data" onchange="_refreshDataCables()" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:8px">
+      <div>
+        <label style="color:#5b8fff">&#11044; Data source</label>
+        <select id="m-source-data" onchange="_refreshDataCables();_syncLegacySource()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; not set &#8212;</option>
         </select>
-        <label>Data cable <span style="color:var(--muted);font-size:10px">&#8212; PowerLAN/PowerCAT/Fibre from upstream</span></label>
-        <select id="m-cable-data" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px">
+      </div>
+      <div>
+        <label style="color:#5b8fff">&#11044; Data cable</label>
+        <select id="m-cable-data" onchange="if(cableSignalType(this.value)==='combo'){document.getElementById('m-cable-power').value=this.value;}" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; none &#8212;</option>
         </select>
       </div>
     </div>
+    <!-- Legacy m-source kept hidden for backward compat with code that reads it -->
+    <select id="m-source" style="display:none" onchange="updatePhaseLabel();_checkAdapterHint();_refreshModalCables()">
+      <option value="">&#8212; not set &#8212;</option>
+    </select>
+    <div id="distro-dual-input" style="display:none"></div>
+    <div id="adapter-hint" style="display:none;margin-top:4px;padding:6px 10px;background:rgba(245,166,35,.1);border:1px solid var(--warn);border-radius:5px;font-family:var(--mono);font-size:11px;color:var(--warn)"></div>
+    <div id="source-group" style="display:none"></div>
 
     <label>Status</label>
     <select id="m-status">
@@ -2442,7 +2442,8 @@ function openEditModal(gi) {
   var _devDataIn=_dsp2?(_dsp2.data_in||''):'';
   _populateDataSource(d.type, d.data_source||'');
   _populateDataCable(d.data_source||'', _devDataIn, d.data_cable||'');
-  populatePowerSourceDropdown(d.type, d.device_id||'', d.source_power||'');
+  // Populate unified pwr/data source dropdowns for all device types
+  populatePowerSourceDropdown(d.type, d.device_id||'', d.source_power||d.source||'');
   var _pwrGrp=document.getElementById('power-cable-group');
   if(_pwrGrp) _pwrGrp.style.display=d.source_power?'':'';
   _refreshPowerCables();
@@ -8324,11 +8325,21 @@ function _impliedAdapter(d){
 function populatePowerSourceDropdown(type, excludeId, currentVal) {
   var sel = document.getElementById('m-source-power'); if(!sel) return;
   sel.innerHTML = '<option value="">&#8212; not set &#8212;</option>';
-  devices.filter(function(x){ return x.type===TYPE_PSU && x.device_id && x.device_id!==excludeId; })
-    .forEach(function(x){
-      sel.innerHTML += '<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>P '+x.device_id+'</option>';
-    });
+  // All device types can get power from distros or PSUs
+  [TYPE_PSU, TYPE_DISTRO].forEach(function(t){
+    devices.filter(function(x){ return x.type===t && x.device_id && x.device_id!==excludeId; })
+      .forEach(function(x){
+        var prefix = t===TYPE_PSU ? 'PSU ' : 'D ';
+        sel.innerHTML += '<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+prefix+x.device_id+'</option>';
+      });
+  });
   _refreshPowerCables();
+}
+function _syncLegacySource(){
+  // Keep legacy m-source in sync with data source for backward compat
+  var src = document.getElementById('m-source-data');
+  var leg = document.getElementById('m-source');
+  if(src && leg && !leg.value) leg.value = src.value;
 }
 function _refreshPowerCables() {
   var srcId=(document.getElementById('m-source-power')||{}).value||'';
