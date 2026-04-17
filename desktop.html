@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.906</title>
+<title>WTUniverse · Buildert Editor v3.907</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.906</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.907</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2828,14 +2828,16 @@ function quickAdd() {
   var _allDevsQA = [];
   _stages.forEach(function(s){ _allDevsQA = _allDevsQA.concat(s.devices||[]); });
   if(!_allDevsQA.length) _allDevsQA = devices;
-  _allDevsQA.forEach(function(d) {
-    var dm = modelFromId(d.device_id||'');
-    if (dm.toUpperCase() === model.toUpperCase()) {
-      var rest = (d.device_id||'').slice(dm.length).trim();
-      var n = parseInt(rest, 10);
-      if (!isNaN(n)) taken[n] = true;
-    }
-  });
+  if (model) {
+    _allDevsQA.forEach(function(d) {
+      var dm = modelFromId(d.device_id||'');
+      if (dm && dm.toUpperCase() === model.toUpperCase()) {
+        var rest = (d.device_id||'').slice(dm.length).trim();
+        var n = parseInt(rest, 10);
+        if (!isNaN(n)) taken[n] = true;
+      }
+    });
+  }
   var next = 1;
   while (taken[next]) next++;
 
@@ -4867,11 +4869,13 @@ function nodeEdgeClick(e, gi) {
   function _buildPwrOpts(curVal) {
     var o = '<option value="">— none —</option>';
     CABLE_TYPES.forEach(function(ct) {
-      // For distros: only show cables matching the pwr_in connector (e.g. CEE32 for 32ACEE)
       if (_isDistroNode) {
-        if (!_devPwrIn2 || ct.pwr_b !== _devPwrIn2) return; // must match pwr_in exactly
+        // Distros: only show cables whose pwr_b matches the pwr_in connector (e.g. CEE32 for 32ACEE)
+        // _devConn holds the pwr_in connector
+        if (_devConn && ct.pwr_b !== _devConn) return;
+        if (!_devConn && ct.key !== 'cee32') return; // no spec: show cee32 as fallback
       } else {
-        // For non-distros: exclude CEE32 (too heavy) and data-only cables
+        // Non-distros: exclude CEE32 and data-only cables
         if (ct.key === 'cee32') return;
         if (!ct.pwr_a && !ct.pwr_b) return;
       }
@@ -4883,12 +4887,14 @@ function nodeEdgeClick(e, gi) {
     return o;
   }
   function _buildDataOpts(curVal) {
+    // PSU has no data connector — show nothing
+    if (d.type === TYPE_PSU) return '<option value="">— N/A (PSU) —</option>';
     var o = '<option value="">— none —</option>';
     CABLE_TYPES.forEach(function(ct) {
       // Must carry data signal
       if (!ct.data_a && !ct.data_b) return;
-      // Must match device's data_in connector if known
-      if (_devDataIn2 && ct.data_b && ct.data_b !== _devDataIn2) return;
+      // Must match device's data_in connector if known (_devDataIn set earlier)
+      if (_devDataIn && ct.data_b && ct.data_b !== _devDataIn) return;
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
         o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
@@ -4897,7 +4903,7 @@ function nodeEdgeClick(e, gi) {
     return o;
   }
   var pwrOpts  = _buildPwrOpts(d.cable_power_in||'');
-  var dataOpts = _buildDataOpts(d.cable_data_in||'');
+  var dataOpts = (d.type===TYPE_PSU) ? '' : _buildDataOpts(d.cable_data_in||'');
   var save = 'autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}';
   pop.innerHTML =
     '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
@@ -4908,9 +4914,8 @@ function nodeEdgeClick(e, gi) {
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_power_in=this.value;devices['+gi+'].cable_in=this.value;devices['+gi+'].cable=this.value;'+save+'">'+pwrOpts+'</select></div>'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_data=v;if(!devices['+gi+'].source)devices['+gi+'].source=v;'+save+'})(this.value)">'+(function(){var o='<option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
-    +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_data_in=this.value;'+save+'">'+dataOpts+'</select></div>'
-    +'</div>'
+    
+    +(dataOpts ? ('<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'+('<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_data_in=this.value;'+save+'">'+dataOpts+'</select>')+'</div>') : '')
     +'<button style="width:100%;margin-top:8px;background:rgba(255,77,77,.12);border:1px solid #ff4d4d;color:#ff4d4d;border-radius:4px;padding:5px;font-family:var(--mono);font-size:11px;cursor:pointer"'
     +' onclick="(function(gi){var dv=devices[gi];if(!dv)return;dv.source=\'\';dv.source_power=\'\';dv.source_data=\'\';dv.cable_in=\'\';dv.cable=\'\';dv.cable_power_in=\'\';dv.cable_data_in=\'\';autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}})('+gi+')">✕ Disconnect</button>';
   wrap.appendChild(pop);
@@ -8583,8 +8588,7 @@ function _syncCableIn() {
     return o;
   }
   // Build cable options
-  var _devPwrIn2  = _edgeSp ? (_edgeSp.pwr_in||_edgeSp.in_connector||'') : '';
-  var _devDataIn2 = _edgeSp ? (_edgeSp.data_in||'') : '';
+  // _devConn and _devDataIn set above cover pwr_in and data_in respectively
   function _cableOpts2(curVal, filterType){
     var o='<option value="">— none —</option>';
     CABLE_TYPES.forEach(function(ct){
