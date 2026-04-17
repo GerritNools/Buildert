@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.905</title>
+<title>WTUniverse · Buildert Editor v3.906</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -89,7 +89,7 @@
     overflow:auto;-webkit-overflow-scrolling:touch;
     /* height is set by JS to fill remaining viewport below the toolbar */
     min-height:200px;}
-  table{width:100%;border-collapse:collapse;min-width:1020px;background:var(--surface);}
+  table{width:100%;border-collapse:collapse;min-width:1020px;background:#111318;}
   thead th{background:var(--panel);font-family:var(--cond);font-weight:700;font-size:11px;
     letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
     padding:9px 10px;text-align:left;border-bottom:2px solid var(--border);
@@ -100,7 +100,7 @@
   thead th.sortable:hover{color:var(--accent);}
   thead th.sort-asc::after{content:' ▲';font-size:8px;color:var(--accent);}
   thead th.sort-desc::after{content:' ▼';font-size:8px;color:var(--accent);}
-  tbody tr{border-bottom:1px solid var(--border2);transition:background .1s;background:var(--surface);}
+  tbody tr{border-bottom:1px solid #1e2330;transition:background .1s;background:#111318;}
   tbody tr:last-child{border-bottom:none;}
   tbody tr:hover{background:rgba(255,255,255,.025);}
   tbody tr.row-laser {border-left:3px solid var(--laser);}
@@ -450,12 +450,12 @@
 
 </style>
 </head>
-<body>
+<body style="background:#0a0c0f;color:#c8cdd8">
 
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.905</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.906</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4359,6 +4359,13 @@ function renderNodeView() {
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
     var sigType = cableSignalType(d.cable_in||d.cable||'');
+    // Distro data-synth: the main source is source_data, cable is cable_data_in — force 'data' rendering
+    if (_isDistroDataSynth) {
+      var _dataSigType = cableSignalType(d.cable_data_in||'');
+      if (_dataSigType === 'data' || _dataSigType === 'combo') sigType = 'data';
+      else if (d.cable_data_in) sigType = 'data'; // has a data cable set even if type unclear
+      else if (!d.cable_in && !d.cable) sigType = 'data'; // no cable at all: still show blue
+    }
     var gi = devices.indexOf(d);
     var info = cableInfo(d);
     var hasAdap = !!info.adapterNote;
@@ -4368,15 +4375,12 @@ function renderNodeView() {
     // synthesise a d.source from source_data so the data line draws, and let the
     // existing source_power block (further down) draw the power line.
     var _hadNoSource = !d.source;
+    var _isDistroDataSynth = (!d.source && d.source_data && d.type === TYPE_DISTRO);
     if (!d.source && d.source_data) { d.source = d.source_data; d._synthSource = true; }
-    // For distros: main source edge is ALWAYS data-only (blue) — power comes via source_power separately
-    if (d._synthSource || (d.type === TYPE_DISTRO && d.source_data)) d._forceDataOnly = true;
     if (d.source) {
       var sp = _ports(d.source); if(!sp) return;
       var hasCable = !!(d.cable_in||d.cable);
       var isFoh = d.source==='FOH';
-      // Force data-only for distros — their power comes via a separate source_power link
-      if (d._forceDataOnly && !isFoh) { sigType = 'data'; d._sigDataLink = true; }
       // Data-link detection: PowerCAT used between distros (TR1 unconnected, Ethercon only).
       // When pwr connectors don't chain, downgrade 'combo' to 'data' — renders as blue line only.
       if (sigType==='combo' && !isFoh && hasCable) {
@@ -4441,7 +4445,6 @@ function renderNodeView() {
     }
     // Clean up temp render flags
     delete d._sigDataLink;
-    delete d._forceDataOnly;
     if (d._synthSource) { d.source = ''; delete d._synthSource; }
 
     // ── Separate power source (source_power field) ──
@@ -4750,11 +4753,22 @@ function _nodeMouseUp(e) {
             var _srcDataOut = _srcSp2 ? (_srcSp2.data_out||'') : '';
             var _tgtDataIn  = _tgtSp  ? (_tgtSp.data_in||'')  : '';
             var _best = null;
+            // For data connections: prioritise cables matching data connectors
+            // For power connections: prioritise cables matching pwr connectors
             CABLE_TYPES.forEach(function(ct){
               if (_best) return;
-              var devMatch = !_tgtPwrIn  || !ct.pwr_b  || ct.pwr_b===_tgtPwrIn  || ct.data_b===_tgtDataIn;
-              var srcMatch = !_srcPwrOut || !ct.pwr_a  || ct.pwr_a===_srcPwrOut  || ct.data_a===_srcDataOut;
-              if (devMatch && srcMatch && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
+              if (_isDataConn) {
+                // Data link: cable must carry data and match data_in of target
+                if (!ct.data_a && !ct.data_b) return;
+                var devDataOk = !_tgtDataIn || !ct.data_b || ct.data_b===_tgtDataIn;
+                var srcDataOk = !_srcDataOut || !ct.data_a || ct.data_a===_srcDataOut;
+                if (devDataOk && srcDataOk && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
+              } else {
+                // Power link: cable must match pwr_in of target
+                var devPwrOk  = !_tgtPwrIn  || !ct.pwr_b  || ct.pwr_b===_tgtPwrIn;
+                var srcPwrOk  = !_srcPwrOut || !ct.pwr_a  || ct.pwr_a===_srcPwrOut;
+                if (devPwrOk && srcPwrOk && ct.lengths.length) _best=ct.key+'-'+ct.lengths[0].val;
+              }
             });
             if (_best) {
               tgt[_cableField] = _best;
@@ -4848,8 +4862,42 @@ function nodeEdgeClick(e, gi) {
     return o;
   }
   var devDataIn2 = _devDataIn;
-  var pwrOpts  = _cableOpts(d.cable_power_in||d.cable_in||d.cable||'');
-  var dataOpts = _cableOpts(d.cable_data_in||d.cable_in||d.cable||'');
+  // Smart cable filtering: for each connector type, only show cables that can plug in
+  var _isDistroNode = (d.type === TYPE_DISTRO);
+  function _buildPwrOpts(curVal) {
+    var o = '<option value="">— none —</option>';
+    CABLE_TYPES.forEach(function(ct) {
+      // For distros: only show cables matching the pwr_in connector (e.g. CEE32 for 32ACEE)
+      if (_isDistroNode) {
+        if (!_devPwrIn2 || ct.pwr_b !== _devPwrIn2) return; // must match pwr_in exactly
+      } else {
+        // For non-distros: exclude CEE32 (too heavy) and data-only cables
+        if (ct.key === 'cee32') return;
+        if (!ct.pwr_a && !ct.pwr_b) return;
+      }
+      ct.lengths.forEach(function(l) {
+        var v = ct.key+'-'+l.val;
+        o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+    return o;
+  }
+  function _buildDataOpts(curVal) {
+    var o = '<option value="">— none —</option>';
+    CABLE_TYPES.forEach(function(ct) {
+      // Must carry data signal
+      if (!ct.data_a && !ct.data_b) return;
+      // Must match device's data_in connector if known
+      if (_devDataIn2 && ct.data_b && ct.data_b !== _devDataIn2) return;
+      ct.lengths.forEach(function(l) {
+        var v = ct.key+'-'+l.val;
+        o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+    return o;
+  }
+  var pwrOpts  = _buildPwrOpts(d.cable_power_in||'');
+  var dataOpts = _buildDataOpts(d.cable_data_in||'');
   var save = 'autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}';
   pop.innerHTML =
     '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
