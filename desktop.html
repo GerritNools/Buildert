@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.911</title>
+<title>WTUniverse · Buildert Editor v3.912</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -393,7 +393,7 @@
 
   /* Node view */
   #node-canvas-wrap{display:none;width:100%;background:#0a0c0f;
-    border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative;
+    border:1px solid var(--border);border-radius:8px;overflow:auto;position:relative;
     height:calc(100vh - 140px);min-height:400px;}
   #node-svg{display:block;width:100%;height:100%;cursor:grab;}
   #node-svg.grabbing{cursor:grabbing;}
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.911</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.912</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1571,6 +1571,26 @@ function sortByHeader(field) {
 
 // ── Model colour palette ──────────────────────────────────────────────
 var _modelColorCache = {};
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  var a = s * Math.min(l, 1 - l);
+  function f(n) {
+    var k = (n + h / 30) % 12;
+    var color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  }
+  return '#' + f(0) + f(8) + f(4);
+}
+function modelColorHex(modelKey, deviceType) {
+  // Same as modelColor but always returns #rrggbb for <input type=color>
+  var c = modelColor(modelKey, deviceType);
+  if (c && c[0] === '#') return c;
+  if (c && c.startsWith('hsl(')) {
+    var m = c.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+    if (m) return hslToHex(+m[1], +m[2], +m[3]);
+  }
+  return '#5b8fff'; // fallback blue
+}
 function modelColor(modelKey, deviceType) {
   if (!modelKey) return 'var(--muted)';
   // Custom color saved in specs takes priority over computed color
@@ -4696,10 +4716,13 @@ function renderNodeView() {
   });
   nodesG.innerHTML = nodeHtml;
 
-  // Resize SVG
+  // Resize SVG — cap at container height so overflow:hidden works correctly
   var maxY=300;
   Object.keys(_nodePositions).forEach(function(id){var p=_nodePositions[id];if(p.y+NODE_H+70>maxY)maxY=p.y+NODE_H+70;});
-  svg.setAttribute('height', maxY);
+  var _wrap=document.getElementById('node-canvas-wrap');
+  var _maxH=_wrap?(_wrap.clientHeight-48):2000; // 48px = toolbar height approx
+  svg.setAttribute('height', Math.max(300, maxY));
+  svg.style.minHeight='100%';
 
   // Re-apply zoom/pan transform after every render
   _applyNodeTransform();
@@ -5640,7 +5663,7 @@ function renderSpecs(){
     +'</tr></thead><tbody>'
     +lk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
-        +'<td><input type="color" value="'+(s.color||modelColor(k,"Laser projector"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
+        +'<td><input type="color" value="'+(s.color||modelColorHex(k,"Laser projector"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="laser-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td>'+ed(k,'laser_w',s.laser_w!=null?s.laser_w:'',30)+'</td>'
@@ -5668,7 +5691,7 @@ function renderSpecs(){
     +'</tr></thead><tbody>'
     +dk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
-        +'<td><input type="color" value="'+(s.color||modelColor(k,"Distro"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
+        +'<td><input type="color" value="'+(s.color||modelColorHex(k,"Distro"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="distro-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td style="color:var(--ok);font-weight:700">'+ed(k,'outputs',s.outputs!=null?s.outputs:'',25)+'</td>'
@@ -5691,7 +5714,7 @@ function renderSpecs(){
     +'</tr></thead><tbody>'
     +sk.map(function(k){var s=getSpec(k);if(!s)return '';
       return '<tr>'
-        +'<td><input type="color" value="'+(s.color||modelColor(k,"Smoke machine"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
+        +'<td><input type="color" value="'+(s.color||modelColorHex(k,"Smoke machine"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span class="smoke-id">'+k+'</span></td>'
         +'<td style="color:var(--muted);font-size:11px">'+ed(k,'alt',s.alt,60)+'</td>'
         +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
@@ -5712,7 +5735,7 @@ function renderSpecs(){
       +'<th>kg</th><th>Pwr In</th><th>Data In</th><th>Outlets</th><th>Phases</th><th>Description</th><th>Notes</th>'
       +'</tr></thead><tbody>'
       +pkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
-        +'<td><input type="color" value="'+(s.color||modelColor(k,"Power supply"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
+        +'<td><input type="color" value="'+(s.color||modelColorHex(k,"Power supply"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--psu)">'+k+'</span></td>'
         +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
         +'<td>'+ed(k,'consumption_w',s.consumption_w!=null?s.consumption_w:'',30)+'</td>'
@@ -5736,7 +5759,7 @@ function renderSpecs(){
       +'<table class="sp-tbl"><thead><tr><th>Color</th><th>Model</th><th>Alt</th><th>Pwr In</th><th>Data In</th><th>Pwr Out</th><th>Data Out</th><th>Description</th><th>Notes</th>'
       +'</tr></thead><tbody>'
       +adkList.map(function(k){var s=getSpec(k)||{};return '<tr>'
-        +'<td><input type="color" value="'+(s.color||modelColor(k,"Adapter"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
+        +'<td><input type="color" value="'+(s.color||modelColorHex(k,"Adapter"))+'" style="width:32px;height:22px;border:none;padding:0;background:none;cursor:pointer" title="Node color" data-mkey="'+k+'" onchange="editSpecField(this.dataset.mkey,\'color\',this.value)"></td>'
         +'<td><span style="font-family:var(--cond);font-weight:700;color:var(--accent)">'+k+'</span></td>'
         +'<td>'+ed(k,'alt',s.alt||'',60)+'</td>'
         +'<td>'+ed(k,'pwr_in',s.pwr_in||s.in_connector||'',50)+'</td>'
