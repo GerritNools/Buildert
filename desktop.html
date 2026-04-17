@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.897</title>
+<title>WTUniverse · Buildert Editor v3.898</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.897</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.898</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -865,51 +865,16 @@
 
     <label>Notes</label>
     <textarea id="m-notes" rows="2" placeholder="Anything else..."></textarea>
-
-    <div class="modal-section">Connectors &amp; Cable</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
-      <div>
-        <label>Input connector <span style="color:var(--muted);font-size:10px">— power IN to this device</span></label>
-        <select id="m-connector-in" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none">
-          <option value="">— not set —</option>
-        </select>
-      </div>
-      <div>
-        <label>Output connector <span style="color:var(--muted);font-size:10px">— power OUT (distros/PSU only)</span></label>
-        <select id="m-connector-out" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;border-radius:5px;outline:none">
-          <option value="">— not set —</option>
-        </select>
-      </div>
-    </div>
-    <div id="outlet-port-wrap" style="display:none;margin-bottom:10px">
-      <label>Outlet port <span style="color:var(--muted);font-size:10px">— which outlet on the source distro</span></label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="number" id="m-outlet-port" min="1" max="24" placeholder="e.g. 3"
-               style="width:80px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:8px;border-radius:5px"
-               oninput="updatePhaseLabel()">
-        <span id="m-phase-label" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)"></span>
-      </div>
-    </div>
-    <label>Cables IN</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <div>
-        <label style="font-size:10px;color:#f5a623;font-family:var(--mono);display:block;margin-bottom:3px">&#9889; Power cable</label>
-        <select id="m-cable-pwr" style="width:100%;background:var(--panel);border:1px solid rgba(245,166,35,.4);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:5px" onchange="_onCablePwrChange()">
-          <option value="">— none —</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:10px;color:#5b8fff;font-family:var(--mono);display:block;margin-bottom:3px">&#11044; Data cable</label>
-        <select id="m-cable-data-in" style="width:100%;background:var(--panel);border:1px solid rgba(91,143,255,.4);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:5px" onchange="_onCableDataChange()">
-          <option value="">— none —</option>
-        </select>
-      </div>
-    </div>
+    <!-- hidden fields for legacy code compat -->
     <input type="hidden" id="m-cable-in" value="">
-    <label>Cable OUT <span style="color:var(--muted);font-size:10px">— read-only: set on downstream devices as their Cable IN</span></label>
-    <div id="m-cable-out-display" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:8px 11px;border-radius:5px;margin-bottom:13px;min-height:36px">
-      — no downstream devices —
-    </div>
+    <input type="hidden" id="m-cable-pwr" value="">
+    <input type="hidden" id="m-cable-data-in" value="">
+    <input type="hidden" id="m-connector-in" value="">
+    <input type="hidden" id="m-connector-out" value="">
+    <input type="hidden" id="m-outlet-port" value="">
+    <span id="m-phase-label" style="display:none"></span>
+    <div id="outlet-port-wrap" style="display:none"></div>
+    <div id="m-cable-out-display" style="display:none"></div>
 
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -2587,24 +2552,14 @@ function saveDevice() {
     cable_pwr_in:  (document.getElementById('m-cable-pwr')||{}).value||'',
     cable_data_in2:(document.getElementById('m-cable-data-in')||{}).value||'',
     cable_pwr_in:  (document.getElementById('m-cable-pwr')||{}).value||'',
-    cable_data_in: (document.getElementById('m-cable-data-in')||{}).value||'',
-    cable_in:      (function(){var p=(document.getElementById('m-cable-pwr')||{}).value||'';var dd=(document.getElementById('m-cable-data-in')||{}).value||'';return (p&&cableSignalType(p)==='combo')?p:(dd&&cableSignalType(dd)==='combo')?dd:p||dd;})(),
-    cable_out:     editIndex >= 0 ? (devices[editIndex].cable_out||'') : '',  // computed field, not editable
-    data_source:   (document.getElementById('m-data-source')||{value:''}).value||'',
-    data_cable:    (document.getElementById('m-data-cable')||{value:''}).value||'',
-    source_power:  (document.getElementById('m-source-power')||{}).value||(document.getElementById('m-sep-power-src')||{}).value||'',
-    cable_power_in:(document.getElementById('m-cable-power')||{}).value||(document.getElementById('m-sep-power-cable')||{}).value||'',
-    source_data:   (document.getElementById('m-source-data')||{}).value||(document.getElementById('m-sep-data-src')||{}).value||'',
-    cable_data_in: (document.getElementById('m-cable-data')||{}).value||(document.getElementById('m-sep-data-cable')||{}).value||'',
-    // Separate power when cable is data-only
-    _sep_power_src: (document.getElementById('m-sep-power-src')||{}).value||'',
-    _sep_power_cable:(document.getElementById('m-sep-power-cable')||{}).value||'',
-    source_data:   (document.getElementById('m-source-data')||{}).value||(document.getElementById('m-sep-data-src')||{}).value||'',
-    cable_data_in: (document.getElementById('m-cable-data')||{}).value||(document.getElementById('m-sep-data-cable')||{}).value||'',
-    // Separate power when cable is data-only
-    _sep_power_src: (document.getElementById('m-sep-power-src')||{}).value||'',
-    _sep_power_cable:(document.getElementById('m-sep-power-cable')||{}).value||'',
-    outlet_port:   (function(){ var el=document.getElementById('m-outlet-port'); return el&&el.value?parseInt(el.value)||null:null; })(),
+    source_power:  (document.getElementById('m-source-power')||{}).value||'',
+    cable_power_in:(document.getElementById('m-cable-power')||{}).value||'',
+    source_data:   (document.getElementById('m-source-data')||{}).value||'',
+    cable_data_in: (document.getElementById('m-cable-data')||{}).value||'',
+    // legacy fields kept in sync
+    cable_in:      (document.getElementById('m-cable-power')||{}).value||(document.getElementById('m-cable-data')||{}).value||'',
+    cable_out:     editIndex >= 0 ? (devices[editIndex].cable_out||'') : '',
+    outlet_port:   null,
   };
 
   if (editIndex >= 0) { devices[editIndex] = d; showToast('Updated '+deviceId,'ok'); }
@@ -4437,7 +4392,7 @@ function renderNodeView() {
       if(hasAdap) lbCol='var(--warn)';
       var lw=cLabel.length*5.5+8;
       labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-        +' rx="3" fill="white" stroke="'+lbCol+'" stroke-width="1.2"'
+        +' rx="3" fill="#111" stroke="'+lbCol+'" stroke-width="1.2"'
         +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
       labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
         +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
@@ -4466,7 +4421,7 @@ function renderNodeView() {
           var pmx=(spp.pwrOut.x+dp.pwrIn.x)/2, pmy=(spp.pwrOut.y+dp.pwrIn.y)/2-4;
           var plw=pLbl.length*5.5+8;
           labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
-            +' rx="3" fill="white" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="#111" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+pLbl+'</text>';
@@ -4488,7 +4443,7 @@ function renderNodeView() {
           var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
           var dlw2=dLbl2.length*5.5+8;
           labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'
-            +' rx="3" fill="white" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
+            +' rx="3" fill="#111" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
           labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'
             +' fill="#111" font-size="9" font-family="Share Tech Mono,monospace"'
             +' style="pointer-events:none">'+dLbl2+'</text>';
@@ -8379,18 +8334,33 @@ function _refreshPowerCables() {
   var srcId=(document.getElementById('m-source-power')||{}).value||'';
   var srcDev=null;
   _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)srcDev=x;});});
-  var srcConn=srcDev?(function(){var sp=getSpec(srcDev.model||modelFromId(srcDev.device_id));return sp?(sp.data_out||sp.pwr_out||sp.out_connector||''):'';})():'';
+  var srcSp = srcDev ? getSpec(srcDev.model||modelFromId(srcDev.device_id)) : null;
+  var srcPwrOut = srcSp ? (srcSp.pwr_out||srcSp.out_connector||'') : '';
+  // Get current device type from modal
+  var devType = document.getElementById('m-type') ? document.getElementById('m-type').value : '';
   var sel=document.getElementById('m-cable-power'); if(!sel) return;
   var cur=sel.value;
   sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
   CABLE_TYPES.forEach(function(ct){
-    if(srcConn && ct.pwr_a && ct.pwr_a!==srcConn) return;
-    if(!ct.pwr_a && ct.data_a) return; // skip data-only cables for power
+    if(!ct.pwr_a && !ct.pwr_b) return; // skip data-only cables
+    // Filter: cable pwr_a must match source pwr_out (if known)
+    if(srcPwrOut && ct.pwr_a && ct.pwr_a!==srcPwrOut) return;
     ct.lengths.forEach(function(l){
       var v=ct.key+'-'+l.val;
       sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
     });
   });
+  // Fallback: if nothing matched, show all power cables
+  if(sel.options.length<=1){
+    sel.innerHTML='<option value="">&#8212; none &#8212;</option>';
+    CABLE_TYPES.forEach(function(ct){
+      if(!ct.pwr_a && !ct.pwr_b) return;
+      ct.lengths.forEach(function(l){
+        var v=ct.key+'-'+l.val;
+        sel.innerHTML+='<option value="'+v+'"'+(v===cur?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+  }
 }
 function populateDataSourceDropdown(currentVal) {
   var sel=document.getElementById('m-source-data'); if(!sel) return;
