@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.919</title>
+<title>WTUniverse · Buildert Editor v3.920</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.919</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.920</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -601,6 +601,10 @@
   <button class="icon-btn" style="padding:2px 10px;width:auto" onclick="applyBulkField('location')">Set</button>
 
   <span style="color:var(--border2);margin:0 2px">│</span>
+  <span style="color:var(--border2);margin:0 2px">│</span>
+  <button title="ZHU: we have no idea 🎉" style="padding:2px 12px;background:linear-gradient(90deg,#ff4d4d,#ff9800,#ffe000,#4caf50,#2196f3,#9c27b0);border:none;color:#fff;font-weight:900;font-size:13px;letter-spacing:1px;border-radius:5px;cursor:pointer" onclick="applyBulkField('zhu')">🎪 ZHU</button>
+
+  <span style="color:var(--border2);margin:0 2px">│</span>
   <span style="color:var(--muted);font-size:10px;letter-spacing:1px">SOURCE</span>
   <select id="bulk-source" class="cell-select" style="font-size:12px">
     <option value="">— pick —</option>
@@ -657,6 +661,7 @@
       <button class="icon-btn" onclick="nodeZoom(1.25)" title="Zoom in" style="font-size:14px;font-weight:700">+</button>
       <span id="node-zoom-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:38px;text-align:center">100%</span>
       <button class="icon-btn" onclick="nodeZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">−</button>
+      <button class="btn btn-ghost" onclick="addNodeMemo()" style="padding:5px 11px;font-size:12px" title="Add sticky note memo">📝 Add memo</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom · drag ↦ to connect · click edge label for cable</span>
       <button class="btn" onclick="wPushLayout()" style="padding:5px 12px;font-size:12px;background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent);margin-left:6px">&#8593; Push layout to phones</button>
       <div style="margin-left:auto;display:flex;gap:5px">
@@ -4240,6 +4245,80 @@ var NODE_COLORS = {
 };
 
 // ── Persistence ───────────────────────────────────────────────────────
+// ── Node Memos ────────────────────────────────────────────────────────
+var _nodeMemos = []; // [{id,x,y,text,color}]
+
+function _saveMemos() {
+  if (_stages[_currentStageIdx]) _stages[_currentStageIdx].nodeMemos = _nodeMemos;
+  try { localStorage.setItem('buildert_memos', JSON.stringify(_nodeMemos)); } catch(e) {}
+}
+function _loadMemos() {
+  _nodeMemos = (_stages[_currentStageIdx] && _stages[_currentStageIdx].nodeMemos) || [];
+  if (!_nodeMemos.length) {
+    try { _nodeMemos = JSON.parse(localStorage.getItem('buildert_memos')||'[]'); } catch(e) { _nodeMemos=[]; }
+  }
+}
+function addNodeMemo() {
+  var id = 'memo-' + Date.now();
+  var wrap = document.getElementById('node-canvas-wrap');
+  var cx = wrap ? wrap.scrollLeft + wrap.clientWidth/2 - 70 : 200;
+  var cy = wrap ? wrap.scrollTop + wrap.clientHeight/2 - 50 : 150;
+  _nodeMemos.push({id:id, x:cx/_nodeScale, y:cy/_nodeScale, text:'📝 Note...', color:'#ffe066'});
+  _saveMemos();
+  renderNodeView();
+}
+function deleteNodeMemo(id) {
+  _nodeMemos = _nodeMemos.filter(function(m){return m.id!==id;});
+  _saveMemos();
+  renderNodeView();
+}
+function _renderMemos() {
+  var wrap = document.getElementById('node-canvas-wrap');
+  if (!wrap) return;
+  // Remove old memo divs
+  Array.from(wrap.querySelectorAll('.node-memo')).forEach(function(el){el.remove();});
+  _nodeMemos.forEach(function(memo) {
+    var el = document.createElement('div');
+    el.className = 'node-memo';
+    el.dataset.id = memo.id;
+    el.style.cssText = 'position:absolute;z-index:30;'
+      +'left:'+(memo.x*_nodeScale+_nodePanX)+'px;top:'+(memo.y*_nodeScale+_nodePanY)+'px;'
+      +'width:160px;min-height:80px;background:'+memo.color+';'
+      +'border-radius:4px;box-shadow:2px 3px 10px rgba(0,0,0,.5);'
+      +'padding:0;cursor:move;user-select:none;font-family:var(--mono);';
+    el.innerHTML = '<div style="background:rgba(0,0,0,.15);padding:4px 8px;display:flex;justify-content:space-between;align-items:center;border-radius:4px 4px 0 0;cursor:move">'
+      +'<span style="font-size:9px;font-weight:700;color:rgba(0,0,0,.5);letter-spacing:1px">MEMO</span>'
+      +'<div style="display:flex;gap:4px">'
+      +['#ffe066','#b3f5b3','#b3d4ff','#ffb3c6'].map(function(c){
+        return '<div data-mid="'+memo.id+'" data-col="'+c+'" onclick="memoSetColor(this.dataset.mid,this.dataset.col)" '
+          +'style="width:10px;height:10px;background:'+c+';border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.2)"></div>';
+      }).join('')
+      +'<span data-mid="'+memo.id+'" onclick="deleteNodeMemo(this.dataset.mid)" style="cursor:pointer;font-size:11px;color:rgba(0,0,0,.4);margin-left:2px">✕</span>'
+      +'</div></div>'
+      +'<div contenteditable="true" spellcheck="false" '
+      +'style="padding:8px;font-size:11px;color:#333;min-height:56px;outline:none;white-space:pre-wrap;word-break:break-word" '
+      +'data-mid="'+memo.id+'" onblur="memoSaveText(this.dataset.mid,this.innerText)">'
+      + (memo.text||'').replace(/</g,'&lt;') + '</div>';
+    // Drag to move
+    el.querySelector('div').addEventListener('mousedown', function(e){
+      if (e.target.tagName==='DIV'&&e.target.contentEditable!=='true') {
+        var startX=e.clientX, startY=e.clientY, mx0=memo.x, my0=memo.y;
+        function mm(ev){
+          memo.x = mx0+(ev.clientX-startX)/_nodeScale;
+          memo.y = my0+(ev.clientY-startY)/_nodeScale;
+          el.style.left=(memo.x*_nodeScale+_nodePanX)+'px';
+          el.style.top=(memo.y*_nodeScale+_nodePanY)+'px';
+        }
+        function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); _saveMemos(); }
+        document.addEventListener('mousemove',mm);
+        document.addEventListener('mouseup',mu);
+        e.preventDefault();
+      }
+    });
+    wrap.appendChild(el);
+  });
+}
+
 function _saveNodePositions() {
   try { localStorage.setItem('buildert_node_pos', JSON.stringify(_nodePositions)); } catch(e){}
   if(_stages[_currentStageIdx]) _stages[_currentStageIdx].nodePositions=_nodePositions;
@@ -4531,6 +4610,29 @@ function renderNodeView() {
       && pwrCable === datCable
       && (pwrSig === 'combo');
 
+    // ── ZHU MODE: festive rainbow bunting 🎉 ───────────────────────────
+    if (d._zhu && (pwrSrcId||datSrcId)) {
+      var _zhuSrc = pwrSrcId || datSrcId;
+      var _zhuSp = _ports(_zhuSrc); if(!_zhuSp) return;
+      var _zhuCols = ['#ff4d4d','#ff9800','#ffe000','#4caf50','#2196f3','#9c27b0','#ff69b4','#00d4ff'];
+      var _zhuX1=_zhuSp.pwrOut.x, _zhuY1=_zhuSp.pwrOut.y, _zhuX2=dp.pwrIn.x, _zhuY2=dp.pwrIn.y;
+      // Rainbow stripes: same path drawn multiple times with offset dashes
+      _zhuCols.forEach(function(c,i){
+        var _segLen = 12, _total = _zhuCols.length * _segLen;
+        edgeHtml += '<path d="'+_bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2)+'" fill="none" stroke="'+c+'" stroke-width="4"'
+          +' stroke-dasharray="'+_segLen+','+(_total-_segLen)+'" stroke-dashoffset="'+(i*_segLen*-1)+'" opacity="0.9"/>';
+      });
+      // Flag triangles along the cable every 30px (approximate with small rects rotated)
+      var _numFlags = 6;
+      for (var _fi=1; _fi<=_numFlags; _fi++) {
+        var _ft = _fi / (_numFlags+1);
+        var _fx = _zhuX1 + (_zhuX2-_zhuX1)*_ft, _fy = _zhuY1 + (_zhuY2-_zhuY1)*_ft - 6;
+        var _fc = _zhuCols[_fi % _zhuCols.length];
+        edgeHtml += '<polygon points="'+_fx+','+_fy+' '+(_fx+6)+','+(_fy+10)+' '+(_fx-6)+','+(_fy+10)+'" fill="'+_fc+'" opacity="0.95"/>';
+      }
+      return; // skip normal edge drawing for ZHU
+    }
+
     // ── COMBO: one cable carries both pwr and data ─────────────────────
     if (isCombo) {
       var sp = _ports(pwrSrcId); if(!sp) return;
@@ -4750,22 +4852,45 @@ function renderNodeView() {
         +' fill="'+_outCol+'" font-size="9" font-weight="700" font-family="Share Tech Mono,monospace"'
         +' style="pointer-events:none">'+_outLbl+' \u2191</text>';
     }
-    // For distros: draw small colored output dots across the top edge (one per connected output)
-    if (!isFoh && dev && dev.type===TYPE_DISTRO && actualOut>0) {
-      var _conChildren = devices.filter(function(x){return x.source===id||x.source_power===id||x.source_data===id;});
-      var _dotSpacing = Math.min(20, (NODE_W-16) / Math.max(actualOut,1));
-      var _dotStartX  = NODE_W/2 - (_conChildren.length-1)*_dotSpacing/2;
-      _conChildren.forEach(function(child, ci){
-        var _childCol = col; // use distro's color by default
-        var _cm = child.model || modelFromId(child.device_id||'');
-        if(_cm) _childCol = modelColor(_cm, child.type);
-        var _dotX = _dotStartX + ci * _dotSpacing;
-        nodeHtml += '<circle cx="'+_dotX+'" cy="0" r="4" fill="'+_childCol+'" stroke="rgba(0,0,0,.4)" stroke-width="1" style="pointer-events:none"/>';
+    // For distros/PSUs: draw output port squares (pwr/data alternating) along TOP edge
+    var _specOutputs = sp ? (sp.outputs||0) : 0;
+    if (!isFoh && dev && (dev.type===TYPE_DISTRO||dev.type===TYPE_PSU) && _specOutputs>0) {
+      var _hasPwrOut  = !!(sp&&sp.pwr_out);
+      var _hasDataOut = !!(sp&&sp.data_out);
+      var _sqCount = _specOutputs * ((_hasPwrOut?1:0)+(_hasDataOut?1:0));
+      var _sqW = Math.min(8, Math.max(4, (NODE_W-12) / Math.max(_sqCount,1) - 1));
+      var _sqGap = Math.min(2, (NODE_W-12-_sqCount*_sqW) / Math.max(_sqCount-1,1));
+      var _sqTotalW = _sqCount*_sqW + Math.max(0,_sqCount-1)*_sqGap;
+      var _sqX0 = (NODE_W - _sqTotalW) / 2;
+      var _conChildren2 = devices.filter(function(x){
+        return x.source===id||x.source_power===id||x.source_data===id;
       });
+      var _si = 0;
+      for (var _oi=0; _oi<_specOutputs; _oi++) {
+        // pwr square
+        if (_hasPwrOut) {
+          var _connected = _oi < _conChildren2.length;
+          var _sqFill = _connected ? '#f5a623' : 'rgba(245,166,35,0.2)';
+          var _sqStroke = _connected ? '#f5a623' : 'rgba(245,166,35,0.5)';
+          nodeHtml += '<rect x="'+(_sqX0+_si*(_sqW+_sqGap))+'" y="-'+(_sqW+3)+'" width="'+_sqW+'" height="'+_sqW+'" rx="1"'
+            +' fill="'+_sqFill+'" stroke="'+_sqStroke+'" stroke-width="1" style="pointer-events:none"/>';
+          _si++;
+        }
+        // data square
+        if (_hasDataOut) {
+          var _connected2 = _oi < _conChildren2.length;
+          var _sqFill2 = _connected2 ? '#5b8fff' : 'rgba(91,143,255,0.2)';
+          var _sqStroke2 = _connected2 ? '#5b8fff' : 'rgba(91,143,255,0.5)';
+          nodeHtml += '<rect x="'+(_sqX0+_si*(_sqW+_sqGap))+'" y="-'+(_sqW+3)+'" width="'+_sqW+'" height="'+_sqW+'" rx="1"'
+            +' fill="'+_sqFill2+'" stroke="'+_sqStroke2+'" stroke-width="1" style="pointer-events:none"/>';
+          _si++;
+        }
+      }
     }
     nodeHtml += '</g>';
   });
   nodesG.innerHTML = nodeHtml;
+  setTimeout(_renderMemos, 0); // render memo overlays after SVG settles
 
   // Resize SVG — cap at container height so overflow:hidden works correctly
   var maxY=300;
@@ -5185,6 +5310,17 @@ function nodePrint() {
   clone.insertAdjacentHTML('afterbegin',
     '<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="white"/>');
 
+  // Add memos as text boxes to the print SVG
+  _nodeMemos.forEach(function(memo){
+    var mx = memo.x * vbS + vbX, my = memo.y * vbS + vbY;
+    var lines = (memo.text||'').split('\n');
+    var boxH = 20 + lines.length * 13;
+    clone.insertAdjacentHTML('beforeend',
+      '<rect x="'+mx+'" y="'+my+'" width="140" height="'+boxH+'" rx="4" fill="'+memo.color+'" stroke="rgba(0,0,0,.3)" stroke-width="1"/>'
+      +'<text x="'+(mx+8)+'" y="'+(my+13)+'" font-size="9" fill="#555" font-family="monospace" font-weight="700">MEMO</text>'
+      +lines.map(function(l,i){return '<text x="'+(mx+8)+'" y="'+(my+24+i*13)+'" font-size="10" fill="#333" font-family="monospace">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>';}).join('')
+    );
+  });
   var svgStr = clone.outerHTML;
   // Resolve CSS variables for print (they won't be defined in popup window)
   svgStr = svgStr
@@ -6083,6 +6219,16 @@ function applyBulkField(field) {
       dev[field] = val;
     }
   });
+  if (field === 'zhu') {
+    var _zhuCols = ['#ff4d4d','#ff9800','#ffe000','#4caf50','#2196f3','#9c27b0','#ff69b4'];
+    selectedGis.forEach(function(gi) {
+      devices[gi]._zhu = !devices[gi]._zhu; // toggle
+    });
+    renderNodeView(); renderTable(); autoSave();
+    var _anyOn = selectedGis.some(function(gi){return devices[gi]._zhu;});
+    showToast(_anyOn ? '🎪 ZHU mode ON — we have absolutely no idea! 🎉' : 'ZHU mode off', _anyOn?'ok':'warn');
+    return;
+  }
   renderTable(); autoSave();
   showToast('Updated ' + field + ' on ' + selectedGis.length + ' device(s)', 'ok');
 }
@@ -7024,6 +7170,7 @@ async function wPush(silent){
     shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:JSON.parse(np),
+    _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
   };
   _projectVersion++;
