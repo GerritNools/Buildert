@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.912</title>
+<title>WTUniverse · Buildert Editor v3.913</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.912</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.913</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2146,8 +2146,15 @@ function renderTable() {
           } // end if _tblDevPwrIn
           var onPwrCbl='(function(v,gi){'
             +'setField(gi,\'cable_power_in\',v);'
-            +'setField(gi,\'cable_in\',v);setField(gi,\'cable\',v);' // keep legacy fields in sync
-            +'if(v&&cableSignalType(v)===\'combo\'){setField(gi,\'cable_data_in\',v);}'
+            +'setField(gi,\'cable_in\',v);setField(gi,\'cable\',v);'
+            // For non-32A devices: copy pwr cable to data cable (PC/PL serves both)
+            +'var sp3=specsForDevice(devices[gi])||{};'
+            +'var is32A=(sp3.pwr_in||\'\').toUpperCase()===\'32ACEE\';'
+            +'if(!is32A&&v){setField(gi,\'cable_data_in\',v);}'
+            // Also copy source_power to source_data for non-distros
+            +'if(!is32A&&devices[gi].source_power&&devices[gi].type!==TYPE_DISTRO){'
+            +'  setField(gi,\'source_data\',devices[gi].source_power);'
+            +'}'
             +'renderTable();'
             +'})(this.value,'+gi+')';
 
@@ -4289,7 +4296,7 @@ function nodeAutoLayout() {
   });
 
   // FOH at bottom centre
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   if (needFoh) {
     _nodePositions['FOH'] = {x: Math.max(40, (SVG_W - XGAP)/2), y: curY};
   }
@@ -4329,7 +4336,7 @@ function renderNodeView() {
   if (!Object.keys(_nodePositions).length) { nodeAutoLayout(); }
   if (!Object.keys(_nodePositions).length) return; // still empty = no devices, nothing to draw
 
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   var nodeIds = devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;});
   var allIds  = (needFoh ? ['FOH'] : []).concat(nodeIds);
 
@@ -4373,17 +4380,24 @@ function renderNodeView() {
     return '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
-  function _edgeCombo(x1s,y1s,x2p,y2p,x2d,y2d,hasAdap){
-    // Single grey stem → splits into amber (power) + blue (data) near destination
+  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d){
+    // Combo cable: exits from BOTH pwr and data outputs, merges to stem, splits to pwr+data inputs
     var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    // Split point: 75% of the way along the main bezier
-    var spx=(x1s+x2p)/2, spy=(y1s*0.25+y2p*0.75);
-    // Stem: source to split point (grey)
-    var stem='<path d="'+_bezier(x1s,y1s,spx,spy)+'" fill="none" stroke="#8899bb" stroke-width="2.5"'+dash+' opacity="0.75"/>';
-    // Short branches from split point to each port (last 25% of route)
-    var pBranch='<path d="M'+spx+','+spy+' '+_bezier(spx,spy,x2p,y2p).slice(1)+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dBranch='<path d="M'+spx+','+spy+' '+_bezier(spx,spy,x2d,y2d).slice(1)+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return stem+pBranch+dBranch;
+    // Source merge point (above source node)
+    var hasDualSrc = (x1d !== undefined && (Math.abs(x1p-x1d)>2 || Math.abs(y1p-y1d)>2));
+    var mx1 = hasDualSrc ? (x1p+x1d)/2 : x1p;
+    var my1 = hasDualSrc ? Math.min(y1p,y1d)-12 : y1p;
+    // Destination split point (above dest node)
+    var spx=(mx1+x2p)/2, spy=(my1*0.25+y2p*0.75);
+    // Source branches (amber from pwrOut, blue from dataOut → merge point)
+    var srcPBranch = hasDualSrc ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+my1+' L'+mx1+','+my1+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' opacity="0.8"/>' : '';
+    var srcDBranch = hasDualSrc ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+my1+' L'+mx1+','+my1+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' opacity="0.8"/>' : '';
+    // Single grey stem: merge → split point
+    var stem='<path d="'+_bezier(mx1,my1,spx,spy)+'" fill="none" stroke="#8899bb" stroke-width="2.5"'+dash+' opacity="0.8"/>';
+    // Destination branches: split → pwrIn (amber), split → dataIn (blue)
+    var pBranch='<path d="M'+spx+','+spy+' L'+x2p+','+spy+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dBranch='<path d="M'+spx+','+spy+' L'+x2d+','+spy+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return srcPBranch+srcDBranch+stem+pBranch+dBranch;
   }
 
   // ── Draw edges in order: power first, data, combo ──
@@ -4458,7 +4472,7 @@ function renderNodeView() {
 
       } else if (sigType==='combo') {
         var marker2 = hasAdap?'arrow-warn':'arrow-ok';
-        edgeHtml += _edgeCombo(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, dp.dataIn.x,dp.dataIn.y, hasAdap);
+        edgeHtml += _edgeCombo(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, dp.dataIn.x,dp.dataIn.y, hasAdap, sp.dataOut.x,sp.dataOut.y);
 
       } else if (sigType==='power') {
         edgeHtml += _edgePower(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, hasAdap,'arrow-warn');
@@ -4814,8 +4828,11 @@ function _nodeMouseUp(e) {
 
           // Decide whether this is a power connection or data connection
           // by checking if source connector matches target pwr_in
-          var _isPwrConn = _srcPwrOut && _tgtPwrIn && _srcPwrOut===_tgtPwrIn;
-          var _isDataConn = !_isPwrConn; // default to data if no pwr match
+          // Force power connection if source is PSU (PSUs only output power)
+          var _srcTypeCheck = null;
+          if (srcId !== 'FOH') { _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)_srcTypeCheck=x.type;});}); }
+          var _isPwrConn = (_srcTypeCheck === TYPE_PSU) || (_srcPwrOut && _tgtPwrIn && _srcPwrOut===_tgtPwrIn);
+          var _isDataConn = !_isPwrConn;
 
           if (_isDataConn) {
             tgt.source_data = srcId;
@@ -6729,7 +6746,7 @@ function diagAutoLayout() {
     curY += TYPE_GAP;
   });
   // FOH at bottom
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   if (needFoh) { _diagPositions['FOH'] = {x: Math.max(40, (SVG_W - 155)/2), y: curY}; }
   _saveDiagPositions();
   _renderDiagSVG();
@@ -6739,7 +6756,7 @@ function renderDiagView() {
   _loadDiagPositions();
   if (!Object.keys(_diagPositions).length) { diagAutoLayout(); return; }
   // Ensure all devices have positions
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   var svg = document.getElementById('diag-svg');
   var SVG_W = svg ? svg.clientWidth : 1200;
   if (needFoh && !_diagPositions['FOH']) _diagPositions['FOH'] = {x: Math.max(40,(SVG_W-155)/2), y: 600};
@@ -6759,7 +6776,7 @@ function _renderDiagSVG() {
 
   var NW = NODE_W, NH = NODE_H;
 
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   var allIds = (needFoh ? ['FOH'] : []).concat(
     devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;})
   );
@@ -8421,7 +8438,7 @@ function _populateDataSource(type, currentDataSource) {
   var sel = document.getElementById('m-data-source');
   if (!sel) return;
   var opts = '<option value="">— same as power —</option>';
-  // FOH is always available as data source
+  // FOH as data source only if explicitly selected (don't auto-suggest it for all devices)
   opts += '<option value="FOH"' + (currentDataSource==='FOH'?' selected':'') + '>FOH (controller)</option>';
   // Other distros and adapters can be data sources too
   var allowed = [TYPE_DISTRO, TYPE_ADAPTER];
@@ -10432,7 +10449,7 @@ function diagAutoLayout() {
     curY += TYPE_GAP;
   });
   // FOH at bottom
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   if (needFoh) { _diagPositions['FOH'] = {x: Math.max(40, (SVG_W - 155)/2), y: curY}; }
   _saveDiagPositions();
   _renderDiagSVG();
@@ -10442,7 +10459,7 @@ function renderDiagView() {
   _loadDiagPositions();
   if (!Object.keys(_diagPositions).length) { diagAutoLayout(); return; }
   // Ensure all devices have positions
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   var svg = document.getElementById('diag-svg');
   var SVG_W = svg ? svg.clientWidth : 1200;
   if (needFoh && !_diagPositions['FOH']) _diagPositions['FOH'] = {x: Math.max(40,(SVG_W-155)/2), y: 600};
@@ -10462,7 +10479,7 @@ function _renderDiagSVG() {
 
   var NW = NODE_W, NH = NODE_H;
 
-  var needFoh = devices.some(function(d){return d.source==='FOH';});
+  var needFoh = devices.some(function(d){return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH';});
   var allIds = (needFoh ? ['FOH'] : []).concat(
     devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;})
   );
