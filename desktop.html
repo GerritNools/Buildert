@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.913</title>
+<title>WTUniverse · Buildert Editor v3.914</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.913</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.914</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4381,23 +4381,36 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d){
-    // Combo cable: exits from BOTH pwr and data outputs, merges to stem, splits to pwr+data inputs
-    var dash=hasAdap?' stroke-dasharray="5,3"':'';
-    // Source merge point (above source node)
-    var hasDualSrc = (x1d !== undefined && (Math.abs(x1p-x1d)>2 || Math.abs(y1p-y1d)>2));
-    var mx1 = hasDualSrc ? (x1p+x1d)/2 : x1p;
-    var my1 = hasDualSrc ? Math.min(y1p,y1d)-12 : y1p;
-    // Destination split point (above dest node)
-    var spx=(mx1+x2p)/2, spy=(my1*0.25+y2p*0.75);
-    // Source branches (amber from pwrOut, blue from dataOut → merge point)
-    var srcPBranch = hasDualSrc ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+my1+' L'+mx1+','+my1+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' opacity="0.8"/>' : '';
-    var srcDBranch = hasDualSrc ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+my1+' L'+mx1+','+my1+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' opacity="0.8"/>' : '';
-    // Single grey stem: merge → split point
-    var stem='<path d="'+_bezier(mx1,my1,spx,spy)+'" fill="none" stroke="#8899bb" stroke-width="2.5"'+dash+' opacity="0.8"/>';
-    // Destination branches: split → pwrIn (amber), split → dataIn (blue)
-    var pBranch='<path d="M'+spx+','+spy+' L'+x2p+','+spy+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dBranch='<path d="M'+spx+','+spy+' L'+x2d+','+spy+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return srcPBranch+srcDBranch+stem+pBranch+dBranch;
+    // Combo cable visualization:
+    // [SRC pwrOut]--amber--\                   /--amber-->[DST pwrIn]
+    //                       \--grey stem--grey/
+    // [SRC dataOut]--blue---/                  \--blue--->[DST dataIn]
+    var dash = hasAdap ? ' stroke-dasharray="5,3"' : '';
+    var hasDualSrc = (x1d !== undefined);
+    // Source short branches exit from pwr and data ports, meet 20px outside the node
+    var srcMidX = hasDualSrc ? (x1p + x1d) / 2 : x1p;
+    var srcMidY = hasDualSrc ? (Math.min(y1p, y1d) - 20) : (y1p - 20);
+    // Destination split point: 20px before entering the destination node
+    var dstMidX = (x2p + x2d) / 2;
+    var dstMidY = Math.min(y2p, y2d) - 20;
+    // Route midpoint (horizontal routing)
+    var routeY = Math.min(srcMidY, dstMidY) - 30;
+    // Source exit branches
+    var sPwr = hasDualSrc
+      ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+(srcMidY+8)+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' opacity="0.85"/>'
+      : '';
+    var sDat = hasDualSrc
+      ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+(srcMidY+8)+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' opacity="0.85"/>'
+      : '';
+    var sMerge = hasDualSrc
+      ? '<path d="M'+x1p+','+(srcMidY+8)+' L'+x1p+','+srcMidY+' L'+x1d+','+srcMidY+' L'+x1d+','+(srcMidY+8)+'" fill="none" stroke="#8899bb" stroke-width="1.5" opacity="0.6"/>'
+      : '';
+    // Main grey stem from source merge to dest split (orthogonal)
+    var stem = '<path d="M'+srcMidX+','+srcMidY+' L'+srcMidX+','+routeY+' L'+dstMidX+','+routeY+' L'+dstMidX+','+dstMidY+'" fill="none" stroke="#8899bb" stroke-width="2.8"'+dash+' opacity="0.85"/>';
+    // Destination split branches
+    var dPwr = '<path d="M'+dstMidX+','+dstMidY+' L'+x2p+','+dstMidY+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dDat = '<path d="M'+dstMidX+','+dstMidY+' L'+x2d+','+dstMidY+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    return sPwr+sDat+sMerge+stem+dPwr+dDat;
   }
 
   // ── Draw edges in order: power first, data, combo ──
@@ -4426,8 +4439,16 @@ function renderNodeView() {
     if (_isDistroDataSynth) {
       var _dataSigType = cableSignalType(d.cable_data_in||'');
       if (_dataSigType === 'data' || _dataSigType === 'combo') sigType = 'data';
-      else if (d.cable_data_in) sigType = 'data'; // has a data cable set even if type unclear
-      else if (!d.cable_in && !d.cable) sigType = 'data'; // no cable at all: still show blue
+      else if (d.cable_data_in) sigType = 'data';
+      else if (!d.cable_in && !d.cable) sigType = 'data';
+    }
+    // If the source device is a PSU, NEVER show data or combo — PSU has no data output
+    if (d.source && d.source !== 'FOH') {
+      var _srcDevForType = null;
+      _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevForType=x;});});
+      if (_srcDevForType && _srcDevForType.type === TYPE_PSU) {
+        if (sigType === 'data' || sigType === 'combo') sigType = 'power';
+      }
     }
     var gi = devices.indexOf(d);
     var info = cableInfo(d);
@@ -4966,11 +4987,20 @@ function nodeEdgeClick(e, gi) {
     // PSU has no data connector — show nothing
     if (d.type === TYPE_PSU) return '<option value="">— N/A (PSU) —</option>';
     var o = '<option value="">— none —</option>';
+    var _devPwrIn = _devConn; // pwr_in connector for this device
     CABLE_TYPES.forEach(function(ct) {
       // Must carry data signal
       if (!ct.data_a && !ct.data_b) return;
-      // Must match device's data_in connector if known (_devDataIn set earlier)
-      if (_devDataIn && ct.data_b && ct.data_b !== _devDataIn) return;
+      // For non-32A devices: allow combo cables (PC/PL) since they carry both
+      // Only filter strictly for 32A distros (data_b must match Ethercon/HartingPushPull)
+      var _is32A = _devPwrIn.toUpperCase() === '32ACEE';
+      if (_is32A) {
+        // Strict: data_b must match data_in (Ethercon or HartingPushPull)
+        if (_devDataIn && ct.data_b && ct.data_b !== _devDataIn) return;
+      } else {
+        // Non-32A: show any cable with data capability
+        // (combo PC/PL cables have data_b matching the device's connector)
+      }
       ct.lengths.forEach(function(l) {
         var v = ct.key+'-'+l.val;
         o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
