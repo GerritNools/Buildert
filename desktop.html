@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.918</title>
+<title>WTUniverse · Buildert Editor v3.919</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.918</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.919</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4439,176 +4439,145 @@ function renderNodeView() {
     return sPwr+sDat+stem+dPwr+dDat;
   }
 
-  // ── Draw edges in order: power first, data, combo ──
-  // First draw unconnected port stubs (dashed grey lines going nowhere)
+  // ── Draw edges ────────────────────────────────────────────────────────
+  // Simple rules derived directly from specs CSV:
+  //   source_power + cable_power_in → amber line: source.pwrOut → device.pwrIn
+  //   source_data  + cable_data_in  → blue  line: source.dataOut → device.dataIn
+  //   PSU never has data_out → skip any data line from a PSU
+  //   If pwrSrc === datSrc AND same cable AND cable carries both → draw ONE combo Y-fork
+  //   Legacy: if only source/cable_in set, determine type from cable signal type
+
+  function _devType(id) {
+    var dv = null;
+    _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===id)dv=x;});});
+    return dv ? dv.type : null;
+  }
+  function _devSpec(id) {
+    var dv = null;
+    _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===id)dv=x;});});
+    if (!dv) return null;
+    return getSpec(dv.model || modelFromId(dv.device_id||''));
+  }
+  function _cableLabel(key) {
+    if (!key) return '';
+    var ck = key.split('-')[0];
+    var ct = CABLE_TYPES.find(function(c){return c.key===ck;});
+    if (!ct) return key;
+    var lv = parseFloat(key.split('-').slice(1).join('-'));
+    var ld = ct.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
+    return ct.label + (isNaN(lv) ? '' : ' '+(ld?ld.lbl:lv+'m'));
+  }
+  function _lbCol(sigType, cable) {
+    var ct = cable ? CABLE_TYPES.find(function(c){return c.key===cable.split('-')[0];}) : null;
+    if (ct && ct.color) return ct.color;
+    return sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#8899bb':'#55606e';
+  }
+  function _drawLabel(x1,y1,x2,y2, text, col, gi) {
+    if (!text) return;
+    var mx=(x1+x2)/2, my=(y1+y2)/2 - 4;
+    var lw = text.length*5.5+10;
+    labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
+      +' rx="3" fill="rgba(17,19,24,.92)" stroke="'+col+'" stroke-width="1.3"'
+      +(gi>=0?' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')"':' style="pointer-events:none"')+'/>';
+    labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
+      +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
+      +' style="pointer-events:none">'+text+'</text>';
+  }
+
+  // Unconnected input stubs
   devices.forEach(function(d){
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
-    // Show unconnected power input as short dashed stub
-    var hasPwrSrc = !!(d.source_power || d.source);
-    var hasDataSrc = !!(d.source_data || d.source);
-    if (!hasPwrSrc) {
-      edgeHtml += '<line x1="'+dp.pwrIn.x+'" y1="'+dp.pwrIn.y+'" x2="'+dp.pwrIn.x+'" y2="'+(dp.pwrIn.y+20)+'"'
-        +' stroke="#f5a623" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.35"/>';
+    var sp2 = _devSpec(d.device_id)||{};
+    if (sp2.pwr_in && !d.source_power && !d.source) {
+      edgeHtml += '<line x1="'+dp.pwrIn.x+'" y1="'+dp.pwrIn.y+'" x2="'+dp.pwrIn.x+'" y2="'+(dp.pwrIn.y+18)+'"'
+        +' stroke="#f5a623" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.4"/>';
     }
-    if (!hasDataSrc) {
-      edgeHtml += '<line x1="'+dp.dataIn.x+'" y1="'+dp.dataIn.y+'" x2="'+dp.dataIn.x+'" y2="'+(dp.dataIn.y+20)+'"'
-        +' stroke="#5b8fff" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.35"/>';
+    if (sp2.data_in && !d.source_data && !d.source) {
+      edgeHtml += '<line x1="'+dp.dataIn.x+'" y1="'+dp.dataIn.y+'" x2="'+dp.dataIn.x+'" y2="'+(dp.dataIn.y+18)+'"'
+        +' stroke="#5b8fff" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.4"/>';
     }
   });
+
   devices.forEach(function(d){
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
-    var _mainCable = d.cable_data_in || d.cable_in || d.cable || '';
-    var sigType = cableSignalType(_mainCable);
-    // Also check cable_power_in for type (handles type-only keys without length suffix)
-    if ((sigType === 'none' || sigType === 'data') && d.cable_power_in) {
-      var _pwrSigType = cableSignalType(d.cable_power_in + (d.cable_power_in.indexOf('-')<0?'-0':''));
-      if (_pwrSigType === 'power' || _pwrSigType === 'combo') sigType = 'power';
-    }
-    // Distro data-synth: the main source is source_data, cable is cable_data_in — force 'data' rendering
-    if (_isDistroDataSynth) {
-      var _dataSigType = cableSignalType(d.cable_data_in||'');
-      if (_dataSigType === 'data' || _dataSigType === 'combo') sigType = 'data';
-      else if (d.cable_data_in) sigType = 'data';
-      else if (!d.cable_in && !d.cable) sigType = 'data';
-    }
-    // If the source device is a PSU, NEVER show data or combo — PSU has no data output
-    if (d.source && d.source !== 'FOH') {
-      var _srcDevForType = null;
-      _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevForType=x;});});
-      if (_srcDevForType && _srcDevForType.type === TYPE_PSU) {
-        if (sigType === 'data' || sigType === 'combo') sigType = 'power';
-      }
-    }
     var gi = devices.indexOf(d);
-    var info = cableInfo(d);
-    var hasAdap = !!info.adapterNote;
+    var dSpec = _devSpec(d.device_id)||{};
 
-    // ── Main source edge ──
-    // For distros that use split source_power/source_data instead of a single source:
-    // synthesise a d.source from source_data so the data line draws, and let the
-    // existing source_power block (further down) draw the power line.
-    var _hadNoSource = !d.source;
-    var _isDistroDataSynth = (!d.source && d.source_data && d.type === TYPE_DISTRO);
-    if (!d.source && d.source_data) { d.source = d.source_data; d._synthSource = true; }
-    if (d.source) {
-      var sp = _ports(d.source); if(!sp) return;
-      var hasCable = !!(d.cable_in||d.cable);
-      var isFoh = d.source==='FOH';
-      // Data-link detection: PowerCAT used between distros (TR1 unconnected, Ethercon only).
-      // When pwr connectors don't chain, downgrade 'combo' to 'data' — renders as blue line only.
-      if (sigType==='combo' && !isFoh && hasCable) {
-        var _ct3=CABLE_TYPES.find(function(c){return c.key===(d.cable_in||d.cable||'').split('-')[0];});
-        if (_ct3 && (_ct3.pwr_a||_ct3.pwr_b)) {
-          var _srcD3=null;
-          _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcD3=x;});});
-          var _srcSp3=_srcD3?getSpec(_srcD3.model||modelFromId(_srcD3.device_id||'')):null;
-          var _dSp3=getSpec(d.model||modelFromId(d.device_id||''));
-          var _srcPwr3=_srcSp3?(_srcSp3.pwr_out||_srcSp3.out_connector||''):'';
-          var _devPwr3=_dSp3?(_dSp3.pwr_in||_dSp3.in_connector||''):'';
-          if ((_srcPwr3&&_ct3.pwr_a&&_srcPwr3!==_ct3.pwr_a)||(_devPwr3&&_ct3.pwr_b&&_devPwr3!==_ct3.pwr_b)) {
-            sigType='data'; // Downgrade: combo cable used data-only (TR1 not connected)
-            d._sigDataLink=true; // flag so edge draws dashed
-          }
+    // ── Resolve pwr and data sources ─────────────────────────────────────
+    // Power: explicit source_power, else legacy source (for non-distros)
+    var pwrSrcId = d.source_power || (!d.source_power && !d.source_data ? d.source : '');
+    var pwrCable = d.cable_power_in || (!d.source_power && !d.source_data ? (d.cable_in||d.cable) : '');
+
+    // Data: explicit source_data, else legacy source (if source has data_out)
+    var datSrcId = d.source_data || (!d.source_power && !d.source_data ? d.source : '');
+    var datCable = d.cable_data_in || (!d.source_power && !d.source_data ? (d.cable_in||d.cable) : '');
+
+    // PSU never has data output — never draw data line FROM a PSU
+    if (datSrcId && datSrcId !== 'FOH' && _devType(datSrcId) === TYPE_PSU) {
+      datSrcId = ''; datCable = '';
+    }
+    // Also skip data line if the device's spec has no data_in port
+    if (!dSpec.data_in) { datSrcId = ''; datCable = ''; }
+    // Skip power line if device's spec has no pwr_in port
+    if (!dSpec.pwr_in) { pwrSrcId = ''; pwrCable = ''; }
+
+    // ── Determine if combo ────────────────────────────────────────────────
+    var pwrSig = cableSignalType(pwrCable+(pwrCable&&pwrCable.indexOf('-')<0?'-0':''));
+    var datSig = cableSignalType(datCable+(datCable&&datCable.indexOf('-')<0?'-0':''));
+    var isCombo = pwrSrcId && datSrcId
+      && pwrSrcId === datSrcId
+      && pwrCable === datCable
+      && (pwrSig === 'combo');
+
+    // ── COMBO: one cable carries both pwr and data ─────────────────────
+    if (isCombo) {
+      var sp = _ports(pwrSrcId); if(!sp) return;
+      var spSpec = _devSpec(pwrSrcId)||{};
+      var hasBothOut = !!(spSpec.pwr_out && spSpec.data_out);
+      edgeHtml += _edgeCombo(
+        sp.pwrOut.x, sp.pwrOut.y,
+        dp.pwrIn.x,  dp.pwrIn.y,
+        dp.dataIn.x, dp.dataIn.y,
+        false,
+        hasBothOut ? sp.dataOut.x : undefined,
+        hasBothOut ? sp.dataOut.y : undefined
+      );
+      var col = _lbCol('combo', pwrCable);
+      _drawLabel(sp.mid.x, sp.mid.y, dp.mid.x, dp.mid.y, _cableLabel(pwrCable), col, gi);
+
+    } else {
+      // ── SEPARATE power line ─────────────────────────────────────────────
+      if (pwrSrcId) {
+        var sp = _ports(pwrSrcId); if(!sp) {}
+        else {
+          var isFoh = (pwrSrcId==='FOH');
+          var noCable = !pwrCable;
+          var col = _lbCol('power', pwrCable);
+          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x, y2=dp.pwrIn.y;
+          if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
+          edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
+            +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
+          if (pwrCable) _drawLabel(x1,y1,x2,y2, _cableLabel(pwrCable), col, gi);
         }
       }
 
-      if (!hasCable || sigType==='none' || isFoh) {
-        // No cable / FOH — dashed line from output to input (not mid→mid)
-        var stroke = isFoh?'var(--accent)':'#55606e';
-        var marker = isFoh?'arrow-foh':'arrow-muted';
-        var _sx = isFoh ? sp.mid.x : sp.pwrOut.x, _sy = isFoh ? sp.mid.y : sp.pwrOut.y;
-        var _dx = isFoh ? dp.mid.x : dp.pwrIn.x,  _dy = isFoh ? dp.mid.y : dp.pwrIn.y;
-        edgeHtml += '<path d="'+_bezier(_sx,_sy,_dx,_dy)+'"'
-          +' fill="none" stroke="'+stroke+'" stroke-width="2" stroke-dasharray="4,3"'
-          +' marker-end="url(#'+marker+')" opacity="0.6"/>';
-
-      } else if (sigType==='combo') {
-        var marker2 = hasAdap?'arrow-warn':'arrow-ok';
-        edgeHtml += _edgeCombo(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, dp.dataIn.x,dp.dataIn.y, hasAdap, sp.dataOut.x,sp.dataOut.y);
-
-      } else if (sigType==='power') {
-        edgeHtml += _routedPath(sp.pwrOut.x,sp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, '#f5a623', 2, hasAdap, 'arrow-warn');
-
-      } else if (sigType==='data') {
-        // _sigDataLink is set when a combo cable (PowerCAT) is used data-only — draw dashed
-        edgeHtml += _routedPath(sp.dataOut.x,sp.dataOut.y, dp.dataIn.x,dp.dataIn.y, '#5b8fff', 2, !!d._sigDataLink, 'arrow-foh');
-      }
-
-      // Cable label
-      var mx=(sp.mid.x+dp.mid.x)/2, my=(sp.mid.y+dp.mid.y)/2-4;
-      var cLabel = '';
-      if (info.cdef) {
-        var lv=parseFloat((d.cable_in||d.cable||'').split('-').slice(1).join('-'));
-        var ld=info.cdef.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
-        cLabel=info.cdef.label+' '+(ld?ld.lbl:lv+'m');
-        if (d._sigDataLink) cLabel=info.cdef.label+' '+(ld?ld.lbl:lv+'m')+' ⟷';
-      } else { cLabel='+ set cable'; }
-      var lbCol = sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#888':'#55606e';
-      if(isFoh) lbCol='var(--accent)';
-      if(hasAdap) lbCol='var(--warn)';
-      // Override with cable custom color if set
-      if (info.cdef && info.cdef.color) lbCol = info.cdef.color;
-      var lw=cLabel.length*5.5+8;
-      labelHtml += '<rect x="'+(mx-lw/2)+'" y="'+(my-8)+'" width="'+lw+'" height="15"'
-        +' rx="3" fill="rgba(17,19,24,.9)" stroke="'+lbCol+'" stroke-width="1.2"'
-        +' style="cursor:pointer" onclick="nodeEdgeClick(event,'+gi+')" />';
-      labelHtml += '<text x="'+mx+'" y="'+my+'" text-anchor="middle" dominant-baseline="middle"'
-        +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
-        +' style="cursor:pointer;pointer-events:none">'+cLabel+'</text>';
-      if(hasAdap){
-        labelHtml+='<text x="'+mx+'" y="'+(my+16)+'" text-anchor="middle"'
-          +' fill="#f5a623" font-size="8" font-family="Share Tech Mono,monospace">⚠ '+info.adapterNote+'</text>';
-      }
-    }
-    // Clean up temp render flags
-    delete d._sigDataLink;
-    if (d._synthSource) { d.source = ''; delete d._synthSource; }
-
-    // ── Separate power source (source_power field) ──
-    if (d.source_power && d.source_power !== d.source) {
-      var spp = _ports(d.source_power); if(!spp) return;
-      var pwrCableType = cableSignalType(d.cable_power_in||'');
-      edgeHtml += _routedPath(spp.pwrOut.x,spp.pwrOut.y, dp.pwrIn.x,dp.pwrIn.y, '#f5a623', 2, true, 'arrow-warn');
-      if(d.cable_power_in){
-        var pckey=(d.cable_power_in).split('-')[0];
-        var pcdef=CABLE_TYPES.find(function(ct){return ct.key===pckey;});
-        if(pcdef){
-          var plv=parseFloat(d.cable_power_in.split('-').slice(1).join('-'));
-          var pld=pcdef.lengths.find(function(l){return Math.abs(l.val-plv)<0.01;});
-          var pLbl=pcdef.label+' '+(pld?pld.lbl:plv+'m');
-          var pmx=(spp.pwrOut.x+dp.pwrIn.x)/2, pmy=(spp.pwrOut.y+dp.pwrIn.y)/2-4;
-          var plw=pLbl.length*5.5+8;
-          labelHtml+='<rect x="'+(pmx-plw/2)+'" y="'+(pmy-8)+'" width="'+plw+'" height="15"'
-            +' rx="3" fill="rgba(17,19,24,.9)" stroke="#f5a623" stroke-width="1" style="pointer-events:none"/>';
-          labelHtml+='<text x="'+pmx+'" y="'+pmy+'" text-anchor="middle" dominant-baseline="middle"'
-            +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'
-            +' style="pointer-events:none">'+pLbl+'</text>';
-        }
-      }
-    }
-
-        // ── Separate data source (source_data field) ──
-    if (d.source_data && d.source_data !== d.source) {
-      // PSUs have no data output — never draw a data edge from a PSU
-      var _sdDev=null; _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source_data)_sdDev=x;});});
-      if (!(_sdDev && _sdDev.type===TYPE_PSU)) {
-        var sdp = _ports(d.source_data); if(sdp) {
-          edgeHtml += _edgeData(sdp.dataOut.x,sdp.dataOut.y, dp.dataIn.x,dp.dataIn.y, true,'arrow-foh');
-          if(d.cable_data_in){
-            var dckey=d.cable_data_in.split('-')[0];
-            var dcdef=CABLE_TYPES.find(function(ct){return ct.key===dckey;});
-            if(dcdef){
-              var dlv=parseFloat(d.cable_data_in.split('-').slice(1).join('-'));
-              var dld=dcdef.lengths.find(function(l){return Math.abs(l.val-dlv)<0.01;});
-              var dLbl2=dcdef.label+' '+(dld?dld.lbl:dlv+'m');
-              var dmx=(sdp.dataOut.x+dp.dataIn.x)/2, dmy=(sdp.dataOut.y+dp.dataIn.y)/2-4;
-              var dlw2=dLbl2.length*5.5+8;
-              labelHtml+='<rect x="'+(dmx-dlw2/2)+'" y="'+(dmy-8)+'" width="'+dlw2+'" height="15"'                +' rx="3" fill="rgba(17,19,24,.9)" stroke="#5b8fff" stroke-width="1" style="pointer-events:none"/>';
-              labelHtml+='<text x="'+dmx+'" y="'+dmy+'" text-anchor="middle" dominant-baseline="middle"'                +' fill="#fff" font-size="9" font-family="Share Tech Mono,monospace"'                +' style="pointer-events:none">'+dLbl2+'</text>';
-            }
-          }
+      // ── SEPARATE data line ──────────────────────────────────────────────
+      if (datSrcId) {
+        var sp = _ports(datSrcId); if(!sp) {}
+        else {
+          var isFoh2 = (datSrcId==='FOH');
+          var noCable2 = !datCable;
+          var col2 = _lbCol('data', datCable);
+          var spSpec2 = _devSpec(datSrcId)||{};
+          // Only draw from data_out port if source has one; else use mid (FOH always has data)
+          var x1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.x : sp.mid.x;
+          var y1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.y : sp.mid.y;
+          if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
+          edgeHtml += '<path d="'+_bezier(x1d,y1d,dp.dataIn.x,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
+            +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
+          if (datCable) _drawLabel(x1d,y1d,dp.dataIn.x,dp.dataIn.y, _cableLabel(datCable), col2, gi);
         }
       }
     }
