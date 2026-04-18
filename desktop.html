@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.914</title>
+<title>WTUniverse · Buildert Editor v3.915</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.914</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.915</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4212,14 +4212,14 @@ function cableSignalType(cableKey) {
 // Returns {pwrIn, dataIn, pwrOut, dataOut} each {x,y}
 function nodePorts(x, y, nH) {
   var NW = NODE_W;
-  var pY = y + nH * 0.38;   // power port y (upper third)
-  var dY = y + nH * 0.68;   // data port y  (lower third)
+  // Outputs on TOP (exit upward), Inputs on BOTTOM (enter from below)
+  // Horizontally centred: pwr slightly left, data slightly right
   return {
-    pwrIn:  {x: x,      y: pY},
-    dataIn: {x: x,      y: dY},
-    pwrOut: {x: x + NW, y: pY},
-    dataOut:{x: x + NW, y: dY},
-    mid:    {x: x + NW/2, y: y + nH/2}
+    pwrIn:  {x: x + NW * 0.35, y: y + nH},   // bottom-left
+    dataIn: {x: x + NW * 0.65, y: y + nH},   // bottom-right
+    pwrOut: {x: x + NW * 0.35, y: y},         // top-left
+    dataOut:{x: x + NW * 0.65, y: y},         // top-right
+    mid:    {x: x + NW/2,      y: y + nH/2}
   };
 }
 
@@ -4381,36 +4381,40 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d){
-    // Combo cable visualization:
-    // [SRC pwrOut]--amber--\                   /--amber-->[DST pwrIn]
-    //                       \--grey stem--grey/
-    // [SRC dataOut]--blue---/                  \--blue--->[DST dataIn]
+    // Combo cable: exits both pwr+data ports, runs as single stem, enters both pwr+data ports
+    // Uses bezier curves for natural look.
     var dash = hasAdap ? ' stroke-dasharray="5,3"' : '';
     var hasDualSrc = (x1d !== undefined);
-    // Source short branches exit from pwr and data ports, meet 20px outside the node
-    var srcMidX = hasDualSrc ? (x1p + x1d) / 2 : x1p;
-    var srcMidY = hasDualSrc ? (Math.min(y1p, y1d) - 20) : (y1p - 20);
-    // Destination split point: 20px before entering the destination node
-    var dstMidX = (x2p + x2d) / 2;
-    var dstMidY = Math.min(y2p, y2d) - 20;
-    // Route midpoint (horizontal routing)
-    var routeY = Math.min(srcMidY, dstMidY) - 30;
-    // Source exit branches
+
+    // Source merge point: 30px above source node top (ports exit from top)
+    var srcMX = hasDualSrc ? (x1p + x1d) / 2 : x1p;
+    var srcMY = Math.min(y1p, hasDualSrc ? y1d : y1p) - 30;
+
+    // Dest split point: 30px above dest node top (ports enter from bottom,
+    // but since we now have inputs at bottom, ports are at y2p=y2d=node.y+nH)
+    // Cables travel UP from source tops → stem → DOWN into dest bottoms
+    var dstMX = (x2p + x2d) / 2;
+    // Route: go UP from source, cross horizontally, come DOWN to dest
+    var midY = Math.min(srcMY, y1p, y2p) - 40;
+
+    // Short amber branch: pwrOut → merge (bezier)
     var sPwr = hasDualSrc
-      ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+(srcMidY+8)+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' opacity="0.85"/>'
+      ? '<path d="M'+x1p+','+y1p+' C'+x1p+','+(srcMY-20)+' '+srcMX+','+(srcMY-20)+' '+srcMX+','+srcMY+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' opacity="0.85"/>'
       : '';
+    // Short blue branch: dataOut → merge (bezier)
     var sDat = hasDualSrc
-      ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+(srcMidY+8)+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' opacity="0.85"/>'
+      ? '<path d="M'+x1d+','+y1d+' C'+x1d+','+(srcMY-20)+' '+srcMX+','+(srcMY-20)+' '+srcMX+','+srcMY+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' opacity="0.85"/>'
       : '';
-    var sMerge = hasDualSrc
-      ? '<path d="M'+x1p+','+(srcMidY+8)+' L'+x1p+','+srcMidY+' L'+x1d+','+srcMidY+' L'+x1d+','+(srcMidY+8)+'" fill="none" stroke="#8899bb" stroke-width="1.5" opacity="0.6"/>'
-      : '';
-    // Main grey stem from source merge to dest split (orthogonal)
-    var stem = '<path d="M'+srcMidX+','+srcMidY+' L'+srcMidX+','+routeY+' L'+dstMidX+','+routeY+' L'+dstMidX+','+dstMidY+'" fill="none" stroke="#8899bb" stroke-width="2.8"'+dash+' opacity="0.85"/>';
-    // Destination split branches
-    var dPwr = '<path d="M'+dstMidX+','+dstMidY+' L'+x2p+','+dstMidY+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="1.8"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dDat = '<path d="M'+dstMidX+','+dstMidY+' L'+x2d+','+dstMidY+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="1.8"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
-    return sPwr+sDat+sMerge+stem+dPwr+dDat;
+
+    // Main grey stem: merge → route → dest split (bezier horizontal S)
+    var stem = '<path d="M'+srcMX+','+srcMY+' C'+srcMX+','+(midY)+' '+dstMX+','+(midY)+' '+dstMX+','+(y2p-30)+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.85"/>';
+
+    // Amber branch: stem end → pwrIn (bezier)
+    var dPwr = '<path d="M'+dstMX+','+(y2p-30)+' C'+dstMX+','+(y2p-10)+' '+x2p+','+(y2p-10)+' '+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    // Blue branch: stem end → dataIn (bezier)
+    var dDat = '<path d="M'+dstMX+','+(y2p-30)+' C'+dstMX+','+(y2p-10)+' '+x2d+','+(y2p-10)+' '+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+
+    return sPwr+sDat+stem+dPwr+dDat;
   }
 
   // ── Draw edges in order: power first, data, combo ──
@@ -4689,63 +4693,64 @@ function renderNodeView() {
       var BG_COL = 'rgba(10,12,15,0.6)';
 
       var PORT_W = 7, PORT_H = 11;
-      // Left side (inputs): pwr at y=nH*0.35, data at y=nH*0.65
-      var pwrInY  = nH * 0.35 - PORT_H/2;
-      var dataInY = nH * 0.65 - PORT_H/2;
-      // Right side (outputs): same y positions
-      var pwrOutY  = pwrInY;
-      var dataOutY = dataInY;
+      // BOTTOM: inputs; TOP: outputs — centered horizontally
+      var pwrInX   = NODE_W * 0.35;
+      var dataInX  = NODE_W * 0.65;
+      var pwrOutX  = NODE_W * 0.35;
+      var dataOutX = NODE_W * 0.65;
 
       // Power IN port (left side)
       if (hasPwrIn) {
         var piCol = pwrInConn ? P_COL : BG_COL;
         var piStr = pwrInConn ? P_COL : P_COL;
-        nodeHtml += '<rect x="-'+PORT_W+'" y="'+pwrInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(pwrInX-PORT_H/2)+'" y="'+(nH-PORT_W)+'" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+piCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Pwr In: '+sp.pwr_in+(pwrInConn?' — connected':' — not connected')+'"/>';
-        nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(pwrInY+PORT_H/2)+'" dominant-baseline="middle"'
-          +' text-anchor="end" fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+        nodeHtml += '<text x="'+(pwrInX)+'" y="'+(nH+PORT_W+8)+'" dominant-baseline="hanging"'
+          +' text-anchor="middle" fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
           +' style="pointer-events:none">'+sp.pwr_in+'</text>';
       }
       // Data IN port (left side)
       if (hasDataIn) {
         var diCol = dataInConn ? D_COL : BG_COL;
-        nodeHtml += '<rect x="-'+PORT_W+'" y="'+dataInY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(dataInX-PORT_H/2)+'" y="'+(nH-PORT_W)+'" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+diCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Data In: '+sp.data_in+(dataInConn?' — connected':' — not connected')+'"/>';
-        nodeHtml += '<text x="-'+(PORT_W+2)+'" y="'+(dataInY+PORT_H/2)+'" dominant-baseline="middle"'
-          +' text-anchor="end" fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+        nodeHtml += '<text x="'+(dataInX)+'" y="'+(nH+PORT_W+8)+'" dominant-baseline="hanging"'
+          +' text-anchor="middle" fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
           +' style="pointer-events:none">'+sp.data_in+'</text>';
       }
       // Power OUT port (right side)
       if (hasPwrOut) {
         var poCol = pwrOutConns>0 ? P_COL : BG_COL;
-        nodeHtml += '<rect x="'+NODE_W+'" y="'+pwrOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(pwrOutX-PORT_H/2)+'" y="0" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+poCol+'" stroke="'+P_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Pwr Out: '+sp.pwr_out+' — '+pwrOutConns+' connected"/>';
-        nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(pwrOutY+PORT_H/2)+'" dominant-baseline="middle"'
-          +' fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+        nodeHtml += '<text x="'+(pwrOutX)+'" y="-10" dominant-baseline="auto"'
+          +' text-anchor="middle" fill="'+P_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
           +' style="pointer-events:none">'+sp.pwr_out+'</text>';
       }
       // Data OUT port (right side)
       if (hasDataOut) {
         var doCol = dataOutConns>0 ? D_COL : BG_COL;
-        nodeHtml += '<rect x="'+NODE_W+'" y="'+dataOutY+'" width="'+PORT_W+'" height="'+PORT_H+'" rx="2"'
+        nodeHtml += '<rect x="'+(dataOutX-PORT_H/2)+'" y="0" width="'+PORT_H+'" height="'+PORT_W+'" rx="2"'
           +' fill="'+doCol+'" stroke="'+D_COL+'" stroke-width="1.5" style="pointer-events:none"'
           +' title="Data Out: '+sp.data_out+' — '+dataOutConns+' connected"/>';
-        nodeHtml += '<text x="'+(NODE_W+PORT_W+2)+'" y="'+(dataOutY+PORT_H/2)+'" dominant-baseline="middle"'
-          +' fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
+        nodeHtml += '<text x="'+(dataOutX)+'" y="-10" dominant-baseline="auto"'
+          +' text-anchor="middle" fill="'+D_COL+'" font-size="7" font-family="Share Tech Mono,monospace"'
           +' style="pointer-events:none">'+sp.data_out+'</text>';
       }
     }
 
-    // Output count warning for distros/PSU
+    // Output count: show on distros/PSUs always (red if over capacity)
     var actualOut = devices.filter(function(x){return x.source===id||x.source_power===id||x.source_data===id;}).length;
     var specOut2 = (sp&&sp.outputs!=null) ? sp.outputs : null;
-    if (specOut2!==null && actualOut > specOut2) {
-      nodeHtml += '<text x="'+(NODE_W/2)+'" y="-14" text-anchor="middle"'
-        +' fill="#ff4d4d" font-size="8" font-family="Share Tech Mono,monospace"'
-        +' style="pointer-events:none">\u26a0 '+actualOut+'/'+specOut2+'</text>';
+    if (!isFoh && dev && (dev.type===TYPE_DISTRO||dev.type===TYPE_PSU||actualOut>0)) {
+      var _outCol = (specOut2!==null && actualOut>specOut2) ? '#ff4d4d' : (actualOut>0 ? '#3ddc84' : '#55606e');
+      var _outLbl = actualOut + (specOut2!==null ? '/'+specOut2 : '');
+      nodeHtml += '<text x="'+(NODE_W/2)+'" y="-10" text-anchor="middle"'
+        +' fill="'+_outCol+'" font-size="9" font-weight="700" font-family="Share Tech Mono,monospace"'
+        +' style="pointer-events:none">'+_outLbl+' \u2191</text>';
     }
     nodeHtml += '</g>';
   });
