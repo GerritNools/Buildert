@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.922</title>
+<title>WTUniverse · Buildert Editor v3.923</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.922</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.923</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4283,7 +4283,7 @@ function _renderMemos() {
     el.dataset.id = memo.id;
     el.style.cssText = 'position:absolute;z-index:30;'
       +'left:'+(memo.x*_nodeScale+_nodePanX)+'px;top:'+(memo.y*_nodeScale+_nodePanY)+'px;'
-      +'width:180px;background:#fff;color:#1a1a1a;'
+      +'width:130px;background:#fff;color:#1a1a1a;'
       +'border-radius:3px;border:1px solid #bbb;box-shadow:2px 4px 12px rgba(0,0,0,.35);'
       +'padding:0;cursor:move;user-select:none;';
     el.innerHTML = '<div class="memo-header" style="background:#1a1a1a;padding:5px 9px;display:flex;justify-content:space-between;align-items:center;border-radius:2px 2px 0 0;cursor:move">'
@@ -4452,10 +4452,11 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    // Ports are on top (outputs) and bottom (inputs).
-    // Route: exit UPWARD, curve across, enter DOWNWARD.
-    var dy = y2 - y1;
-    var offy = Math.max(Math.abs(dy)*0.5, Math.abs(x2-x1)*0.3, 50);
+    // Ports on top (outputs) and bottom (inputs).
+    // Control points: pull hard UP from source, hard DOWN into dest.
+    // Use at least 60px vertical offset or 60% of total span, whichever is larger.
+    var dist = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+    var offy = Math.max(dist * 0.55, 70);
     return 'M'+x1+','+y1+' C'+x1+','+(y1-offy)+' '+x2+','+(y2+offy)+' '+x2+','+y2;
   }
 
@@ -4611,45 +4612,36 @@ function renderNodeView() {
       var _zhuSp = _ports(_zhuSrc); if(!_zhuSp) return;
       var _zhuCols = ['#ff4d4d','#ff9800','#ffe000','#4caf50','#2196f3','#9c27b0','#ff69b4','#00d4ff'];
       var _zhuX1=_zhuSp.pwrOut.x, _zhuY1=_zhuSp.pwrOut.y, _zhuX2=dp.pwrIn.x, _zhuY2=dp.pwrIn.y;
-        // Multicoloured rope: thick base + coloured dashes
+        // White rope with rainbow flags
       var _zhuPath = _bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2);
-      // Dark rope base
-      edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#222" stroke-width="5" opacity="0.35"/>';
-      // Rainbow segments
-      var _segLen=14, _total=_zhuCols.length*_segLen;
-      _zhuCols.forEach(function(c,i){
-        edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="'+c+'" stroke-width="3.5"'
-          +' stroke-dasharray="'+_segLen+','+(_total-_segLen)+'" stroke-dashoffset="'+(-i*_segLen)+'" opacity="1"/>';
-      });
-      // Bunting flags: rectangular flags aligned WITH the cable direction, hanging below
-      var _numFlags = 8;
-      var _dy2 = _zhuY2-_zhuY1;
-      var _offy2 = Math.max(Math.abs(_dy2)*0.5, Math.abs(_zhuX2-_zhuX1)*0.3, 50);
+      // White rope (string)
+      edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>';
+      // Triangle flags hanging DOWN from the rope
+      var _numFlags = 9;
+      var _dist2 = Math.sqrt((_zhuX2-_zhuX1)*(_zhuX2-_zhuX1)+(_zhuY2-_zhuY1)*(_zhuY2-_zhuY1));
+      var _offy2 = Math.max(_dist2*0.55, 70);
       var _cx1=_zhuX1, _cy1=_zhuY1-_offy2, _cx2=_zhuX2, _cy2=_zhuY2+_offy2;
       for (var _fi=0; _fi<_numFlags; _fi++) {
         var _t = (_fi+0.5) / _numFlags;
-        var _mt=1-_t;
+        var _mt = 1-_t;
         // Point on bezier
         var _bx=_mt*_mt*_mt*_zhuX1+3*_mt*_mt*_t*_cx1+3*_mt*_t*_t*_cx2+_t*_t*_t*_zhuX2;
         var _by=_mt*_mt*_mt*_zhuY1+3*_mt*_mt*_t*_cy1+3*_mt*_t*_t*_cy2+_t*_t*_t*_zhuY2;
-        // Tangent direction (normalised)
+        // Tangent for orientation
         var _tx=3*_mt*_mt*(_cx1-_zhuX1)+6*_mt*_t*(_cx2-_cx1)+3*_t*_t*(_zhuX2-_cx2);
         var _ty=3*_mt*_mt*(_cy1-_zhuY1)+6*_mt*_t*(_cy2-_cy1)+3*_t*_t*(_zhuY2-_cy2);
         var _tlen=Math.sqrt(_tx*_tx+_ty*_ty)||1;
-        var _tux=_tx/_tlen, _tuy=_ty/_tlen; // unit tangent
-        var _pux=-_tuy, _puy=_tux;           // unit perpendicular (rotated 90° = "down" from line)
+        var _tux=_tx/_tlen, _tuy=_ty/_tlen;
+        // Perpendicular pointing "right" relative to travel = downward-ish
+        var _pux=_tuy, _puy=-_tux;  // rotate -90°: right-hand side of travel
+        // Triangle: apex at attachment point on rope, two base corners hanging DOWN
+        var _fw=8, _fh=14;
+        var _apex_x=_bx, _apex_y=_by;
+        var _base_l_x=_bx + _pux*_fh - _tux*_fw/2, _base_l_y=_by + _puy*_fh - _tuy*_fw/2;
+        var _base_r_x=_bx + _pux*_fh + _tux*_fw/2, _base_r_y=_by + _puy*_fh + _tuy*_fw/2;
         var _fc = _zhuCols[_fi % _zhuCols.length];
-        // Flag: rectangle aligned with tangent, hanging 4px below the cable
-        // Top-left and top-right attach to cable line, then drop 12px perpendicular
-        var _fw=10, _fh=12, _gap=4;
-        var _tl_x=_bx+_pux*_gap - _tux*_fw/2, _tl_y=_by+_puy*_gap - _tuy*_fw/2;
-        var _tr_x=_bx+_pux*_gap + _tux*_fw/2, _tr_y=_by+_puy*_gap + _tuy*_fw/2;
-        var _br_x=_tr_x+_pux*_fh, _br_y=_tr_y+_puy*_fh;
-        var _bl_x=_tl_x+_pux*_fh, _bl_y=_tl_y+_puy*_fh;
-        edgeHtml += '<polygon points="'+_tl_x+','+_tl_y+' '+_tr_x+','+_tr_y+' '+_br_x+','+_br_y+' '+_bl_x+','+_bl_y+'"'
-          +' fill="'+_fc+'" stroke="rgba(0,0,0,.25)" stroke-width="0.5" opacity="0.95"/>';
-        // Small dot where flag attaches to line
-        edgeHtml += '<circle cx="'+_bx+'" cy="'+_by+'" r="1.5" fill="#333" opacity="0.5"/>';
+        edgeHtml += '<polygon points="'+_apex_x+','+_apex_y+' '+_base_l_x+','+_base_l_y+' '+_base_r_x+','+_base_r_y+'"'
+          +' fill="'+_fc+'" stroke="rgba(255,255,255,.4)" stroke-width="0.5" opacity="0.97"/>';
       }
       return; // skip normal edge drawing for ZHU
     }
@@ -5343,10 +5335,9 @@ function nodePrint() {
     var lines = (memo.text||'').split('\n');
     var boxH = 20 + lines.length * 13;
     clone.insertAdjacentHTML('beforeend',
-      '<rect x="'+mx+'" y="'+my+'" width="160" height="'+boxH+'" rx="2" fill="#fff" stroke="#333" stroke-width="1"/>'
-      +'<rect x="'+mx+'" y="'+my+'" width="160" height="14" rx="2" fill="#1a1a1a"/>'
-      +'<text x="'+(mx+8)+'" y="'+(my+10)+'" font-size="8" fill="#aaa" font-family="monospace" font-weight="700" letter-spacing="2">NOTE</text>'
-      +lines.map(function(l,i){return '<text x="'+(mx+8)+'" y="'+(my+24+i*13)+'" font-size="10" fill="#333" font-family="monospace">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>';}).join('')
+      '<rect x="'+mx+'" y="'+my+'" width="130" height="'+boxH+'" rx="2" fill="#fff" stroke="#222" stroke-width="1"/>'
+      +'<text x="'+(mx+6)+'" y="'+(my+10)+'" font-size="8" fill="#888" font-family="monospace" font-weight="700" letter-spacing="2">NOTE</text>'
+      +'<line x1="'+mx+'" y1="'+(my+14)+'" x2="'+(mx+130)+'" y2="'+(my+14)+'" stroke="#ddd" stroke-width="0.5"/>'
     );
   });
   var svgStr = clone.outerHTML;
@@ -5376,30 +5367,25 @@ function nodePrint() {
   var stageName=(_stages[_currentStageIdx]||{}).name||'';
   var fileTitle=(projName+(stageName?' - '+stageName:'')+' - Node View').replace(/[^a-zA-Z0-9_\- ]/g,'');
   var win = window.open('', '_blank', 'width=1100,height=800');
+  // Embed a small header text inside the SVG at the top so everything prints on 1 page
+  var _hdr = projName + (stageName?' — '+stageName:'')
+    + (_projectMeta.venue?' · '+_projectMeta.venue:'')
+    + (_projectMeta.date?' · '+_projectMeta.date:'')
+    + ' · '+new Date().toLocaleDateString();
+  var _hdrSvg = '<text x="'+(vbX+4)+'" y="'+(vbY-6)+'" font-size="8" font-family="Arial,sans-serif" fill="#555">'+_hdr.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>';
+  svgStr = svgStr.replace(/(<svg[^>]*>)/, '$1'+_hdrSvg);
   win.document.write(
     '<html><head><title>'+fileTitle+'</title>'
     + '<style>'
-    + '@page { size: A4 landscape; margin: 8mm; }'
-    + 'body { margin: 0; padding: 8px 12px; background: #fff; font-family: Arial, sans-serif; }'
-    + '.hdr { display:flex; align-items:baseline; gap:16px; margin-bottom:6px; border-bottom:2px solid #333; padding-bottom:4px; }'
-    + 'h2 { font-size:15px; margin:0; color:#000; font-weight:900; letter-spacing:1px; }'
-    + '.meta { font-size:10px; color:#555; }'
-    + '.fn  { font-size:9px; color:#999; margin-bottom:4px; font-family:monospace; }'
-    + 'svg { display:block; width:100%; height:auto; }'
-    + '@media print { svg { width:100%; height:calc(100vh - 60px); page-break-inside:avoid; } }'
-    + '@media print { body{-webkit-print-color-adjust:exact;print-color-adjust:exact} .fn{display:none} }'
+    + '@page { size: A4 landscape; margin: 5mm; }'
+    + 'body { margin:0; padding:0; background:#fff; overflow:hidden; }'
+    + 'svg { display:block; width:100vw; height:100vh; }'
+    + '@media print { html,body{width:100%;height:100%} svg{width:100%;height:100%;} body{-webkit-print-color-adjust:exact;print-color-adjust:exact} }'
     + '</style></head><body>'
-    + '<div class="hdr"><h2>'+projName.toUpperCase()+'</h2>'
-    + '<span class="meta">'+( stageName?'Stage: '+stageName+' &nbsp;&middot;&nbsp; ':'')
-    +  (_projectMeta.venue?'Venue: '+_projectMeta.venue+' &nbsp;&middot;&nbsp; ':'')
-    +  (_projectMeta.date?'Date: '+_projectMeta.date+' &nbsp;&middot;&nbsp; ':'')
-    + devices.length+' devices &nbsp;&middot;&nbsp; Printed: '+new Date().toLocaleString()+'</span></div>'
-    + '<div class="fn">Suggested filename: <b>'+fileTitle+'.pdf</b></div>'
     + svgStr
     + '</body></html>'
   );
-  win.document.close();
-  win.focus();
+  win.document.close();  win.focus();
   setTimeout(function() { win.print(); win.close(); }, 700);
 }
 
