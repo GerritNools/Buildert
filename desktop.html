@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.932</title>
+<title>WTUniverse · Buildert Editor v3.933</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.932</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.933</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4429,26 +4429,19 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    // Exit UP from source output port, enter DOWN into dest input port.
-    // Control points use MIDPOINT X so cables diverge horizontally right away
-    // instead of climbing vertically and only then bending.
+    // Horizontal S-curve: exits sideways from source, enters sideways at dest.
+    // This spreads cables apart immediately rather than climbing vertically.
     var dx = x2 - x1;
     var dy = y2 - y1;
     var dist = Math.sqrt(dx*dx + dy*dy);
-    // Vertical offset: just enough to exit/enter the ports cleanly
-    var vOff = Math.max(40, dist * 0.25);
-    // Horizontal midpoint
-    var midX = (x1 + x2) / 2;
-    // CP1: start at source X, pull toward midX — governs how fast cable turns
-    // CP2: arrive at dest X, come from midX
-    // Using midX for both control points makes cable go straight to middle, then curve to dest
-    // This spreads cables out proportionally to their horizontal distance
-    var cp1x = x1 + (midX - x1) * 0.8;  // 80% of way to midX from source
-    var cp1y = y1 - vOff;
-    var cp2x = x2 + (midX - x2) * 0.8;  // 80% of way to midX from dest
-    var cp2y = y2 + vOff;
-    return 'M'+x1+','+y1+' C'+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+x2+','+y2;
+    // Horizontal offset for control points: the further apart, the more horizontal pull
+    var offx = Math.max(Math.abs(dx) * 0.55, Math.abs(dy) * 0.35, 60);
+    // If going right: CP1 pulls right from source, CP2 pulls left into dest
+    // If going left: reverse. This creates proper S-curves.
+    var sx = dx >= 0 ? 1 : -1;
+    return 'M'+x1+','+y1+' C'+(x1+sx*offx)+','+y1+' '+(x2-sx*offx)+','+y2+' '+x2+','+y2;
   }
+
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
     marker=marker||'arrow-warn';
@@ -4607,7 +4600,7 @@ function renderNodeView() {
     var _nSiblings = _childCount[_src0] || 1;
     var _myIdx = _childIdx[d.device_id] !== undefined ? _childIdx[d.device_id] : 0;
     // Spread from -half to +half across the node width, capped at 50px total spread
-    var _spread = Math.min(50, NODE_W * 0.7);
+    var _spread = Math.min(Math.max(80, _nSiblings * 25), 300); // 25px per sibling, up to 300px
     var _spreadOffset = _nSiblings > 1 ? (_myIdx / (_nSiblings - 1) - 0.5) * _spread : 0;
 
     // ── Resolve pwr and data sources ─────────────────────────────────────
@@ -4708,7 +4701,7 @@ function renderNodeView() {
           var isFoh = (pwrSrcId==='FOH');
           var noCable = !pwrCable;
           var col = _lbCol('power', pwrCable);
-          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x + _spreadOffset, y2=dp.pwrIn.y;
+          var x1=sp.pwrOut.x + _spreadOffset*0.5, y1=sp.pwrOut.y, x2=dp.pwrIn.x + _spreadOffset, y2=dp.pwrIn.y;
           if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
           edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
             +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
@@ -4732,7 +4725,8 @@ function renderNodeView() {
           var y1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.y : sp.mid.y;
           if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
           var _datDestX = dp.dataIn.x + _spreadOffset;
-          edgeHtml += '<path d="'+_bezier(x1d,y1d,_datDestX,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
+          var x1d_spread = x1d + _spreadOffset*0.5;
+          edgeHtml += '<path d="'+_bezier(x1d_spread,y1d,_datDestX,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
             +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
           if (!isFoh2) {
             var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
