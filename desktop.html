@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.927</title>
+<title>WTUniverse · Buildert Editor v3.928</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.927</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.928</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4574,11 +4574,30 @@ function renderNodeView() {
     }
   });
 
+  // Pre-compute child index for spread offset: children of same source get different offsets
+  var _childIdx = {};  // device_id → index among siblings sharing same source
+  var _childCount = {};
+  devices.forEach(function(d) {
+    if (!d.device_id) return;
+    var src = d.source_power || d.source_data || d.source || '';
+    if (!src) return;
+    if (!_childCount[src]) _childCount[src] = 0;
+    _childIdx[d.device_id] = _childCount[src];
+    _childCount[src]++;
+  });
+
   devices.forEach(function(d){
     if (!d.device_id) return;
     var dp = _ports(d.device_id); if(!dp) return;
     var gi = devices.indexOf(d);
     var dSpec = _devSpec(d.device_id)||{};
+    // Spread offset: fan cables based on sibling index to avoid all converging at one point
+    var _src0 = d.source_power || d.source_data || d.source || '';
+    var _nSiblings = _childCount[_src0] || 1;
+    var _myIdx = _childIdx[d.device_id] !== undefined ? _childIdx[d.device_id] : 0;
+    // Spread from -half to +half across the node width, capped at 50px total spread
+    var _spread = Math.min(50, NODE_W * 0.7);
+    var _spreadOffset = _nSiblings > 1 ? (_myIdx / (_nSiblings - 1) - 0.5) * _spread : 0;
 
     // ── Resolve pwr and data sources ─────────────────────────────────────
     // Power: explicit source_power, else legacy source (for non-distros)
@@ -4678,7 +4697,7 @@ function renderNodeView() {
           var isFoh = (pwrSrcId==='FOH');
           var noCable = !pwrCable;
           var col = _lbCol('power', pwrCable);
-          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x, y2=dp.pwrIn.y;
+          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x + _spreadOffset, y2=dp.pwrIn.y;
           if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
           edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
             +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
@@ -4701,11 +4720,12 @@ function renderNodeView() {
           var x1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.x : sp.mid.x;
           var y1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.y : sp.mid.y;
           if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
-          edgeHtml += '<path d="'+_bezier(x1d,y1d,dp.dataIn.x,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
+          var _datDestX = dp.dataIn.x + _spreadOffset;
+          edgeHtml += '<path d="'+_bezier(x1d,y1d,_datDestX,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
             +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
           if (!isFoh2) {
             var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
-            _drawLabel(x1d,y1d,dp.dataIn.x,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
+            _drawLabel(x1d,y1d,_datDestX,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
           }
         }
       }
@@ -5129,10 +5149,7 @@ function nodeDoubleClick(id) {
   if (id === 'FOH') return;
   var gi = devices.findIndex(function(d){ return d.device_id === id; });
   if (gi < 0) return;
-  // Ensure the modal overlay is not hidden by any tab-specific CSS
-  var overlay = document.getElementById('modal-device');
-  if (overlay) overlay.style.display = 'flex';
-  openEditModal(gi);
+  openEditModal(gi); // classList.add('open') in openEditModal handles visibility
 }
 
 function nodeEdgeClick(e, gi) {
@@ -7068,9 +7085,13 @@ function _renderDiagSVG() {
     var marker = _diagSrcId==='FOH' ? 'darrow-foh' : hasCable ? (hasAdap?'darrow-warn':'darrow-ok') : 'darrow-muted';
 
     var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
-    var cy=(y1+y2)/2, mx=(x1+x2)/2, my=(y1+y2)/2-4;
+    var mx=(x1+x2)/2, my=(y1+y2)/2-4;
+    // Use same bezier formula as node view for consistent appearance
+    var _ddx = x2-x1, _ddist = Math.sqrt(_ddx*_ddx+(y2-y1)*(y2-y1));
+    var _darchH = Math.max(Math.abs(_ddx)*0.6, _ddist*0.45, 60);
+    var _dbezier = 'M'+x1+','+y1+' C'+x1+','+(y1-_darchH)+' '+x2+','+(y2+_darchH)+' '+x2+','+y2;
 
-    edgeHtml += '<path d="M'+x1+','+y1+' C'+x1+','+cy+' '+x2+','+cy+' '+x2+','+y2+'"'
+    edgeHtml += '<path d="'+_dbezier+'"'
       +' fill="none" stroke="'+stroke+'" stroke-width="2.5"'
       +' marker-end="url(#'+marker+')"'+(hasAdap?' stroke-dasharray="5,3"':'')+'/>';
 
