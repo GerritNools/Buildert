@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.921</title>
+<title>WTUniverse · Buildert Editor v3.922</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.921</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.922</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4283,20 +4283,15 @@ function _renderMemos() {
     el.dataset.id = memo.id;
     el.style.cssText = 'position:absolute;z-index:30;'
       +'left:'+(memo.x*_nodeScale+_nodePanX)+'px;top:'+(memo.y*_nodeScale+_nodePanY)+'px;'
-      +'width:160px;min-height:80px;background:'+memo.color+';'
-      +'border-radius:4px;box-shadow:2px 3px 10px rgba(0,0,0,.5);'
-      +'padding:0;cursor:move;user-select:none;font-family:var(--mono);';
-    el.innerHTML = '<div style="background:rgba(0,0,0,.15);padding:4px 8px;display:flex;justify-content:space-between;align-items:center;border-radius:4px 4px 0 0;cursor:move">'
-      +'<span style="font-size:9px;font-weight:700;color:rgba(0,0,0,.5);letter-spacing:1px">MEMO</span>'
-      +'<div style="display:flex;gap:4px">'
-      +['#ffe066','#b3f5b3','#b3d4ff','#ffb3c6'].map(function(c){
-        return '<div data-mid="'+memo.id+'" data-col="'+c+'" onclick="memoSetColor(this.dataset.mid,this.dataset.col)" '
-          +'style="width:10px;height:10px;background:'+c+';border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.2)"></div>';
-      }).join('')
-      +'<span data-mid="'+memo.id+'" onclick="deleteNodeMemo(this.dataset.mid)" style="cursor:pointer;font-size:11px;color:rgba(0,0,0,.4);margin-left:2px">✕</span>'
-      +'</div></div>'
+      +'width:180px;background:#fff;color:#1a1a1a;'
+      +'border-radius:3px;border:1px solid #bbb;box-shadow:2px 4px 12px rgba(0,0,0,.35);'
+      +'padding:0;cursor:move;user-select:none;';
+    el.innerHTML = '<div class="memo-header" style="background:#1a1a1a;padding:5px 9px;display:flex;justify-content:space-between;align-items:center;border-radius:2px 2px 0 0;cursor:move">'
+      +'<span style="font-size:8px;font-weight:700;color:#aaa;letter-spacing:2px;font-family:monospace">NOTE</span>'
+      +'<span data-mid="'+memo.id+'" onclick="deleteNodeMemo(this.dataset.mid)" style="cursor:pointer;font-size:12px;color:#aaa;line-height:1">✕</span>'
+      +'</div>'
       +'<div contenteditable="true" spellcheck="false" '
-      +'style="padding:8px;font-size:11px;color:#333;min-height:56px;outline:none;white-space:pre-wrap;word-break:break-word" '
+      +'style="padding:9px 10px;font-size:11px;color:#111;min-height:60px;outline:none;white-space:pre-wrap;word-break:break-word;font-family:Georgia,serif;line-height:1.5" '
       +'data-mid="'+memo.id+'" onblur="memoSaveText(this.dataset.mid,this.innerText)">'
       + (memo.text||'').replace(/</g,'&lt;') + '</div>';
     // Drag to move
@@ -4626,32 +4621,35 @@ function renderNodeView() {
         edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="'+c+'" stroke-width="3.5"'
           +' stroke-dasharray="'+_segLen+','+(_total-_segLen)+'" stroke-dashoffset="'+(-i*_segLen)+'" opacity="1"/>';
       });
-      // Bunting flags: small pennants hanging from the cable
-      // Approximate points along the bezier using t interpolation
-      var _numFlags = 7;
+      // Bunting flags: rectangular flags aligned WITH the cable direction, hanging below
+      var _numFlags = 8;
+      var _dy2 = _zhuY2-_zhuY1;
+      var _offy2 = Math.max(Math.abs(_dy2)*0.5, Math.abs(_zhuX2-_zhuX1)*0.3, 50);
+      var _cx1=_zhuX1, _cy1=_zhuY1-_offy2, _cx2=_zhuX2, _cy2=_zhuY2+_offy2;
       for (var _fi=0; _fi<_numFlags; _fi++) {
-        var _t = (_fi+1) / (_numFlags+1);
-        // Cubic bezier point: B(t) using control points from _bezier formula
-        var _dy2 = _zhuY2-_zhuY1;
-        var _offy2 = Math.max(Math.abs(_dy2)*0.5, Math.abs(_zhuX2-_zhuX1)*0.3, 50);
-        var _cx1=_zhuX1, _cy1=_zhuY1-_offy2, _cx2=_zhuX2, _cy2=_zhuY2+_offy2;
+        var _t = (_fi+0.5) / _numFlags;
         var _mt=1-_t;
+        // Point on bezier
         var _bx=_mt*_mt*_mt*_zhuX1+3*_mt*_mt*_t*_cx1+3*_mt*_t*_t*_cx2+_t*_t*_t*_zhuX2;
         var _by=_mt*_mt*_mt*_zhuY1+3*_mt*_mt*_t*_cy1+3*_mt*_t*_t*_cy2+_t*_t*_t*_zhuY2;
-        // Tangent for flag angle
+        // Tangent direction (normalised)
         var _tx=3*_mt*_mt*(_cx1-_zhuX1)+6*_mt*_t*(_cx2-_cx1)+3*_t*_t*(_zhuX2-_cx2);
         var _ty=3*_mt*_mt*(_cy1-_zhuY1)+6*_mt*_t*(_cy2-_cy1)+3*_t*_t*(_zhuY2-_cy2);
         var _tlen=Math.sqrt(_tx*_tx+_ty*_ty)||1;
-        // Perpendicular direction (rotate 90°)
-        var _px=-_ty/_tlen, _py=_tx/_tlen;
+        var _tux=_tx/_tlen, _tuy=_ty/_tlen; // unit tangent
+        var _pux=-_tuy, _puy=_tux;           // unit perpendicular (rotated 90° = "down" from line)
         var _fc = _zhuCols[_fi % _zhuCols.length];
-        var _fw=7, _fh=10;
-        // Pennant: triangle hanging perpendicular to cable
-        var _p1x=_bx+_px*3, _p1y=_by+_py*3;
-        var _p2x=_bx+_px*(_fh+3), _p2y=_by+_py*(_fh+3);
-        var _p3x=_bx+_px*_fh+_tx/_tlen*_fw, _p3y=_by+_py*_fh+_ty/_tlen*_fw;
-        edgeHtml += '<polygon points="'+_p1x+','+_p1y+' '+_p2x+','+_p2y+' '+_p3x+','+_p3y+'"'
-          +' fill="'+_fc+'" stroke="rgba(0,0,0,.3)" stroke-width="0.5" opacity="0.95"/>';
+        // Flag: rectangle aligned with tangent, hanging 4px below the cable
+        // Top-left and top-right attach to cable line, then drop 12px perpendicular
+        var _fw=10, _fh=12, _gap=4;
+        var _tl_x=_bx+_pux*_gap - _tux*_fw/2, _tl_y=_by+_puy*_gap - _tuy*_fw/2;
+        var _tr_x=_bx+_pux*_gap + _tux*_fw/2, _tr_y=_by+_puy*_gap + _tuy*_fw/2;
+        var _br_x=_tr_x+_pux*_fh, _br_y=_tr_y+_puy*_fh;
+        var _bl_x=_tl_x+_pux*_fh, _bl_y=_tl_y+_puy*_fh;
+        edgeHtml += '<polygon points="'+_tl_x+','+_tl_y+' '+_tr_x+','+_tr_y+' '+_br_x+','+_br_y+' '+_bl_x+','+_bl_y+'"'
+          +' fill="'+_fc+'" stroke="rgba(0,0,0,.25)" stroke-width="0.5" opacity="0.95"/>';
+        // Small dot where flag attaches to line
+        edgeHtml += '<circle cx="'+_bx+'" cy="'+_by+'" r="1.5" fill="#333" opacity="0.5"/>';
       }
       return; // skip normal edge drawing for ZHU
     }
@@ -4778,6 +4776,12 @@ function renderNodeView() {
       var sub2Y = sub1 ? 48 : 36;
       nodeHtml += '<text x="10" y="'+sub2Y+'" fill="#7a8694" font-size="11"'
         +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,16)+'</text>';
+      if (dev && dev.notes) {
+        var _notesY = (sub1?60:48);
+        var _notesStr = (dev.notes||'').slice(0,26)+((dev.notes||'').length>26?'…':'');
+        nodeHtml += '<text x="10" y="'+_notesY+'" fill="#f5a623" font-size="9" font-style="italic"'
+          +' font-family="Share Tech Mono,monospace" style="pointer-events:none">📝 '+_notesStr+'</text>';
+      }
     }
     // Status text under LED
     if(!isFoh && st){
@@ -5321,7 +5325,7 @@ function nodePrint() {
   // Set explicit px dimensions so SVG user units → screen px ratio is known
   var printW = 1050, printH = 700; // A4 landscape usable area at 96dpi
   var scaleX = printW / vbW, scaleY = printH / vbH;
-  var printScale = Math.min(scaleX, scaleY, 1); // never enlarge
+  var printScale = Math.min(scaleX, scaleY); // fit to page
   var svgPxW = Math.round(vbW * printScale);
   var svgPxH = Math.round(vbH * printScale);
   clone.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
@@ -5339,8 +5343,9 @@ function nodePrint() {
     var lines = (memo.text||'').split('\n');
     var boxH = 20 + lines.length * 13;
     clone.insertAdjacentHTML('beforeend',
-      '<rect x="'+mx+'" y="'+my+'" width="140" height="'+boxH+'" rx="4" fill="'+memo.color+'" stroke="rgba(0,0,0,.3)" stroke-width="1"/>'
-      +'<text x="'+(mx+8)+'" y="'+(my+13)+'" font-size="9" fill="#555" font-family="monospace" font-weight="700">MEMO</text>'
+      '<rect x="'+mx+'" y="'+my+'" width="160" height="'+boxH+'" rx="2" fill="#fff" stroke="#333" stroke-width="1"/>'
+      +'<rect x="'+mx+'" y="'+my+'" width="160" height="14" rx="2" fill="#1a1a1a"/>'
+      +'<text x="'+(mx+8)+'" y="'+(my+10)+'" font-size="8" fill="#aaa" font-family="monospace" font-weight="700" letter-spacing="2">NOTE</text>'
       +lines.map(function(l,i){return '<text x="'+(mx+8)+'" y="'+(my+24+i*13)+'" font-size="10" fill="#333" font-family="monospace">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>';}).join('')
     );
   });
@@ -5380,7 +5385,8 @@ function nodePrint() {
     + 'h2 { font-size:15px; margin:0; color:#000; font-weight:900; letter-spacing:1px; }'
     + '.meta { font-size:10px; color:#555; }'
     + '.fn  { font-size:9px; color:#999; margin-bottom:4px; font-family:monospace; }'
-    + 'svg { display:block; width:100%; height:auto; max-height:calc(100vh - 80px); }'
+    + 'svg { display:block; width:100%; height:auto; }'
+    + '@media print { svg { width:100%; height:calc(100vh - 60px); page-break-inside:avoid; } }'
     + '@media print { body{-webkit-print-color-adjust:exact;print-color-adjust:exact} .fn{display:none} }'
     + '</style></head><body>'
     + '<div class="hdr"><h2>'+projName.toUpperCase()+'</h2>'
@@ -6249,7 +6255,7 @@ function applyBulkField(field) {
     });
     renderNodeView(); renderTable(); autoSave();
     var _anyOn = selectedGis.some(function(gi){return devices[gi]._zhu;});
-    showToast(_anyOn ? '🎪 ZHU mode ON — we have absolutely no idea! 🎉' : 'ZHU mode off', _anyOn?'ok':'warn');
+    showToast(_anyOn ? '🎪 ZHU mode ON — we have absolutely no idea! 🎉 (press ZHU again to turn off)' : '✓ ZHU mode off', _anyOn?'ok':'warn');
     return;
   }
   renderTable(); autoSave();
@@ -7054,6 +7060,12 @@ function _renderDiagSVG() {
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+sub1+'</text>';
     if (sub2) nodeHtml += '<text x="10" y="'+(sub1?48:36)+'" fill="#7a8694" font-size="11"'
       +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,16)+'</text>';
+      if (dev2 && dev2.notes) {
+        var _dNotesY = (sub1?60:48);
+        var _dNotesStr = (dev2.notes||'').slice(0,26)+((dev2.notes||'').length>26?'…':'');
+        nodeHtml += '<text x="10" y="'+_dNotesY+'" fill="#f5a623" font-size="9" font-style="italic"'
+          +' font-family="Share Tech Mono,monospace" style="pointer-events:none">📝 '+_dNotesStr+'</text>';
+      }
     if (loadW>0) {
       var lwCol=loadW>5000?'#ff4d4d':loadW>2000?'#f5a623':'#3ddc84';
       nodeHtml += '<text x="'+(NW-16)+'" y="'+(nH-6)+'" text-anchor="end" fill="'+lwCol+'"'
