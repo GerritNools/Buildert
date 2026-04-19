@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.930</title>
+<title>WTUniverse · Buildert Editor v3.932</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.930</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.932</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2166,8 +2166,12 @@ function renderTable() {
 
           // ── DATA Source options ──
           var datSrcOpts='<option value="">—</option><option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';
-          devices.filter(function(x){return x.type===TYPE_DISTRO&&x.device_id&&x.device_id!==d.device_id;})
-            .forEach(function(x){ datSrcOpts+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
+          // Show all devices that can provide data (distros, adapters, lasers with data_out)
+          devices.filter(function(x){
+            if (!x.device_id || x.device_id===d.device_id) return false;
+            var _xsp = specsForDevice(x)||{};
+            return _xsp.data_out || x.type===TYPE_DISTRO || x.type===TYPE_ADAPTER;
+          }).forEach(function(x){ datSrcOpts+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
           var onDatSrc='(function(v,gi){'
             +'setField(gi,\'source_data\',v);'
             +'if(v&&!devices[gi].source){setField(gi,\'source\',v);}' // keep legacy source in sync
@@ -2180,7 +2184,7 @@ function renderTable() {
             if(!ct.data_a&&!ct.data_b) return;
             ct.lengths.forEach(function(l){
               var v=ct.key+'-'+l.val;
-              var dm=!devDIn||ct.data_b===devDIn||ct.pwr_b===devDIn;
+              var dm=!devDIn||ct.data_b===devDIn;
               if(dm) datCblOpts+='<option value="'+v+'"'+(d.cable_data_in===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
             });
           });
@@ -4425,19 +4429,25 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    // Ports on top (outputs) and bottom (inputs).
-    // Each cable exits straight UP, then curves horizontally toward destination.
-    // Control point 1: directly above source (so cable exits vertically)
-    // Control point 2: directly above destination (so cable enters vertically)
-    // The height of the "arch" scales with horizontal distance so cables spread early.
+    // Exit UP from source output port, enter DOWN into dest input port.
+    // Control points use MIDPOINT X so cables diverge horizontally right away
+    // instead of climbing vertically and only then bending.
     var dx = x2 - x1;
-    var dist = Math.sqrt(dx*dx + (y2-y1)*(y2-y1));
-    // Arch height: tall enough to clear nodes, proportional to horizontal distance
-    var archH = Math.max(Math.abs(dx) * 0.6, dist * 0.45, 80);
-    // Control points go straight up from each port first, then curve across
-    var cy1 = y1 - archH;   // above source
-    var cy2 = y2 + archH;   // below dest (since dest is at bottom/input)
-    return 'M'+x1+','+y1+' C'+x1+','+cy1+' '+x2+','+cy2+' '+x2+','+y2;
+    var dy = y2 - y1;
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    // Vertical offset: just enough to exit/enter the ports cleanly
+    var vOff = Math.max(40, dist * 0.25);
+    // Horizontal midpoint
+    var midX = (x1 + x2) / 2;
+    // CP1: start at source X, pull toward midX — governs how fast cable turns
+    // CP2: arrive at dest X, come from midX
+    // Using midX for both control points makes cable go straight to middle, then curve to dest
+    // This spreads cables out proportionally to their horizontal distance
+    var cp1x = x1 + (midX - x1) * 0.8;  // 80% of way to midX from source
+    var cp1y = y1 - vOff;
+    var cp2x = x2 + (midX - x2) * 0.8;  // 80% of way to midX from dest
+    var cp2y = y2 + vOff;
+    return 'M'+x1+','+y1+' C'+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+x2+','+y2;
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -8915,11 +8925,15 @@ function populateDataSourceDropdown(currentVal) {
   var excludeId=(document.getElementById('m-device-id-edit')&&document.getElementById('m-device-id-edit').style.display!=='none')
     ?document.getElementById('m-device-id-edit').value:document.getElementById('m-device-id').value;
   sel.innerHTML='<option value="">&#8212; not set &#8212;</option><option value="FOH"'+(currentVal==='FOH'?' selected':'')+'>FOH (controller)</option>';
-  // Data source for distros: upstream distro or FOH only — never a PSU
-  devices.filter(function(x){ return x.type===TYPE_DISTRO && x.device_id && x.device_id!==excludeId; })
-    .forEach(function(x){
-      sel.innerHTML+='<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+( TYPE_ICON[x.type]||'')+' '+x.device_id+'</option>';
-    });
+  // Show all devices that can provide data (have data_out in specs, or distros/adapters)
+  devices.filter(function(x){
+    if (!x.device_id || x.device_id===excludeId) return false;
+    if (x.type===TYPE_PSU) return false;
+    var _xsp = specsForDevice(x)||{};
+    return _xsp.data_out || x.type===TYPE_DISTRO || x.type===TYPE_ADAPTER;
+  }).forEach(function(x){
+    sel.innerHTML+='<option value="'+x.device_id+'"'+(x.device_id===currentVal?' selected':'')+'>'+( TYPE_ICON[x.type]||'')+' '+x.device_id+'</option>';
+  });
   _refreshDataCables();
 }
 function _refreshDataCables() {
