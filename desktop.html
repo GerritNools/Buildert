@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.923</title>
+<title>WTUniverse · Buildert Editor v3.924</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.923</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.924</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -803,13 +803,13 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
       <div>
         <label style="color:#f5a623">&#9889; Pwr source</label>
-        <select id="m-source-power" onchange="_refreshPowerCables();_syncLegacySource()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
+        <select id="m-source-power" onchange="_refreshPowerCables();_onModalPwrCableChange();_syncLegacySource()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; not set &#8212;</option>
         </select>
       </div>
       <div>
         <label style="color:#f5a623">&#9889; Pwr cable</label>
-        <select id="m-cable-power" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
+        <select id="m-cable-power" onchange="_refreshPowerCables();_onModalPwrCableChange()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; none &#8212;</option>
         </select>
       </div>
@@ -2118,10 +2118,10 @@ function renderTable() {
           });
           var onPwrSrc='(function(v,gi){'
             +'setField(gi,\'source_power\',v);'
-            +'if(devices[gi].type!==TYPE_DISTRO){'  // for lasers/smoke: copy pwr source to data source
-            +'  setField(gi,\'source_data\',v);'
-            +'  setField(gi,\'source\',v);'
-            +'} else if(v&&!devices[gi].source){setField(gi,\'source\',v);}'
+            // Always copy to source_data unless user had explicitly set it differently
+            // (for all types: pwr source change → data source follows)
+            +'setField(gi,\'source_data\',v);'
+            +'setField(gi,\'source\',v);'
             +'renderTable();'
             +'})(this.value,'+gi+')';
 
@@ -2156,8 +2156,8 @@ function renderTable() {
             +'var sp3=specsForDevice(devices[gi])||{};'
             +'var is32A=(sp3.pwr_in||\'\').toUpperCase()===\'32ACEE\';'
             +'if(!is32A&&v){setField(gi,\'cable_data_in\',v);}'
-            // Also copy source_power to source_data for non-distros
-            +'if(!is32A&&devices[gi].source_power&&devices[gi].type!==TYPE_DISTRO){'
+            // Copy source_power to source_data for non-32A
+            +'if(!is32A&&devices[gi].source_power){'
             +'  setField(gi,\'source_data\',devices[gi].source_power);'
             +'}'
             +'renderTable();'
@@ -4273,46 +4273,9 @@ function deleteNodeMemo(id) {
   renderNodeView();
 }
 function _renderMemos() {
-  var wrap = document.getElementById('node-canvas-wrap');
-  if (!wrap) return;
-  // Remove old memo divs
-  Array.from(wrap.querySelectorAll('.node-memo')).forEach(function(el){el.remove();});
-  _nodeMemos.forEach(function(memo) {
-    var el = document.createElement('div');
-    el.className = 'node-memo';
-    el.dataset.id = memo.id;
-    el.style.cssText = 'position:absolute;z-index:30;'
-      +'left:'+(memo.x*_nodeScale+_nodePanX)+'px;top:'+(memo.y*_nodeScale+_nodePanY)+'px;'
-      +'width:130px;background:#fff;color:#1a1a1a;'
-      +'border-radius:3px;border:1px solid #bbb;box-shadow:2px 4px 12px rgba(0,0,0,.35);'
-      +'padding:0;cursor:move;user-select:none;';
-    el.innerHTML = '<div class="memo-header" style="background:#1a1a1a;padding:5px 9px;display:flex;justify-content:space-between;align-items:center;border-radius:2px 2px 0 0;cursor:move">'
-      +'<span style="font-size:8px;font-weight:700;color:#aaa;letter-spacing:2px;font-family:monospace">NOTE</span>'
-      +'<span data-mid="'+memo.id+'" onclick="deleteNodeMemo(this.dataset.mid)" style="cursor:pointer;font-size:12px;color:#aaa;line-height:1">✕</span>'
-      +'</div>'
-      +'<div contenteditable="true" spellcheck="false" '
-      +'style="padding:9px 10px;font-size:11px;color:#111;min-height:60px;outline:none;white-space:pre-wrap;word-break:break-word;font-family:Georgia,serif;line-height:1.5" '
-      +'data-mid="'+memo.id+'" onblur="memoSaveText(this.dataset.mid,this.innerText)">'
-      + (memo.text||'').replace(/</g,'&lt;') + '</div>';
-    // Drag to move
-    el.querySelector('div').addEventListener('mousedown', function(e){
-      if (e.target.tagName==='DIV'&&e.target.contentEditable!=='true') {
-        var startX=e.clientX, startY=e.clientY, mx0=memo.x, my0=memo.y;
-        function mm(ev){
-          memo.x = mx0+(ev.clientX-startX)/_nodeScale;
-          memo.y = my0+(ev.clientY-startY)/_nodeScale;
-          el.style.left=(memo.x*_nodeScale+_nodePanX)+'px';
-          el.style.top=(memo.y*_nodeScale+_nodePanY)+'px';
-        }
-        function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); _saveMemos(); }
-        document.addEventListener('mousemove',mm);
-        document.addEventListener('mouseup',mu);
-        e.preventDefault();
-      }
-    });
-    wrap.appendChild(el);
-  });
+  // Memos rendered inline in SVG by renderNodeView
 }
+
 
 function _saveNodePositions() {
   try { localStorage.setItem('buildert_node_pos', JSON.stringify(_nodePositions)); } catch(e){}
@@ -4634,11 +4597,13 @@ function renderNodeView() {
         var _tux=_tx/_tlen, _tuy=_ty/_tlen;
         // Perpendicular pointing "right" relative to travel = downward-ish
         var _pux=_tuy, _puy=-_tux;  // rotate -90°: right-hand side of travel
-        // Triangle: apex at attachment point on rope, two base corners hanging DOWN
-        var _fw=8, _fh=14;
-        var _apex_x=_bx, _apex_y=_by;
-        var _base_l_x=_bx + _pux*_fh - _tux*_fw/2, _base_l_y=_by + _puy*_fh - _tuy*_fw/2;
-        var _base_r_x=_bx + _pux*_fh + _tux*_fw/2, _base_r_y=_by + _puy*_fh + _tuy*_fw/2;
+        // Real bunting: BASE (flat edge) sits ON the rope, APEX points down
+        var _fw=10, _fh=14;
+        // Left and right corners of the base, centred on the rope point
+        var _base_l_x=_bx - _tux*_fw/2, _base_l_y=_by - _tuy*_fw/2;
+        var _base_r_x=_bx + _tux*_fw/2, _base_r_y=_by + _tuy*_fw/2;
+        // Apex hangs DOWN (away from cable, perpendicular)
+        var _apex_x=_bx + _pux*_fh, _apex_y=_by + _puy*_fh;
         var _fc = _zhuCols[_fi % _zhuCols.length];
         edgeHtml += '<polygon points="'+_apex_x+','+_apex_y+' '+_base_l_x+','+_base_l_y+' '+_base_r_x+','+_base_r_y+'"'
           +' fill="'+_fc+'" stroke="rgba(255,255,255,.4)" stroke-width="0.5" opacity="0.97"/>';
@@ -4909,7 +4874,33 @@ function renderNodeView() {
     nodeHtml += '</g>';
   });
   nodesG.innerHTML = nodeHtml;
-  setTimeout(_renderMemos, 0); // render memo overlays after SVG settles
+  // Render memos as SVG foreignObject elements inside the node canvas
+  // so they scale/pan with the canvas automatically
+  var _memoSvgHtml = '';
+  _nodeMemos.forEach(function(memo) {
+    var _mw = 130, _mh = 70;
+    _memoSvgHtml += '<g class="node-memo-svg" transform="translate('+memo.x+','+memo.y+')">'
+      // White background + border
+      +'<rect width="'+_mw+'" height="'+_mh+'" rx="3" fill="#fff" stroke="#555" stroke-width="1"/>'
+      // Dark header bar
+      +'<rect width="'+_mw+'" height="16" rx="3" fill="#1a1a1a"/>'
+      +'<rect y="12" width="'+_mw+'" height="4" fill="#1a1a1a"/>'
+      +'<text x="6" y="11" font-size="8" fill="#aaa" font-family="monospace" font-weight="700" letter-spacing="2">NOTE</text>'
+      // Delete button
+      +'<text x="'+(+_mw-8)+'" y="11" font-size="10" fill="#888" font-family="monospace" text-anchor="middle" style="cursor:pointer" data-mid="'+memo.id+'" onclick="deleteNodeMemo(this.dataset.mid)">✕</text>'
+      // Editable text area via foreignObject
+      +'<foreignObject x="4" y="18" width="'+(+_mw-8)+'" height="'+(+_mh-22)+'">'
+      +'<div xmlns="http://www.w3.org/1999/xhtml" contenteditable="true" '
+      +'style="font-size:10px;color:#111;font-family:Georgia,serif;line-height:1.4;outline:none;width:100%;height:100%;overflow:hidden;word-break:break-word" '
+      +'data-mid="'+memo.id+'" onblur="memoSaveText(this.dataset.mid,this.innerText)">'
+      +(memo.text||'').replace(/</g,'&lt;').replace(/&/g,'&amp;')
+      +'</div></foreignObject>'
+      // Drag handle (invisible rect over header)
+      +'<rect width="'+(_mw-20)+'" height="16" fill="transparent" style="cursor:move" '
+      +'data-mid="'+memo.id+'" onmousedown="_memoStartDrag(event,this.dataset.mid)" />'
+      +'</g>';
+  });
+  nodesG.innerHTML += _memoSvgHtml;
 
   // Resize SVG — cap at container height so overflow:hidden works correctly
   var maxY=300;
@@ -5078,7 +5069,9 @@ var _nodeCablePopover = null;
 function nodeDoubleClick(id) {
   if (id === 'FOH') return;
   var gi = devices.findIndex(function(d){ return d.device_id === id; });
-  if (gi >= 0) openEditModal(gi);
+  if (gi < 0) return;
+  setTab('devices');
+  openEditModal(gi);
 }
 
 function nodeEdgeClick(e, gi) {
@@ -5368,11 +5361,18 @@ function nodePrint() {
   var fileTitle=(projName+(stageName?' - '+stageName:'')+' - Node View').replace(/[^a-zA-Z0-9_\- ]/g,'');
   var win = window.open('', '_blank', 'width=1100,height=800');
   // Embed a small header text inside the SVG at the top so everything prints on 1 page
-  var _hdr = projName + (stageName?' — '+stageName:'')
-    + (_projectMeta.venue?' · '+_projectMeta.venue:'')
-    + (_projectMeta.date?' · '+_projectMeta.date:'')
-    + ' · '+new Date().toLocaleDateString();
-  var _hdrSvg = '<text x="'+(vbX+4)+'" y="'+(vbY-6)+'" font-size="8" font-family="Arial,sans-serif" fill="#555">'+_hdr.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>';
+  var _hdr1 = projName.toUpperCase();
+  var _hdr2 = (stageName?'Stage: '+stageName+' · ':'')
+    + (_projectMeta.venue?'Venue: '+_projectMeta.venue+' · ':'')
+    + (_projectMeta.date?'Date: '+_projectMeta.date+' · ':'')
+    + devices.length+' devices · '+new Date().toLocaleDateString();
+  var _hdrH = 22;
+  var _hdrSvg = '<rect x="'+vbX+'" y="'+(vbY-_hdrH)+'" width="'+vbW+'" height="'+_hdrH+'" fill="#1a1a1a"/>'
+    +'<text x="'+(vbX+8)+'" y="'+(vbY-13)+'" font-size="11" font-weight="900" font-family="Arial,sans-serif" fill="#fff" letter-spacing="1">'+_hdr1.replace(/&/g,'&amp;')+'</text>'
+    +'<text x="'+(vbX+8+_hdr1.length*8)+'" y="'+(vbY-13)+'" font-size="9" font-family="Arial,sans-serif" fill="#aaa">  '+_hdr2.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>'
+    +'<line x1="'+vbX+'" y1="'+(vbY)+'" x2="'+(vbX+vbW)+'" y2="'+vbY+'" stroke="#ccc" stroke-width="0.5"/>';
+  // Expand viewBox to include header
+  clone.setAttribute('viewBox', vbX+' '+(vbY-_hdrH)+' '+vbW+' '+(vbH+_hdrH));
   svgStr = svgStr.replace(/(<svg[^>]*>)/, '$1'+_hdrSvg);
   win.document.write(
     '<html><head><title>'+fileTitle+'</title>'
@@ -8740,6 +8740,27 @@ function _syncLegacySource(){
   var src = document.getElementById('m-source-data');
   var leg = document.getElementById('m-source');
   if(src && leg && !leg.value) leg.value = src.value;
+}
+function _onModalPwrCableChange() {
+  // When power cable changes in modal: sync data cable if not 32A
+  var devType = document.getElementById('m-type') ? document.getElementById('m-type').value : '';
+  var pwrCbl = (document.getElementById('m-cable-power')||{}).value || '';
+  var datSel = document.getElementById('m-cable-data-in');
+  var pwrInSel = document.getElementById('m-pwr-in-connector') || {};
+  // Determine if 32A (check source power connector from spec)
+  var is32A = false;
+  var srcId = (document.getElementById('m-source-power')||{}).value || '';
+  var srcDev2 = null;
+  _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)srcDev2=x;});});
+  // Also sync source_data with source_power in modal
+  var srcDataSel = document.getElementById('m-source-data');
+  var srcPwrSel = document.getElementById('m-source-power');
+  if (srcDataSel && srcPwrSel && srcPwrSel.value) {
+    srcDataSel.value = srcPwrSel.value;
+  }
+  if (!is32A && datSel && pwrCbl) {
+    datSel.value = pwrCbl;
+  }
 }
 function _refreshPowerCables() {
   var srcId=(document.getElementById('m-source-power')||{}).value||'';
