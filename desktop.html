@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.926</title>
+<title>WTUniverse · Buildert Editor v3.927</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.926</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.927</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2632,7 +2632,10 @@ function saveDevice() {
   closeModal(); renderTable(); autoSave();
 }
 
-function closeModal() { document.getElementById('modal-device').classList.remove('open'); }
+function closeModal() {
+  document.getElementById('modal-device').classList.remove('open');
+  _nodeLastClick = {id:'', t:0}; // reset so next node click doesn't misfire
+}
 
 // ── CSV ───────────────────────────────────────────────────────────────
 function openCsvModal() {
@@ -3932,6 +3935,12 @@ document.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='p'){e.preventDefault();openAddModal(TYPE_PSU);}
 });
 document.getElementById('modal-device').addEventListener('click',function(e){if(e.target===e.currentTarget)closeModal();});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var m = document.getElementById('modal-device');
+    if (m && m.classList.contains('open')) { closeModal(); e.preventDefault(); }
+  }
+});
 document.getElementById('modal-csv').addEventListener('click',function(e){if(e.target===e.currentTarget)closeCsvModal();});
 document.getElementById('modal-conflict').addEventListener('click',function(e){if(e.target===e.currentTarget)document.getElementById('modal-conflict').classList.remove('open');});
 document.getElementById('modal-conflict-proj').addEventListener('click',function(e){if(e.target===e.currentTarget){document.getElementById('modal-conflict-proj').classList.remove('open');_pendingFileData=null;}});
@@ -4416,11 +4425,18 @@ function renderNodeView() {
 
   function _bezier(x1,y1,x2,y2){
     // Ports on top (outputs) and bottom (inputs).
-    // Control points: pull hard UP from source, hard DOWN into dest.
-    // Use at least 60px vertical offset or 60% of total span, whichever is larger.
-    var dist = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
-    var offy = Math.max(dist * 0.55, 70);
-    return 'M'+x1+','+y1+' C'+x1+','+(y1-offy)+' '+x2+','+(y2+offy)+' '+x2+','+y2;
+    // Each cable exits straight UP, then curves horizontally toward destination.
+    // Control point 1: directly above source (so cable exits vertically)
+    // Control point 2: directly above destination (so cable enters vertically)
+    // The height of the "arch" scales with horizontal distance so cables spread early.
+    var dx = x2 - x1;
+    var dist = Math.sqrt(dx*dx + (y2-y1)*(y2-y1));
+    // Arch height: tall enough to clear nodes, proportional to horizontal distance
+    var archH = Math.max(Math.abs(dx) * 0.6, dist * 0.45, 80);
+    // Control points go straight up from each port first, then curve across
+    var cy1 = y1 - archH;   // above source
+    var cy2 = y2 + archH;   // below dest (since dest is at bottom/input)
+    return 'M'+x1+','+y1+' C'+x1+','+cy1+' '+x2+','+cy2+' '+x2+','+y2;
   }
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4651,7 +4667,8 @@ function renderNodeView() {
         hasBothOut ? sp.dataOut.y : undefined
       );
       var col = _lbCol('combo', pwrCable);
-      _drawLabel(sp.mid.x, sp.mid.y, dp.mid.x, dp.mid.y, _cableLabel(pwrCable), col, gi);
+      var _clbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
+      _drawLabel(sp.mid.x, sp.mid.y, dp.mid.x, dp.mid.y, _clbl, pwrCable?col:'#55606e', gi);
 
     } else {
       // ── SEPARATE power line ─────────────────────────────────────────────
@@ -4665,7 +4682,10 @@ function renderNodeView() {
           if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
           edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
             +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
-          if (pwrCable) _drawLabel(x1,y1,x2,y2, _cableLabel(pwrCable), col, gi);
+          if (!isFoh) {
+            var _plbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
+            _drawLabel(x1,y1,x2,y2, _plbl, pwrCable?col:'#55606e', gi);
+          }
         }
       }
 
@@ -4683,7 +4703,10 @@ function renderNodeView() {
           if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
           edgeHtml += '<path d="'+_bezier(x1d,y1d,dp.dataIn.x,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
             +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
-          if (datCable) _drawLabel(x1d,y1d,dp.dataIn.x,dp.dataIn.y, _cableLabel(datCable), col2, gi);
+          if (!isFoh2) {
+            var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
+            _drawLabel(x1d,y1d,dp.dataIn.x,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
+          }
         }
       }
     }
@@ -4954,6 +4977,7 @@ function nodeMouseDown(e, id, mode) {
   if (mode === 'move' && _nodeLastClick.id === id && now - _nodeLastClick.t < 400) {
     _nodeLastClick = {id:'', t:0};
     nodeDoubleClick(id);
+    e.preventDefault(); e.stopPropagation();
     return;
   }
   _nodeLastClick = {id: id, t: now};
@@ -6953,7 +6977,7 @@ function _loadDiagPositions() {
 
 function diagAutoLayout() {
   var MAX_PER_ROW = 16;
-  var XGAP = NODE_W + 18, YGAP = NODE_H + 40, TYPE_GAP = 20; // compact: same node size, tighter gaps
+  var XGAP = NODE_W + 12, YGAP = NODE_H + 30, TYPE_GAP = 15; // compact layout
   var svg = document.getElementById('diag-svg');
   var SVG_W = svg ? (svg.clientWidth || svg.parentElement.clientWidth) : 1200;
   if (SVG_W < 200) SVG_W = 1200;
