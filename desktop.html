@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.920</title>
+<title>WTUniverse · Buildert Editor v3.921</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.920</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.921</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2088,7 +2088,7 @@ function renderTable() {
             : '';
           return '<td style="min-width:80px"><div style="display:flex;align-items:center;gap:0;white-space:nowrap;'
             +'background:'+hexToRgba(col,0.08)+';border-left:3px solid '+col+';padding:2px 6px 2px 5px;border-radius:3px">'
-            +'<span style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:.5px;color:'+col+'" title="'+tip+'">'
+            +'<span style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:.5px;color:var(--text)" title="'+tip+'">'
             +(m||'&#8212;')+'</span>'+ioBadge+'</div></td>';
         })()
       + '<td style="min-width:52px"><span class="serial-cell" contenteditable="true" data-placeholder="------"'
@@ -2206,7 +2206,7 @@ function renderTable() {
       + '<td contenteditable="true" data-placeholder="notes" style="max-width:130px;font-size:12px;color:var(--muted)"'
       +   ' onblur="setField(' + gi + ',\'notes\',this.innerText.trim())"'
       +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
-      +   (d.notes||'') + '</td>'
+      +   '<span style="color:#eee">'+( d.notes||'')+'</span>' + '</td>'
       + '<td><div class="row-actions">'
       +   '<button class="icon-btn" onclick="openEditModal(' + gi + ')" title="Edit">&#9998;</button>'
       +   '<button class="icon-btn del" onclick="deleteDevice(' + gi + ')" title="Delete">&#10005;</button>'
@@ -4616,19 +4616,42 @@ function renderNodeView() {
       var _zhuSp = _ports(_zhuSrc); if(!_zhuSp) return;
       var _zhuCols = ['#ff4d4d','#ff9800','#ffe000','#4caf50','#2196f3','#9c27b0','#ff69b4','#00d4ff'];
       var _zhuX1=_zhuSp.pwrOut.x, _zhuY1=_zhuSp.pwrOut.y, _zhuX2=dp.pwrIn.x, _zhuY2=dp.pwrIn.y;
-      // Rainbow stripes: same path drawn multiple times with offset dashes
+        // Multicoloured rope: thick base + coloured dashes
+      var _zhuPath = _bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2);
+      // Dark rope base
+      edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#222" stroke-width="5" opacity="0.35"/>';
+      // Rainbow segments
+      var _segLen=14, _total=_zhuCols.length*_segLen;
       _zhuCols.forEach(function(c,i){
-        var _segLen = 12, _total = _zhuCols.length * _segLen;
-        edgeHtml += '<path d="'+_bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2)+'" fill="none" stroke="'+c+'" stroke-width="4"'
-          +' stroke-dasharray="'+_segLen+','+(_total-_segLen)+'" stroke-dashoffset="'+(i*_segLen*-1)+'" opacity="0.9"/>';
+        edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="'+c+'" stroke-width="3.5"'
+          +' stroke-dasharray="'+_segLen+','+(_total-_segLen)+'" stroke-dashoffset="'+(-i*_segLen)+'" opacity="1"/>';
       });
-      // Flag triangles along the cable every 30px (approximate with small rects rotated)
-      var _numFlags = 6;
-      for (var _fi=1; _fi<=_numFlags; _fi++) {
-        var _ft = _fi / (_numFlags+1);
-        var _fx = _zhuX1 + (_zhuX2-_zhuX1)*_ft, _fy = _zhuY1 + (_zhuY2-_zhuY1)*_ft - 6;
+      // Bunting flags: small pennants hanging from the cable
+      // Approximate points along the bezier using t interpolation
+      var _numFlags = 7;
+      for (var _fi=0; _fi<_numFlags; _fi++) {
+        var _t = (_fi+1) / (_numFlags+1);
+        // Cubic bezier point: B(t) using control points from _bezier formula
+        var _dy2 = _zhuY2-_zhuY1;
+        var _offy2 = Math.max(Math.abs(_dy2)*0.5, Math.abs(_zhuX2-_zhuX1)*0.3, 50);
+        var _cx1=_zhuX1, _cy1=_zhuY1-_offy2, _cx2=_zhuX2, _cy2=_zhuY2+_offy2;
+        var _mt=1-_t;
+        var _bx=_mt*_mt*_mt*_zhuX1+3*_mt*_mt*_t*_cx1+3*_mt*_t*_t*_cx2+_t*_t*_t*_zhuX2;
+        var _by=_mt*_mt*_mt*_zhuY1+3*_mt*_mt*_t*_cy1+3*_mt*_t*_t*_cy2+_t*_t*_t*_zhuY2;
+        // Tangent for flag angle
+        var _tx=3*_mt*_mt*(_cx1-_zhuX1)+6*_mt*_t*(_cx2-_cx1)+3*_t*_t*(_zhuX2-_cx2);
+        var _ty=3*_mt*_mt*(_cy1-_zhuY1)+6*_mt*_t*(_cy2-_cy1)+3*_t*_t*(_zhuY2-_cy2);
+        var _tlen=Math.sqrt(_tx*_tx+_ty*_ty)||1;
+        // Perpendicular direction (rotate 90°)
+        var _px=-_ty/_tlen, _py=_tx/_tlen;
         var _fc = _zhuCols[_fi % _zhuCols.length];
-        edgeHtml += '<polygon points="'+_fx+','+_fy+' '+(_fx+6)+','+(_fy+10)+' '+(_fx-6)+','+(_fy+10)+'" fill="'+_fc+'" opacity="0.95"/>';
+        var _fw=7, _fh=10;
+        // Pennant: triangle hanging perpendicular to cable
+        var _p1x=_bx+_px*3, _p1y=_by+_py*3;
+        var _p2x=_bx+_px*(_fh+3), _p2y=_by+_py*(_fh+3);
+        var _p3x=_bx+_px*_fh+_tx/_tlen*_fw, _p3y=_by+_py*_fh+_ty/_tlen*_fw;
+        edgeHtml += '<polygon points="'+_p1x+','+_p1y+' '+_p2x+','+_p2y+' '+_p3x+','+_p3y+'"'
+          +' fill="'+_fc+'" stroke="rgba(0,0,0,.3)" stroke-width="0.5" opacity="0.95"/>';
       }
       return; // skip normal edge drawing for ZHU
     }
@@ -5312,7 +5335,7 @@ function nodePrint() {
 
   // Add memos as text boxes to the print SVG
   _nodeMemos.forEach(function(memo){
-    var mx = memo.x * vbS + vbX, my = memo.y * vbS + vbY;
+    var mx = memo.x, my = memo.y; // memos stored in SVG user units (same as node positions)
     var lines = (memo.text||'').split('\n');
     var boxH = 20 + lines.length * 13;
     clone.insertAdjacentHTML('beforeend',
