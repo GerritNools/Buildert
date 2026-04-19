@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.934</title>
+<title>WTUniverse · Buildert Editor v3.935</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.934</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.935</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4461,45 +4461,41 @@ function renderNodeView() {
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
   function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d){
-    // Combo cable: Y-fork out of source ports, bezier stem, Y-fork into dest ports
+    // Combo cable: single horizontal S-curve carrying both pwr+data.
+    // Exit from both source ports with short colored stubs converging to a midpoint,
+    // then a grey stem to destination, then split to both dest ports.
     var dash = hasAdap ? ' stroke-dasharray="5,3"' : '';
     var hasDualSrc = (x1d !== undefined);
 
-    // Source fork: both ports exit upward and meet ABOVE the node
+    // Source merge: midpoint between the two source ports
     var srcMX = hasDualSrc ? (x1p + x1d) / 2 : x1p;
-    var forkH = 22; // height of the short fork branches
-    var srcForkY = Math.min(y1p, hasDualSrc ? y1d : y1p) - forkH;
+    var srcMY = y1p; // same Y (ports are at top of node)
 
-    // Dest fork: cable arrives and splits DOWN into both ports BELOW the node
+    // Dest split: midpoint between the two dest ports
     var dstMX = (x2p + x2d) / 2;
-    var dstForkY = Math.max(y2p, y2d) + forkH;
+    var dstMY = y2p; // same Y (ports at bottom of node)
 
-    // Bezier control offset for the main stem (vertical S)
-    var offy = Math.max(Math.abs(dstForkY - srcForkY) * 0.5, 60);
+    // Main grey S-curve stem (horizontal bezier)
+    var _dx = dstMX - srcMX;
+    var _dy = dstMY - srcMY;
+    var _offx = Math.max(Math.abs(_dx)*0.55, Math.abs(_dy)*0.35, 60);
+    var _sx = _dx >= 0 ? 1 : -1;
+    var stem = '<path d="M'+srcMX+','+srcMY+' C'+(srcMX+_sx*_offx)+','+srcMY+' '+(dstMX-_sx*_offx)+','+dstMY+' '+dstMX+','+dstMY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
 
-    // Source short branches (amber from pwrOut, blue from dataOut → fork point)
+    // Short source branches: each port → merge point (small, clean)
+    var forkH = 14;
     var sPwr = hasDualSrc
-      ? '<path d="M'+x1p+','+y1p+' C'+x1p+','+(y1p-forkH*0.6)+' '+srcMX+','+(srcForkY+forkH*0.3)+' '+srcMX+','+srcForkY+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' opacity="0.9"/>'
-      : '';
+      ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+(y1p-forkH)+' L'+srcMX+','+(srcMY-forkH)+' L'+srcMX+','+srcMY+'" fill="none" stroke="#f5a623" stroke-width="2" opacity="0.9"/>'      : '';
     var sDat = hasDualSrc
-      ? '<path d="M'+x1d+','+y1d+' C'+x1d+','+(y1d-forkH*0.6)+' '+srcMX+','+(srcForkY+forkH*0.3)+' '+srcMX+','+srcForkY+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' opacity="0.9"/>'
-      : '';
+      ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+(y1d-forkH)+' L'+srcMX+','+(srcMY-forkH)+' L'+srcMX+','+srcMY+'" fill="none" stroke="#5b8fff" stroke-width="2" opacity="0.9"/>'      : '';
 
-    // Main grey stem: source fork → dest fork (bezier S going upward from source, downward to dest)
-    var _routeClr = _clearRouteY(srcMX, dstMX, Math.min(srcForkY, dstForkY) - 20);
-    var offy2 = Math.max(offy, Math.abs(_routeClr - srcForkY), Math.abs(_routeClr - dstForkY));
-    // Use horizontal bezier for stem so cables fan out immediately
-    var _stemDx = dstMX - srcMX;
-    var _stemOffx = Math.max(Math.abs(_stemDx)*0.55, Math.abs(dstForkY-srcForkY)*0.35, 60);
-    var _stemSx = _stemDx >= 0 ? 1 : -1;
-    var stem = '<path d="M'+srcMX+','+srcForkY+' C'+(srcMX+_stemSx*_stemOffx)+','+srcForkY+' '+(dstMX-_stemSx*_stemOffx)+','+dstForkY+' '+dstMX+','+dstForkY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
-
-    // Dest short branches (stem → pwrIn amber, stem → dataIn blue)
-    var dPwr = '<path d="M'+dstMX+','+dstForkY+' C'+dstMX+','+(dstForkY-forkH*0.3)+' '+x2p+','+(y2p+forkH*0.6)+' '+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2"'+dash+' marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dDat = '<path d="M'+dstMX+','+dstForkY+' C'+dstMX+','+(dstForkY-forkH*0.3)+' '+x2d+','+(y2d+forkH*0.6)+' '+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2"'+dash+' marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    // Short dest branches: split point → each port (small, clean)
+    var dPwr = '<path d="M'+dstMX+','+dstMY+' L'+dstMX+','+(dstMY+forkH)+' L'+x2p+','+(y2p+forkH)+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2" marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dDat = '<path d="M'+dstMX+','+dstMY+' L'+dstMX+','+(dstMY+forkH)+' L'+x2d+','+(y2d+forkH)+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2" marker-end="url(#arrow-foh)" opacity="0.9"/>';
 
     return sPwr+sDat+stem+dPwr+dDat;
   }
+
 
   // ── Draw edges ────────────────────────────────────────────────────────
   // Simple rules derived directly from specs CSV:
@@ -4645,9 +4641,12 @@ function renderNodeView() {
       edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>';
       // Triangle flags hanging DOWN from the rope
       var _numFlags = 9;
-      var _dist2 = Math.sqrt((_zhuX2-_zhuX1)*(_zhuX2-_zhuX1)+(_zhuY2-_zhuY1)*(_zhuY2-_zhuY1));
-      var _offy2 = Math.max(_dist2*0.55, 70);
-      var _cx1=_zhuX1, _cy1=_zhuY1-_offy2, _cx2=_zhuX2, _cy2=_zhuY2+_offy2;
+      var _zhuDx = _zhuX2-_zhuX1, _zhuDy = _zhuY2-_zhuY1;
+      var _zhuDist = Math.sqrt(_zhuDx*_zhuDx+_zhuDy*_zhuDy);
+      var _zhuOffx = Math.max(Math.abs(_zhuDx)*0.55, Math.abs(_zhuDy)*0.35, 60);
+      var _zhuSx = _zhuDx >= 0 ? 1 : -1;
+      // Match the horizontal S-curve bezier
+      var _cx1=_zhuX1+_zhuSx*_zhuOffx, _cy1=_zhuY1, _cx2=_zhuX2-_zhuSx*_zhuOffx, _cy2=_zhuY2;
       for (var _fi=0; _fi<_numFlags; _fi++) {
         var _t = (_fi+0.5) / _numFlags;
         var _mt = 1-_t;
