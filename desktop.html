@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.929</title>
+<title>WTUniverse · Buildert Editor v3.930</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.929</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.930</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5155,116 +5155,145 @@ function nodeDoubleClick(id) {
 
 function nodeEdgeClick(e, gi) {
   e.stopPropagation();
-  // Remove existing popover
   if (_nodeCablePopover) { _nodeCablePopover.remove(); _nodeCablePopover=null; return; }
-  var d = devices[gi]; if (!d) return;
+  var dev = devices[gi]; if (!dev) return;
+  var sp  = getSpec(dev.model || modelFromId(dev.device_id||''));
+  var devPwrIn  = sp ? (sp.pwr_in||sp.in_connector||'') : '';
+  var devDataIn = sp ? (sp.data_in||'') : '';
+  var isPSU     = (dev.type === TYPE_PSU);
+  var is32A     = devPwrIn.toUpperCase() === '32ACEE';
+  var isDistro  = (dev.type === TYPE_DISTRO);
+
+  // Build pwr cable options filtered by connector
+  function buildPwrOpts(cur) {
+    var o = '<option value="">— none —</option>';
+    CABLE_TYPES.forEach(function(ct) {
+      if (is32A) { if (ct.pwr_b !== devPwrIn) return; }
+      else        { if (ct.key === 'cee32') return; if (!ct.pwr_a && !ct.pwr_b) return; }
+      ct.lengths.forEach(function(l) {
+        var v = ct.key+'-'+l.val;
+        o += '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+    return o;
+  }
+  // Build data cable options
+  function buildDataOpts(cur) {
+    var o = '<option value="">— none —</option>';
+    CABLE_TYPES.forEach(function(ct) {
+      if (!ct.data_a && !ct.data_b) return;
+      if (is32A && devDataIn && ct.data_b && ct.data_b !== devDataIn) return;
+      ct.lengths.forEach(function(l) {
+        var v = ct.key+'-'+l.val;
+        o += '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+    return o;
+  }
+  // Build source options
+  function buildSrcOpts(cur, label) {
+    var o = '<option value="">— not set —</option>';
+    if (label==='data') o += '<option value="FOH"'+(cur==='FOH'?' selected':'')+'>FOH</option>';
+    devices.forEach(function(x) {
+      if (!x.device_id || x.device_id===dev.device_id) return;
+      o += '<option value="'+x.device_id+'"'+(cur===x.device_id?' selected':'')+'>'+x.device_id+'</option>';
+    });
+    return o;
+  }
+
+  var pwrOpts  = buildPwrOpts(dev.cable_power_in||'');
+  var dataOpts = isPSU ? '' : buildDataOpts(dev.cable_data_in||'');
+
   var wrap = document.getElementById('node-canvas-wrap');
   var rect = wrap.getBoundingClientRect();
   var pop  = document.createElement('div');
   pop.style.cssText = 'position:absolute;z-index:50;background:var(--surface);'
     +'border:1px solid var(--accent);border-radius:7px;padding:12px 14px;'
-    +'min-width:210px;box-shadow:0 8px 32px rgba(0,0,0,.6);'
+    +'min-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.6);'
     +'left:'+(e.clientX-rect.left+8)+'px;top:'+(e.clientY-rect.top-20)+'px;';
-  var _edgeSp = getSpec(d.model || modelFromId(d.device_id||''));
-  var _devConn = _edgeSp ? (_edgeSp.pwr_in || _edgeSp.in_connector || '') : '';
-  // Also get source connector
-  var _srcConn = '';
-  if (d.source && d.source !== 'FOH') {
-    var _srcDevE = null;
-    _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===d.source)_srcDevE=x;});});
-    if (_srcDevE) { var _sSpE=getSpec(_srcDevE.model||modelFromId(_srcDevE.device_id)); _srcConn=_sSpE?(_sSpE.data_out||_sSpE.pwr_out||_sSpE.out_connector||''):''; }
-  }
-  // Build cable options filtered to what makes sense for this connection
-  var _edgeSp2 = _edgeSp;
-  var _devDataIn = _edgeSp2 ? (_edgeSp2.data_in||'') : '';
-  function _cableOpts(curVal, filterPwr, filterData){
-    var o='<option value="">— none —</option>';
-    CABLE_TYPES.forEach(function(ct){
-      var devPMatch = !_devConn    || !ct.pwr_b  || ct.pwr_b===_devConn;
-      var devDMatch = !!(devDataIn2 && ct.data_b && ct.data_b===_devDataIn);
-      var devMatch  = devPMatch || devDMatch;
-      var srcMatch  = !_srcConn || !ct.pwr_a || ct.pwr_a===_srcConn || ct.data_a===_srcConn;
-      if(!devMatch||!srcMatch) return;
-      ct.lengths.forEach(function(l){
-        var v=ct.key+'-'+l.val;
-        o+='<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-      });
-    });
-    return o;
-  }
-  var devDataIn2 = _devDataIn;
-  // Smart cable filtering: for each connector type, only show cables that can plug in
-  var _isDistroNode = (d.type === TYPE_DISTRO);
-  function _buildPwrOpts(curVal) {
-    var o = '<option value="">— none —</option>';
-    CABLE_TYPES.forEach(function(ct) {
-      if (_isDistroNode) {
-        // Distros: only show cables whose pwr_b matches the pwr_in connector (e.g. CEE32 for 32ACEE)
-        // _devConn holds the pwr_in connector
-        if (_devConn && ct.pwr_b !== _devConn) return;
-        if (!_devConn && ct.key !== 'cee32') return; // no spec: show cee32 as fallback
-      } else {
-        // Non-distros: exclude CEE32 and data-only cables
-        if (ct.key === 'cee32') return;
-        if (!ct.pwr_a && !ct.pwr_b) return;
-      }
-      ct.lengths.forEach(function(l) {
-        var v = ct.key+'-'+l.val;
-        o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-      });
-    });
-    return o;
-  }
-  function _buildDataOpts(curVal) {
-    // PSU has no data connector — show nothing
-    if (d.type === TYPE_PSU) return '<option value="">— N/A (PSU) —</option>';
-    var o = '<option value="">— none —</option>';
-    var _devPwrIn = _devConn; // pwr_in connector for this device
-    CABLE_TYPES.forEach(function(ct) {
-      // Must carry data signal
-      if (!ct.data_a && !ct.data_b) return;
-      // For non-32A devices: allow combo cables (PC/PL) since they carry both
-      // Only filter strictly for 32A distros (data_b must match Ethercon/HartingPushPull)
-      var _is32A = _devPwrIn.toUpperCase() === '32ACEE';
-      if (_is32A) {
-        // Strict: data_b must match data_in (Ethercon or HartingPushPull)
-        if (_devDataIn && ct.data_b && ct.data_b !== _devDataIn) return;
-      } else {
-        // Non-32A: show any cable with data capability
-        // (combo PC/PL cables have data_b matching the device's connector)
-      }
-      ct.lengths.forEach(function(l) {
-        var v = ct.key+'-'+l.val;
-        o += '<option value="'+v+'"'+(curVal===v?' selected':'')+'>'+ct.label+' '+l.lbl+'</option>';
-      });
-    });
-    return o;
-  }
-  var pwrOpts  = _buildPwrOpts(d.cable_power_in||'');
-  var dataOpts = (d.type===TYPE_PSU) ? '' : _buildDataOpts(d.cable_data_in||'');
-  var save = 'autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}';
+  pop.dataset.gi = gi;
+
+  var ss = 'width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px;';
+
   pop.innerHTML =
-    '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
+    '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+dev.device_id+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr source</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){var _d=devices['+gi+']; _d.source_power=v; _d.source_data=v; _d.source=v; })(this.value);'+save+'">'+(function(){var o='<option value="">— not set —</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
+    +'<select class="ncp-src-pwr" style="'+ss+'">'+ buildSrcOpts(dev.source_power||dev.source||'','pwr')+'</select></div>'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr cable</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){var _d=devices['+gi+']; _d.cable_power_in=v; _d.cable_in=v; _d.cable=v; var _ck=v.split('-')[0]; var _cct=CABLE_TYPES.find(function(c){return c.key===_ck;}); if(_cct&&_cct.data_a&&_cct.pwr_a){_d.cable_data_in=v; if(_d.source_power)_d.source_data=_d.source_power;} })(this.value);'+save+'">'+pwrOpts+'</select></div>'
-    +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_data=v;if(!devices['+gi+'].source)devices['+gi+'].source=v;'+save+'})(this.value)">'+(function(){var o='<option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
-    
-    +(dataOpts ? ('<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'+('<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_data_in=this.value;'+save+'">'+dataOpts+'</select>')+'</div>') : '')
-    +'<button style="width:100%;margin-top:8px;background:rgba(255,77,77,.12);border:1px solid #ff4d4d;color:#ff4d4d;border-radius:4px;padding:5px;font-family:var(--mono);font-size:11px;cursor:pointer"'
-    +' onclick="(function(gi){var dv=devices[gi];if(!dv)return;dv.source=\'\';dv.source_power=\'\';dv.source_data=\'\';dv.cable_in=\'\';dv.cable=\'\';dv.cable_power_in=\'\';dv.cable_data_in=\'\';autoSave();renderNodeView();if(_nodeCablePopover){_nodeCablePopover.remove();_nodeCablePopover=null;}})('+gi+')">✕ Disconnect</button>';
+    +'<select class="ncp-cbl-pwr" style="'+ss+'">'+pwrOpts+'</select></div>'
+    +(isPSU ? '' :
+      '<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
+      +'<select class="ncp-src-dat" style="'+ss+'">'+buildSrcOpts(dev.source_data||dev.source||'','data')+'</select></div>'
+      +(dataOpts ?
+        '<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data cable</label>'
+        +'<select class="ncp-cbl-dat" style="'+ss+'">'+dataOpts+'</select></div>' : '')
+    )
+    +'</div>'
+    +'<button style="width:100%;margin-top:8px;background:rgba(255,77,77,.12);border:1px solid #ff4d4d;color:#ff4d4d;border-radius:4px;padding:5px;font-family:var(--mono);font-size:11px;cursor:pointer" class="ncp-disconnect">✕ Disconnect</button>';
+
   wrap.appendChild(pop);
   _nodeCablePopover = pop;
+
+  function saveAndRefresh() {
+    autoSave(); renderNodeView();
+    if (_nodeCablePopover) { _nodeCablePopover.remove(); _nodeCablePopover=null; }
+  }
+
+  // Pwr source: always copies to data source
+  var selSrcPwr = pop.querySelector('.ncp-src-pwr');
+  if (selSrcPwr) selSrcPwr.addEventListener('change', function() {
+    var v = this.value, d = devices[gi]; if (!d) return;
+    d.source_power = v; d.source_data = v; d.source = v;
+    saveAndRefresh();
+  });
+
+  // Pwr cable: if combo, copies to data cable and syncs source_data
+  var selCblPwr = pop.querySelector('.ncp-cbl-pwr');
+  if (selCblPwr) selCblPwr.addEventListener('change', function() {
+    var v = this.value, dv = devices[gi]; if (!dv) return;
+    dv.cable_power_in = v; dv.cable_in = v; dv.cable = v;
+    var ckey = v.split('-')[0];
+    var ct   = CABLE_TYPES.find(function(c){ return c.key===ckey; });
+    if (ct && ct.data_a && ct.pwr_a) {
+      dv.cable_data_in = v;
+      if (dv.source_power) dv.source_data = dv.source_power;
+    }
+    saveAndRefresh();
+  });
+
+  // Data source
+  var selSrcDat = pop.querySelector('.ncp-src-dat');
+  if (selSrcDat) selSrcDat.addEventListener('change', function() {
+    var v = this.value, d = devices[gi]; if (!d) return;
+    d.source_data = v; if (!d.source) d.source = v;
+    saveAndRefresh();
+  });
+
+  // Data cable
+  var selCblDat = pop.querySelector('.ncp-cbl-dat');
+  if (selCblDat) selCblDat.addEventListener('change', function() {
+    var v = this.value, d = devices[gi]; if (!d) return;
+    d.cable_data_in = v;
+    saveAndRefresh();
+  });
+
+  // Disconnect
+  pop.querySelector('.ncp-disconnect').addEventListener('click', function() {
+    var dv = devices[gi]; if (!dv) return;
+    dv.source=''; dv.source_power=''; dv.source_data='';
+    dv.cable_in=''; dv.cable=''; dv.cable_power_in=''; dv.cable_data_in='';
+    saveAndRefresh();
+  });
+
   // Click outside closes
-  setTimeout(function(){
-    document.addEventListener('click', function _close(ev){
-      if(!pop.contains(ev.target)){pop.remove();_nodeCablePopover=null;document.removeEventListener('click',_close);}
+  setTimeout(function() {
+    document.addEventListener('click', function _close(ev) {
+      if (!pop.contains(ev.target)) { pop.remove(); _nodeCablePopover=null; document.removeEventListener('click',_close); }
     });
-  },10);
+  }, 10);
 }
+
 
 
 // ── Node view zoom ────────────────────────────────────────────────────
