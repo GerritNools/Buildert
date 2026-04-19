@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.928</title>
+<title>WTUniverse · Buildert Editor v3.929</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.928</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.929</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2155,7 +2155,8 @@ function renderTable() {
             // For non-32A devices: copy pwr cable to data cable (PC/PL serves both)
             +'var sp3=specsForDevice(devices[gi])||{};'
             +'var is32A=(sp3.pwr_in||\'\').toUpperCase()===\'32ACEE\';'
-            +'if(!is32A&&v){setField(gi,\'cable_data_in\',v);}'
+            +'var _ckey2=v.split(\'-\')[0];var _ct2=CABLE_TYPES.find(function(c){return c.key===_ckey2;});var _isC=_ct2&&!!_ct2.data_a&&!!_ct2.pwr_a;'
+            +'if(!is32A&&_isC&&v){setField(gi,\'cable_data_in\',v);}'
             // Copy source_power to source_data for non-32A
             +'if(!is32A&&devices[gi].source_power){'
             +'  setField(gi,\'source_data\',devices[gi].source_power);'
@@ -5246,9 +5247,9 @@ function nodeEdgeClick(e, gi) {
     '<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">'+d.device_id+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr source</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_power=v;devices['+gi+'].source=devices['+gi+'].source_data||v;'+save+'})(this.value)">'+(function(){var o='<option value="">— not set —</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){var _d=devices['+gi+']; _d.source_power=v; _d.source_data=v; _d.source=v;'+save+'})(this.value)">'+(function(){var o='<option value="">— not set —</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#f5a623">⚡ Pwr cable</label>'
-    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="devices['+gi+'].cable_power_in=this.value;devices['+gi+'].cable_in=this.value;devices['+gi+'].cable=this.value;'+save+'">'+pwrOpts+'</select></div>'
+    +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){var _d=devices['+gi+']; _d.cable_power_in=v; _d.cable_in=v; _d.cable=v; var _ck=v.split('-')[0]; var _cct=CABLE_TYPES.find(function(c){return c.key===_ck;}); if(_cct&&_cct.data_a&&_cct.pwr_a){_d.cable_data_in=v; if(_d.source_power)_d.source_data=_d.source_power;} })(this.value);'+save+'">'+pwrOpts+'</select></div>'
     +'<div><label style="font-size:10px;font-family:var(--mono);color:#5b8fff">● Data source</label>'
     +'<select style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:4px;margin-top:2px" onchange="(function(v){devices['+gi+'].source_data=v;if(!devices['+gi+'].source)devices['+gi+'].source=v;'+save+'})(this.value)">'+(function(){var o='<option value="FOH"'+(d.source_data==='FOH'?' selected':'')+'>FOH</option>';devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id){o+='<option value="'+x.device_id+'"'+(d.source_data===x.device_id?' selected':'')+'>'+x.device_id+'</option>';}});return o;})()+'</select></div>'
     
@@ -8829,23 +8830,20 @@ function _syncLegacySource(){
   if(src && leg && !leg.value) leg.value = src.value;
 }
 function _onModalPwrCableChange() {
-  // When power cable changes in modal: sync data cable if not 32A
-  var devType = document.getElementById('m-type') ? document.getElementById('m-type').value : '';
   var pwrCbl = (document.getElementById('m-cable-power')||{}).value || '';
-  var datSel = document.getElementById('m-cable-data-in');
-  var pwrInSel = document.getElementById('m-pwr-in-connector') || {};
-  // Determine if 32A (check source power connector from spec)
-  var is32A = false;
-  var srcId = (document.getElementById('m-source-power')||{}).value || '';
-  var srcDev2 = null;
-  _stages.forEach(function(s){s.devices.forEach(function(x){if(x.device_id===srcId)srcDev2=x;});});
-  // Also sync source_data with source_power in modal
+  var ckey = pwrCbl.split('-')[0];
+  var ct = CABLE_TYPES.find(function(c){return c.key===ckey;});
+  // Only sync if cable is a combo type (carries both pwr AND data)
+  var isCombo = ct && !!(ct.data_a) && !!(ct.pwr_a);
+  // Always sync source_data = source_power
   var srcDataSel = document.getElementById('m-source-data');
   var srcPwrSel = document.getElementById('m-source-power');
   if (srcDataSel && srcPwrSel && srcPwrSel.value) {
     srcDataSel.value = srcPwrSel.value;
   }
-  if (!is32A && datSel && pwrCbl) {
+  // Sync data cable only if combo
+  var datSel = document.getElementById('m-cable-data-in');
+  if (isCombo && datSel && pwrCbl) {
     datSel.value = pwrCbl;
   }
 }
