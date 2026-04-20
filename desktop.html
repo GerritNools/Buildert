@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.945</title>
+<title>WTUniverse · Buildert Editor v3.946</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.945</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.946</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1285,7 +1285,7 @@ var POINTED_OPTS    = ['','FOH','Straight','Other'];
 var SOURCE_TYPES = {};
 SOURCE_TYPES[TYPE_LASER]  = [TYPE_DISTRO, TYPE_LASER, TYPE_PSU, 'Adapter'];
 SOURCE_TYPES[TYPE_SMOKE]  = [TYPE_DISTRO, TYPE_PSU, 'Adapter'];
-SOURCE_TYPES[TYPE_DISTRO] = ['_foh', TYPE_DISTRO, TYPE_PSU];
+SOURCE_TYPES[TYPE_DISTRO] = ['_foh', TYPE_DISTRO, TYPE_PSU, 'Adapter'];
 SOURCE_TYPES[TYPE_PSU]    = ['_foh', TYPE_DISTRO];
 SOURCE_TYPES['Adapter']   = [TYPE_DISTRO, TYPE_PSU, TYPE_LASER, 'Adapter'];
 
@@ -2111,7 +2111,7 @@ function renderTable() {
           // Distros + lasers from PSU; lasers/smoke can also use distro or another laser
           var pwrSrcOpts='<option value="">—</option>';
           var pwrAllowed = SOURCE_TYPES[d.type] || [TYPE_DISTRO, TYPE_PSU];
-          pwrAllowed = pwrAllowed.filter(function(t){ return t!=='_foh' && t!=='Adapter'; });
+          pwrAllowed = pwrAllowed.filter(function(t){ return t!=='_foh'; });
           pwrAllowed.forEach(function(t){
             devices.filter(function(x){return x.type===t&&x.device_id&&x.device_id!==d.device_id;})
               .forEach(function(x){ pwrSrcOpts+='<option value="'+x.device_id+'"'+(d.source_power===x.device_id?' selected':'')+'>'+x.device_id+'</option>'; });
@@ -4837,7 +4837,7 @@ function _lbCol(sigType, cable) {
           if (_dclr && !isFoh2) edgeHtml += _bezierEnds(x1d,y1d,dp.dataIn.x,dp.dataIn.y,_spreadOffset,_dclr.s,_dclr.s2);
           if (!isFoh2) {
             var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
-            _drawLabel(x1d,y1d,_datDestX,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
+            _drawLabel(x1d,y1d,dp.dataIn.x,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
           }
         }
       }
