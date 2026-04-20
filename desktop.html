@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.948</title>
+<title>WTUniverse · Buildert Editor v3.949</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.948</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.949</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5504,110 +5504,76 @@ function nodePrint() {
   var svg = document.getElementById('node-svg');
   if (!svg) { window.print(); return; }
 
-  // Clone SVG and remove zoom transforms so we see raw coordinates
-  var clone = svg.cloneNode(true);
-  var eg = clone.getElementById('node-edges');
-  var ng = clone.getElementById('node-nodes');
-  if (eg) eg.removeAttribute('transform');
-  if (ng) ng.removeAttribute('transform');
-
-  // Compute bounding box from node positions
-  var minX=9999, minY=9999, maxX=0, maxY=0;
-  var NODE_W_L = 130, NODE_H_L = 60;
+  // ── 1. Gather node bounds ───────────────────────────────────
+  var pad = 30, NODE_W_P = 130, NODE_H_P = 70;
+  var minX=1e9,minY=1e9,maxX=0,maxY=0;
   Object.keys(_nodePositions).forEach(function(id){
-    var p = _nodePositions[id];
-    if (p.x < minX) minX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.x + NODE_W_L > maxX) maxX = p.x + NODE_W_L;
-    if (p.y + NODE_H_L + 80 > maxY) maxY = p.y + NODE_H_L + 80;
+    var p=_nodePositions[id];
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
+    if(p.x+NODE_W_P>maxX)maxX=p.x+NODE_W_P;
+    if(p.y+NODE_H_P+60>maxY)maxY=p.y+NODE_H_P+60;
   });
-  if (minX === 9999) { minX = 0; minY = 0; maxX = 800; maxY = 500; }
+  if(minX===1e9){minX=0;minY=0;maxX=800;maxY=500;}
+  var HDRH = 28;  // header bar height in SVG units
+  var vbX=Math.max(0,minX-pad), vbY=Math.max(0,minY-pad);
+  var vbW=maxX-vbX+pad, vbH=maxY-vbY+pad;
 
-  var pad = 40;
-  var vbX = Math.max(0, minX - pad), vbY = Math.max(0, minY - pad);
-  var vbW = maxX - vbX + pad, vbH = maxY - vbY + pad;
-
-  // Set explicit px dimensions so SVG user units → screen px ratio is known
-  var printW = 1050, printH = 700; // A4 landscape usable area at 96dpi
-  var scaleX = printW / vbW, scaleY = printH / vbH;
-  var printScale = Math.min(scaleX, scaleY); // fit to page
-  var svgPxW = Math.round(vbW * printScale);
-  var svgPxH = Math.round(vbH * printScale);
-  var _hdrH = 28; // header height in SVG units
-  // Expand viewBox upward to include header BEFORE capturing outerHTML
-  clone.setAttribute('viewBox', vbX+' '+(vbY-_hdrH)+' '+vbW+' '+(vbH+_hdrH));
-  clone.setAttribute('width',  svgPxW);
-  clone.setAttribute('height', Math.round((vbH+_hdrH)*printScale));
-  clone.setAttribute('preserveAspectRatio', 'xMinYMin meet');
-  clone.setAttribute('xmlns',  'http://www.w3.org/2000/svg');
-  // White background covering full area including header
-  clone.insertAdjacentHTML('afterbegin',
-    '<rect x="'+vbX+'" y="'+(vbY-_hdrH)+'" width="'+vbW+'" height="'+(vbH+_hdrH)+'" fill="white"/>');
-
-  // Add memos as text boxes to the print SVG
-  _nodeMemos.forEach(function(memo){
-    var mx = memo.x, my = memo.y; // memos stored in SVG user units (same as node positions)
-    var lines = (memo.text||'').split('\n');
-    var boxH = 20 + lines.length * 13;
-    clone.insertAdjacentHTML('beforeend',
-      '<rect x="'+mx+'" y="'+my+'" width="130" height="'+boxH+'" rx="2" fill="#fff" stroke="#222" stroke-width="1"/>'
-      +'<text x="'+(mx+6)+'" y="'+(my+10)+'" font-size="8" fill="#888" font-family="monospace" font-weight="700" letter-spacing="2">NOTE</text>'
-      +'<line x1="'+mx+'" y1="'+(my+14)+'" x2="'+(mx+130)+'" y2="'+(my+14)+'" stroke="#ddd" stroke-width="0.5"/>'
-    );
+  // ── 2. Clone SVG, remove pan/zoom transforms ─────────────────
+  var clone = svg.cloneNode(true);
+  ['node-edges','node-nodes','node-labels'].forEach(function(id){
+    var g=clone.getElementById(id); if(g)g.removeAttribute('transform');
   });
+  clone.setAttribute('viewBox', vbX+' '+(vbY-HDRH)+' '+vbW+' '+(vbH+HDRH));
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  clone.removeAttribute('style');
+
+  // ── 3. Build header bar ───────────────────────────────────────
+  var projName = _projectMeta.name||'Project';
+  var stageName = (_stages[_currentStageIdx]||{}).name||'';
+  var meta = (stageName?'Stage: '+stageName+' · ':'')+(_projectMeta.venue?'Venue: '+_projectMeta.venue+' · ':'')+(_projectMeta.date?'Date: '+_projectMeta.date+' · ':'')+devices.length+' devices · '+new Date().toLocaleDateString();
+  var esc = function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  var hdr = '<rect x="'+vbX+'" y="'+(vbY-HDRH)+'" width="'+vbW+'" height="'+HDRH+'" fill="#1a1a1a"/>'
+    +'<text x="'+(vbX+10)+'" y="'+(vbY-10)+'" font-size="13" font-weight="900" font-family="Arial,sans-serif" fill="#ffffff" letter-spacing="1">'+esc(projName.toUpperCase())+'</text>'
+    +'<text x="'+(vbX+10+projName.length*9)+'" y="'+(vbY-10)+'" font-size="9" font-family="Arial,sans-serif" fill="#aaaaaa">  '+esc(meta)+'</text>'
+    +'<line x1="'+vbX+'" y1="'+vbY+'" x2="'+(vbX+vbW)+'" y2="'+vbY+'" stroke="#444" stroke-width="0.5"/>';
+
+  // ── 4. White background behind content ───────────────────────
+  var bg = '<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="white"/>';
+
+  // ── 5. Get SVG string and fix colors for light background ────
   var svgStr = clone.outerHTML;
-  // Resolve CSS variables for print (they won't be defined in popup window)
+  // Insert header and white bg right after opening <svg ...>
+  svgStr = svgStr.replace(/(<svg[^>]*>)/, '$1'+hdr+bg);
+  // Remap dark theme colors to print-friendly light theme
   svgStr = svgStr
-    .replace(/fill="rgba\([^"]*\)"/g, 'fill="white"')
-    .replace(/fill="#0a0c0f"/g, 'fill="white"')
-    .replace(/fill="var\(--bg\)"/g, 'fill="white"')
-    .replace(/fill="var\(--surface\)"/g, 'fill="white"')
-    .replace(/fill="var\(--panel\)"/g, 'fill="#f5f5f5"')
-    .replace(/stroke="var\(--accent\)"/g, 'stroke="#0099bb"')
-    .replace(/fill="var\(--accent\)"/g, 'fill="#0099bb"')
-    .replace(/stroke="var\(--ok\)"/g, 'stroke="#22aa55"')
-    .replace(/fill="var\(--ok\)"/g, 'fill="#22aa55"')
-    .replace(/stroke="var\(--warn\)"/g, 'stroke="#cc7700"')
-    .replace(/fill="var\(--warn\)"/g, 'fill="#cc7700"')
-    .replace(/stroke="var\(--muted\)"/g, 'stroke="#999"')
-    .replace(/fill="var\(--muted\)"/g, 'fill="#999"')
-    .replace(/fill="var\(--text\)"/g, 'fill="#222"')
-    .replace(/fill="#fff"/g, 'fill="#222"')
-    .replace(/fill="#dde"/g, 'fill="#444"')
-    .replace(/fill="#7a8694"/g, 'fill="#555"')
-    .replace(/fill="#22bb66"/g, 'fill="#006633"')
-    .replace(/fill="#ffffff"/g, 'fill="#222"');
+    .replace(/fill="rgba\([^"]*\)"/g,'fill="white"')
+    .replace(/fill="#0a0c0f"/g,'fill="white"')
+    .replace(/fill="var\(--[a-z-]+\)"/g,'fill="#333"')
+    .replace(/stroke="var\(--[a-z-]+\)"/g,'stroke="#333"')
+    .replace(/fill="#fff"/g,'fill="#111"')
+    .replace(/fill="#ffffff"/g,'fill="#111"')
+    .replace(/fill="#7a8694"/g,'fill="#555"')
+    .replace(/fill="#dde"/g,'fill="#444"');
 
-  var projName=_projectMeta.name||'Project';
-  var stageName=(_stages[_currentStageIdx]||{}).name||'';
-  var fileTitle=(projName+(stageName?' - '+stageName:'')+' - Node View').replace(/[^a-zA-Z0-9_\- ]/g,'');
-  var win = window.open('', '_blank', 'width=1100,height=800');
-  // Embed a small header text inside the SVG at the top so everything prints on 1 page
-  var _hdr1 = projName.toUpperCase();
-  var _hdr2 = (stageName?'Stage: '+stageName+' · ':'')
-    + (_projectMeta.venue?'Venue: '+_projectMeta.venue+' · ':'')
-    + (_projectMeta.date?'Date: '+_projectMeta.date+' · ':'')
-    + devices.length+' devices · '+new Date().toLocaleDateString();
-  var _hdrSvg = '<rect x="'+vbX+'" y="'+(vbY-_hdrH)+'" width="'+vbW+'" height="'+_hdrH+'" fill="#1a1a1a"/>'
-    +'<text x="'+(vbX+8)+'" y="'+(vbY-13)+'" font-size="11" font-weight="900" font-family="Arial,sans-serif" fill="#eee" letter-spacing="1">'+_hdr1.replace(/&/g,'&amp;')+'</text>'
-    +'<text x="'+(vbX+8+_hdr1.length*8)+'" y="'+(vbY-13)+'" font-size="9" font-family="Arial,sans-serif" fill="#aaa">  '+_hdr2.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</text>'
-    +'<line x1="'+vbX+'" y1="'+(vbY)+'" x2="'+(vbX+vbW)+'" y2="'+vbY+'" stroke="#ccc" stroke-width="0.5"/>';
-  // Inject header into the already-correct svgStr
-  svgStr = svgStr.replace(/(<svg[^>]*>)/, '$1'+_hdrSvg);
+  // ── 6. Open print window ─────────────────────────────────────
+  var fileTitle=(projName+(stageName?' - '+stageName:'')+' Nodes').replace(/[^a-zA-Z0-9_ -]/g,'');
+  var win=window.open('','_blank','width=1200,height=820');
+  if(!win){alert('Allow popups to print.'); return;}
   win.document.write(
-    '<html><head><title>'+fileTitle+'</title>'
-    + '<style>'
-    + '@page { size: A4 landscape; margin: 5mm; }'
-    + 'body { margin:0; padding:0; background:#fff; overflow:hidden; }'
-    + 'svg { display:block; width:100vw; height:100vh; }'
-    + '@media print { html,body{width:100%;height:100%} svg{width:100%;height:100%;} body{-webkit-print-color-adjust:exact;print-color-adjust:exact} }'
-    + '</style></head><body>'
-    + svgStr
-    + '</body></html>'
+    '<!DOCTYPE html><html><head><title>'+fileTitle+'</title>'
+    +'<style>'
+    +'@page{size:A4 landscape;margin:5mm}'
+    +'html,body{margin:0;padding:0;background:#fff}'
+    +'svg{display:block;width:100vw;height:100vh}'
+    +'@media print{html,body{width:100%;height:100%}svg{width:100%;height:100%}'
+    +'body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    +'</style></head><body>'+svgStr+'</body></html>'
   );
-  win.document.close();  win.focus();
-  setTimeout(function() { win.print(); win.close(); }, 700);
+  win.document.close();
+  win.focus();
+  setTimeout(function(){win.print();},600);
 }
+
 
 
 // ── Packing List ──────────────────────────────────────────────────────
