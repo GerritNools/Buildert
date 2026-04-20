@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.938</title>
+<title>WTUniverse · Buildert Editor v3.945</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.938</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.945</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1734,7 +1734,7 @@ var CABLE_TYPES = [
   {key:"powerlan", label:"PowerLAN", pwr_a:"HartingPushPull", pwr_b:"HartingPushPull", data_a:"HartingPushPull", data_b:"HartingPushPull", lengths:[{"val": 0.3, "lbl": "0.3 m"}, {"val": 7.5, "lbl": "7.5 m"}, {"val": 15.0, "lbl": "15 m"}, {"val": 35.0, "lbl": "35 m"}, {"val": 80.0, "lbl": "80 m"}]},
   {key:"pc_pl", label:"PC\u2192PL", pwr_a:"TR1", pwr_b:"HartingPushPull", data_a:"Ethercon", data_b:"HartingPushPull", lengths:[{"val": 7.5, "lbl": "7.5 m"}, {"val": 35.0, "lbl": "35 m"}]},
   {key:"pl_pc", label:"PL\u2192PC", pwr_a:"HartingPushPull", pwr_b:"TR1", data_a:"HartingPushPull", data_b:"Ethercon", lengths:[{"val": 7.5, "lbl": "7.5 m"}, {"val": 15.0, "lbl": "15m"}, {"val": 80.0, "lbl": "80 m"}]},
-  {key:"l2130", label:"L21-30", pwr_a:"L21-30", pwr_b:"L21-30", data_a:"", data_b:"", lengths:[{"val": 1.5, "lbl": "Lunch box"}, {"val": 8.0, "lbl": "8m"}, {"val": 15.0, "lbl": "15m"}, {"val": 30.0, "lbl": "30m"}, {"val": 45.0, "lbl": "45m"}]},
+  {key:"l2130", label:"L21-30", pwr_a:"L21-30", pwr_b:"L21-30", data_a:"", data_b:"", lengths:[{"val": 1.5, "lbl": "Lunch box"}, {"val": 8.0, "lbl": "8m / 25ft"}, {"val": 15.0, "lbl": "15m / 50ft"}, {"val": 30.0, "lbl": "30m / 100ft"}, {"val": 45.0, "lbl": "45m / 150ft"}]},
   {key:"cee32", label:"CEE 32A", pwr_a:"32ACEE", pwr_b:"32ACEE", data_a:"", data_b:"", lengths:[{"val": 10.0, "lbl": "10 m"}, {"val": 25.0, "lbl": "25 m"}]},
   {key:"cat", label:"CAT Ethercon", pwr_a:"", pwr_b:"", data_a:"Ethercon", data_b:"Ethercon", lengths:[{"val": 115.0, "lbl": "115 m"}]},
   {key:"fiber", label:"Fiber", pwr_a:"", pwr_b:"", data_a:"", data_b:"", lengths:[{"val": 1, "lbl": "various"}]}
@@ -4466,43 +4466,77 @@ function renderNodeView() {
     return '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
-  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d,cpSpread){
+  function _bezierEnds(x1,y1,x2,y2,cpSpread,col,col2){
+    // Draws dashed colored overlay on first 10% and last 10% of the bezier
+    cpSpread=cpSpread||0;
+    var dx=x2-x1,dy=y2-y1;
+    var offx=Math.max(Math.abs(dx)*0.7,60),offy=Math.max(Math.abs(dy)*0.45,70);
+    var sx=dx>=0?1:-1;
+    var p0x=x1,p0y=y1,p1x=x1+sx*offx+cpSpread,p1y=y1-offy;
+    var p2x=x2-sx*offx+cpSpread,p2y=y2+offy,p3x=x2,p3y=y2;
+    function _split(t){
+      var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t;
+      var bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
+      var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
+      var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
+      var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
+      var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+      return {
+        fst:'M'+p0x.toFixed(1)+','+p0y.toFixed(1)+' C'+ax.toFixed(1)+','+ay.toFixed(1)+' '+dx2.toFixed(1)+','+dy2.toFixed(1)+' '+fx.toFixed(1)+','+fy.toFixed(1),
+        snd:'M'+fx.toFixed(1)+','+fy.toFixed(1)+' C'+ex.toFixed(1)+','+ey.toFixed(1)+' '+cx.toFixed(1)+','+cy.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)
+      };
+    }
+    var s01=_split(0.07),s09=_split(0.93);
+    var da='stroke-dasharray="3,2"';
+    var out='<path d="'+s01.fst+'" fill="none" stroke="'+col+'" stroke-width="4" '+da+' opacity="1" stroke-linecap="round"/>'
+           +'<path d="'+s09.snd+'" fill="none" stroke="'+col+'" stroke-width="4" '+da+' opacity="1" stroke-linecap="round"/>';
+    if(col2){
+      out+='<path d="'+s01.fst+'" fill="none" stroke="'+col2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>'
+          +'<path d="'+s09.snd+'" fill="none" stroke="'+col2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+    }
+    return out;
+  }
+  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d,cpSpread,stemClr){
     cpSpread = cpSpread || 0;
-    // Combo cable: single horizontal S-curve carrying both pwr+data.
-    // Exit from both source ports with short colored stubs converging to a midpoint,
-    // then a grey stem to destination, then split to both dest ports.
     var dash = hasAdap ? ' stroke-dasharray="5,3"' : '';
     var hasDualSrc = (x1d !== undefined);
+    var forkH = 16;
 
-    // Source merge: midpoint between the two source ports
+    // ── SOURCE: upward Y-fork from output ports ──────────────────
+    // Both ports go straight UP by forkH, then horizontal line connects them
     var srcMX = hasDualSrc ? (x1p + x1d) / 2 : x1p;
-    var srcMY = y1p; // same Y (ports are at top of node)
-
-    // Dest split: midpoint between the two dest ports
-    var dstMX = (x2p + x2d) / 2;
-    var dstMY = y2p; // same Y (ports at bottom of node)
-
-    // Main grey S-curve stem (horizontal bezier)
-    var _dx = dstMX - srcMX;
-    var _dy = dstMY - srcMY;
-    var _offx = Math.max(Math.abs(_dx)*0.55, Math.abs(_dy)*0.35, 60);
-    var _sx = _dx >= 0 ? 1 : -1;
-    var _dy2 = dstMY - srcMY, _offy2 = Math.max(Math.abs(_dy2)*0.45, 70);
-    var stem = '<path d="M'+srcMX+','+srcMY+' C'+(srcMX+_sx*_offx+cpSpread)+','+(srcMY-_offy2)+' '+(dstMX-_sx*_offx+cpSpread)+','+(dstMY+_offy2)+' '+dstMX+','+dstMY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
-
-    // Short source branches: each port → merge point (small, clean)
-    var forkH = 14;
+    var srcTopY = (hasDualSrc ? Math.min(y1p,y1d) : y1p) - forkH;
     var sPwr = hasDualSrc
-      ? '<path d="M'+x1p+','+y1p+' L'+x1p+','+(y1p-forkH)+' L'+srcMX+','+(srcMY-forkH)+' L'+srcMX+','+srcMY+'" fill="none" stroke="#f5a623" stroke-width="2" opacity="0.9"/>'      : '';
+      ? '<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>'        +'<line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>'
+      : '';
     var sDat = hasDualSrc
-      ? '<path d="M'+x1d+','+y1d+' L'+x1d+','+(y1d-forkH)+' L'+srcMX+','+(srcMY-forkH)+' L'+srcMX+','+srcMY+'" fill="none" stroke="#5b8fff" stroke-width="2" opacity="0.9"/>'      : '';
+      ? '<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>'        +'<line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>'
+      : '';
+    // Vertical stem from srcMX to the top bar
+    var srcStem = hasDualSrc
+      ? '<line x1="'+srcMX+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+(srcTopY-4)+'" stroke="#8899bb" stroke-width="3" opacity="0.9"/>'
+      : '';
 
-    // Short dest branches: split point → each port (small, clean)
-    var dPwr = '<path d="M'+dstMX+','+dstMY+' L'+dstMX+','+(dstMY+forkH)+' L'+x2p+','+(y2p+forkH)+' L'+x2p+','+y2p+'" fill="none" stroke="#f5a623" stroke-width="2" marker-end="url(#arrow-warn)" opacity="0.9"/>';
-    var dDat = '<path d="M'+dstMX+','+dstMY+' L'+dstMX+','+(dstMY+forkH)+' L'+x2d+','+(y2d+forkH)+' L'+x2d+','+y2d+'" fill="none" stroke="#5b8fff" stroke-width="2" marker-end="url(#arrow-foh)" opacity="0.9"/>';
+    // ── DEST: downward Y-fork into input ports ───────────────────
+    var dstMX = (x2p + x2d) / 2;
+    var dstBotY = Math.max(y2p, y2d) + forkH;
+    var dPwr = '<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+dstBotY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>'      +'<line x1="'+x2p+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+y2p+'" stroke="#f5a623" stroke-width="2.5" marker-end="url(#arrow-warn)" opacity="0.9"/>';
+    var dDat = '<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+dstBotY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>'      +'<line x1="'+x2d+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+y2d+'" stroke="#5b8fff" stroke-width="2.5" marker-end="url(#arrow-foh)" opacity="0.9"/>';
 
-    return sPwr+sDat+stem+dPwr+dDat;
+    // ── STEM: bezier from srcMX,srcTopY → dstMX,dstBotY ─────────
+    var _dx = dstMX - srcMX;
+    var _dy = dstBotY - srcTopY;
+    var _offx = Math.max(Math.abs(_dx)*0.7, 60);
+    var _offy = Math.max(Math.abs(_dy)*0.45, 70);
+    var _sx = _dx >= 0 ? 1 : -1;
+    var stem = '<path d="M'+srcMX+','+srcTopY
+      +' C'+(srcMX+_sx*_offx+cpSpread)+','+(srcTopY-_offy)
+      +' '+(dstMX-_sx*_offx+cpSpread)+','+(dstBotY+_offy)
+      +' '+dstMX+','+dstBotY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
+
+    return sPwr+sDat+srcStem+stem+dPwr+dDat;
   }
+
 
 
   // ── Draw edges ────────────────────────────────────────────────────────
@@ -4533,7 +4567,26 @@ function renderNodeView() {
     var ld = ct.lengths.find(function(l){return Math.abs(l.val-lv)<0.01;});
     return ct.label + (isNaN(lv) ? '' : ' '+(ld?ld.lbl:lv+'m'));
   }
-  function _lbCol(sigType, cable) {
+  function _cableLineColor(cableVal) {
+    if (!cableVal) return null;
+    var parts = cableVal.split('-'), key = parts[0], len = parseFloat(parts[1]);
+    var isPLPC = (key==='powerlan'||key==='powercat'||key==='pc_pl'||key==='pl_pc');
+    if (isPLPC) {
+      if (len <= 2.5)  return {s:'#ffffff', s2:null};
+      if (len <= 7.5)  return {s:'#dd2222', s2:null};
+      if (len <= 15)   return {s:'#ff8800', s2:null};
+      if (len <= 35)   return {s:'#ddcc00', s2:null};
+      if (len <= 80)   return {s:'#2277ee', s2:null};
+    }
+    if (key==='l2130') {
+      if (len <= 8)    return {s:'#ddcc00', s2:null};
+      if (len <= 15)   return {s:'#ff8800', s2:null};
+      if (len <= 33)   return {s:'#882fd0', s2:null};
+      if (len <= 45)   return {s:'#ff8800', s2:'#882fd0'};  // orange+purple alternating
+    }
+    return null;
+  }
+function _lbCol(sigType, cable) {
     var ct = cable ? CABLE_TYPES.find(function(c){return c.key===cable.split('-')[0];}) : null;
     if (ct && ct.color) return ct.color;
     return sigType==='power'?'#f5a623':sigType==='data'?'#5b8fff':sigType==='combo'?'#8899bb':'#55606e';
@@ -4649,45 +4702,69 @@ function renderNodeView() {
       var _zhuX1=_zhuSp.pwrOut.x, _zhuY1=_zhuSp.pwrOut.y, _zhuX2=dp.pwrIn.x, _zhuY2=dp.pwrIn.y;
         // White rope with rainbow flags
       var _zhuPath = _bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2);
-      // White rope (string)
-      edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>';
-      // Triangle flags hanging DOWN from the rope
-      var _numFlags = 14; // 1.5x more flags
+      // White rope with arc-length equal spacing
+      // 1. Build the bezier matching the actual cable (_bezier formula)
       var _zhuDx = _zhuX2-_zhuX1, _zhuDy = _zhuY2-_zhuY1;
-      var _zhuDist = Math.sqrt(_zhuDx*_zhuDx+_zhuDy*_zhuDy);
-      var _zhuOffx = Math.max(Math.abs(_zhuDx)*0.55, Math.abs(_zhuDy)*0.35, 60);
-      var _zhuSx = _zhuDx >= 0 ? 1 : -1;
-      // Match the bezier: exit north, arrive south
+      var _zhuOffx = Math.max(Math.abs(_zhuDx)*0.7, 60);
       var _zhuOffy = Math.max(Math.abs(_zhuDy)*0.45, 70);
-      var _cx1=_zhuX1+_zhuSx*_zhuOffx, _cy1=_zhuY1-_zhuOffy, _cx2=_zhuX2-_zhuSx*_zhuOffx, _cy2=_zhuY2+_zhuOffy;
+      var _zhuSx = _zhuDx >= 0 ? 1 : -1;
+      var _zhuCpS = _spreadOffset || 0;
+      var _cx1 = _zhuX1 + _zhuSx*_zhuOffx + _zhuCpS, _cy1 = _zhuY1 - _zhuOffy;
+      var _cx2 = _zhuX2 - _zhuSx*_zhuOffx + _zhuCpS, _cy2 = _zhuY2 + _zhuOffy;
+
+      // Draw the rope
+      var _zhuPath = 'M'+_zhuX1+','+_zhuY1+' C'+_cx1+','+_cy1+' '+_cx2+','+_cy2+' '+_zhuX2+','+_zhuY2;
+      edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>';
+
+      // 2. Arc-length parameterization: sample 300 points, build cumulative lengths
+      var _NS = 300;
+      var _pts = [], _lens = [0];
+      for (var _si=0; _si<=_NS; _si++) {
+        var _st = _si/_NS, _sm = 1-_st;
+        var _sx2 = _sm*_sm*_sm*_zhuX1+3*_sm*_sm*_st*_cx1+3*_sm*_st*_st*_cx2+_st*_st*_st*_zhuX2;
+        var _sy2 = _sm*_sm*_sm*_zhuY1+3*_sm*_sm*_st*_cy1+3*_sm*_st*_st*_cy2+_st*_st*_st*_zhuY2;
+        _pts.push({x:_sx2, y:_sy2});
+        if (_si > 0) {
+          var _ddx = _pts[_si].x-_pts[_si-1].x, _ddy = _pts[_si].y-_pts[_si-1].y;
+          _lens.push(_lens[_si-1] + Math.sqrt(_ddx*_ddx+_ddy*_ddy));
+        }
+      }
+      var _totalLen = _lens[_NS];
+
+      // 3. Place 12 flags at equal arc-length intervals (skip first and last 5%)
+      var _numFlags = 12;
       for (var _fi=0; _fi<_numFlags; _fi++) {
-        var _t = (_fi+0.5) / _numFlags;
-        var _mt = 1-_t;
-        // Point on bezier
-        var _bx=_mt*_mt*_mt*_zhuX1+3*_mt*_mt*_t*_cx1+3*_mt*_t*_t*_cx2+_t*_t*_t*_zhuX2;
-        var _by=_mt*_mt*_mt*_zhuY1+3*_mt*_mt*_t*_cy1+3*_mt*_t*_t*_cy2+_t*_t*_t*_zhuY2;
-        // Tangent for orientation
-        var _tx=3*_mt*_mt*(_cx1-_zhuX1)+6*_mt*_t*(_cx2-_cx1)+3*_t*_t*(_zhuX2-_cx2);
-        var _ty=3*_mt*_mt*(_cy1-_zhuY1)+6*_mt*_t*(_cy2-_cy1)+3*_t*_t*(_zhuY2-_cy2);
-        var _tlen=Math.sqrt(_tx*_tx+_ty*_ty)||1;
-        var _tux=_tx/_tlen, _tuy=_ty/_tlen;
-        // Perpendicular pointing "right" relative to travel = downward-ish
-        // Always point flag toward BOTTOM of screen (positive Y)
-        var _pux_r = _tuy, _puy_r = -_tux;   // right-hand perpendicular
-        var _pux_l = -_tuy, _puy_l = _tux;   // left-hand perpendicular
-        // Pick whichever points MORE downward (larger positive _puy)
+        var _targetL = _totalLen * (0.05 + 0.9 * (_fi+0.5) / _numFlags);
+        // Binary search for the index at this arc length
+        var _lo = 0, _hi = _NS;
+        while (_lo < _hi - 1) { var _mid = (_lo+_hi)>>1; if (_lens[_mid] < _targetL) _lo=_mid; else _hi=_mid; }
+        var _frac = (_lens[_lo]>=_targetL) ? 0 : (_lens[_hi]<=_targetL) ? 1 : (_targetL-_lens[_lo])/(_lens[_hi]-_lens[_lo]);
+        var _fp = {x: _pts[_lo].x*(1-_frac)+_pts[_hi].x*_frac, y: _pts[_lo].y*(1-_frac)+_pts[_hi].y*_frac};
+
+        // Tangent from neighbouring points
+        var _prevP = _pts[Math.max(0,_lo-2)], _nextP = _pts[Math.min(_NS,_hi+2)];
+        var _ftx = _nextP.x-_prevP.x, _fty = _nextP.y-_prevP.y;
+        var _ftLen = Math.sqrt(_ftx*_ftx+_fty*_fty)||1;
+        var _tux = _ftx/_ftLen, _tuy = _fty/_ftLen; // unit tangent along cable
+
+        // Perpendicular pointing downward on screen (positive y = down in SVG)
+        var _pux_r = _tuy, _puy_r = -_tux;
+        var _pux_l = -_tuy, _puy_l = _tux;
         var _pux = (_puy_r >= _puy_l) ? _pux_r : _pux_l;
         var _puy = (_puy_r >= _puy_l) ? _puy_r : _puy_l;
-        // Real bunting: BASE (flat edge) sits ON the rope, APEX points down
-        var _fw=10, _fh=14;
-        // Left and right corners of the base, centred on the rope point
-        var _base_l_x=_bx - _tux*_fw/2, _base_l_y=_by - _tuy*_fw/2;
-        var _base_r_x=_bx + _tux*_fw/2, _base_r_y=_by + _tuy*_fw/2;
-        // Apex hangs DOWN (away from cable, perpendicular)
-        var _apex_x=_bx + _pux*_fh, _apex_y=_by + _puy*_fh;
-        var _fc = _zhuCols[_fi % _zhuCols.length];
-        edgeHtml += '<polygon points="'+_apex_x+','+_apex_y+' '+_base_l_x+','+_base_l_y+' '+_base_r_x+','+_base_r_y+'"'
-          +' fill="'+_fc+'" stroke="rgba(255,255,255,.4)" stroke-width="0.5" opacity="0.97"/>';
+
+        // Triangle: base ON rope, apex hangs down
+        var _fw = 6, _fh = 9;
+        var _bl_x = _fp.x - _tux*_fw/2, _bl_y = _fp.y - _tuy*_fw/2;
+        var _br_x = _fp.x + _tux*_fw/2, _br_y = _fp.y + _tuy*_fw/2;
+        var _ap_x = _fp.x + _pux*_fh,   _ap_y = _fp.y + _puy*_fh;
+
+        // Random color per flag using position hash
+        var _hash = Math.abs(Math.round((_fp.x*1.7 + _fp.y*0.9 + _fi*53) * 131)) % _zhuAllCols.length;
+        var _fc = _zhuAllCols[_hash];
+
+        edgeHtml += '<polygon points="'+_bl_x.toFixed(1)+','+_bl_y.toFixed(1)+' '+_br_x.toFixed(1)+','+_br_y.toFixed(1)+' '+_ap_x.toFixed(1)+','+_ap_y.toFixed(1)+'"'
+          +' fill="'+_fc+'" stroke="rgba(0,0,0,.2)" stroke-width="0.5" opacity="0.97"/>';
       }
       return; // skip normal edge drawing for ZHU
     }
@@ -4697,6 +4774,7 @@ function renderNodeView() {
       var sp = _ports(pwrSrcId); if(!sp) return;
       var spSpec = _devSpec(pwrSrcId)||{};
       var hasBothOut = !!(spSpec.pwr_out && spSpec.data_out);
+      var _ccomboClr = pwrCable ? _cableLineColor(pwrCable) : null;
       edgeHtml += _edgeCombo(
         sp.pwrOut.x, sp.pwrOut.y,
         dp.pwrIn.x, dp.pwrIn.y,
@@ -4704,8 +4782,17 @@ function renderNodeView() {
         false,
         hasBothOut ? sp.dataOut.x : undefined,
         hasBothOut ? sp.dataOut.y : undefined,
-        _spreadOffset
+        _spreadOffset,
+        null
       );
+      if (_ccomboClr) {
+        // Draw bezierEnds on the stem path (srcMX,srcTopY → dstMX,dstBotY)
+        var _cspMX = sp.pwrOut.x + (hasBothOut ? (sp.dataOut.x-sp.pwrOut.x)/2 : 0);
+        var _cspY  = sp.pwrOut.y - 18;
+        var _cdpMX = (dp.pwrIn.x + dp.dataIn.x) / 2;
+        var _cdpY  = dp.pwrIn.y + 18;
+        edgeHtml += _bezierEnds(_cspMX,_cspY,_cdpMX,_cdpY,_spreadOffset,_ccomboClr.s,_ccomboClr.s2);
+      }
       var col = _lbCol('combo', pwrCable);
       var _clbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
       _drawLabel(sp.mid.x + _spreadOffset*0.3, sp.mid.y, dp.mid.x + _spreadOffset, dp.mid.y, _clbl, pwrCable?col:'#55606e', gi);
@@ -4720,8 +4807,9 @@ function renderNodeView() {
           var col = _lbCol('power', pwrCable);
           var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x, y2=dp.pwrIn.y;
           if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
-          edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2,isFoh?0:_spreadOffset)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
-            +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
+          var _pclr = (!isFoh&&pwrCable)?_cableLineColor(pwrCable):null;
+          edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2,isFoh?0:_spreadOffset)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'+(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
+          if (_pclr && !isFoh) edgeHtml += _bezierEnds(x1,y1,x2,y2,_spreadOffset,_pclr.s,_pclr.s2);
           if (!isFoh) {
             var _plbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
             _drawLabel(x1,y1,x2,y2, _plbl, pwrCable?col:'#55606e', gi);
@@ -4743,8 +4831,10 @@ function renderNodeView() {
           var x1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.x : sp.mid.x;
           var y1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.y : sp.mid.y;
           if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
+          var _dclr = datCable?_cableLineColor(datCable):null;
           edgeHtml += '<path d="'+_bezier(x1d,y1d,dp.dataIn.x,dp.dataIn.y,_spreadOffset)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
             +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
+          if (_dclr && !isFoh2) edgeHtml += _bezierEnds(x1d,y1d,dp.dataIn.x,dp.dataIn.y,_spreadOffset,_dclr.s,_dclr.s2);
           if (!isFoh2) {
             var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
             _drawLabel(x1d,y1d,_datDestX,dp.dataIn.y, _dlbl, datCable?col2:'#55606e', gi);
