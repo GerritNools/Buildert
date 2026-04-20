@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.946</title>
+<title>WTUniverse · Buildert Editor v3.947</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.946</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.947</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -727,6 +727,7 @@
     <div class="node-toolbar">
       <button class="btn btn-ghost" onclick="diagFitView()" style="padding:5px 11px;font-size:12px">&#8982; Fit view</button>
       <button class="btn btn-ghost" onclick="diagResetLayout()" style="padding:5px 11px;font-size:12px">&#8859; Reset layout</button>
+      <button class="btn btn-ghost" onclick="diagSyncFromNodes()" style="padding:5px 11px;font-size:12px;background:rgba(0,212,255,.08);border-color:var(--accent);color:var(--accent)" title="Mirror the node view layout">&#8644; Match nodes</button>
       <button class="icon-btn" onclick="diagZoom(1.25)" title="Zoom in" style="font-size:14px;font-weight:700">+</button>
       <span id="diag-zoom-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:38px;text-align:center">100%</span>
       <button class="icon-btn" onclick="diagZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">&minus;</button>
@@ -7120,6 +7121,28 @@ function diagFitView() {
   if (lbl) lbl.textContent = '100%';
 }
 
+function diagSyncFromNodes() {
+  // Copy node positions directly from the node view into diagram positions
+  _diagPositions = {};
+  // Copy all device positions
+  Object.keys(_nodePositions).forEach(function(id) {
+    _diagPositions[id] = { x: _nodePositions[id].x, y: _nodePositions[id].y };
+  });
+  // Also place FOH if needed
+  var needFoh = devices.some(function(d){ return d.source==='FOH'||d.source_data==='FOH'||d.source_power==='FOH'; });
+  if (needFoh && !_diagPositions['FOH']) {
+    // Find lowest Y node position and place FOH below it
+    var maxY = 0;
+    Object.keys(_nodePositions).forEach(function(id){ if(_nodePositions[id].y > maxY) maxY = _nodePositions[id].y; });
+    var svg = document.getElementById('diag-svg');
+    var svgW = svg ? (svg.clientWidth || 1200) : 1200;
+    _diagPositions['FOH'] = { x: Math.max(40, (svgW - 155)/2), y: maxY + NODE_H + 40 };
+  }
+  _saveDiagPositions();
+  _renderDiagSVG();
+  _initDiagEvents();
+  diagFitView();
+}
 function diagResetLayout() {
   _diagPositions = {};
   try { localStorage.removeItem('buildert_diag_pos'); } catch(e) {}
