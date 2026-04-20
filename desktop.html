@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.935</title>
+<title>WTUniverse · Buildert Editor v3.936</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.935</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.936</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4429,18 +4429,26 @@ function renderNodeView() {
   }
 
   function _bezier(x1,y1,x2,y2){
-    // Horizontal S-curve: exits sideways from source, enters sideways at dest.
-    // This spreads cables apart immediately rather than climbing vertically.
+    // Smooth S-curve that works well for both horizontal and vertical runs.
+    // Uses a blend of horizontal and vertical control point offsets.
     var dx = x2 - x1;
     var dy = y2 - y1;
     var dist = Math.sqrt(dx*dx + dy*dy);
-    // Horizontal offset for control points: the further apart, the more horizontal pull
-    var offx = Math.max(Math.abs(dx) * 0.55, Math.abs(dy) * 0.35, 60);
-    // If going right: CP1 pulls right from source, CP2 pulls left into dest
-    // If going left: reverse. This creates proper S-curves.
+    // Horizontal offset: pull based on horizontal distance
+    var offx = Math.max(Math.abs(dx)*0.5, 50);
     var sx = dx >= 0 ? 1 : -1;
-    return 'M'+x1+','+y1+' C'+(x1+sx*offx)+','+y1+' '+(x2-sx*offx)+','+y2+' '+x2+','+y2;
+    // Vertical offset: pull based on vertical distance  
+    var offy = Math.max(Math.abs(dy)*0.35, 40);
+    // Control points: mix of horizontal and vertical pulls
+    // CP1 exits horizontally AND starts moving vertically
+    // CP2 arrives horizontally AND from the right direction
+    var cp1x = x1 + sx*offx;
+    var cp1y = y1 + offy;     // starts moving toward dest Y
+    var cp2x = x2 - sx*offx;
+    var cp2y = y2 - offy;     // approaches from above dest
+    return 'M'+x1+','+y1+' C'+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+x2+','+y2;
   }
+
 
 
   function _edgePower(x1,y1,x2,y2,dashed,marker){
@@ -4633,14 +4641,18 @@ function renderNodeView() {
     if (d._zhu && (pwrSrcId||datSrcId)) {
       var _zhuSrc = pwrSrcId || datSrcId;
       var _zhuSp = _ports(_zhuSrc); if(!_zhuSp) return;
-      var _zhuCols = ['#ff4d4d','#ff9800','#ffe000','#4caf50','#2196f3','#9c27b0','#ff69b4','#00d4ff'];
+      // More colors, used in random order per cable
+      var _zhuAllCols = ['#ff4d4d','#ff6b35','#ff9800','#ffcc00','#ffe000','#c8e600','#4caf50','#00c9a7','#2196f3','#1565c0','#7c4dff','#9c27b0','#e91e63','#ff69b4','#00d4ff','#ff1744'];
+      // Shuffle based on source position for variety
+      var _zhuSeed = Math.round((_zhuX1+_zhuY1+_zhuX2+_zhuY2) * 0.37) % 16;
+      var _zhuCols = _zhuAllCols.slice(_zhuSeed).concat(_zhuAllCols.slice(0,_zhuSeed));
       var _zhuX1=_zhuSp.pwrOut.x, _zhuY1=_zhuSp.pwrOut.y, _zhuX2=dp.pwrIn.x, _zhuY2=dp.pwrIn.y;
         // White rope with rainbow flags
       var _zhuPath = _bezier(_zhuX1,_zhuY1,_zhuX2,_zhuY2);
       // White rope (string)
       edgeHtml += '<path d="'+_zhuPath+'" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>';
       // Triangle flags hanging DOWN from the rope
-      var _numFlags = 9;
+      var _numFlags = 14; // 1.5x more flags
       var _zhuDx = _zhuX2-_zhuX1, _zhuDy = _zhuY2-_zhuY1;
       var _zhuDist = Math.sqrt(_zhuDx*_zhuDx+_zhuDy*_zhuDy);
       var _zhuOffx = Math.max(Math.abs(_zhuDx)*0.55, Math.abs(_zhuDy)*0.35, 60);
