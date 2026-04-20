@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.937</title>
+<title>WTUniverse · Buildert Editor v3.938</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.937</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.938</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4428,24 +4428,21 @@ function renderNodeView() {
     return nodePorts(pos.x, pos.y, _nodeHeights[id]||NODE_H);
   }
 
-  function _bezier(x1,y1,x2,y2){
-    // Cables exit UPWARD from output ports (top of node, y decreases = north)
-    // and arrive from BELOW into input ports (bottom of node, y increases = south).
-    // The bend east/west happens close to the node so cables spread immediately.
+  function _bezier(x1,y1,x2,y2,cpSpread){
+    // Exit north from source output, arrive south at dest input.
+    // cpSpread: extra horizontal offset on control points so cables
+    // fan apart in the middle while still arriving at exact dest x.
+    cpSpread = cpSpread || 0;
     var dx = x2 - x1;
     var dy = y2 - y1;
-    // Vertical offset: how far up/down control points sit from each port
-    // Larger = bend happens closer to node
     var offy = Math.max(Math.abs(dy) * 0.45, 70);
-    // Horizontal offset: pull sideways based on total horizontal distance
-    // Use a high multiplier so cables turn left/right early
     var offx = Math.max(Math.abs(dx) * 0.7, 60);
     var sx = dx >= 0 ? 1 : -1;
-    // CP1: above source (exits north), pulled toward dest horizontally
-    var cp1x = x1 + sx * offx;
+    // CP1: north of source, pushed sideways by offx + cpSpread
+    var cp1x = x1 + sx * offx + cpSpread;
     var cp1y = y1 - offy;
-    // CP2: below dest (arrives from south), pulled from source horizontally
-    var cp2x = x2 - sx * offx;
+    // CP2: south of dest, also offset by cpSpread so cables spread in arc
+    var cp2x = x2 - sx * offx + cpSpread;
     var cp2y = y2 + offy;
     return 'M'+x1+','+y1+' C'+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+x2+','+y2;
   }
@@ -4469,7 +4466,8 @@ function renderNodeView() {
     return '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
       +(dashed?' stroke-dasharray="3,4"':'')+' marker-end="url(#'+marker+')" opacity="0.85"/>';
   }
-  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d){
+  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasAdap,x1d,y1d,cpSpread){
+    cpSpread = cpSpread || 0;
     // Combo cable: single horizontal S-curve carrying both pwr+data.
     // Exit from both source ports with short colored stubs converging to a midpoint,
     // then a grey stem to destination, then split to both dest ports.
@@ -4490,7 +4488,7 @@ function renderNodeView() {
     var _offx = Math.max(Math.abs(_dx)*0.55, Math.abs(_dy)*0.35, 60);
     var _sx = _dx >= 0 ? 1 : -1;
     var _dy2 = dstMY - srcMY, _offy2 = Math.max(Math.abs(_dy2)*0.45, 70);
-    var stem = '<path d="M'+srcMX+','+srcMY+' C'+(srcMX+_sx*_offx)+','+(srcMY-_offy2)+' '+(dstMX-_sx*_offx)+','+(dstMY+_offy2)+' '+dstMX+','+dstMY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
+    var stem = '<path d="M'+srcMX+','+srcMY+' C'+(srcMX+_sx*_offx+cpSpread)+','+(srcMY-_offy2)+' '+(dstMX-_sx*_offx+cpSpread)+','+(dstMY+_offy2)+' '+dstMX+','+dstMY+'" fill="none" stroke="#8899bb" stroke-width="3"'+dash+' opacity="0.88"/>';
 
     // Short source branches: each port → merge point (small, clean)
     var forkH = 14;
@@ -4701,11 +4699,12 @@ function renderNodeView() {
       var hasBothOut = !!(spSpec.pwr_out && spSpec.data_out);
       edgeHtml += _edgeCombo(
         sp.pwrOut.x, sp.pwrOut.y,
-        dp.pwrIn.x  + _spreadOffset, dp.pwrIn.y,
-        dp.dataIn.x + _spreadOffset, dp.dataIn.y,
+        dp.pwrIn.x, dp.pwrIn.y,
+        dp.dataIn.x, dp.dataIn.y,
         false,
         hasBothOut ? sp.dataOut.x : undefined,
-        hasBothOut ? sp.dataOut.y : undefined
+        hasBothOut ? sp.dataOut.y : undefined,
+        _spreadOffset
       );
       var col = _lbCol('combo', pwrCable);
       var _clbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
@@ -4719,13 +4718,15 @@ function renderNodeView() {
           var isFoh = (pwrSrcId==='FOH');
           var noCable = !pwrCable;
           var col = _lbCol('power', pwrCable);
-          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x + _spreadOffset, y2=dp.pwrIn.y;
+          var x1=sp.pwrOut.x, y1=sp.pwrOut.y, x2=dp.pwrIn.x, y2=dp.pwrIn.y;
           if (isFoh) { x1=sp.mid.x; y1=sp.mid.y; x2=dp.mid.x; y2=dp.mid.y; col='var(--accent)'; }
-          edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
+          edgeHtml += '<path d="'+_bezier(x1,y1,x2,y2,isFoh?0:_spreadOffset)+'" fill="none" stroke="'+(isFoh?'var(--accent)':'#f5a623')+'" stroke-width="2"'
             +(noCable?' stroke-dasharray="4,3"':'')+' marker-end="url(#'+(isFoh?'arrow-foh':'arrow-warn')+')" opacity="0.88"/>';
           if (!isFoh) {
             var _plbl = pwrCable ? _cableLabel(pwrCable) : '▸ set cable';
             _drawLabel(x1,y1,x2,y2, _plbl, pwrCable?col:'#55606e', gi);
+            // Small south stub showing exact connection point
+            edgeHtml += '<line x1="'+x2+'" y1="'+y2+'" x2="'+x2+'" y2="'+(y2+10)+'" stroke="#f5a623" stroke-width="2" opacity="0.6"/>';
           }
         }
       }
@@ -4742,8 +4743,7 @@ function renderNodeView() {
           var x1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.x : sp.mid.x;
           var y1d = (isFoh2||spSpec2.data_out) ? sp.dataOut.y : sp.mid.y;
           if (isFoh2) { x1d=sp.mid.x; y1d=sp.mid.y; }
-          var _datDestX = dp.dataIn.x + _spreadOffset;
-          edgeHtml += '<path d="'+_bezier(x1d,y1d,_datDestX,dp.dataIn.y)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
+          edgeHtml += '<path d="'+_bezier(x1d,y1d,dp.dataIn.x,dp.dataIn.y,_spreadOffset)+'" fill="none" stroke="#5b8fff" stroke-width="2"'
             +(noCable2?' stroke-dasharray="4,3"':' stroke-dasharray="none"')+' marker-end="url(#arrow-foh)" opacity="0.88"/>';
           if (!isFoh2) {
             var _dlbl = datCable ? _cableLabel(datCable) : '▸ set cable';
