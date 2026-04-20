@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.950</title>
+<title>WTUniverse · Buildert Editor v3.951</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +455,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.950</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.951</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5504,45 +5504,31 @@ function nodePrint() {
   var svg = document.getElementById('node-svg');
   if (!svg) { window.print(); return; }
 
-  // ── 1. Gather node bounds ───────────────────────────────────
-  var pad = 30, NODE_W_P = 130, NODE_H_P = 70;
-  var minX=1e9,minY=1e9,maxX=0,maxY=0;
+  // Bounding box
+  var pad=30, NWP=130, NHP=70, minX=1e9,minY=1e9,maxX=0,maxY=0;
   Object.keys(_nodePositions).forEach(function(id){
     var p=_nodePositions[id];
     if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
-    if(p.x+NODE_W_P>maxX)maxX=p.x+NODE_W_P;
-    if(p.y+NODE_H_P+60>maxY)maxY=p.y+NODE_H_P+60;
+    if(p.x+NWP>maxX)maxX=p.x+NWP; if(p.y+NHP+60>maxY)maxY=p.y+NHP+60;
   });
   if(minX===1e9){minX=0;minY=0;maxX=800;maxY=500;}
-  var HDRH = 28;  // header bar height in SVG units
   var vbX=Math.max(0,minX-pad), vbY=Math.max(0,minY-pad);
   var vbW=maxX-vbX+pad, vbH=maxY-vbY+pad;
 
-  // ── 2. Clone SVG, remove pan/zoom transforms ─────────────────
+  // Clone and clean SVG
   var clone = svg.cloneNode(true);
   ['node-edges','node-nodes','node-labels'].forEach(function(id){
-    var g=clone.getElementById(id); if(g)g.removeAttribute('transform');
+    var g=clone.getElementById(id); if(g) g.removeAttribute('transform');
   });
-  clone.setAttribute('viewBox', vbX+' '+(vbY-HDRH)+' '+vbW+' '+(vbH+HDRH));
+  clone.setAttribute('viewBox', vbX+' '+vbY+' '+vbW+' '+vbH);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
   clone.removeAttribute('style');
 
-  // ── 3. Build header bar ───────────────────────────────────────
-  var projName = _projectMeta.name||'Project';
-  var stageName = (_stages[_currentStageIdx]||{}).name||'';
-  var meta = (stageName?'Stage: '+stageName+' · ':'')+(_projectMeta.venue?'Venue: '+_projectMeta.venue+' · ':'')+(_projectMeta.date?'Date: '+_projectMeta.date+' · ':'')+devices.length+' devices · '+new Date().toLocaleDateString();
-  var esc = function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');};
-  var hdr = '<rect x="'+vbX+'" y="'+(vbY-HDRH)+'" width="'+vbW+'" height="'+HDRH+'" fill="#1a1a1a"/>'
-    +'<text x="'+(vbX+10)+'" y="'+(vbY-10)+'" font-size="13" font-weight="900" font-family="Arial,sans-serif" fill="#ffffff" letter-spacing="1">'+esc(projName.toUpperCase())+'</text>'
-    +'<text x="'+(vbX+10+projName.length*9)+'" y="'+(vbY-10)+'" font-size="9" font-family="Arial,sans-serif" fill="#aaaaaa">  '+esc(meta)+'</text>'
-    +'<line x1="'+vbX+'" y1="'+vbY+'" x2="'+(vbX+vbW)+'" y2="'+vbY+'" stroke="#444" stroke-width="0.5"/>';
+  // White background
+  clone.insertAdjacentHTML('afterbegin','<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="white"/>');
 
-  // ── 4. White background behind content ───────────────────────
-  var bg = '<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="white"/>';
-
-  // ── 5. Get SVG string and fix colors for light background ────
+  // SVG string with color fixes
   var svgStr = clone.outerHTML;
-  // Remap dark theme colors to print-friendly light theme
   svgStr = svgStr
     .replace(/fill="rgba\([^"]*\)"/g,'fill="white"')
     .replace(/fill="#0a0c0f"/g,'fill="white"')
@@ -5552,27 +5538,45 @@ function nodePrint() {
     .replace(/fill="#ffffff"/g,'fill="#111"')
     .replace(/fill="#7a8694"/g,'fill="#555"')
     .replace(/fill="#dde"/g,'fill="#444"');
-  // Inject header AFTER remapping so header text stays white
-  svgStr = svgStr.replace(/(<svg[^>]*>)/, '$1'+hdr+bg);
 
-  // ── 6. Open print window ─────────────────────────────────────
+  // Header info
+  var projName = _projectMeta.name||'Project';
+  var stageName = (_stages[_currentStageIdx]||{}).name||'';
+  var meta = (stageName?'Stage: '+stageName+' &middot; ':'')+
+    (_projectMeta.venue?'Venue: '+_projectMeta.venue+' &middot; ':'')+
+    (_projectMeta.date?'Date: '+_projectMeta.date+' &middot; ':'')+
+    devices.length+' devices &middot; '+new Date().toLocaleDateString();
   var fileTitle=(projName+(stageName?' - '+stageName:'')+' Nodes').replace(/[^a-zA-Z0-9_ -]/g,'');
+
   var win=window.open('','_blank','width=1200,height=820');
   if(!win){alert('Allow popups to print.'); return;}
   win.document.write(
     '<!DOCTYPE html><html><head><title>'+fileTitle+'</title>'
     +'<style>'
-    +'@page{size:A4 landscape;margin:5mm}'
-    +'html,body{margin:0;padding:0;background:#fff}'
-    +'svg{display:block;width:100vw;height:100vh}'
-    +'@media print{html,body{width:100%;height:100%}svg{width:100%;height:100%}'
-    +'body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-    +'</style></head><body>'+svgStr+'</body></html>'
+    +'@page{size:A4 landscape;margin:0}'
+    +'*{box-sizing:border-box}'
+    +'html,body{margin:0;padding:0;background:#fff;width:100%;height:100%}'
+    +'#hdr{background:#1a1a1a;color:#fff;padding:6px 12px;display:flex;align-items:baseline;gap:14px;height:32px;flex-shrink:0}'
+    +'#hdr h2{font:900 14px/1 Arial,sans-serif;margin:0;letter-spacing:1px;color:#fff}'
+    +'#hdr span{font:9px/1 Arial,sans-serif;color:#aaa}'
+    +'#svgwrap{width:100%;height:calc(100% - 32px);overflow:hidden}'
+    +'#svgwrap svg{width:100%;height:100%}'
+    +'@media print{'
+    +'  html,body{width:297mm;height:210mm}'
+    +'  #hdr{height:32px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'  #svgwrap{height:calc(210mm - 32px)}'
+    +'  #svgwrap svg{width:100%;height:100%}'
+    +'}'
+    +'</style></head><body>'
+    +'<div id="hdr"><h2>'+projName.toUpperCase()+'</h2><span>'+meta+'</span></div>'
+    +'<div id="svgwrap">'+svgStr+'</div>'
+    +'</body></html>'
   );
   win.document.close();
   win.focus();
-  setTimeout(function(){win.print();},600);
+  setTimeout(function(){win.print();},700);
 }
+
 
 
 
