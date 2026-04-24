@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.960</title>
+<title>WTUniverse · Buildert Editor v3.961</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.960</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.961</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2482,19 +2482,8 @@ function openEditModal(gi) {
   _populateCableSelects(d.cable_in||d.cable||'', d.cable_out||'', _pwrIn);
   _populateDualCables(d.cable_pwr_in||d.cable_in||d.cable||'', d.cable_data_in||d.cable_in||d.cable||'', _pwrIn, _dataIn, _srcConnModal);
   populateChecks(d.checks||{}, d.note_opts||[]);
-  var _mkDisp = document.getElementById('m-model-key-display');
-  var _mkSel  = document.getElementById('m-model-key');
-  if (gi >= 0 && modelKey) {
-    // Editing existing device — show model name, hide picker
-    if (_mkDisp) { _mkDisp.textContent = modelKey; _mkDisp.style.display = 'inline'; }
-    if (_mkSel)  { _mkSel.style.display = 'none'; }
-    // Still populate so type-change works
-    populateModelDropdown(d.type, modelKey);
-  } else {
-    if (_mkDisp) _mkDisp.style.display = 'none';
-    if (_mkSel)  _mkSel.style.display  = '';
-    populateModelDropdown(d.type, '');
-  }
+  // Always show model dropdown — just pre-select the current model
+  populateModelDropdown(d.type, modelKey);
   updateModalForType();
   document.getElementById('m-source').value = d.source||'';
   // Populate data connection fields
