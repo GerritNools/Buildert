@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.954</title>
+<title>WTUniverse · Buildert Editor v3.959</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -455,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.954</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.959</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1027,7 +1030,8 @@
       <button class="btn btn-laser"  style="padding:4px 10px;font-size:11px" onclick="filterSpecs('laser')">Lasers</button>
       <button class="btn btn-smoke"  style="padding:4px 10px;font-size:11px" onclick="filterSpecs('smoke')">Smoke</button>
       <button class="btn btn-distro" style="padding:4px 10px;font-size:11px" onclick="filterSpecs('distro')">Distros</button>
-      <button class="btn btn-ghost"  style="padding:4px 10px;font-size:11px;margin-left:auto" onclick="exportSpecsCsv()">&#128228; CSV</button>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="filterSpecs('psu')">PSU</button>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="filterSpecs('adapter')">Adapters</button>="padding:4px 10px;font-size:11px;margin-left:auto" onclick="exportSpecsCsv()">&#128228; CSV</button>
       <button class="btn btn-ghost"  style="padding:4px 10px;font-size:11px" onclick="document.getElementById('specs-csv-input').click()">&#128229; Import CSV</button>
       <input type="file" id="specs-csv-input" accept=".csv" style="display:none" onchange="importSpecsCsv(this.files[0])">
       <button class="btn btn-ghost"  style="padding:4px 10px;font-size:11px" onclick="addNewSpecModel()">+ New model</button>
@@ -1043,12 +1047,19 @@
             <th title="Max amps at 230V">A @230</th>
             <th title="Max amps at 110V">A @110</th>
             <th title="Weight in kg">Wt kg</th>
+            <th title="Number of inputs"># In</th>
+            <th title="Power input connector">Pwr IN</th>
+            <th title="Data input connector">Data IN</th>
+            <th title="Number of outputs"># Out</th>
+            <th title="Power output connector">Pwr OUT</th>
+            <th title="Data output connector">Data OUT</th>
             <th title="IP address pattern">IP</th>
             <th title="Scanner model">Scanners</th>
             <th title="Beam angle">Angle</th>
             <th title="OPS or Diode">OPS/Diode</th>
             <th>Description</th>
             <th>Notes</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="specs-tbody"></tbody>
@@ -3980,12 +3991,17 @@ var _specsFilter = 'all';
 
 var _specsCat = {};
 (function(){
-  var cats = {
-    laser: ['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HULK','PIKO35','PIKO60','PIKO70','VIPER'],
-    smoke: ['PEASOUP','SHOCKFOG','FAN'],
-    distro:['32A','32AFIBRE','8PORT','4PORT','3PORT'],
+  // Build _specsCat from DEVICE_SPECS so it always matches the baked data
+  var TYPE_TO_SCAT = {
+    'Laser projector':'laser','Smoke machine':'smoke','Distro':'distro',
+    'Power supply':'psu','Adapter':'adapter'
   };
-  Object.keys(cats).forEach(function(cat){ cats[cat].forEach(function(k){ _specsCat[k]=cat; }); });
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    var sp=DEVICE_SPECS[k]; if(!sp) return;
+    var cat = (sp.category||'').toLowerCase();
+    if(!cat && sp.type) cat = TYPE_TO_SCAT[sp.type]||'other';
+    if(cat) _specsCat[k]=cat;
+  });
 })();
 
 function getSpec(modelKey) {
@@ -4031,6 +4047,15 @@ function _rebuildModelLists(){
   });
   // Ensure Adapter source type exists
   if(!SOURCE_TYPES['Adapter']) SOURCE_TYPES['Adapter']=[TYPE_DISTRO,TYPE_PSU,TYPE_LASER,'Adapter'];
+  // Rebuild _specsCat from DEVICE_SPECS
+  var TYPE_TO_SCAT2 = {'Laser projector':'laser','Smoke machine':'smoke','Distro':'distro','Power supply':'psu','Adapter':'adapter'};
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    if(_specsCat[k]) return; // already set
+    var sp=DEVICE_SPECS[k]; if(!sp) return;
+    var cat=(sp.category||'').toLowerCase();
+    if(!cat && sp.type) cat=TYPE_TO_SCAT2[sp.type]||'';
+    if(cat) _specsCat[k]=cat;
+  });
   if(typeof qaUpdateModel==='function') qaUpdateModel();
   // Also update edit modal model dropdown if modal is open
   var mtype=document.getElementById('m-type');
@@ -4045,8 +4070,8 @@ var SPEC_FIELDS = [
   ['alt','Alt name','text',90],['laser_w','Laser W','number',55],
   ['consumption_w','Cons W','number',55],['max_a_230','A @230','number',52],
   ['max_a_110','A @110','number',52],['weight_kg','Wt kg','number',52],
-  ['inputs','# Inputs','number',48],['in_connector','In connector','connector',90],
-  ['outputs','# Outputs','number',48],['out_connector','Out connector','connector',90],
+  ['inputs','# Inputs','number',48],['pwr_in','Pwr IN','connector',90],['data_in','Data IN','connector',90],
+  ['outputs','# Outputs','number',48],['pwr_out','Pwr OUT','connector',90],['data_out','Data OUT','connector',90],
   ['ip','IP','text',100],['scanners','Scanners','text',72],
   ['angle','Angle','text',52],['ops_diode','OPS/Diode','text',82],
   ['desc','Description','text',160],['notes','Notes','text',160],
@@ -4057,7 +4082,9 @@ function openSpecsModal() {
   _specsFilter = 'all';
   _specsEdit = {};
   Object.keys(DEVICE_SPECS).forEach(function(k){
-    _specsEdit[k] = Object.assign({}, DEVICE_SPECS[k], _specsOverrides[k]||{});
+    var base = Object.assign({}, DEVICE_SPECS[k]);
+
+    _specsEdit[k] = Object.assign(base, _specsOverrides[k]||{});
   });
   renderSpecsTable();
   document.getElementById('modal-specs').classList.add('open');
@@ -4066,12 +4093,12 @@ function closeSpecsModal() { document.getElementById('modal-specs').classList.re
 function filterSpecs(cat) { _specsFilter=cat; renderSpecsTable(); }
 
 function renderSpecsTable() {
-  var catOrder=['laser','smoke','distro'];
-  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros'};
-  var catColors={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)'};
+  var catOrder=['laser','smoke','distro','psu','adapter'];
+  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros','psu':'Power Supplies','adapter':'Adapters'};
+  var catColors={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'#888',adapter:'#aaa'};
   var keys=Object.keys(DEVICE_SPECS);
   if(_specsFilter!=='all') keys=keys.filter(function(k){return _specsCat[k]===_specsFilter;});
-  var grouped={laser:[],smoke:[],distro:[],other:[]};
+  var grouped={laser:[],smoke:[],distro:[],psu:[],adapter:[],other:[]};
   keys.forEach(function(k){var c=_specsCat[k]||'other';if(!grouped[c])grouped[c]=[];grouped[c].push(k);});
 
   // Build connector options once
@@ -5887,33 +5914,55 @@ function importSpecsCsv(file) {
   if (!file) return;
   var r = new FileReader();
   r.onload = function(e) {
-    var lines = e.target.result.trim().split(/\r?\n/);
-    var headers = lines[0].split(',').map(function(h){return h.trim().replace(/^"|"$/g,'');});
+    var text = e.target.result.trim();
+    // Auto-detect separator: semicolon (LI format) or comma
+    var sep = text.indexOf(';') !== -1 && text.indexOf(';') < (text.indexOf(',')||999) ? ';' : ',';
+    var lines = text.split(/\r?\n/);
+    var headers = lines[0].split(sep).map(function(h){return h.trim().replace(/^"|"$/g,'');});
+    var CAT_MAP = {laser:'Laser projector',smoke:'Smoke machine',distro:'Distro',psu:'Power supply',adapter:'Adapter'};
+    // CSV is the complete source of truth — clear existing baked specs first
+    Object.keys(DEVICE_SPECS).forEach(function(k){ delete DEVICE_SPECS[k]; });
+    _specsOverrides = {};
+    _specsCat = {};
     var count = 0;
     for (var i=1;i<lines.length;i++) {
-      var vals = lines[i].split(',').map(function(v){return v.trim().replace(/^"|"$/g,'');});
+      if (!lines[i].trim()) continue;
+      var vals = lines[i].split(sep).map(function(v){return v.trim().replace(/^"|"$/g,'');});
       var row = {};
       headers.forEach(function(h,j){row[h]=vals[j]||'';});
-      var key = (row.model_key||'').toUpperCase().trim();
+      var key = (row.model||row.model_key||'').trim();
       if (!key) continue;
-      // Ensure model exists in DEVICE_SPECS (add if new)
-      if (!DEVICE_SPECS[key]) {
-        DEVICE_SPECS[key] = {alt_name:row.alt||key, description:'', consumption_w:null, laser_w:null, weight_kg:null, ip_range:'', notes:''};
-        if (row.category) _specsCat[key] = row.category;
-      }
-      // Apply field values as overrides
-      var diff = {};
-      SPEC_FIELDS.forEach(function(f){
-        var fname=f[0], ftype=f[1], rv=row[fname];
-        if (rv===''||rv===undefined) return;
-        diff[fname] = ftype==='number' ? parseFloat(rv) : rv;
-      });
-      if (Object.keys(diff).length) _specsOverrides[key] = Object.assign(_specsOverrides[key]||{}, diff);
+      var cat = (row.category||'').toLowerCase();
+      if (cat === 'cable' || !cat) continue;  // skip cables and empty
+      var type = CAT_MAP[cat]||'';
+      if (!type) continue;
+      // Build pwr_in: detect " cable" suffix for permanently attached cables
+      var pwrIn = (row.pwr_in||'').trim();
+      var permCable = '';
+      if (pwrIn.toLowerCase().endsWith(' cable')) { permCable = pwrIn; pwrIn = pwrIn.replace(/ cable$/i,'').trim(); }
+      function cn(v){return v.toLowerCase()==='none'?'':v;}
+      DEVICE_SPECS[key] = {
+        type: type,
+        pwr_in:  cn(pwrIn),
+        pwr_out: cn(row.pwr_out||''),
+        data_in: cn(row.data_in||''),
+        data_out:cn(row.data_out||''),
+      };
+      if (row.alt)           DEVICE_SPECS[key].alt = row.alt;
+      if (permCable)         DEVICE_SPECS[key].perm_cable = permCable;
+      if (row.outputs)       DEVICE_SPECS[key].outputs = parseInt(row.outputs)||0;
+      if (row.consumption_w) DEVICE_SPECS[key].consumption_w = parseFloat(row.consumption_w);
+      if (row.weight_kg)     DEVICE_SPECS[key].weight_kg = parseFloat(row.weight_kg);
+      if (row.desc)          DEVICE_SPECS[key].desc = row.desc;
+      if (row.notes)         DEVICE_SPECS[key].notes = row.notes;
+      _specsCat[key] = cat;
       count++;
     }
+    // Rebuild model lists and specs category map
+    _rebuildModelLists();
     saveSpecsToStorage();
-    openSpecsModal(); // refresh table
-    showToast('Imported '+count+' model(s)','ok');
+    if (typeof openSpecsModal === 'function') openSpecsModal();
+    showToast('Imported '+count+' models (replaced all specs)', 'ok');
   };
   r.readAsText(file);
 }
@@ -6059,17 +6108,17 @@ function renderSpecs(){
   var DEFAULT_SMOKE=['PEASOUP','SHOCKFOG','FAN'];
   allModels.forEach(function(k){
     var sp=DEVICE_SPECS[k];if(!sp||typeof sp!=='object')return;
-    var cat=sp.category||'';
-    // If imported (has category field): use that
+    var cat=(sp.category||'').toLowerCase();
+    // Also derive from 'type' field if category missing
+    if(!cat && sp.type) {
+      var _T2C={'Laser projector':'laser','Smoke machine':'smoke','Distro':'distro','Power supply':'psu','Adapter':'adapter'};
+      cat=_T2C[sp.type]||'';
+    }
     if(cat==='laser') lk.push(k);
     else if(cat==='distro') dk.push(k);
     else if(cat==='smoke') sk.push(k);
     else if(cat==='psu') pkList.push(k);
-    // Fallback: classify by default lists if no category
-    else if(DEFAULT_LASERS.indexOf(k)>=0) lk.push(k);
-    else if(DEFAULT_DISTROS.indexOf(k)>=0) dk.push(k);
-    else if(DEFAULT_SMOKE.indexOf(k)>=0) sk.push(k);
-    // anything else goes to 'extra' (handled below)
+    // anything else goes to 'extra'
   });
 
   var lTbl='<div><div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors <span style="font-size:10px;opacity:.6;font-weight:400">— click any cell to edit</span></div>'
