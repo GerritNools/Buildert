@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.898mmmmmmm</title>
+<title>WTU · Buildert v3.899mmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.898mmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.899mmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1265,39 +1265,51 @@ function renderSpecs(){
   empty.style.display='none';
   updateBanner();
 
-  var lk=['RGB20','CYAN','WHITE','RGBB','RGB6','RGB10','GOPSL','SUPERNOVA','HULK','PIKO35','PIKO60','PIKO70','VIPER'];
-  var dk=['32A','32AFIBRE','8PORT','4PORT','3PORT'];
-  var sk=['PEASOUP','SHOCKFOG','FAN'];
+  // Derive lists from SPECS (always reflects baked + imported data)
+  var TYPE_TO_CAT_M={'Laser projector':'laser','Smoke machine':'smoke','Distro':'distro','Power supply':'psu','Adapter':'adapter'};
+  var lk=[],sk=[],dk=[],pk=[],ak=[];
+  Object.keys(SPECS).forEach(function(k){
+    var s=SPECS[k]; if(!s) return;
+    var cat=(s.category||'').toLowerCase()||(TYPE_TO_CAT_M[s.type||'']||'');
+    if(cat==='laser')  lk.push(k);
+    else if(cat==='smoke')   sk.push(k);
+    else if(cat==='distro')  dk.push(k);
+    else if(cat==='psu')     pk.push(k);
+    else if(cat==='adapter') ak.push(k);
+  });
 
   function spCard(k, color, fields){
     var s=SPECS[k]; if(!s) return '';
     var expanded=_spExpanded[k];
     var rows=expanded ? fields.map(function(f){
       var lbl=f[0],key=f[1];
-      var v=s[key]; var disp=(v===null||v===undefined||v==='')?'\u2014':String(v);
+      var v=s[key]; var disp=(v===null||v===undefined||v==='')?'—':String(v);
       return '<div class="sp-row"><span class="sp-lbl">'+lbl+'</span><span class="sp-val">'+disp+'</span></div>';
     }).join('') : '';
-    return '<div class="sp-card" onclick="_spToggle(\''+k+'\')" style="cursor:pointer">'
+    return '<div class="sp-card" data-k="'+k+'" onclick="var kk=this.dataset.k;_spToggle(kk)" style="cursor:pointer">'
       +'<div class="sp-card-header" style="color:'+color+';display:flex;align-items:center;gap:8px">'
       +'<span>'+k+'</span>'
-      +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400">'+(s.alt||'')+'</span>'
-      +'<span style="margin-left:auto;font-size:14px;color:var(--muted)">'+(expanded?'\u25b2':'\u25bc')+'</span>'
+      +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400">'+(s.alt||s.alt_name||'')+'</span>'
+      +'<span style="margin-left:auto;font-size:14px;color:var(--muted)">'+(expanded?'▲':'▼')+'</span>'
       +'</div>'
       +rows+'</div>';
   }
 
-  var laserFields=[['Laser W','laser_w'],['Consump W','consumption_w'],['A @230V','max_a_230'],['A @110V','max_a_110'],['Weight kg','weight_kg'],['Scanners','scanners'],['Angle','angle'],['OPS/Diode','ops_diode'],['In conn.','in_connector'],['Out conn.','out_connector'],['IP range','ip'],['Notes','notes']];
-  var distroFields=[['Outputs','outputs'],['Inputs','inputs'],['Phase','phases'],['In conn.','in_connector'],['Out conn.','out_connector'],['Description','desc'],['Notes','notes']];
-  var smokeFields=[['Consump W','consumption_w'],['A @230V','max_a_230'],['Oil type','oil_type'],['In conn.','in_connector'],['Notes','notes']];
+  var laserFields=[['Laser W','laser_w'],['Consump W','consumption_w'],['A @230V','max_a_230'],['A @110V','max_a_110'],['Weight kg','weight_kg'],['Pwr in','pwr_in'],['Data in','data_in'],['Pwr out','pwr_out'],['Data out','data_out'],['Notes','notes']];
+  var distroFields=[['Outputs','outputs'],['Phases','phases'],['Pwr in','pwr_in'],['Data in','data_in'],['Pwr out','pwr_out'],['Data out','data_out'],['Notes','notes']];
+  var smokeFields=[['Consump W','consumption_w'],['A @230V','max_a_230'],['Pwr in','pwr_in'],['Perm cable','perm_cable'],['Notes','notes']];
+  var psuFields=[['Pwr out','pwr_out'],['Phases','phases'],['Notes','notes']];
+  var adapterFields=[['Pwr in','pwr_in'],['Pwr out','pwr_out'],['Data in','data_in'],['Data out','data_out'],['Notes','notes']];
 
-  cont.innerHTML=
-    '<div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors — tap to expand</div>'
-    +lk.map(function(k){return spCard(k,'var(--laser)',laserFields);}).join('')
-    +'<div class="sp-hdr" style="color:var(--distro)">⚡ Distros</div>'
-    +dk.map(function(k){return spCard(k,'var(--distro)',distroFields);}).join('')
-    +'<div class="sp-hdr" style="color:var(--smoke)">💨 Smoke Machines</div>'
-    +sk.map(function(k){return spCard(k,'var(--smoke)',smokeFields);}).join('');
+  var html='';
+  if(lk.length) html+='<div class="sp-hdr" style="color:var(--laser)">💡 Laser Projectors</div>'+lk.map(function(k){return spCard(k,'var(--laser)',laserFields);}).join('');
+  if(dk.length) html+='<div class="sp-hdr" style="color:var(--distro)">⚡ Distros</div>'+dk.map(function(k){return spCard(k,'var(--distro)',distroFields);}).join('');
+  if(sk.length) html+='<div class="sp-hdr" style="color:var(--smoke)">💨 Smoke Machines</div>'+sk.map(function(k){return spCard(k,'var(--smoke)',smokeFields);}).join('');
+  if(pk.length) html+='<div class="sp-hdr" style="color:#aaa">🔌 Power Supplies</div>'+pk.map(function(k){return spCard(k,'#aaa',psuFields);}).join('');
+  if(ak.length) html+='<div class="sp-hdr" style="color:#aaa">🔁 Adapters</div>'+ak.map(function(k){return spCard(k,'#aaa',adapterFields);}).join('');
+  cont.innerHTML=html||'<p style="color:var(--muted);padding:20px">No specs loaded.</p>';
 }
+
 
 function editSpecMobile(k,f,v){
   if(!SPECS[k])return;
