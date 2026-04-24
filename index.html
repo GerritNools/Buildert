@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.899mmmmmmmmm</title>
+<title>WTU · Buildert v3.900mmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.899mmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.900mmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -791,13 +791,14 @@ var CABLE_TYPES = [
   var ld=ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;});
   return ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m');
 }
-function _cableOpts(val, devConn, srcConn){
-  // pwr_b = device end, pwr_a = source end
-  // Filter cables that match device's input (pwr_b) AND source's output (pwr_a)
+function _cableOpts(val, devConn, srcConn, isData){
+  // isData=true: also include cables matching data_b connector
   var o='<option value="">-- none --</option>';
   CABLE_TYPES.forEach(function(ct){
-    var devMatch = !devConn || !ct.pwr_b || ct.pwr_b === devConn;
-    var srcMatch = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
+    var devPMatch = !devConn || !ct.pwr_b  || ct.pwr_b  === devConn;
+    var devDMatch = isData && devConn && ct.data_b && ct.data_b === devConn;
+    var devMatch  = devPMatch || devDMatch;
+    var srcMatch  = !srcConn || !ct.pwr_a || ct.pwr_a === srcConn;
     if(!devMatch || !srcMatch) return;
     ct.lengths.forEach(function(l){
       var lval=l.val||l.v, llbl=l.lbl||l.l||lval+'m', v=ct.key+'-'+lval;
@@ -1748,6 +1749,9 @@ function openEdit(gi){
   if(d.model){
     if(modelRow) modelRow.style.display='none';
     if(modelDisp){modelDisp.style.display='';modelDisp.textContent=d.model;}
+    // Set hidden m-model value so syncId() can build the device ID
+    document.getElementById('m-model').innerHTML='<option value="'+d.model+'">'+d.model+'</option>';
+    document.getElementById('m-model').value=d.model;
   } else {
     if(modelRow) modelRow.style.display='';
     if(modelDisp) modelDisp.style.display='none';
@@ -1780,16 +1784,20 @@ function openEdit(gi){
   var el_sp=document.getElementById('m-src-pwr'),el_cp=document.getElementById('m-cable-pwr');
   var el_sd=document.getElementById('m-src-dat'),el_cd=document.getElementById('m-cable-dat');
   if(el_sp)el_sp.innerHTML=buildSrcOpts2(pwrSrc);
-  if(el_cp)el_cp.innerHTML=_cableOpts(pwrCbl,devPwrIn,'');
+  if(el_cp)el_cp.innerHTML=_cableOpts(pwrCbl,devPwrIn,'',false);
   if(el_sd)el_sd.innerHTML=buildSrcOpts2(datSrc);
-  if(el_cd)el_cd.innerHTML=_cableOpts(datCbl,devDatIn,'');
+  if(el_cd)el_cd.innerHTML=_cableOpts(datCbl,devDatIn,'',true); // true = also match data_b connector
   // Pwr source → auto copy to data source
   if(el_sp)el_sp.onchange=function(){if(el_sd)el_sd.value=el_sp.value;};
   // Pwr cable → auto copy to data cable if combo
   if(el_cp)el_cp.onchange=function(){
-    var ck=el_cp.value.split('-')[0];
+    var v=el_cp.value, ck=v.split('-')[0];
     var ct=typeof CABLE_TYPES!=='undefined'&&CABLE_TYPES.find?CABLE_TYPES.find(function(c){return c.key===ck;}):null;
-    if(ct&&ct.data_a&&ct.pwr_a&&el_cd){el_cd.value=el_cp.value;}
+    if(ct&&ct.data_a&&ct.pwr_a){
+      // Combo cable: auto-set data cable and sync source
+      if(el_cd){ el_cd.innerHTML=_cableOpts(v,devDatIn,'',true); el_cd.value=v; }
+      if(el_sd&&el_sp&&el_sp.value) el_sd.value=el_sp.value;
+    }
   };
   // Legacy field
   document.getElementById('m-cable-in').innerHTML=_cableOpts(pwrCbl,devPwrIn,'');
@@ -1808,6 +1816,13 @@ function openEdit(gi){
 function saveDevice(){
   var model=(document.getElementById('m-model').value||'').trim().toUpperCase();
   var unit=(document.getElementById('m-unit').value||'').trim();
+  // If editing existing device with known model, preserve device_id
+  if(!model && editIdx>=0 && devices[editIdx]){
+    var _ed=devices[editIdx];
+    var _parts=(_ed.device_id||'').trim().split(/\s+/);
+    model=(_ed.model||_parts[0]||'').toUpperCase();
+    if(!unit) unit=_parts.slice(1).join(' ')||'';
+  }
   var deviceId=model?(model+(unit?' '+unit:'')):unit;
   if(!deviceId){showToast('Device ID required','warn');return;}
   if(devices.some(function(d,i){return d.device_id===deviceId&&i!==editIdx;})){showToast('ID already exists','warn');return;}
@@ -3396,7 +3411,22 @@ function _mNodeRender() {
 
   var COLS={'Laser projector':'#5b8fff','Smoke machine':'#4de6b8','Distro':'#f5a623','Power supply':'#c77dff'};
 
-  // ── Edges + cable labels ─────────────────────────────────────────
+  // ── _edgeCombo: T-fork connector for combo cables ────────────────
+  function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasDual,x1d,y1d,cpSpread){
+    cpSpread=cpSpread||0;
+    var forkH=16, hasDualSrc=(x1d!==undefined);
+    var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.min(y1p,y1d):y1p)-forkH;
+    var sPwr=hasDualSrc?'<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>':'';
+    var sDat=hasDualSrc?'<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>':'';
+    var dstMX=(x2p+x2d)/2, dstBotY=Math.max(y2p,y2d)+forkH;
+    var dPwr='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+dstBotY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x2p+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+y2p+'" stroke="#f5a623" stroke-width="2.5" marker-end="url(#mn-arrow-warn)" opacity="0.9"/>';
+    var dDat='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+dstBotY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x2d+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+y2d+'" stroke="#5b8fff" stroke-width="2.5" marker-end="url(#mn-arrow-foh)" opacity="0.9"/>';
+    var _dx=dstMX-srcMX, _dy=dstBotY-srcTopY;
+    var _offx=Math.max(Math.abs(_dx)*0.7,60), _offy=Math.max(Math.abs(_dy)*0.45,70), _sx=_dx>=0?1:-1;
+    var stem='<path d="M'+srcMX+','+srcTopY+' C'+(srcMX+_sx*_offx+cpSpread)+','+(srcTopY-_offy)+' '+(dstMX-_sx*_offx+cpSpread)+','+(dstBotY+_offy)+' '+dstMX+','+dstBotY+'" fill="none" stroke="#8899bb" stroke-width="3" opacity="0.88"/>';
+    return sPwr+sDat+stem+dPwr+dDat;
+  }
+// ── Edges + cable labels ─────────────────────────────────────────
   var eHtml='', lHtml='';
   // Cable color function matching desktop
   function _mCLC(v){
@@ -3425,7 +3455,25 @@ function _mNodeRender() {
     var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
     var sx=dx>=0?1:-1;
     var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1-offy)+' '+(x2-sx*offx)+','+(y2+offy)+' '+x2+','+y2;
-    eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
+    // Check if combo cable - use T-fork rendering
+    var _isCombo=false;
+    if(cable && !isFoh){
+      var _ck=cable.split('-')[0];
+      var _ct=CABLE_TYPES&&CABLE_TYPES.find?CABLE_TYPES.find(function(c){return c.key===_ck;}):null;
+      _isCombo=_ct&&!!(_ct.pwr_a)&&!!(_ct.data_a);
+    }
+    if(_isCombo){
+      var _sp2=SPECS[d.model||'']||null;
+      var _hasBothOut=_sp2&&_sp2.pwr_out&&_sp2.data_out;
+      var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y;
+      var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y;
+      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y+NH;
+      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH;
+      eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
+        _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
+    } else {
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
+    }
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
     if(clrS && !isFoh){
