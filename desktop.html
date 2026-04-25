@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.975</title>
+<title>WTUniverse · Buildert Editor v3.976</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.975</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.976</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4418,19 +4418,28 @@ function _memoStartDrag(e, mid) {
   var memo = _nodeMemos.find(function(m){return m.id===mid;});
   if(!memo) return;
   var svg = document.getElementById('node-svg');
-  var pt = svg.createSVGPoint();
-  pt.x = e.clientX; pt.y = e.clientY;
-  var svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-  // Offset from memo origin in SVG coords
-  var ox = (svgP.x - _nodeOffX) / _nodeScale - memo.x;
-  var oy = (svgP.y - _nodeOffY) / _nodeScale - memo.y;
+  var nodesG = document.getElementById('node-nodes');
+  // Use nodesG CTM to get mouse in node-space (handles pan+zoom correctly)
+  var ctm = nodesG.getScreenCTM().inverse();
+  function toNodeSpace(clientX, clientY) {
+    var pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    return pt.matrixTransform(ctm);
+  }
+  var startPt = toNodeSpace(e.clientX, e.clientY);
+  var ox = startPt.x - memo.x;
+  var oy = startPt.y - memo.y;
   function onMove(ev) {
-    var p = svg.createSVGPoint();
-    p.x = ev.clientX; p.y = ev.clientY;
-    var sp = p.matrixTransform(svg.getScreenCTM().inverse());
-    memo.x = (sp.x - _nodeOffX) / _nodeScale - ox;
-    memo.y = (sp.y - _nodeOffY) / _nodeScale - oy;
-    renderNodeView();
+    var p = toNodeSpace(ev.clientX, ev.clientY);
+    memo.x = p.x - ox;
+    memo.y = p.y - oy;
+    // Update transform directly without full re-render for smooth dragging
+    var memoEl = svg.querySelector('[data-memoid="'+mid+'"]');
+    if(memoEl) {
+      memoEl.setAttribute('transform', 'translate('+memo.x+','+memo.y+')');
+    } else {
+      renderNodeView();
+    }
   }
   function onUp() {
     document.removeEventListener('mousemove', onMove);
@@ -5253,7 +5262,7 @@ function _lbCol(sigType, cable) {
   var _memoSvgHtml = '';
   _nodeMemos.forEach(function(memo) {
     var _mw = 130, _mh = 70;
-    _memoSvgHtml += '<g class="node-memo-svg" transform="translate('+memo.x+','+memo.y+')">'
+    _memoSvgHtml += '<g class="node-memo-svg" data-memoid="'+memo.id+'" transform="translate('+memo.x+','+memo.y+')">'
       // White background + border
       +'<rect width="'+_mw+'" height="'+_mh+'" rx="3" fill="#fff" stroke="#555" stroke-width="1"/>'
       // Dark header bar
@@ -6458,6 +6467,7 @@ try{
 }catch(e){}
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){document.getElementById('device-ip').value=params.get('ip');startPolling();}
+_loadManualPackItems();
 loadSpecsFromStorage();
 _rebuildModelLists();
 _loadNodePositions();
@@ -8624,6 +8634,54 @@ function renderPackList() {
     if(st) st.textContent=res.devices+' devices · '+res.cables+' cables';
   }
   renderPackShared();
+  _renderManualPackItems();
+}
+
+var _manualPackItems = {}; // {stageKey: [{id, name, qty, note}]}
+function _renderManualPackItems() {
+  var el = document.getElementById('pack-manual-section');
+  if(!el) return;
+  var si = document.getElementById('pack-stage-sel');
+  var stageKey = si ? si.value : 'all';
+  var items = _manualPackItems[stageKey] || [];
+  var html = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">📦 MANUAL ITEMS</div>';
+  items.forEach(function(it, i) {
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border2)">'
+      +'<input type="number" min="1" value="'+it.qty+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="qty" style="width:48px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:4px;font-size:12px;font-family:var(--mono)" onchange="_miUpdate(this)">'
+      +'<input type="text" value="'+it.name+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="name" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:12px" placeholder="Item name..." onchange="_miUpdate(this)">'
+      +'<input type="text" value="'+(it.note||'')+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="note" style="width:100px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:3px 6px;border-radius:4px;font-size:11px" placeholder="Note..." onchange="_miUpdate(this)">'
+      +'<button data-sk="'+stageKey+'" data-i="'+i+'" onclick="_miRemove(this)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button>'
+      +'</div>';
+  });
+  html += '<button data-sk="'+stageKey+'" onclick="_miAdd(this)" style="margin-top:8px;background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-family:var(--cond);font-weight:700">+ Add item</button>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+function _miAdd(btn){_addManualItem(btn.dataset.sk);}
+function _miRemove(btn){_removeManualItem(btn.dataset.sk,parseInt(btn.dataset.i));}
+function _miUpdate(inp){_updateManualItem(inp.dataset.sk,parseInt(inp.dataset.i),inp.dataset.f,inp.value);}
+function _addManualItem(stageKey) {
+  if(!_manualPackItems[stageKey]) _manualPackItems[stageKey] = [];
+  _manualPackItems[stageKey].push({id:Date.now(), name:'', qty:1, note:''});
+  _saveManualPackItems();
+  _renderManualPackItems();
+}
+function _removeManualItem(stageKey, i) {
+  if(_manualPackItems[stageKey]) _manualPackItems[stageKey].splice(i,1);
+  _saveManualPackItems(); _renderManualPackItems();
+}
+function _updateManualItem(stageKey, i, field, val) {
+  if(_manualPackItems[stageKey] && _manualPackItems[stageKey][i]) {
+    _manualPackItems[stageKey][i][field] = field==='qty' ? (parseInt(val)||1) : val;
+    _saveManualPackItems();
+  }
+}
+function _saveManualPackItems() {
+  try { localStorage.setItem('buildert_manual_pack', JSON.stringify(_manualPackItems)); } catch(e){}
+}
+function _loadManualPackItems() {
+  try { _manualPackItems = JSON.parse(localStorage.getItem('buildert_manual_pack')||'{}'); } catch(e){}
 }
 
 function packSetStage(idx){ _packActiveStageIdx=idx; renderPackList(); }
