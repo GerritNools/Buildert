@@ -1,11 +1,11 @@
-<div id="mob-node-section" style="display:none;flex-direction:column;height:100%"></div><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.906mmmmmmmmmmmmmmmmmmmmmm</title>
+<title>WTU · Buildert v3.907mmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -400,13 +400,17 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .sn-check.ck-on{border-color:var(--ok);background:rgba(61,220,132,.12);color:var(--ok);}
 .sn-check:active{opacity:.7;}
 
+
+  .cat-chip{padding:4px 12px;border:1px solid var(--border);border-radius:16px;background:none;color:var(--muted);font-size:12px;font-family:var(--cond);font-weight:700;cursor:pointer;white-space:nowrap}
+  .cat-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
+  #cat-filter-bar{display:none}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </head>
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.906mmmmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.907mmmmmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -428,6 +432,14 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 </div>
 
 <div id="scroll">
+  <div id="cat-filter-bar" style="display:flex;gap:6px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch">
+    <button class="cat-chip active" data-cat="all" onclick="_setCatFilter('all',this)">All</button>
+    <button class="cat-chip" data-cat="laser" onclick="_setCatFilter('laser',this)">💡 Lasers</button>
+    <button class="cat-chip" data-cat="smoke" onclick="_setCatFilter('smoke',this)">💨 Smoke</button>
+    <button class="cat-chip" data-cat="distro" onclick="_setCatFilter('distro',this)">⚡ Distros</button>
+    <button class="cat-chip" data-cat="psu" onclick="_setCatFilter('psu',this)">🔌 PSU</button>
+    <button class="cat-chip" data-cat="adapter" onclick="_setCatFilter('adapter',this)">🔁 Adapters</button>
+  </div>
   <div class="chips" id="filter-chips"></div>
   <div id="card-list"></div>
   <!-- Nodes tab — SVG signal flow view -->
@@ -828,7 +840,7 @@ var _mCurrentStageIdx = 0;  // active stage index
 var _mAssignedStageId = '';  // rigger's assigned stage (from URL param)
 var _mPeekMode = false;     // true = viewing another stage read-only
 var _mStagePerms = {};      // {stageId: "e"|"v"} — from URL &stages= param
-var currentTab='laser', editIdx=-1, expandedGis={}, _pointed_edit='';
+var currentTab='list', editIdx=-1, expandedGis={}, _pointed_edit='';
 var _pollTimer=null, _lastHash='';
 var STATUS_OPTS=['Concept','Mounted','Online','Offline','GoAndCheck','Swap','Swapped'];
 
@@ -849,9 +861,13 @@ function pct(d){
   return pts;
 }
 function filtered(){
-  var m={laser:TL,smoke:TS,distro:TD,psu:TP,adapter:TA};
-  if(currentTab==='all'||currentTab==='scan'||currentTab==='power'||currentTab==='zones') return devices.slice();
-  return devices.filter(function(d){return d.type===m[currentTab];});
+  // Cat filter (from the top filter bar on list tab)
+  var _cf = typeof _catFilter !== 'undefined' ? _catFilter : 'all';
+  var TYPE_BY_CAT = {laser:TL, smoke:TS, distro:TD, psu:TP, adapter:'Adapter'};
+  return devices.filter(function(d){
+    if(_cf !== 'all' && TYPE_BY_CAT[_cf] && d.type !== TYPE_BY_CAT[_cf]) return false;
+    return true;
+  });
 }
 function srcOpts(type,excId){
   var a=SRCTYPE[type]||[],opts=[];
@@ -887,18 +903,14 @@ function updateLocDl(){
 // ── Nav ──────────────────────────────────────────────────────────
 var TABS=[
   {k:'nodes',   icon:'🕸', label:'Nodes'},
-  {k:'laser', icon:'💡', label:'Lasers'},
-  {k:'smoke', icon:'💨', label:'Smoke'},
-  {k:'distro',icon:'⚡', label:'Distros'},
-  {k:'psu',   icon:'🔌', label:'PSU'},
-  {k:'all',   icon:'◉',  label:'All'},
-  {k:'scan',  icon:'📡', label:'Scan'},
-  {k:'map',   icon:'🗺',  label:'Diagram'},
-  {k:'power', icon:'⚡', label:'Power'},
-  {k:'pack',  icon:'📦', label:'Pack'},
-  {k:'specs', icon:'📋', label:'Specs'},
-  {k:'todos', icon:'✅', label:'Todos'},
-  {k:'docs',  icon:'📄', label:'Docs'},
+  {k:'list',    icon:'☰',  label:'List'},
+  {k:'scan',    icon:'📡', label:'Scan'},
+  {k:'map',     icon:'🗺',  label:'Diagram'},
+  {k:'power',   icon:'⚡', label:'Power'},
+  {k:'pack',    icon:'📦', label:'Pack'},
+  {k:'specs',   icon:'📋', label:'Specs'},
+  {k:'todos',   icon:'✅', label:'Todos'},
+  {k:'docs',    icon:'📄', label:'Docs'},
 ];
 function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
@@ -914,18 +926,27 @@ function setTab(tab){
     if(b) b.className='ntab'+(t.k===tab?' active-'+t.k:'');
   });
   var fab=document.getElementById('fab');
-  if(fab) fab.style.display=['laser','smoke','distro','psu','all'].indexOf(tab)>=0?'':'none';
+  if(fab) fab.style.display=(tab==='list')?'':'none';
   // Toggle diagram vs card view
   var dw=document.getElementById('diagram-wrap');
   var cl=document.getElementById('card-list');
+  var cfb=document.getElementById('cat-filter-bar');
   if(dw) dw.style.display=tab==='diagram'?'flex':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
+  if(cfb) cfb.style.display=(tab==='list')?'flex':'none';
   if(tab==='scan'){ openScan(); return; }
   if(tab==='docs'){ currentTab=_prevTab||'laser'; _openDocsSheet(_mCurrentStageIdx); return; }
   if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
   // Show/hide node canvas vs card list
-  var ncw=document.getElementById('mob-node-section');
-  if(ncw) ncw.style.display=(tab==='nodes')?'flex':'none';
+  // nodes tab: find node canvas container via mob-node-outer's grandparent
+  var _outerEl=document.getElementById('mob-node-outer');
+  if(_outerEl){
+    var _ns=_outerEl.parentElement&&_outerEl.parentElement.parentElement;
+    if(_ns){ _ns.style.display=(tab==='nodes')?'flex':'none'; _ns.style.flexDirection='column'; _ns.style.height='100%'; }
+    document.getElementById('card-list').style.display=(tab==='nodes')?'none':'';
+    document.getElementById('filter-chips').style.display=(tab==='nodes')?'none':'';
+    var cfb2=document.getElementById('cat-filter-bar'); if(cfb2&&tab==='nodes') cfb2.style.display='none';
+  }
   // Also toggle card-list
   var cl2=document.getElementById('card-list');
   if(cl2) cl2.style.display=(tab==='nodes'||tab==='diagram')?'none':'';
@@ -951,6 +972,12 @@ function renderMain(){
   renderCards();
 }
 
+var _catFilter='all';
+function _setCatFilter(cat, btn){
+  _catFilter=cat;
+  document.querySelectorAll('.cat-chip').forEach(function(b){b.classList.toggle('active',b.dataset.cat===cat);});
+  renderCards();
+}
 function renderCards(){
   updateBanner(); buildChips();
   var list=filtered();
