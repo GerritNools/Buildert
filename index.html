@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.907mmmm</title>
+<title>WTU · Buildert v3.908m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.907mmmmmmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.908m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -925,31 +925,44 @@ function setTab(tab){
     var b=document.getElementById('nt-'+t.k);
     if(b) b.className='ntab'+(t.k===tab?' active-'+t.k:'');
   });
-  var fab=document.getElementById('fab');
-  if(fab) fab.style.display=(tab==='list')?'':'none';
-  // Toggle diagram vs card view
-  var dw=document.getElementById('diagram-wrap');
-  var cl=document.getElementById('card-list');
-  var cfb=document.getElementById('cat-filter-bar');
-  if(dw) dw.style.display=tab==='diagram'?'flex':'none';
-  if(cl) cl.style.display=tab==='diagram'?'none':'';
-  if(cfb) cfb.style.display=(tab==='list')?'flex':'none';
+  // Special tabs that don't change the main view
   if(tab==='scan'){ openScan(); return; }
-  if(tab==='docs'){ currentTab=_prevTab||'laser'; _openDocsSheet(_mCurrentStageIdx); return; }
-  if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
-  // Show/hide node canvas vs card list
-  // nodes tab: find node canvas container via mob-node-outer's grandparent
-  var _outerEl=document.getElementById('mob-node-outer');
-  if(_outerEl){
-    var _ns=_outerEl.parentElement&&_outerEl.parentElement.parentElement;
-    if(_ns){ _ns.style.display=(tab==='nodes')?'flex':'none'; _ns.style.flexDirection='column'; _ns.style.height='100%'; }
-    document.getElementById('card-list').style.display=(tab==='nodes')?'none':'';
-    document.getElementById('filter-chips').style.display=(tab==='nodes')?'none':'';
-    var cfb2=document.getElementById('cat-filter-bar'); if(cfb2&&tab==='nodes') cfb2.style.display='none';
+  if(tab==='docs'){ currentTab=_prevTab||'list'; _openDocsSheet(_mCurrentStageIdx); return; }
+
+  // diagram-wrap holds BOTH the node canvas and the diagram map
+  var dw  = document.getElementById('diagram-wrap');
+  var cl  = document.getElementById('card-list');
+  var fch = document.getElementById('filter-chips');
+  var cfb = document.getElementById('cat-filter-bar');
+  var fab = document.getElementById('fab');
+
+  var showNodes   = (tab==='nodes');
+  var showDiagram = (tab==='diagram');
+  var showList    = !(showNodes||showDiagram);
+
+  // diagram-wrap: visible for nodes and diagram tabs
+  if(dw) dw.style.display=(showNodes||showDiagram)?'flex':'none';
+
+  // card-list + chips: visible for list and other card tabs
+  if(cl)  cl.style.display  = showList?'':'none';
+  if(fch) fch.style.display = showList?'':'none';
+  if(cfb) cfb.style.display = (tab==='list')?'flex':'none';
+  if(fab) fab.style.display = (tab==='list')?'':'none';
+
+  // Within diagram-wrap: node canvas vs map canvas
+  var nodeCanvas = document.getElementById('mob-node-outer');
+  var mapCanvas  = document.getElementById('mob-node-svg')&&document.getElementById('mob-node-outer');
+  // The toolbar (parent of mob-node-outer) is shown for nodes, hidden for diagram map
+  if(nodeCanvas){
+    var toolbar = nodeCanvas.parentElement;
+    // toolbar contains Fit/Zoom buttons — show for nodes
+    if(toolbar && toolbar !== dw){
+      toolbar.style.display = showNodes?'':'none';
+    }
   }
-  // Also toggle card-list
-  var cl2=document.getElementById('card-list');
-  if(cl2) cl2.style.display=(tab==='nodes'||tab==='diagram')?'none':'';
+
+  if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
+  if(tab==='nodes'){   _mNodeRender(); setTimeout(mNodeFit,80); return; }
   renderMain();
 }
 
