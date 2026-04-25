@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.965</title>
+<title>WTUniverse · Buildert Editor v3.966</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.965</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.966</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2822,6 +2822,7 @@ function hideVersionWarning() {
 
 // ── Sync Log ──────────────────────────────────────────────────────────
 var syncLog = []; // {time, type:'ok'|'err'|'info', msg}
+var _localDirty = false; // true when user has unsaved local changes not yet pushed
 var MAX_LOG = 80;
 
 function addSyncLog(msg, type) {
@@ -2830,6 +2831,9 @@ function addSyncLog(msg, type) {
   var ts  = pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
   syncLog.unshift({ts:ts, type:type||'info', msg:msg});
   if (syncLog.length > MAX_LOG) syncLog.length = MAX_LOG;
+  // Auto-refresh log if modal is open
+  var el = document.getElementById('sync-log-full');
+  if(el && document.getElementById('modal-conflict').classList.contains('open')) renderSyncLog();
 }
 
 function renderSyncLog() {
@@ -3046,7 +3050,7 @@ function _pollOnce(url){
           setConnected(false);
           return;
         }
-        if(remoteProjectId) addSyncLog('Remote project: '+remoteProjectId,'info');
+        var pushedAt=parsed._pushed_at?(' at '+parsed._pushed_at.slice(11,19)):''; addSyncLog('Remote project: '+(remoteProjectId||'?')+' — last push'+pushedAt,'info');
         // Absorb specs from controller if present and we have no local overrides
         if(parsed.specs && !Object.keys(_specsOverrides).length){
           _specsOverrides=parsed.specs;
@@ -3054,6 +3058,9 @@ function _pollOnce(url){
         }
         var hash=_remoteHash(incoming);
         if(hash!==_lastRemoteHash){
+          if(_localDirty){
+            addSyncLog('⚠ Remote has new changes — merging (your local edits are preserved in LOCAL_OWNED fields)','warn');
+          }
           _lastRemoteHash=hash;
           _mergeWithConflictCheck(devices,incoming);
         }
@@ -3103,6 +3110,7 @@ function _mergeWithConflictCheck(local,remote){
   });
 
   devices=merged; renderTable(); autoSave();
+  _localDirty=false; // Remote is now source of truth after merge
   var nw=merged.filter(function(d){return d._from_device;}).length;
   if(nw>0) { showToast('Synced — '+nw+' new device(s) from controller','ok'); }
   addSyncLog('Merged: '+merged.length+' total, '+nw+' new from device'+(nw>0?' ✓':''),'info');
@@ -3133,7 +3141,7 @@ function pushToDevice(){
   var xhr=new XMLHttpRequest();
   xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.timeout=5000;
   xhr.onload=function(){
-    if(xhr.status>=200&&xhr.status<300){setConnected(true);_lastRemoteHash=_remoteHash(devices);showToast('Pushed '+devices.length+' devices','ok');addSyncLog('Pushed '+devices.length+' devices','ok');}
+    if(xhr.status>=200&&xhr.status<300){setConnected(true);_lastRemoteHash=_remoteHash(devices);_localDirty=false;showToast('Pushed '+devices.length+' devices','ok');addSyncLog('Pushed '+devices.length+' devices','ok');}
     else{setConnected(false);showToast('Push failed: HTTP '+xhr.status,'err');addSyncLog('Push failed: HTTP '+xhr.status,'err');}
   };
   xhr.onerror=function(){setConnected(false);showToast('Push failed','err');addSyncLog('Push failed (network)','err');};
@@ -4273,9 +4281,12 @@ function buildPayload() {
   return p;
 }
 function parsePayload(raw) {
-  if(Array.isArray(raw)) return {devices:raw,specs:null};
-  if(raw&&Array.isArray(raw.devices)) return {devices:raw.devices,specs:raw._specs||null};
-  return {devices:[],specs:null};
+  if(Array.isArray(raw)) return {devices:raw,specs:null,_project_id:'',_pushed_at:''};
+  if(raw&&Array.isArray(raw.devices)) return {
+    devices:raw.devices, specs:raw._specs||null,
+    _project_id:raw._project_id||'', _pushed_at:raw._pushed_at||''
+  };
+  return {devices:[],specs:null,_project_id:'',_pushed_at:''};
 }
 
 
