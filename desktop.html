@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.962</title>
+<title>WTUniverse · Buildert Editor v3.964</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.962</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.964</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -539,6 +539,7 @@
       <button class="tab-btn"            id="tab-overview" onclick="setTab('overview')">&#9783; Overview</button>
       <button class="tab-btn"            id="tab-todos"   onclick="setTab('todos')">&#9745; Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn"            id="tab-shares"  onclick="setTab('shares')">&#128279; Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
+      <button class="tab-btn"            id="tab-docs"    onclick="setTab('docs')">&#128196; Docs</button>
       <button class="tab-btn" onclick="openLabelModal()" style="margin-left:auto">&#127991; Labels</button>
     </div>
     <!-- Device category chips — shown only when Devices tab is active -->
@@ -900,6 +901,11 @@
 
 
 <!-- Shares & Activity Panel -->
+<div id="docs-panel" style="display:none;padding:20px;max-width:800px">
+  <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px">📄 Stage Documents</h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:16px">Add PDF drawings or other document links per stage. They open in a persistent tab so your zoom and scroll position are saved when you switch back.</p>
+  <div id="docs-stage-list"></div>
+</div>
 <div id="overview-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 130px)"></div>
 <div id="todos-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 110px)">
   <!-- Todos rendered by renderTodosPanel() -->
@@ -998,7 +1004,7 @@
 </div>
 
 <!-- Sync Log Modal -->
-<div class="modal-overlay" id="modal-conflict">
+<div class="modal-overlay" id="modal-conflict" class="modal-overlay">
   <div class="modal" style="max-width:520px">
     <h2>&#128268; Sync Log</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
@@ -1532,7 +1538,7 @@ function setTab(tab) {
     tab = 'devices';
   }
   currentTab = tab;
-  ['devices','power','node','diagram','pack','specs','todos','overview','shares'].forEach(function(t) {
+  ['devices','power','node','diagram','pack','specs','todos','overview','shares','docs'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-all' : '');
   });
@@ -1545,6 +1551,7 @@ function setTab(tab) {
   var tdv = document.getElementById('todos-panel');
   var pwv = document.getElementById('power-view');
   var ovv = document.getElementById('overview-panel');
+  var docp = document.getElementById('docs-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
@@ -1554,6 +1561,7 @@ function setTab(tab) {
   if (tdv) tdv.style.display = 'none';
   if (pwv) pwv.style.display = 'none';
   if (ovv) ovv.style.display = 'none';
+  if (docp) docp.style.display = 'none';
   var catBar = document.getElementById('device-cat-bar');
   if(catBar) catBar.style.display = 'none';
 
@@ -1570,6 +1578,7 @@ function setTab(tab) {
   else if (tab === 'shares')  { if (shv) shv.style.display='block'; renderSharesPanel(); }
   else if (tab === 'todos')   { if (tdv) tdv.style.display='block'; renderTodosPanel(); }
   else if (tab === 'overview'){ if (ovv) ovv.style.display='block'; renderOverview(); }
+  else if (tab === 'docs')    { if (docp) docp.style.display='block'; renderDocsPanel(); }
   else if (tab === 'power')   { if (pwv) pwv.style.display='block'; renderPowerView(); }
   else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
@@ -8089,6 +8098,49 @@ function _stagePctDesktop(devs){
   var total=devs.reduce(function(sum,dev){return sum+completionPct(dev);},0);
   return Math.round(total/devs.length);
 }
+function _docOpen(btn){ window.open(btn.dataset.url,'_blank'); }
+function renderDocsPanel(){
+  var el=document.getElementById('docs-stage-list'); if(!el) return;
+  _ensureStages();
+  var html='';
+  _stages.forEach(function(s,si){
+    var docs=s.docs||[];
+    html+='<div style="margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">';
+    html+='<div style="font-family:var(--cond);font-weight:900;font-size:15px;color:var(--accent);margin-bottom:10px">'+s.name+'</div>';
+    if(!docs.length) html+='<div style="color:var(--muted);font-size:12px;margin-bottom:10px">No documents yet.</div>';
+    docs.forEach(function(doc,di){
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">'
+        +'<span style="flex:1;font-size:13px">'+doc.label+'</span>'
+        +'<span style="font-family:var(--mono);font-size:10px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+doc.url+'</span>'
+        +'<button data-url="'+doc.url+'" onclick="_docOpen(this)" style="padding:4px 10px;background:var(--accent);border:none;border-radius:5px;color:#000;font-weight:700;cursor:pointer;font-size:11px">Open</button>'
+        +'<button onclick="_removeStageDoc('+si+','+di+')" style="padding:4px 8px;background:rgba(255,77,77,.15);border:1px solid var(--danger);border-radius:5px;color:var(--danger);cursor:pointer;font-size:11px">✕</button>'
+        +'</div>';
+    });
+    html+='<div style="margin-top:10px;display:flex;gap:6px">'
+      +'<input id="doc-url-'+si+'" type="url" placeholder="Dropbox/Drive URL..." style="flex:2;padding:6px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-size:12px">'
+      +'<input id="doc-lbl-'+si+'" type="text" placeholder="Label..." style="flex:1;padding:6px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-size:12px">'
+      +'<button onclick="_addStageDocDesktop('+si+')" style="padding:6px 12px;background:var(--accent);border:none;border-radius:5px;color:#000;font-weight:700;cursor:pointer;font-size:12px">+ Add</button>'
+      +'</div>';
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+function _addStageDocDesktop(si){
+  var url=(document.getElementById('doc-url-'+si).value||'').trim();
+  var label=(document.getElementById('doc-lbl-'+si).value||'').trim()||url;
+  if(!url) return;
+  // Convert Dropbox share links to direct view
+  url=url.replace('www.dropbox.com','dl.dropboxusercontent.com').replace('?dl=0','').replace('dl=0','');
+  url=url.replace('/view?usp=sharing','/preview').replace('/view','/preview');
+  if(!_stages[si].docs) _stages[si].docs=[];
+  _stages[si].docs.push({label:label,url:url});
+  autoSave(); renderDocsPanel();
+}
+function _removeStageDoc(si,di){
+  if(!_stages[si]||!_stages[si].docs) return;
+  _stages[si].docs.splice(di,1);
+  autoSave(); renderDocsPanel();
+}
 function renderOverview(){
   var el=document.getElementById('overview-panel'); if(!el)return;
   _ensureStages();
@@ -9189,4 +9241,3 @@ function _syncCableIn() {
 </script>
 </body>
 </html>
-  
