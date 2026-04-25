@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmmm</title>
+<title>WTU · Buildert v3.910mmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.910mm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1681,15 +1681,16 @@ function populateModelDd(type,cur){
     +keys.map(function(k){var s=SPECS[k];return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+k+(s?' ('+s.alt+')':'')+'</option>';}).join('');
 }
 function syncId(){
-  var model=(document.getElementById('m-model').value||'').trim().toUpperCase();
+  var model=(document.getElementById('m-model').value||'').trim();
   var unit=(document.getElementById('m-unit').value||'').trim();
   if(model&&editIdx===-1&&!unit){
+    var modelU=model.toUpperCase();
     var taken={};
-    devices.forEach(function(d){var p=(d.device_id||'').trim().toUpperCase().split(/\s+/);if(p[0]===model){var n=parseInt(p[1],10);if(!isNaN(n))taken[n]=true;}});
+    devices.forEach(function(d){var p=(d.device_id||'').trim().toUpperCase().split(/\s+/);var dm=p.slice(0,p.length-1).join(' ');if(dm===modelU||p[0]===modelU){var n=parseInt(p[p.length-1],10);if(!isNaN(n))taken[n]=true;}});
     var next=1;while(taken[next])next++;
     document.getElementById('m-unit').value=next; unit=String(next);
   }
-  var id=model?(model+(unit?' '+unit:'')).toUpperCase():'';
+  var id=model?(model+(unit?' '+unit:'')):'' ;
   document.getElementById('m-id-prev').textContent=id||'—';
   var sp=model?SPECS[model]:null;
   var info=document.getElementById('m-spec');
@@ -1871,7 +1872,7 @@ function openEdit(gi){
   openSheet('device');
 }
 function saveDevice(){
-  var model=(document.getElementById('m-model').value||'').trim().toUpperCase();
+  var model=(document.getElementById('m-model').value||'').trim();
   var unit=(document.getElementById('m-unit').value||'').trim();
   // If editing existing device with known model, preserve device_id
   if(!model && editIdx>=0 && devices[editIdx]){
