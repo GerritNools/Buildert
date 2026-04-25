@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.911mmm</title>
+<title>WTU · Buildert v3.912mm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.911mmm</small></div>
+  <div class="logo">WTU <small>v3.912mmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3609,8 +3609,11 @@ function _mNodeRender() {
     var gi=dev?devices.indexOf(dev):-1;
 
     nHtml+='<g data-id="'+id+'" transform="translate('+x+','+y+')" style="cursor:pointer">';
-    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="6"'
-      +' fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5" style="pointer-events:all"/>';
+    var _isAdp = _sp2 && _sp2.category === 'adapter';
+    var _mRx = _isAdp ? '10' : '6';
+    var _mDash = _isAdp ? ' stroke-dasharray="5,3"' : '';
+    nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="'+_mRx+'"'
+      +' fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5"'+_mDash+' style="pointer-events:all"/>';
     nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
     var stCol=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
     nHtml+='<circle cx="'+(NW-10)+'" cy="10" r="5" fill="'+stCol+'" style="pointer-events:none"/>';
@@ -4711,4 +4714,6 @@ function _addStageDoc(si){
 <div id="pdf-tab" style="display:none;position:fixed;bottom:70px;right:12px;z-index:1500;background:var(--accent);color:#000;border-radius:24px;padding:8px 14px;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer" onclick="_pdfRestore()">📄 <span id="pdf-tab-label">PDF</span></div>
 
 </body>
-</html>
+</html>,
+  {key:'shucko_ext',label:'Schuko ext',pwr_a:'Shucko',pwr_b:'Shucko',data_a:'',data_b:'',lengths:[{val:3,lbl:'3m'},{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'}]},
+  {key:'cee32_ext', label:'32A CEE ext',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',lengths:[{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'},{val:30,lbl:'30m'}]}
