@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.906mmmmmmmmmmmmmmmmmmmmm</title>
+<title>WTU · Buildert v3.906mmmmmmmmmmmmmmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.906mmmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.906mmmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -907,6 +907,7 @@ function buildNav(){
   }).join('');
 }
 function setTab(tab){
+  var _prevTab=currentTab;
   currentTab=tab;
   TABS.forEach(function(t){
     var b=document.getElementById('nt-'+t.k);
@@ -920,7 +921,7 @@ function setTab(tab){
   if(dw) dw.style.display=tab==='diagram'?'flex':'none';
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
-  if(tab==='docs'){ _openDocsSheet(_mCurrentStageIdx); setTab(currentTab||'all'); return; }
+  if(tab==='docs'){ currentTab=_prevTab||'laser'; _openDocsSheet(_mCurrentStageIdx); return; }
   if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
   // Show/hide node canvas vs card list
   var ncw=document.getElementById('mob-node-section');
