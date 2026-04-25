@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.966</title>
+<title>WTUniverse · Buildert Editor v3.967</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.966</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.967</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2457,7 +2457,11 @@ function openEditModal(gi) {
   document.getElementById('modal-delete-btn').style.display = '';
   var parts = (d.device_id||'').trim().split(/\s+/);
   // Use explicitly stored model if set, fall back to parsing device ID only if no model stored
-  var modelKey = d.model || parts[0] || '';
+  // Multi-word model detection: trailing number = unit, rest = model
+  var _lastP=parts[parts.length-1];
+  var _numEnd=parts.length>1&&/^\d+$/.test(_lastP);
+  var _derivedMK=_numEnd?parts.slice(0,-1).join(' '):parts.slice(0,-1).join(' ')||parts[0]||'';
+  var modelKey = d.model || _derivedMK || parts[0] || '';
   var unitNum  = parts.slice(1).join(' ') || '';
   document.getElementById('m-device-id').value  = d.device_id||'';
   document.getElementById('m-unit-num').value   = unitNum;
