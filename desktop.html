@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.968</title>
+<title>WTUniverse · Buildert Editor v3.969</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.968</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.969</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1760,7 +1760,9 @@ var CABLE_TYPES = [
   {key:"l2130", label:"L21-30", pwr_a:"L21-30", pwr_b:"L21-30", data_a:"", data_b:"", lengths:[{"val": 1.5, "lbl": "Lunch box"}, {"val": 8.0, "lbl": "8m / 25ft"}, {"val": 15.0, "lbl": "15m / 50ft"}, {"val": 30.0, "lbl": "30m / 100ft"}, {"val": 45.0, "lbl": "45m / 150ft"}]},
   {key:"cee32", label:"CEE 32A", pwr_a:"32ACEE", pwr_b:"32ACEE", data_a:"", data_b:"", lengths:[{"val": 10.0, "lbl": "10 m"}, {"val": 25.0, "lbl": "25 m"}]},
   {key:"cat", label:"CAT Ethercon", pwr_a:"", pwr_b:"", data_a:"Ethercon", data_b:"Ethercon", lengths:[{"val": 115.0, "lbl": "115 m"}]},
-  {key:"fiber", label:"Fiber", pwr_a:"", pwr_b:"", data_a:"", data_b:"", lengths:[{"val": 1, "lbl": "various"}]}
+  {key:"fiber", label:"Fiber", pwr_a:"", pwr_b:"", data_a:"", data_b:"", lengths:[{"val": 1, "lbl": "various"}]},
+  {key:"shucko_ext", label:"Schuko ext", pwr_a:"Shucko", pwr_b:"Shucko", data_a:"", data_b:"", lengths:[{"val":3,"lbl":"3m"},{"val":5,"lbl":"5m"},{"val":10,"lbl":"10m"},{"val":20,"lbl":"20m"}]},
+  {key:"cee32_ext",  label:"32A CEE ext", pwr_a:"32ACEE", pwr_b:"32ACEE", data_a:"", data_b:"", lengths:[{"val":5,"lbl":"5m"},{"val":10,"lbl":"10m"},{"val":20,"lbl":"20m"},{"val":30,"lbl":"30m"}]}
 ];// Returns {css, label, adapterNote} for a device given its source
 function cableInfo(d) {
   var cable = d.cable_in || d.cable || '';  // cable_in is canonical; .cable is legacy
@@ -2377,8 +2379,8 @@ function syncDeviceId() {
   if (editIndex === -1) {
     var num = (numEl.value || '').trim();
     var id  = model ? (model + (num ? ' ' + num : '')) : '';
-    document.getElementById('m-device-id').value            = id.toUpperCase();
-    document.getElementById('m-device-id-preview').textContent = id.toUpperCase() || '\u2014';
+    document.getElementById('m-device-id').value            = id;
+    document.getElementById('m-device-id-preview').textContent = id || '\u2014';
   }
   // Show spec chip
   var sp = model ? DEVICE_SPECS[model] : null;
@@ -2512,6 +2514,14 @@ function openEditModal(gi) {
     msel.value = modelKey;
   }
   updateModalForType();
+  // Force model selection AFTER updateModalForType (which may reset the select)
+  if(msel && modelKey) {
+    if(!Array.from(msel.options).some(function(o){return o.value===modelKey;})){
+      var _opt=document.createElement('option');
+      _opt.value=modelKey; _opt.textContent=modelKey+' ✓'; msel.insertBefore(_opt, msel.firstChild);
+    }
+    msel.value=modelKey;
+  }
   document.getElementById('m-source').value = d.source||'';
   // Populate data connection fields
   var _dsp2=getSpec(d.model||modelFromId(d.device_id||''));
@@ -4989,8 +4999,11 @@ function _lbCol(sigType, cable) {
     nodeHtml += '<g data-id="'+id+'" transform="translate('+x+','+y+')">';
     // Background rect — drag to MOVE
     var _isSelected = _nodeSelection.indexOf(id) >= 0;
+    var _isAdapter = dSpec && dSpec.type === TYPE_ADAPTER;
+    var _rxVal = _isAdapter?'10':'6';
+    var _dashAttr = _isAdapter?' stroke-dasharray="5,3"':'';
     nodeHtml += '<rect x="0" y="0" width="'+NODE_W+'" height="'+nH+'"'
-      +' rx="6" fill="'+bgTint+'" stroke="'+(_isSelected?'#00d4ff':col)+'" stroke-width="'+(_isSelected?'2.5':'1.5')+'" style="cursor:move"'
+      +' rx="'+_rxVal+'" fill="'+bgTint+'" stroke="'+(_isSelected?'#00d4ff':col)+'" stroke-width="'+(_isSelected?'2.5':'1.5')+'"'+_dashStr+' style="cursor:move"'
       +' onmousedown="nodeMouseDown(event,\''+id+'\',\'move\')"'
       // dblclick handled by nodeMouseDown timing detection
       +' ontouchstart="nodeTouchStart(event,\''+id+'\')"/>';
