@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.964</title>
+<title>WTUniverse · Buildert Editor v3.965</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.964</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.965</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2974,7 +2974,7 @@ var _pollTimer=null, _lastRemoteHash='';
 // Fields the CONTROLLER writes (device is source of truth for these)
 var DEVICE_OWNED=['checks','status','serial','pointed','source'];
 // Fields the WEBAPP owns (never overwritten by sync)
-var LOCAL_OWNED=['device_id','location','notes','date','note_opts','type','model'];
+var LOCAL_OWNED=['device_id','location','notes','date','note_opts','type','model','source_power','source_data','cable_power_in','cable_data_in','source','cable_in'];
 
 // Hash only device-owned fields so local-field changes don't confuse the sync loop
 function _remoteHash(arr) {
@@ -3038,6 +3038,15 @@ function _pollOnce(url){
         var raw=JSON.parse(xhr.responseText);
         var parsed=parsePayload(raw);
         var incoming=parsed.devices;
+        // Check project isolation
+        var remoteProjectId = parsed._project_id || '';
+        var localProjectId  = project.id || project.name || 'default';
+        if(remoteProjectId && localProjectId && remoteProjectId !== localProjectId){
+          addSyncLog('⚠ Remote has project "'+remoteProjectId+'" but local is "'+localProjectId+'" — not merging','err');
+          setConnected(false);
+          return;
+        }
+        if(remoteProjectId) addSyncLog('Remote project: '+remoteProjectId,'info');
         // Absorb specs from controller if present and we have no local overrides
         if(parsed.specs && !Object.keys(_specsOverrides).length){
           _specsOverrides=parsed.specs;
@@ -3049,11 +3058,12 @@ function _pollOnce(url){
           _mergeWithConflictCheck(devices,incoming);
         }
         setConnected(true);updateSyncTime();
-      }catch(e){setConnected(false);}
+        addSyncLog('Poll OK — '+incoming.length+' device(s) on controller','ok');
+      }catch(e){setConnected(false);addSyncLog('Poll parse error: '+e.message,'err');}
     }else setConnected(false);
   };
-  xhr.onerror=function(){setConnected(false);};
-  xhr.ontimeout=function(){setConnected(false);};
+  xhr.onerror=function(){setConnected(false);addSyncLog('Controller unreachable','err');};
+  xhr.ontimeout=function(){setConnected(false);addSyncLog('Poll timed out','err');};
   xhr.send();
 }
 
@@ -3094,7 +3104,8 @@ function _mergeWithConflictCheck(local,remote){
 
   devices=merged; renderTable(); autoSave();
   var nw=merged.filter(function(d){return d._from_device;}).length;
-  if(nw>0) { showToast('Synced — '+nw+' new device(s) from controller','ok'); addSyncLog(nw+' new device(s) from controller','info'); }
+  if(nw>0) { showToast('Synced — '+nw+' new device(s) from controller','ok'); }
+  addSyncLog('Merged: '+merged.length+' total, '+nw+' new from device'+(nw>0?' ✓':''),'info');
 }
 
 
@@ -4251,7 +4262,13 @@ function resetSpecsToDefaults() {
 
 // Payload helpers — wrap devices+specs together for push/pull
 function buildPayload() {
-  var p={devices:devices};
+  var p={
+    devices: devices,
+    _project_id: project.id || project.name || 'default',
+    _project_name: project.name || '',
+    _pushed_at: new Date().toISOString(),
+    _stage_count: _stages.length,
+  };
   if(Object.keys(_specsOverrides).length) p._specs=_specsOverrides;
   return p;
 }
