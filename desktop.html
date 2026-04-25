@@ -1368,7 +1368,11 @@ function switchStage(idx){
     if(pcw) pcw.style.display='block';
     renderPackList();
   }
-  if(currentTab==='node') renderNodeView();
+  if(currentTab==='node') {
+    var _ncw=document.getElementById('node-canvas-wrap');
+    if(_ncw) _ncw.style.display='block';
+    renderNodeView();
+  }
 }
 
 function addStage(){
@@ -3518,7 +3522,11 @@ function _mergeProjectNoConflict(data) {
   _persistProjectMeta();
   autoSave();
   renderTable();
-  if(currentTab==='node') renderNodeView();
+  if(currentTab==='node') {
+    var _ncw2=document.getElementById('node-canvas-wrap');
+    if(_ncw2) _ncw2.style.display='block';
+    renderNodeView();
+  }
   if(currentTab==='diagram'){ renderDiagSVG(); }
   showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
