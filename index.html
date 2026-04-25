@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.906mmmmmmmmmmmmmmmmmmmm</title>
+<title>WTU · Buildert v3.906mmmmmmmmmmmmmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.906mmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.906mmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4589,7 +4589,14 @@ function _pdfOpen(url,lbl){
   var ov=document.getElementById('pdf-overlay'),ifr=document.getElementById('pdf-iframe'),ttl=document.getElementById('pdf-title');
   document.getElementById('pdf-tab-label').textContent=lbl||'PDF';
   ttl.textContent=lbl||url;
-  var fu=url.replace('www.dropbox.com','dl.dropboxusercontent.com').replace('dl=0','dl=1').replace(/\/view.*$/,'/preview');
+  // Normalize URL first (Dropbox → direct, Drive → preview)
+  var fu=url;
+  fu=fu.replace('www.dropbox.com','dl.dropboxusercontent.com').replace('dl=0','dl=1');
+  fu=fu.replace(/\/view(\?.*)?$/,'/preview');
+  // Wrap in Google Docs viewer so it renders inline on mobile (no download prompt)
+  if(fu.indexOf('docs.google.com')<0){
+    fu='https://docs.google.com/viewer?url='+encodeURIComponent(fu)+'&embedded=true';
+  }
   if(!_pdfLoaded||ifr.src!==fu){ifr.src=fu;_pdfLoaded=true;}
   ov.style.display='flex';document.getElementById('pdf-tab').style.display='none';
 }
