@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+<div id="mob-node-section" style="display:none;flex-direction:column;height:100%"></div><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.900mmmmmmmmmm</title>
+<title>WTU · Buildert v3.902mmmmmmmmmmmmmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,7 +406,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.900mmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.902mmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -883,7 +883,7 @@ function updateLocDl(){
 
 // ── Nav ──────────────────────────────────────────────────────────
 var TABS=[
-  {k:'diagram', icon:'🗺', label:'Nodes'},
+  {k:'nodes',   icon:'🕸', label:'Nodes'},
   {k:'laser', icon:'💡', label:'Lasers'},
   {k:'smoke', icon:'💨', label:'Smoke'},
   {k:'distro',icon:'⚡', label:'Distros'},
@@ -900,7 +900,8 @@ function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
     return '<button class="ntab" id="nt-'+t.k+'" onclick="setTab(\''+t.k+'\')">'
       +'<span class="ni">'+t.icon+'</span><span>'+t.label+'</span></button>';
-  }).join('');
+  }).join('')
+    + '<button onclick="_openDocsSheet('+_mCurrentStageIdx+')" style="flex-shrink:0;margin-left:4px;padding:4px 10px;background:'+(_activeHasDocs?'var(--accent)':'rgba(255,255,255,.08)')+';border:none;color:'+(_activeHasDocs?'#000':'var(--muted)')+';border-radius:12px;font-size:13px">📄</button>';
 }
 function setTab(tab){
   currentTab=tab;
@@ -917,6 +918,12 @@ function setTab(tab){
   if(cl) cl.style.display=tab==='diagram'?'none':'';
   if(tab==='scan'){ openScan(); return; }
   if(tab==='diagram'){ renderDiagram(); setTimeout(mapFit,100); return; }
+  // Show/hide node canvas vs card list
+  var ncw=document.getElementById('mob-node-section');
+  if(ncw) ncw.style.display=(tab==='nodes')?'flex':'none';
+  // Also toggle card-list
+  var cl2=document.getElementById('card-list');
+  if(cl2) cl2.style.display=(tab==='nodes'||tab==='diagram')?'none':'';
   renderMain();
 }
 
@@ -3825,7 +3832,31 @@ function _udsCommit(gi,sheet){
 }
 
 function _closeNodeTapSheet(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
-function _mNodeTap(gi){ openDeviceSheet(gi); }
+function _mTapClose(){ var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
+function _mTapEdit(gi){ openEdit(gi); var s=document.getElementById('node-tap-sheet'); if(s)s.remove(); }
+function _mNodeTap(gi){
+  // Show read-only info popup for the tapped node
+  var dev=devices[gi]; if(!dev) return;
+  var old=document.getElementById('node-tap-sheet');
+  if(old) old.remove();
+  var sp=document.getElementById('mob-node-outer');
+  if(!sp) return;
+  var src=dev.source_power||dev.source||'—';
+  var cbl=dev.cable_power_in||dev.cable_in||dev.cable||'—';
+  var sheet=document.createElement('div');
+  sheet.id='node-tap-sheet';
+  sheet.style.cssText='position:absolute;left:50%;transform:translateX(-50%);bottom:70px;'+
+    'background:var(--surface);border:1px solid var(--accent);border-radius:10px;'+
+    'padding:12px 16px;min-width:220px;z-index:40;box-shadow:0 4px 20px rgba(0,0,0,.5)';
+  sheet.innerHTML='<div style="font-family:var(--cond);font-weight:900;font-size:14px;color:var(--accent);margin-bottom:8px">'+dev.device_id+'</div>'+
+    '<div style="font-size:12px;color:#f5a623;margin-bottom:4px">⚡ '+src+'</div>'+
+    (cbl!=='—'?'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+cbl+'</div>':'')+
+    '<div style="display:flex;gap:8px;margin-top:4px">'+
+    '<button onclick="_mTapEdit('+gi+')" style="flex:1;padding:6px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px">✏ Edit</button>'+
+    '<button onclick="_mTapClose()" style="flex:1;padding:6px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">✕ Close</button>'+
+    '</div>';
+  sp.appendChild(sheet);
+}
 
 function _mFitView(){
   // Auto-fit node view to show all nodes
@@ -4269,6 +4300,7 @@ function _renderMobileStageBar(){
   if(!bar) return;
   if(!_mStages.length){ bar.style.display='none'; return; }
   bar.style.display='';
+  var _activeHasDocs = _mStages[_mCurrentStageIdx] && (_mStages[_mCurrentStageIdx].docs||[]).length;
   bar.innerHTML = _mStages.map(function(s,i){
     var active = (i===_mCurrentStageIdx);
     var isAssigned = (!_mAssignedStageId && i===0) || (s.id===_mAssignedStageId || s.name.toLowerCase()===_mAssignedStageId.toLowerCase());
@@ -4545,5 +4577,102 @@ function _snScanTick() {
     <div style="height:8px"></div>
   </div>
 </div>
+
+<!-- PDF viewer overlay (persistent iframe) -->
+<div id="pdf-overlay" style="display:none;position:fixed;inset:0;z-index:2000;background:#111;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1a1a1a;flex-shrink:0">
+    <span id="pdf-title" style="font-family:var(--cond);font-weight:700;font-size:14px;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+    <button onclick="_pdfMinimize()" style="background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 12px;border-radius:6px;font-size:13px">⬇ Minimize</button>
+    <button onclick="_pdfClose()" style="background:rgba(255,77,77,.2);border:1px solid #f55;color:#f55;padding:6px 12px;border-radius:6px;font-size:13px">✕ Close</button>
+  </div>
+  <iframe id="pdf-iframe" src="about:blank" style="flex:1;border:none;width:100%;height:100%"></iframe>
+</div>
+<!-- Floating PDF tab (shows when PDF is minimized) -->
+<div id="pdf-tab" style="display:none;position:fixed;bottom:70px;right:12px;z-index:1500;background:var(--accent);color:#000;border-radius:24px;padding:8px 14px;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer" onclick="_pdfRestore()">📄 <span id="pdf-tab-label">PDF</span></div>
+
+<script>
+var _pdfLoaded = false;
+function _docsClose() { var s=document.getElementById('docs-sheet'); if(s)s.remove(); }
+function _pdfOpenDoc(btn) {
+  var url = btn.dataset.url, label = btn.dataset.lbl;
+  var s = document.getElementById('docs-sheet'); if(s) s.remove();
+  _pdfOpen(url, label);
+}
+function _pdfOpen(url, label) {
+  var ov = document.getElementById('pdf-overlay');
+  var ifr = document.getElementById('pdf-iframe');
+  var ttl = document.getElementById('pdf-title');
+  document.getElementById('pdf-tab-label').textContent = label||'PDF';
+  ttl.textContent = label||url;
+  // Only reload if different URL (preserves scroll/zoom)
+  // Convert share links to direct/embeddable URLs
+  var finalUrl = url.replace('_dl',''); // strip our suffix
+  finalUrl = finalUrl.replace('www.dropbox.com','dl.dropboxusercontent.com').replace('?dl=0','?dl=1').replace('dl=0','dl=1');
+  // Google Drive: convert /view to /preview
+  finalUrl = finalUrl.replace('/view?usp=sharing','/preview').replace('/view','/preview');
+  if (!_pdfLoaded || ifr.src !== finalUrl) {
+    ifr.src = finalUrl;
+    _pdfLoaded = true;
+  }
+  ov.style.display = 'flex';
+  document.getElementById('pdf-tab').style.display = 'none';
+}
+function _pdfMinimize() {
+  document.getElementById('pdf-overlay').style.display = 'none';
+  document.getElementById('pdf-tab').style.display = 'block';
+}
+function _pdfRestore() {
+  document.getElementById('pdf-overlay').style.display = 'flex';
+  document.getElementById('pdf-tab').style.display = 'none';
+}
+function _pdfClose() {
+  document.getElementById('pdf-overlay').style.display = 'none';
+  document.getElementById('pdf-tab').style.display = 'none';
+  document.getElementById('pdf-iframe').src = 'about:blank';
+  _pdfLoaded = false;
+}
+function _openDocsSheet(stageIdx) {
+  var s = _mStages[stageIdx]; if(!s) return;
+  var docs = s.docs || [];
+  var old = document.getElementById('docs-sheet');
+  if(old) old.remove();
+  var sheet = document.createElement('div');
+  sheet.id = 'docs-sheet';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:1800;background:rgba(0,0,0,.7);display:flex;align-items:flex-end';
+  var inner = '<div style="background:var(--surface);border-radius:16px 16px 0 0;width:100%;padding:16px;max-height:70vh;overflow-y:auto">';
+  inner += '<div style="font-family:var(--cond);font-weight:900;font-size:16px;color:var(--accent);margin-bottom:12px">📄 '+s.name+' — Documents</div>';
+  if(!docs.length) {
+    inner += '<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No documents added yet.</div>';
+  }
+  docs.forEach(function(doc, i) {
+    inner += '<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:1"><div style="font-weight:700;font-size:13px">'+doc.label+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">'+doc.url+'</div></div>'
+      +'<button data-url="'+doc.url+'_dl" data-lbl="'+doc.label+'" onclick="_pdfOpenDoc(this)" style="background:var(--accent);border:none;color:#000;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px">Open</button>'
+      +'</div>';
+  });
+  if(_permCanEdit && _permCanEdit(_mStages[stageIdx].id)) {
+    inner += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:6px">Add document URL (Dropbox/Google Drive shared link):</div>'
+      +'<input id="doc-url-in" type="url" placeholder="https://..." style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:12px;margin-bottom:6px">'
+      +'<input id="doc-lbl-in" type="text" placeholder="Label (e.g. Stage 1 rigging plan)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:12px;margin-bottom:8px">'
+      +'<button onclick="_addStageDoc('+stageIdx+')" style="width:100%;background:var(--accent);border:none;color:#000;padding:8px;border-radius:6px;font-weight:700;font-size:13px">+ Add Document</button></div>';
+  }
+  inner += '<button onclick="_docsClose()" style="width:100%;margin-top:10px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px;border-radius:6px;font-size:13px">Close</button>';
+  inner += '</div>';
+  sheet.innerHTML = inner;
+  document.body.appendChild(sheet);
+}
+function _addStageDoc(stageIdx) {
+  var url = (document.getElementById('doc-url-in').value||'').trim();
+  var label = (document.getElementById('doc-lbl-in').value||'').trim()||url;
+  if(!url) return;
+  // Store raw URL, conversion happens on open
+  if(!_mStages[stageIdx].docs) _mStages[stageIdx].docs = [];
+  _mStages[stageIdx].docs.push({label:label, url:url});
+  autoSave();
+  document.getElementById('docs-sheet').remove();
+  _openDocsSheet(stageIdx);
+}
+</script>
 </body>
 </html>
