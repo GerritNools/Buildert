@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.912mm</title>
+<title>WTU · Buildert v3.913mm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.912mmm</small></div>
+  <div class="logo">WTU <small>v3.913m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -797,7 +797,9 @@ var CABLE_TYPES = [
   {key: 'l2130', label: 'L21-30', pwr_a: 'L21-30', pwr_b: 'L21-30', data_a: '', data_b: '', lengths:[{'val': 1.5, 'lbl': 'Lunch box'}, {'val': 8.0, 'lbl': '8m'}, {'val': 15.0, 'lbl': '15m'}, {'val': 30.0, 'lbl': '30m'}, {'val': 45.0, 'lbl': '45m'}]},
   {key: 'cee32', label: 'CEE 32A', pwr_a: '32ACEE', pwr_b: '32ACEE', data_a: '', data_b: '', lengths:[{'val': 10.0, 'lbl': '10 m'}, {'val': 25.0, 'lbl': '25 m'}]},
   {key: 'cat', label: 'CAT Ethercon', pwr_a: '', pwr_b: '', data_a: 'Ethercon', data_b: 'Ethercon', lengths:[{'val': 115.0, 'lbl': '115 m'}]},
-  {key: 'fiber', label: 'Fiber', pwr_a: '', pwr_b: '', data_a: '', data_b: '', lengths:[{'val': 1, 'lbl': 'various'}]}
+  {key: 'fiber', label: 'Fiber', pwr_a: '', pwr_b: '', data_a: '', data_b: '', lengths:[{'val': 1, 'lbl': 'various'}]},
+  {key:'shucko_ext',label:'Schuko ext',pwr_a:'Shucko',pwr_b:'Shucko',data_a:'',data_b:'',lengths:[{val:3,lbl:'3m'},{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'}]},
+  {key:'cee32_ext', label:'32A CEE ext',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',lengths:[{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'},{val:30,lbl:'30m'}]}
 ];function _cableLabel(key){
   if(!key)return '';
   var ct=CABLE_TYPES.find(function(c){return key.indexOf(c.key+'-')===0;});
