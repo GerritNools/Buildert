@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.974</title>
+<title>WTUniverse · Buildert Editor v3.975</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.974</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.975</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -703,6 +703,7 @@
   <div id="pack-panel" style="display:none">
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0 8px;flex-wrap:wrap">
       <span style="font-family:var(--cond);font-weight:900;font-size:15px;letter-spacing:2px;color:var(--accent)">PACKING LIST</span>
+      <select id="pack-stage-sel" onchange="renderPackList()" style="font-family:var(--cond);font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:5px"><option value="all">All stages</option></select>
       <div id="pack-workflow-btns" style="display:flex;gap:4px"></div>
       <span id="pack-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
       <div style="margin-left:auto;display:flex;gap:6px">
@@ -818,6 +819,12 @@
         <select id="m-cable-power" onchange="_refreshPowerCables();_onModalPwrCableChange()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;border-radius:5px;margin-bottom:0">
           <option value="">&#8212; none &#8212;</option>
         </select>
+        <div id="cable-extend-wrap" style="display:none;margin-top:4px">
+          <label style="color:#f5a623;font-size:11px;opacity:0.8">&#8627; Extend with</label>
+          <select id="m-cable-extend" style="width:100%;background:var(--panel);border:1px solid rgba(245,166,35,.4);color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:5px">
+            <option value="">&#8212; no extension &#8212;</option>
+          </select>
+        </div>
       </div>
       <div>
         <label style="color:#5b8fff">&#11044; Data source</label>
@@ -1590,6 +1597,19 @@ function setTab(tab) {
 }
 
 // ── Sort ──────────────────────────────────────────────────────────────
+
+function _naturalCmp(a, b) {
+  // Split string into text and number chunks, compare numerically
+  var ax = [], bx = [];
+  a.replace(/(\d+)|(\D+)/g, function(_, num, txt) { ax.push(num ? +num : txt.toLowerCase()); });
+  b.replace(/(\d+)|(\D+)/g, function(_, num, txt) { bx.push(num ? +num : txt.toLowerCase()); });
+  for (var i=0; i<Math.max(ax.length,bx.length); i++) {
+    var av=ax[i]===undefined?-1:ax[i], bv=bx[i]===undefined?-1:bx[i];
+    if (av < bv) return -1;
+    if (av > bv) return 1;
+  }
+  return 0;
+}
 function setSortField(field) {
   if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
   else { sortField = field; sortDir = 'asc'; }
@@ -1765,9 +1785,7 @@ var CABLE_TYPES = [
   {key:"l2130", label:"L21-30", pwr_a:"L21-30", pwr_b:"L21-30", data_a:"", data_b:"", lengths:[{"val": 1.5, "lbl": "Lunch box"}, {"val": 8.0, "lbl": "8m / 25ft"}, {"val": 15.0, "lbl": "15m / 50ft"}, {"val": 30.0, "lbl": "30m / 100ft"}, {"val": 45.0, "lbl": "45m / 150ft"}]},
   {key:"cee32", label:"CEE 32A", pwr_a:"32ACEE", pwr_b:"32ACEE", data_a:"", data_b:"", lengths:[{"val": 10.0, "lbl": "10 m"}, {"val": 25.0, "lbl": "25 m"}]},
   {key:"cat", label:"CAT Ethercon", pwr_a:"", pwr_b:"", data_a:"Ethercon", data_b:"Ethercon", lengths:[{"val": 115.0, "lbl": "115 m"}]},
-  {key:"fiber", label:"Fiber", pwr_a:"", pwr_b:"", data_a:"", data_b:"", lengths:[{"val": 1, "lbl": "various"}]},
-  {key:"shucko_ext", label:"Schuko ext", pwr_a:"Shucko", pwr_b:"Shucko", data_a:"", data_b:"", lengths:[{"val":3,"lbl":"3m"},{"val":5,"lbl":"5m"},{"val":10,"lbl":"10m"},{"val":20,"lbl":"20m"}]},
-  {key:"cee32_ext",  label:"32A CEE ext", pwr_a:"32ACEE", pwr_b:"32ACEE", data_a:"", data_b:"", lengths:[{"val":5,"lbl":"5m"},{"val":10,"lbl":"10m"},{"val":20,"lbl":"20m"},{"val":30,"lbl":"30m"}]}
+  {key:"fiber", label:"Fiber", pwr_a:"", pwr_b:"", data_a:"", data_b:"", lengths:[{"val": 1, "lbl": "various"}]}
 ];// Returns {css, label, adapterNote} for a device given its source
 function cableInfo(d) {
   var cable = d.cable_in || d.cable || '';  // cable_in is canonical; .cable is legacy
@@ -2455,6 +2473,15 @@ function openAddModal(type) {
   updateModalForType();
   _populateDataSource('', '');
   _populateDataCable('', '', '');
+  // Restore cable extend
+  setTimeout(function(){
+    var extSel=document.getElementById('m-cable-extend');
+    if(extSel && d.cable_power_ext && d.cable_power_ext!==''){
+      var extWrap=document.getElementById('cable-extend-wrap');
+      if(extWrap) extWrap.style.display='';
+      extSel.value=d.cable_power_ext;
+    }
+  },30);
   document.getElementById('modal-device').classList.add('open');
   setTimeout(function(){document.getElementById('m-model-key').focus();},100);
 }
@@ -2680,6 +2707,7 @@ function saveDevice() {
     cable_pwr_in:  (document.getElementById('m-cable-pwr')||{}).value||'',
     source_power:  (document.getElementById('m-source-power')||{}).value||'',
     cable_power_in:(document.getElementById('m-cable-power')||{}).value||'',
+    cable_power_ext:(document.getElementById('m-cable-extend')||{}).value||'',
     source_data:   (document.getElementById('m-source-data')||{}).value||'',
     cable_data_in: (document.getElementById('m-cable-data')||{}).value||'',
     // legacy fields kept in sync
@@ -4384,6 +4412,35 @@ var NODE_COLORS = {
 // ── Node Memos ────────────────────────────────────────────────────────
 var _nodeMemos = []; // [{id,x,y,text,color}]
 
+
+function _memoStartDrag(e, mid) {
+  e.preventDefault(); e.stopPropagation();
+  var memo = _nodeMemos.find(function(m){return m.id===mid;});
+  if(!memo) return;
+  var svg = document.getElementById('node-svg');
+  var pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  var svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+  // Offset from memo origin in SVG coords
+  var ox = (svgP.x - _nodeOffX) / _nodeScale - memo.x;
+  var oy = (svgP.y - _nodeOffY) / _nodeScale - memo.y;
+  function onMove(ev) {
+    var p = svg.createSVGPoint();
+    p.x = ev.clientX; p.y = ev.clientY;
+    var sp = p.matrixTransform(svg.getScreenCTM().inverse());
+    memo.x = (sp.x - _nodeOffX) / _nodeScale - ox;
+    memo.y = (sp.y - _nodeOffY) / _nodeScale - oy;
+    renderNodeView();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    _saveMemos();
+    renderNodeView();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
 function _saveMemos() {
   if (_stages[_currentStageIdx]) _stages[_currentStageIdx].nodeMemos = _nodeMemos;
   try { localStorage.setItem('buildert_memos', JSON.stringify(_nodeMemos)); } catch(e) {}
@@ -5726,7 +5783,7 @@ function _packStageHtml(stageDevices) {
   // Returns {html, devices, cables} — does NOT touch the DOM
   // Sort devices according to _packSort
   var devs = stageDevices.slice();
-  if(_packSort==='model')   devs.sort(function(a,b){return (a.model||modelFromId(a.device_id)||'').localeCompare(b.model||modelFromId(b.device_id)||'');});
+  if(_packSort==='model')   devs.sort(function(a,b){return _naturalCmp(a.model||modelFromId(a.device_id)||'', b.model||modelFromId(b.device_id)||'');});
   else if(_packSort==='status') devs.sort(function(a,b){return (a.status||'').localeCompare(b.status||'');});
   else if(_packSort==='alpha')  devs.sort(function(a,b){return (a.device_id||'').localeCompare(b.device_id||'');});
   else if(_packSort==='stage')  { /* stage grouping handled by caller */ }
@@ -7155,7 +7212,7 @@ function _spRenderLog() {
   // Sort
   if(sortBy === 'stage') filtered = filtered.slice().sort(function(a,b){ return (a.stage||'').localeCompare(b.stage||''); });
   else if(sortBy === 'rigger') filtered = filtered.slice().sort(function(a,b){ return (a.by||'').localeCompare(b.by||''); });
-  else if(sortBy === 'device') filtered = filtered.slice().sort(function(a,b){ return (a.device||'').localeCompare(b.device||''); });
+  else if(sortBy === 'device') filtered = filtered.slice().sort(function(a,b){ return _naturalCmp(a.device||'', b.device||''); });
 
   el.innerHTML = filtered.slice(0, 300).map(function(e, i) {
     var dt = e.at ? new Date(e.at) : null;
@@ -8489,8 +8546,21 @@ function renderPackList() {
 
   if(_packShowTotal){
     // TOTAL view: flat aggregate of ALL devices across all stages — no stage headers
+    // Populate stage selector
+    var psSel=document.getElementById('pack-stage-sel');
+    if(psSel && _stages){
+      var curVal=psSel.value;
+      psSel.innerHTML='<option value="all">All stages</option>'
+        +(_stages||[]).map(function(s,i){return '<option value="'+i+'"'+(curVal===String(i)?' selected':'')+'>'+s.name+'</option>';}).join('');
+    }
+    var _packStageIdx = psSel ? psSel.value : 'all';
     var allDevs=[];
-    (_stages||[]).forEach(function(s){ allDevs=allDevs.concat(s.devices||[]); });
+    if(_packStageIdx==='all'){
+      (_stages||[]).forEach(function(s){ allDevs=allDevs.concat(s.devices||[]); });
+    } else {
+      var _ps=_stages[parseInt(_packStageIdx)];
+      if(_ps) allDevs=_ps.devices||[];
+    }
     var res=_packStageHtml(allDevs);
     el.innerHTML=_phHdr+res.html;
     var st=document.getElementById('pack-stats');
@@ -9162,6 +9232,7 @@ function _syncLegacySource(){
   var leg = document.getElementById('m-source');
   if(src && leg && !leg.value) leg.value = src.value;
 }
+function _editingDevice(){return editIndex>=0&&devices[editIndex]?devices[editIndex]:null;}
 function _onModalPwrCableChange() {
   var pwrCbl = (document.getElementById('m-cable-power')||{}).value || '';
   var ckey = pwrCbl.split('-')[0];
@@ -9179,6 +9250,29 @@ function _onModalPwrCableChange() {
   if (isCombo && datSel && pwrCbl) {
     datSel.value = pwrCbl;
   }
+  // Show/populate extend cable dropdown
+  var cv = document.getElementById('m-cable-power').value;
+  var extWrap = document.getElementById('cable-extend-wrap');
+  var extSel = document.getElementById('m-cable-extend');
+  if(cv && extWrap && extSel) {
+    extWrap.style.display = '';
+    var ck = cv.split('-')[0];
+    var opts = '<option value="">&#8212; no extension &#8212;</option>';
+    CABLE_TYPES.forEach(function(ct){
+      if(ct.key !== ck) return; // same cable type only
+      ct.lengths.forEach(function(l){
+        var v = ct.key+'-'+l.val;
+        opts += '<option value="'+v+'">'+ct.label+' '+l.lbl+'</option>';
+      });
+    });
+    extSel.innerHTML = opts;
+    // Restore saved value
+    var d2 = _editingDevice();
+    if(d2 && d2.cable_power_ext) extSel.value = d2.cable_power_ext;
+  } else if(extWrap) {
+    extWrap.style.display = 'none';
+  }
+
 }
 function _refreshPowerCables() {
   var srcId=(document.getElementById('m-source-power')||{}).value||'';
