@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmm</title>
+<title>WTU · Buildert v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmm</small></div>
+  <div class="logo">WTU <small>v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3528,12 +3528,37 @@ function _mNodeRender() {
       var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH;
       eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
         _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
+      // Color marks on the combo stem bezier
+      var _clrC=_mCLC(cable);
+      if(_clrC){
+        var _forkH=16;
+        var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
+        var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
+        var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
+        var _csx2=_cdxd>=0?1:-1;
+        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
+        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
+        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
+        function _cmsp(t){
+          var ax=_cp0x+(_cp1x-_cp0x)*t,ay=_cp0y+(_cp1y-_cp0y)*t;
+          var bx=_cp1x+(_cp2x-_cp1x)*t,by=_cp1y+(_cp2y-_cp1y)*t;
+          var cx=_cp2x+(_cp3x-_cp2x)*t,cy2=_cp2y+(_cp3y-_cp2y)*t;
+          var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy2-by)*t;
+          var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+          return{fst:'M'+_cp0x+','+_cp0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
+                 snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy2+' '+_cp3x+','+_cp3y};
+        }
+        var _cs1=_cmsp(0.07),_cs2=_cmsp(0.93);
+        var _cda='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
+        eHtml+='<path d="'+_cs1.fst+'" '+_cda+' stroke="'+_clrC.s+'"/>';
+        eHtml+='<path d="'+_cs2.snd+'" '+_cda+' stroke="'+_clrC.s+'"/>';
+      }
     } else {
       eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     }
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
-    if(clrS && !isFoh){
+    if(clrS && !isFoh && !_isCombo){
       var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
       function msp(t){
         var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
