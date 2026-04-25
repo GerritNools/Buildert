@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.967</title>
+<title>WTUniverse · Buildert Editor v3.968</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.967</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.968</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -2362,8 +2362,8 @@ function syncDeviceId() {
   // Auto-suggest lowest available number — only when adding a new device
   if (model && editIndex === -1) {
     var takenNums = {};
-    var allDevs = [];
-    _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+    // Count only in current stage so number resets to 1 if model not yet in this stage
+    var allDevs = (_stages[_currentStageIdx]||{devices:[]}).devices || devices;
     allDevs.forEach(function(d) {
       var dm = modelFromId(d.device_id||'');
       if (dm.toUpperCase() === model.toUpperCase()) { var rest=(d.device_id||'').slice(dm.length).trim(); var n=parseInt(rest,10); if(!isNaN(n)) takenNums[n]=true; }
@@ -2495,7 +2495,22 @@ function openEditModal(gi) {
   _populateDualCables(d.cable_pwr_in||d.cable_in||d.cable||'', d.cable_data_in||d.cable_in||d.cable||'', _pwrIn, _dataIn, _srcConnModal);
   populateChecks(d.checks||{}, d.note_opts||[]);
   // Always show model dropdown — just pre-select the current model
-  populateModelDropdown(d.type, modelKey);
+  // Normalize type (handle old saved types like 'Laser' → 'Laser projector')
+  var TYPE_NORM={'Laser':'Laser projector','Smoke':'Smoke machine','PSU':'Power supply','Distro':'Distro','Adapter':'Adapter'};
+  var dType = TYPE_NORM[d.type] || d.type;
+  document.getElementById('m-type').value = dType;
+  populateModelDropdown(dType, modelKey);
+  // Force-select the model by value after options are populated
+  var msel = document.getElementById('m-model-key');
+  if(msel && modelKey && msel.value !== modelKey){
+    // If model not in list, add it as a temporary option and select it
+    if(!Array.from(msel.options).some(function(o){return o.value===modelKey;})){
+      var opt=document.createElement('option');
+      opt.value=modelKey; opt.textContent=modelKey+' (existing)'; 
+      msel.appendChild(opt);
+    }
+    msel.value = modelKey;
+  }
   updateModalForType();
   document.getElementById('m-source').value = d.source||'';
   // Populate data connection fields
@@ -2825,7 +2840,12 @@ function hideVersionWarning() {
 }
 
 // ── Sync Log ──────────────────────────────────────────────────────────
-var syncLog = []; // {time, type:'ok'|'err'|'info', msg}
+var syncLog = [];
+// Add startup entry
+(function(){
+  var t=new Date(),pad=function(v){return v<10?'0'+v:''+v;};
+  syncLog.push({ts:pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()),type:'info',msg:'App loaded — open 📋 log, then click ▶ Live Sync to see poll events'});
+})();
 var _localDirty = false; // true when user has unsaved local changes not yet pushed
 var MAX_LOG = 80;
 
