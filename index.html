@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.908m</title>
+<title>WTU · Buildert v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.908m</small></div>
+  <div class="logo">WTU <small>v3.909mmmmmmmmmmmmmmmmmmmmmmmmmmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1796,20 +1796,25 @@ function openEdit(gi){
   document.getElementById('sheet-title').textContent='Edit '+(d.device_id||d.serial||'???');
   document.getElementById('del-wrap').style.display='';
   var parts=(d.device_id||'').trim().split(/\s+/);
+  // Detect multi-word model: last part is numeric = unit, rest = model
+  var _lastPart=parts[parts.length-1];
+  var _isNumericEnd=parts.length>1&&/^\d+$/.test(_lastPart);
+  var _derivedModel=_isNumericEnd?parts.slice(0,-1).join(' '):parts.join(' ');
+  var _derivedUnit=_isNumericEnd?_lastPart:'';
   var modelRow=document.getElementById('m-model-row');
   var modelDisp=document.getElementById('m-model-display');
-  if(d.model){
+  var _mKey=d.model||_derivedModel||parts[0]||'';
+  if(_mKey){
     if(modelRow) modelRow.style.display='none';
-    if(modelDisp){modelDisp.style.display='';modelDisp.textContent=d.model;}
-    // Set hidden m-model value so syncId() can build the device ID
-    document.getElementById('m-model').innerHTML='<option value="'+d.model+'">'+d.model+'</option>';
-    document.getElementById('m-model').value=d.model;
+    if(modelDisp){modelDisp.style.display='';modelDisp.textContent=_mKey;}
+    document.getElementById('m-model').innerHTML='<option value="'+_mKey+'">'+_mKey+'</option>';
+    document.getElementById('m-model').value=_mKey;
   } else {
     if(modelRow) modelRow.style.display='';
     if(modelDisp) modelDisp.style.display='none';
-    populateModelDd(d.type,parts[0]||'');
+    populateModelDd(d.type,'');
   }
-  document.getElementById('m-unit').value=parts.slice(1).join(' ')||'';
+  document.getElementById('m-unit').value=_derivedUnit||'';
   syncId();
   document.getElementById('m-serial').value=d.serial||'';
   document.getElementById('m-location').value=d.location||'';
@@ -2003,21 +2008,20 @@ function _poll(url){
   xhr.onerror=function(){setConn(false);};xhr.ontimeout=function(){setConn(false);};xhr.send();
 }
 function _merge(remote){
+  var LOCAL_OWNED=['device_id','location','notes','date','type','model',
+    'source_power','source_data','cable_power_in','cable_data_in','source','cable_in'];
   var lById={};devices.forEach(function(d){if(d.device_id)lById[d.device_id]=d;});
   var merged=[],seen={};
   remote.forEach(function(rd){
     var ld=rd.device_id?lById[rd.device_id]:null;
     if(!ld){merged.push(Object.assign({},rd));return;}
-    if(ld.device_id)seen[ld.device_id]=true;
+    if(rd.device_id)seen[rd.device_id]=true;
     var m=Object.assign({},rd);
     LOCAL_OWNED.forEach(function(f){if(ld[f]!==undefined&&ld[f]!==null)m[f]=ld[f];});
-    if(ld.mounted_at&&!rd.mounted_at)m.mounted_at=ld.mounted_at;
     merged.push(m);
   });
-  devices.forEach(function(d){if(d.device_id&&!seen[d.device_id])merged.push(d);});
-  var hash=JSON.stringify(merged);
-  if(hash!==_lastHash){devices=merged;_lastHash=hash;renderMain();}
-  autoSave();
+  devices.forEach(function(ld){if(ld.device_id&&!seen[ld.device_id])merged.push(ld);});
+  devices=merged;
 }
 function pushToDevice(){
   var url=getUrl();if(!url){showToast('Set IP first','warn');return;}
@@ -2025,7 +2029,8 @@ function pushToDevice(){
   xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.timeout=5000;
   xhr.onload=function(){if(xhr.status>=200&&xhr.status<300){setConn(true);showToast('Pushed '+devices.length+' devices','ok');}else{setConn(false);showToast('Push failed','err');}};
   xhr.onerror=function(){setConn(false);showToast('Push failed','err');};
-  xhr.send(JSON.stringify(devices));
+  var _mobPayload={devices:devices,_project_id:(project&&(project.id||project.name))||_mStages[_mCurrentStageIdx]&&(_mStages[_mCurrentStageIdx].id||'')||'default',_pushed_at:new Date().toISOString()};
+  xhr.send(JSON.stringify(_mobPayload));
 }
 function setConn(ok){
   var dot=document.getElementById('conn-dot'),lbl=document.getElementById('conn-time');
