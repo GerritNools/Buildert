@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.910mmm</title>
+<title>WTU · Buildert v3.911mmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.910mm</small></div>
+  <div class="logo">WTU <small>v3.911mmm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1685,8 +1685,10 @@ function syncId(){
   var unit=(document.getElementById('m-unit').value||'').trim();
   if(model&&editIdx===-1&&!unit){
     var modelU=model.toUpperCase();
+    // Count only within current stage
+    var _stgDevs=(_mStages[_mCurrentStageIdx]||{}).devices||devices;
     var taken={};
-    devices.forEach(function(d){var p=(d.device_id||'').trim().toUpperCase().split(/\s+/);var dm=p.slice(0,p.length-1).join(' ');if(dm===modelU||p[0]===modelU){var n=parseInt(p[p.length-1],10);if(!isNaN(n))taken[n]=true;}});
+    _stgDevs.forEach(function(d){var p=(d.device_id||'').trim().toUpperCase().split(/\s+/);var dm=p.slice(0,p.length-1).join(' ');if(dm===modelU||p[0]===modelU){var n=parseInt(p[p.length-1],10);if(!isNaN(n))taken[n]=true;}});
     var next=1;while(taken[next])next++;
     document.getElementById('m-unit').value=next; unit=String(next);
   }
@@ -3476,7 +3478,7 @@ function _mNodeRender() {
     var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.min(y1p,y1d):y1p)-forkH;
     var sPwr=hasDualSrc?'<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>':'';
     var sDat=hasDualSrc?'<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>':'';
-    var dstMX=(x2p+x2d)/2, dstBotY=Math.max(y2p,y2d)+forkH;
+    var dstMX=(x2p+x2d)/2, dstBotY=Math.min(y2p,y2d)-forkH;
     var dPwr='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+dstBotY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x2p+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+y2p+'" stroke="#f5a623" stroke-width="2.5" marker-end="url(#mn-arrow-warn)" opacity="0.9"/>';
     var dDat='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+dstBotY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x2d+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+y2d+'" stroke="#5b8fff" stroke-width="2.5" marker-end="url(#mn-arrow-foh)" opacity="0.9"/>';
     var _dx=dstMX-srcMX, _dy=dstBotY-srcTopY;
@@ -3490,13 +3492,14 @@ function _mNodeRender() {
   function _mCLC(v){
     if(!v) return null;
     var k=v.split('-')[0], l=parseFloat(v.split('-').slice(1).join('-'));
+    function c(s,s2){return s2?{s:s,s2:s2}:{s:s};}
     if(k==='powerlan'||k==='powercat'||k==='pc_pl'||k==='pl_pc'){
-      if(l<=2.5)return'#ffffff'; if(l<=7.5)return'#dd2222';
-      if(l<=15)return'#ff8800'; if(l<=35)return'#ddcc00'; if(l<=80)return'#2277ee';
+      if(l<=2.5)return c('#ffffff'); if(l<=7.5)return c('#dd2222');
+      if(l<=15)return c('#ff8800'); if(l<=35)return c('#ddcc00'); if(l<=80)return c('#2277ee');
     }
     if(k==='l2130'){
-      if(l<=8)return'#ddcc00'; if(l<=15)return'#ff8800';
-      if(l<=33)return'#882fd0'; if(l<=45)return'#ff8800';
+      if(l<=8)return c('#ddcc00'); if(l<=15)return c('#ff8800');
+      if(l<=33)return c('#882fd0'); if(l<=45)return c('#ff8800','#882fd0');
     }
     return null;
   }
@@ -3571,8 +3574,8 @@ function _mNodeRender() {
       }
       var s1=msp(0.07),s2=msp(0.93);
       var da='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
-      eHtml+='<path d="'+s1.fst+'" '+da+' stroke="'+clrS+'"/>';
-      eHtml+='<path d="'+s2.snd+'" '+da+' stroke="'+clrS+'"/>';
+      eHtml+='<path d="'+s1.fst+'" '+da+' stroke="'+clrS.s+'"/>';
+      eHtml+='<path d="'+s2.snd+'" '+da+' stroke="'+clrS.s+'"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
