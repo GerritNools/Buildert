@@ -2438,6 +2438,7 @@ function openAddModal(type) {
   document.getElementById('m-device-id-edit').style.display = 'none';
   document.getElementById('modal-id-hint').textContent = '— model + unit number';
   var nextNum = 1;
+  document.getElementById('m-unit-num').value = '';  // clear previous value
   document.getElementById('m-type').value = type;
   document.getElementById('m-serial').value = '';
   document.getElementById('m-location').value = '';
