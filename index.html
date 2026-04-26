@@ -2092,6 +2092,13 @@ function _mobLogActivity(action, deviceId, detail) {
 }
 function pushToDevice(){
   var url=getUrl();if(!url){showToast('Set IP first','warn');return;}
+  // Auto-generate project key if worker is configured but key is missing
+  if(_workerUrl && !_projectKey){
+    var proj=project&&(project.id||project.name);
+    if(proj) _projectKey=proj.replace(/[^a-zA-Z0-9_-]/g,'_');
+    else _projectKey='proj_'+Date.now().toString(36);
+    try{localStorage.setItem('buildert_project_key',_projectKey);}catch(e){}
+  }
   var pid=_mobGetProjectId();
   // Step 1: GET current envelope from controller
   var gxhr=new XMLHttpRequest();
