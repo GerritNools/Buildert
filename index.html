@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.913mm</title>
+<title>WTU · Buildert v3.914mmm</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.913m</small></div>
+  <div class="logo">WTU <small>v3.914mm</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2007,12 +2007,38 @@ function _poll(url){
   xhr.open('GET',url+'?_='+Date.now(),true);xhr.timeout=3000;
   xhr.onload=function(){
     if(xhr.status>=200&&xhr.status<300){
-      try{var inc=JSON.parse(xhr.responseText);_merge(inc);setConn(true);}catch(e){setConn(false);}
+      try{
+        var raw=JSON.parse(xhr.responseText);
+        // Extract current project from multi-project envelope
+        var pid=_mobGetProjectId();
+        var projData=null;
+        if(raw&&raw._schema==='v2'&&raw._projects){
+          projData=raw._projects[pid];
+          // Absorb activity log from all projects (to show history)
+          Object.keys(raw._projects).forEach(function(k){
+            var p=raw._projects[k];
+            if(p&&p._log&&Array.isArray(p._log)){
+              p._log.forEach(function(e){
+                if(!_mobActivityLog.some(function(x){return x.at===e.at&&x.by===e.by;}))
+                  _mobActivityLog.push(e);
+              });
+            }
+          });
+        } else if(raw&&Array.isArray(raw.devices)){
+          projData=raw; // old format
+        } else if(raw&&raw.devices){
+          projData=raw;
+        }
+        if(projData){
+          _merge(projData);
+        }
+        setConn(true);
+      }catch(e){setConn(false);}
     }else setConn(false);
   };
-  xhr.onerror=function(){setConn(false);};xhr.ontimeout=function(){setConn(false);};xhr.send();
-}
-function _merge(remote){
+  xhr.onerror=function(){setConn(false);};
+  xhr.send();
+}function _merge(remote){
   var LOCAL_OWNED=['device_id','location','notes','date','type','model',
     'source_power','source_data','cable_power_in','cable_data_in','source','cable_in'];
   var lById={};devices.forEach(function(d){if(d.device_id)lById[d.device_id]=d;});
@@ -2028,14 +2054,92 @@ function _merge(remote){
   devices.forEach(function(ld){if(ld.device_id&&!seen[ld.device_id])merged.push(ld);});
   devices=merged;
 }
+
+// ── Multi-project sync ─────────────────────────────────────────────
+var _mobEnvelope = {};
+var _mobProjectId = '';
+var _mobActivityLog = [];
+
+
+function _verifyPush(pid, expectedCount) {
+  var url=getUrl(); if(!url) return;
+  var vxhr=new XMLHttpRequest();
+  vxhr.open('GET',url+'?_='+Date.now(),true); vxhr.timeout=3000;
+  vxhr.onload=function(){
+    try{
+      var raw=JSON.parse(vxhr.responseText);
+      var proj=null;
+      if(raw&&raw._schema==='v2'&&raw._projects) proj=raw._projects[pid];
+      else if(raw&&raw.devices) proj=raw;
+      if(!proj || (proj.devices||[]).length !== expectedCount){
+        // Our data was overwritten — push again with a small delay
+        setTimeout(pushToDevice, 500 + Math.random()*1000);
+      }
+    }catch(e){}
+  };
+  vxhr.send();
+}
+function _mobGetProjectId() {
+  return (_mobProjectId || (project&&(project.id||project.name)) || _mStages[0]&&_mStages[0].name || 'default').replace(/[^a-zA-Z0-9_-]/g,'_');
+}
+
+function _mobLogActivity(action, deviceId, detail) {
+  var t = new Date();
+  var ts = t.toISOString().slice(0,19).replace('T',' ');
+  var who = window._riggerName || 'rigger';
+  _mobActivityLog.unshift({at:ts, by:who, project:_mobGetProjectId(), action:action, device_id:deviceId||'', detail:detail||''});
+  if(_mobActivityLog.length > 200) _mobActivityLog.length = 200;
+}
 function pushToDevice(){
   var url=getUrl();if(!url){showToast('Set IP first','warn');return;}
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.timeout=5000;
-  xhr.onload=function(){if(xhr.status>=200&&xhr.status<300){setConn(true);showToast('Pushed '+devices.length+' devices','ok');}else{setConn(false);showToast('Push failed','err');}};
-  xhr.onerror=function(){setConn(false);showToast('Push failed','err');};
-  var _mobPayload={devices:devices,_project_id:(project&&(project.id||project.name))||_mStages[_mCurrentStageIdx]&&(_mStages[_mCurrentStageIdx].id||'')||'default',_pushed_at:new Date().toISOString()};
-  xhr.send(JSON.stringify(_mobPayload));
+  var pid=_mobGetProjectId();
+  // Step 1: GET current envelope from controller
+  var gxhr=new XMLHttpRequest();
+  gxhr.open('GET',url+'?_='+Date.now(),true);gxhr.timeout=4000;
+  gxhr.onload=function(){
+    var envelope={_schema:'v2',_projects:{}};
+    try{
+      var raw=JSON.parse(gxhr.responseText);
+      if(raw&&raw._schema==='v2') envelope=raw;
+      else if(raw&&raw.devices){ 
+        // old format — preserve under its project id
+        var oldPid=raw._project_id||'default';
+        envelope._projects[oldPid]=raw;
+      }
+    }catch(e){}
+    // Step 2: Update only our project
+    _mobActivityLog=_mobActivityLog.slice(0,100);
+    envelope._schema='v2';
+    if(!envelope._projects) envelope._projects={};
+    envelope._projects[pid]={
+      devices:devices,
+      _project_id:pid,
+      _project_name:(project&&project.name)||'',
+      _pushed_at:new Date().toISOString(),
+      _pushed_by:window._riggerName||'rigger',
+      _log:_mobActivityLog,
+    };
+    // Step 3: POST full envelope back
+    var pxhr=new XMLHttpRequest();
+    pxhr.open('POST',url,true);pxhr.setRequestHeader('Content-Type','application/json');pxhr.timeout=5000;
+    pxhr.onload=function(){
+      if(pxhr.status>=200&&pxhr.status<300){
+        setConn(true);showToast('Pushed ✓','ok');
+        // Verify after 1.5s that our data survived concurrent pushes
+        setTimeout(function(){ _verifyPush(pid, devices.length); }, 1500);
+      }else{setConn(false);showToast('Push failed','err');}
+    };
+    pxhr.onerror=function(){setConn(false);showToast('Push failed','err');};
+    pxhr.send(JSON.stringify(envelope));
+  };
+  gxhr.onerror=function(){
+    // Can't GET — just push flat (fallback)
+    var pxhr2=new XMLHttpRequest();
+    pxhr2.open('POST',url,true);pxhr2.setRequestHeader('Content-Type','application/json');pxhr2.timeout=5000;
+    pxhr2.onload=function(){if(pxhr2.status>=200&&pxhr2.status<300)setConn(true);};
+    pxhr2.send(JSON.stringify({devices:devices,_project_id:pid,_pushed_by:window._riggerName||'rigger',_pushed_at:new Date().toISOString()}));
+  };
+  gxhr.send();
 }
 function setConn(ok){
   var dot=document.getElementById('conn-dot'),lbl=document.getElementById('conn-time');
