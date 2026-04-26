@@ -7845,7 +7845,7 @@ async function wPush(silent){
   try{
     var resp=await fetch(_workerUrl+'/',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Buildert-Token':_workerToken},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify((function(){var e=Object.assign({},_controllerEnvelope,{_schema:'v2'});if(!e._projects)e._projects={};e._projects[_getProjectId()]=payload;return e;})(),null,2),
     });
     if(resp.ok){
@@ -8162,7 +8162,7 @@ function wPushLayout(){
   _updateProjectBadge();
 
   var pushFn = (_workerUrl&&_projectKey) ? function(){
-    return fetch(_workerUrl+'/',{method:'POST',headers:{'Content-Type':'application/json','X-Buildert-Token':_workerToken},body:JSON.stringify((function(){var e={_schema:'v2',_projects:{}};e._projects[_getProjectId()]=payload;return e;})())})
+    return fetch(_workerUrl+'/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify((function(){var e={_schema:'v2',_projects:{}};e._projects[_getProjectId()]=payload;return e;})())})
       .then(function(r){ _dbxSetStatus(r.ok?'Layout pushed v'+_projectVersion+' · '+_hhmm():'Push error '+r.status, r.ok?'var(--ok)':'var(--danger)'); });
   } : function(){
     return _dbxPush(false);
