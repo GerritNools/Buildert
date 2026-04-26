@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.980</title>
+<title>WTUniverse · Buildert Editor v3.981</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.980</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.981</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4389,6 +4389,8 @@ function resetSpecsToDefaults() {
 var _controllerEnvelope = {};  // full envelope fetched from controller
 
 function _getProjectId() {
+  // When worker sync is active, use _projectKey (the canonical worker key)
+  if(_projectKey) return _projectKey;
   return (project.id || project.name || 'default').replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
