@@ -4386,6 +4386,50 @@ function wForceClear(){
 
 
 
+
+function _mobDiag() {
+  var url = getUrl() || '';
+  var wurl = _workerUrl || '';
+  var pid = _mobGetProjectId();
+  var el = document.getElementById('mob-diag-out');
+  if(!el) return;
+  el.style.display = '';
+  el.innerHTML = '🔑 Project key: <b>'+pid+'</b><br>';
+  el.innerHTML += '🌐 Worker: <b>'+(wurl||'not set')+'</b><br>';
+  el.innerHTML += '📡 Device IP: <b>'+(url||'not set')+'</b><br><br>';
+
+  if(wurl) {
+    el.innerHTML += '⏳ GET /...<br>';
+    fetch(wurl+'/?_='+Date.now(), {cache:'no-store'})
+      .then(function(r){ el.innerHTML += 'HTTP: <b>'+r.status+'</b><br>'; return r.text(); })
+      .then(function(txt){
+        try {
+          var j = JSON.parse(txt);
+          el.innerHTML += 'Schema: <b>'+(j._schema||'old flat')+'</b><br>';
+          if(j._projects) {
+            el.innerHTML += 'Projects: <b>'+Object.keys(j._projects).join(', ')+'</b><br>';
+            if(j._projects[pid]) {
+              el.innerHTML += '✅ Found! <b>'+(j._projects[pid].devices||[]).length+' devices</b><br>';
+            } else {
+              el.innerHTML += '❌ Key "<b>'+pid+'</b>" not found<br>';
+              el.innerHTML += 'Worker has: <b>'+Object.keys(j._projects).join(', ')+'</b><br>';
+            }
+          } else if(j.devices) {
+            el.innerHTML += 'Old format — <b>'+j.devices.length+' devices</b><br>';
+            if(j._project_id && j._project_id!==pid)
+              el.innerHTML += '⚠️ Key mismatch: worker="<b>'+j._project_id+'</b>" local="<b>'+pid+'</b>"<br>';
+            else
+              el.innerHTML += '✅ Keys match<br>';
+          } else {
+            el.innerHTML += 'Unknown: '+txt.slice(0,100);
+          }
+        } catch(e){ el.innerHTML += '❌ '+e.message+'<br>'+txt.slice(0,100); }
+      })
+      .catch(function(e){ el.innerHTML += '❌ '+e.message; });
+  } else {
+    el.innerHTML += '⚠️ No worker URL — set via share link from desktop';
+  }
+}
 function openProjectSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
@@ -4467,7 +4511,9 @@ function openProjectSheet(){
     +'<button class="sb sb-ghost" onclick="wPull();_dbxSetStatus(\'Syncing...\',\'var(--muted)\');closeSheet(\'conn\')" '
     +'style="font-size:11px;padding:6px 12px;flex-shrink:0">↓ Sync</button>'
     +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
-    +'</div>';
+    +'<button class="sb sb-ghost" onclick="_mobDiag()" style="font-size:11px;padding:6px 10px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
+    +'</div>'
+    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>';
 
   body.innerHTML = html;
 
