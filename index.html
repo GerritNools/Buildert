@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.915m</title>
+<title>WTU · Buildert v3.916m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.915m</small></div>
+  <div class="logo">WTU <small>v3.916m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3515,7 +3515,7 @@ function renderDiagram() {
 }
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
-var _mNW = 130, _mNH = 62;
+var _mNW = 120, _mNH = 52;
 // _mNPos declared early (see top)
 var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
@@ -3619,6 +3619,7 @@ function _mNodeRender() {
 // ── Edges + cable labels ─────────────────────────────────────────
   var eHtml='', lHtml='';
   // Cable color function matching desktop
+function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Harting').replace('Powercon','PWRcon').replace('Ethercon','ETHcon').replace('PowerCAT','PCAT').replace('PowerLAN','PLAN').slice(0,10); }
   function _mCLC(v){
     if(!v) return null;
     var k=v.split('-')[0], l=parseFloat(v.split('-').slice(1).join('-'));
@@ -3702,7 +3703,7 @@ function _mNodeRender() {
         return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
       }
-      var s1=msp(0.07),s2=msp(0.93);
+      var s1=msp(0.12),s2=msp(0.88);
       var da='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
       eHtml+='<path d="'+s1.fst+'" '+da+' stroke="'+clrS.s+'"/>';
       eHtml+='<path d="'+s2.snd+'" '+da+' stroke="'+clrS.s+'"/>';
@@ -3762,19 +3763,19 @@ function _mNodeRender() {
     var PW=10,PH=7;
     if(_sp2&&_sp2.pwr_in){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.pwr_in||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
     if(_sp2&&_sp2.data_in){
       nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.data_in||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_in)+'</text>';
     }
     if(_sp2&&_sp2.pwr_out){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.pwr_out||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_out)+'</text>';
     }
     if(_sp2&&_sp2.data_out){
       nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.data_out||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_out)+'</text>';
     }
     nHtml+='</g>';
   });
