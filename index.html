@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.914m</title>
+<title>WTU · Buildert v3.915m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.914m</small></div>
+  <div class="logo">WTU <small>v3.915m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -2078,7 +2078,9 @@ function _verifyPush(pid, expectedCount) {
   vxhr.send();
 }
 function _mobGetProjectId() {
-  return (_mobProjectId || (project&&(project.id||project.name)) || _mStages[0]&&_mStages[0].name || 'default').replace(/[^a-zA-Z0-9_-]/g,'_');
+  // _projectKey is the canonical key shared between desktop and rigger via share link
+  if(_projectKey) return _projectKey;
+  return (_mobProjectId || (project&&(project.id||project.name)) || (_mStages&&_mStages[0]&&_mStages[0].name) || 'default').replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
 function _mobLogActivity(action, deviceId, detail) {
@@ -2982,10 +2984,18 @@ async function wPull(){
     if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
     if(!resp.ok){_dbxSetStatus('Error '+resp.status,'var(--danger)');return;}
     var data=await resp.json();
-    _isPulling=true; var projData=data; if(data&&data._schema==="v2"&&data._projects){var _wPid=_mobGetProjectId();projData=data._projects[_wPid];if(!projData){_dbxSetStatus("No data for project yet","var(--muted)");_isPulling=false;return;}}
+    _isPulling=true; var projData=data; if(data&&data._schema==="v2"&&data._projects){var _wPid=_mobGetProjectId();projData=data._projects[_wPid];
+    if(!projData){
+      // Try fallback keys (project name, 'default')
+      var _fallKeys=[project&&project.name?project.name.replace(/[^a-zA-Z0-9_-]/g,'_'):'','default'];
+      for(var _fi=0;_fi<_fallKeys.length;_fi++){
+        if(_fallKeys[_fi]&&data._projects[_fallKeys[_fi]]){projData=data._projects[_fallKeys[_fi]];break;}
+      }
+    }
+    if(!projData){_dbxSetStatus("No project data on worker","var(--muted)");_isPulling=false;return;}}
     try{
       // Worker sync: always apply — no version gating, desktop is source of truth
-      _mergeProjectNoConflict(data);
+      _mergeProjectNoConflict(projData);
     }finally{_isPulling=false;}
     _dbxSetStatus('✓ synced '+_hhmm(),'var(--ok)');
     _updateMobileProjectBadge();
