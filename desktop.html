@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.981</title>
+<title>WTUniverse · Buildert Editor v3.982</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.981</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.982</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -502,7 +502,8 @@
     <div class="conn-dot" id="conn-dot"></div>
     <span id="conn-label">not connected</span>
     <button class="btn btn-ghost" id="poll-btn" onclick="togglePolling()">&#9654; Live sync</button>
-    <button class="btn btn-ok" onclick="pushToDevice()">&#8593; Push</button>
+    <button class="btn btn-ok" onclick="pushToDevice();if(_workerUrl&&_projectKey)wPush(true);">&#8593; Push</button>
+    <button class="btn btn-ghost" onclick="if(!_workerUrl){alert('Set worker URL in Shares tab first');}else{wPush(false);}" style="font-size:12px" title="Push to Cloudflare worker">&#9729; Cloud push</button>
     <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
   </div>
 </header>
@@ -2969,7 +2970,7 @@ function _diagTest() {
               out.innerHTML += '  ✅ Project found! <b>'+devs+' devices</b><br>';
             } else {
               out.innerHTML += '  ❌ Project "<b>'+pid+'</b>" NOT found in worker.<br>';
-              out.innerHTML += '  Tip: push from desktop first, or check project key.<br>';
+              out.innerHTML += '  Tip: click the &#9729; Cloud push button in the header to push your project to the worker first!<br>';
             }
           } else if(j.devices) {
             out.innerHTML += '  Old format — <b>'+(j.devices.length)+' devices</b><br>';
@@ -7804,7 +7805,13 @@ async function wPull(){
 }
 var _wPushT=null;
 async function wPush(silent){
-  if(!_workerUrl||!_projectKey) return;
+  if(!_workerUrl) return;
+  // Auto-generate project key from project name if not set
+  if(!_projectKey) {
+    _projectKey = (project.name||project.id||'default').replace(/[^a-zA-Z0-9_-]/g,'_');
+    try{localStorage.setItem('buildert_project_key',_projectKey);}catch(e){}
+    addSyncLog('Auto-set project key: '+_projectKey,'info');
+  }
   // Exit Total view before push
   if(_currentStageIdx===-1){ _currentStageIdx=0; devices=_stages[0].devices; }
   var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
