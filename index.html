@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.914mmm</title>
+<title>WTU · Buildert v3.914m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.914mm</small></div>
+  <div class="logo">WTU <small>v3.914m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -797,9 +797,7 @@ var CABLE_TYPES = [
   {key: 'l2130', label: 'L21-30', pwr_a: 'L21-30', pwr_b: 'L21-30', data_a: '', data_b: '', lengths:[{'val': 1.5, 'lbl': 'Lunch box'}, {'val': 8.0, 'lbl': '8m'}, {'val': 15.0, 'lbl': '15m'}, {'val': 30.0, 'lbl': '30m'}, {'val': 45.0, 'lbl': '45m'}]},
   {key: 'cee32', label: 'CEE 32A', pwr_a: '32ACEE', pwr_b: '32ACEE', data_a: '', data_b: '', lengths:[{'val': 10.0, 'lbl': '10 m'}, {'val': 25.0, 'lbl': '25 m'}]},
   {key: 'cat', label: 'CAT Ethercon', pwr_a: '', pwr_b: '', data_a: 'Ethercon', data_b: 'Ethercon', lengths:[{'val': 115.0, 'lbl': '115 m'}]},
-  {key: 'fiber', label: 'Fiber', pwr_a: '', pwr_b: '', data_a: '', data_b: '', lengths:[{'val': 1, 'lbl': 'various'}]},
-  {key:'shucko_ext',label:'Schuko ext',pwr_a:'Shucko',pwr_b:'Shucko',data_a:'',data_b:'',lengths:[{val:3,lbl:'3m'},{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'}]},
-  {key:'cee32_ext', label:'32A CEE ext',pwr_a:'32ACEE',pwr_b:'32ACEE',data_a:'',data_b:'',lengths:[{val:5,lbl:'5m'},{val:10,lbl:'10m'},{val:20,lbl:'20m'},{val:30,lbl:'30m'}]}
+  {key: 'fiber', label: 'Fiber', pwr_a: '', pwr_b: '', data_a: '', data_b: '', lengths:[{'val': 1, 'lbl': 'various'}]}
 ];function _cableLabel(key){
   if(!key)return '';
   var ct=CABLE_TYPES.find(function(c){return key.indexOf(c.key+'-')===0;});
@@ -2977,18 +2975,19 @@ async function wPull(){
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
-    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{cache:'no-store',headers:{'X-Buildert-Token':_mToken}});
+    // Support both new multi-project API (GET /) and old API (GET /project?key=)
+    var resp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
     clearTimeout(_t);
     _dbxSyncing=false;
     if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
     if(!resp.ok){_dbxSetStatus('Error '+resp.status,'var(--danger)');return;}
     var data=await resp.json();
-    _isPulling=true;
+    _isPulling=true; var projData=data; if(data&&data._schema==="v2"&&data._projects){var _wPid=_mobGetProjectId();projData=data._projects[_wPid];if(!projData){_dbxSetStatus("No data for project yet","var(--muted)");_isPulling=false;return;}}
     try{
       // Worker sync: always apply — no version gating, desktop is source of truth
       _mergeProjectNoConflict(data);
     }finally{_isPulling=false;}
-    _dbxSetStatus('✓ '+_projectKey+' '+_hhmm(),'var(--ok)');
+    _dbxSetStatus('✓ synced '+_hhmm(),'var(--ok)');
     _updateMobileProjectBadge();
   }catch(e){clearTimeout(_t);_dbxSyncing=false;console.error('[SYNC] wPull error:',e);_dbxSetStatus('Error: '+e.message,'var(--danger)');}
 }
@@ -3016,14 +3015,22 @@ async function wPush(silent){
   _projectVersion++;_projectBaseVersion=_projectVersion;
   _persistProjectMeta();_updateMobileProjectBadge();
   try{
-    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Buildert-Token':_mToken},
-      body:JSON.stringify(payload,null,2),
+    // Build multi-project envelope for new worker API
+    var pid=_mobGetProjectId();
+    var envelope={_schema:'v2',_projects:{}};
+    try{
+      var gResp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
+      if(gResp.ok){var gRaw=await gResp.json();if(gRaw&&gRaw._schema==='v2')envelope=gRaw;}
+    }catch(e){}
+    envelope._projects[pid]=Object.assign({},payload,{_project_id:pid});
+    var resp=await fetch(_workerUrl+'/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(envelope),
     });
     if(resp.ok){
       window._remoteLog=combinedLog;window._activityLog=[];
-      if(!silent)_dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+      if(!silent)_dbxSetStatus('✓ pushed · '+_hhmm(),'var(--ok)');
     } else {
       if(!silent)_dbxSetStatus('Save error '+resp.status,'var(--danger)');
     }
