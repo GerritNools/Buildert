@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.979</title>
+<title>WTUniverse · Buildert Editor v3.980</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.979</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.980</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -7707,12 +7707,22 @@ async function wPull(){
   if(_dbxPushDebounce){ _dbxSetStatus('Pushing…','var(--muted)'); return; }
   _dbxSyncing=true;
   try{
-    var resp = await fetch(_workerUrl+'/project?key='+_projectKey, {cache:'no-store',headers:{'X-Buildert-Token':_workerToken}});
+    var resp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
     if(resp.status===404){ _dbxSyncing=false; _dbxSetStatus('No data yet','var(--muted)'); return; }
     if(!resp.ok){ _dbxSyncing=false; _dbxSetStatus('Worker error '+resp.status,'var(--danger)'); return; }
     var data = await resp.json();
     _isReceiving=true;
-    try{ _mergeProjectNoConflict(data); }finally{ _isReceiving=false; }
+    try{
+      var projData=data;
+      if(data&&data._schema==='v2'&&data._projects){
+        var pid=_getProjectId();
+        projData=data._projects[pid];
+        if(!projData){_dbxSetStatus('No data for project "'+pid+'" yet','var(--muted)');_isReceiving=false;return;}
+        // Absorb remote activity log
+        if(projData._log){ _activityLog=(_activityLog||[]).concat(projData._log||[]).slice(0,300); }
+      }
+      _mergeProjectNoConflict(projData);
+    }finally{ _isReceiving=false; }
     // Immediately cancel any pending push
     clearTimeout(_dbxPushDebounce);
     _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
@@ -7756,10 +7766,10 @@ async function wPush(silent){
   _persistProjectMeta();
   _updateProjectBadge();
   try{
-    var resp=await fetch(_workerUrl+'/project?key='+_projectKey,{
-      method:'PUT',
+    var resp=await fetch(_workerUrl+'/',{
+      method:'POST',
       headers:{'Content-Type':'application/json','X-Buildert-Token':_workerToken},
-      body:JSON.stringify(payload,null,2),
+      body:JSON.stringify((function(){var e=Object.assign({},_controllerEnvelope,{_schema:'v2'});if(!e._projects)e._projects={};e._projects[_getProjectId()]=payload;return e;})(),null,2),
     });
     if(resp.ok){
       if(!silent) _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
@@ -8075,7 +8085,7 @@ function wPushLayout(){
   _updateProjectBadge();
 
   var pushFn = (_workerUrl&&_projectKey) ? function(){
-    return fetch(_workerUrl+'/project?key='+_projectKey,{method:'PUT',headers:{'Content-Type':'application/json','X-Buildert-Token':_workerToken},body:JSON.stringify(payload,null,2)})
+    return fetch(_workerUrl+'/',{method:'POST',headers:{'Content-Type':'application/json','X-Buildert-Token':_workerToken},body:JSON.stringify((function(){var e={_schema:'v2',_projects:{}};e._projects[_getProjectId()]=payload;return e;})())})
       .then(function(r){ _dbxSetStatus(r.ok?'Layout pushed v'+_projectVersion+' · '+_hhmm():'Push error '+r.status, r.ok?'var(--ok)':'var(--danger)'); });
   } : function(){
     return _dbxPush(false);
