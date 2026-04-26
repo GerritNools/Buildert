@@ -1046,6 +1046,8 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.remove('open')">Close</button>
+      <button class="btn btn-ghost" onclick="_diagTest()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">🔍 Run Diagnostics</button>
+      <div id="diag-out" style="display:none;margin-top:12px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>
       <button class="btn btn-ghost" onclick="clearSyncLog()">Clear log</button>
     </div>
   </div>
@@ -2931,6 +2933,72 @@ function addSyncLog(msg, type) {
   if(el && document.getElementById('modal-conflict').classList.contains('open')) renderSyncLog();
 }
 
+
+function _diagTest() {
+  var url = document.getElementById('device-ip')
+             ? 'http://'+(document.getElementById('device-ip').value||'').trim()+':9002/buildert'
+             : null;
+  var wurl = _workerUrl || '';
+  var pid  = _getProjectId();
+  var out  = document.getElementById('diag-out');
+  if(!out) return;
+  out.style.display = '';
+  out.innerHTML = '<b>Running diagnostics...</b><br>';
+  out.innerHTML += '🔑 Project ID: <b>'+pid+'</b><br>';
+  out.innerHTML += '🌐 Worker URL: <b>'+(wurl||'(not set)')+'</b><br>';
+  out.innerHTML += '📡 Device IP: <b>'+(url||'(not set)')+'</b><br><br>';
+
+  // Test worker
+  if(wurl) {
+    out.innerHTML += '⏳ Testing worker GET /...<br>';
+    fetch(wurl+'/?_='+Date.now(), {cache:'no-store'})
+      .then(function(r){
+        out.innerHTML += '  HTTP: <b>'+r.status+'</b> '+r.statusText+'<br>';
+        return r.text();
+      })
+      .then(function(txt){
+        try {
+          var j = JSON.parse(txt);
+          out.innerHTML += '  Schema: <b>'+(j._schema||'(old flat)')+'</b><br>';
+          if(j._projects) {
+            var pids = Object.keys(j._projects);
+            out.innerHTML += '  Projects in worker: <b>'+pids.join(', ')+'</b><br>';
+            out.innerHTML += '  Looking for: <b>'+pid+'</b><br>';
+            if(j._projects[pid]) {
+              var devs = (j._projects[pid].devices||[]).length;
+              out.innerHTML += '  ✅ Project found! <b>'+devs+' devices</b><br>';
+            } else {
+              out.innerHTML += '  ❌ Project "<b>'+pid+'</b>" NOT found in worker.<br>';
+              out.innerHTML += '  Tip: push from desktop first, or check project key.<br>';
+            }
+          } else if(j.devices) {
+            out.innerHTML += '  Old format — <b>'+(j.devices.length)+' devices</b><br>';
+            out.innerHTML += '  Project ID stored: <b>'+(j._project_id||'none')+'</b><br>';
+            if(j._project_id !== pid)
+              out.innerHTML += '  ⚠️ Key mismatch! Worker has "<b>'+j._project_id+'</b>", local is "<b>'+pid+'</b>"<br>';
+          } else {
+            out.innerHTML += '  Response: '+txt.slice(0,200)+'<br>';
+          }
+        } catch(e) {
+          out.innerHTML += '  ❌ Parse error: '+e.message+'<br>';
+          out.innerHTML += '  Raw: '+txt.slice(0,300)+'<br>';
+        }
+      })
+      .catch(function(e){ out.innerHTML += '  ❌ Fetch error: '+e.message+'<br>'; });
+  } else {
+    out.innerHTML += '  ⚠️ No worker URL set — go to Shares tab to configure<br>';
+  }
+
+  // Test device IP
+  if(url) {
+    out.innerHTML += '<br>⏳ Testing Anbernic device...<br>';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url+'?_='+Date.now(), true); xhr.timeout=3000;
+    xhr.onload = function(){ out.innerHTML += '  HTTP: <b>'+xhr.status+'</b> — Device reachable ✅<br>'; };
+    xhr.onerror = xhr.ontimeout = function(){ out.innerHTML += '  ❌ Device unreachable (check WiFi/IP)<br>'; };
+    xhr.send();
+  }
+}
 function renderSyncLog() {
   var el = document.getElementById('sync-log-full');
   if (!el) return;
