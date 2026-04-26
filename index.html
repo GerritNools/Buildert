@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.916m</title>
+<title>WTU · Buildert v3.917m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.916m</small></div>
+  <div class="logo">WTU <small>v3.917m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3663,22 +3663,31 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
       var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH;
       eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
         _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
-      // Color pills at T-junction points for combo cable
+      // Color marks on the combo stem bezier
       var _clrC=_mCLC(cable);
       if(_clrC){
         var _forkH=16;
         var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
-        function _cpill(cx,cy,col,col2){
-          var w=12,h=4,r=2;
-          var p='<rect x="'+(cx-w/2)+'" y="'+(cy-h/2)+'" width="'+w+'" height="'+h+'" rx="'+r+'" fill="'+col+'" opacity="0.9"/>';
-          if(col2)p+='<rect x="'+cx+'" y="'+(cy-h/2)+'" width="'+(w/2)+'" height="'+h+'" rx="'+r+'" fill="'+col2+'" opacity="0.9"/>';
-          return p;
+        var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
+        var _csx2=_cdxd>=0?1:-1;
+        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
+        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
+        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
+        function _cmsp(t){
+          var ax=_cp0x+(_cp1x-_cp0x)*t,ay=_cp0y+(_cp1y-_cp0y)*t;
+          var bx=_cp1x+(_cp2x-_cp1x)*t,by=_cp1y+(_cp2y-_cp1y)*t;
+          var cx=_cp2x+(_cp3x-_cp2x)*t,cy2=_cp2y+(_cp3y-_cp2y)*t;
+          var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy2-by)*t;
+          var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+          return{fst:'M'+_cp0x+','+_cp0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
+                 snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy2+' '+_cp3x+','+_cp3y};
         }
-        eHtml+=_cpill(_csx,_csy,_clrC.s,_clrC.s2);
-        eHtml+=_cpill(_cdx,_cdy,_clrC.s,_clrC.s2);
+        var _cs1=_cmsp(0.07),_cs2=_cmsp(0.93);
+        var _cda='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
+        eHtml+='<path d="'+_cs1.fst+'" '+_cda+' stroke="'+_clrC.s+'"/>';
+        eHtml+='<path d="'+_cs2.snd+'" '+_cda+' stroke="'+_clrC.s+'"/>';
       }
-              }
     } else {
       eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     }
@@ -3694,15 +3703,10 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
       }
-      // Draw tape color as small pills at cable endpoints (connector ends)
-      function colorPill(cx,cy,col,col2){
-        var w=12,h=4,r=2;
-        var pill='<rect x="'+(cx-w/2)+'" y="'+(cy-h/2)+'" width="'+w+'" height="'+h+'" rx="'+r+'" fill="'+col+'" opacity="0.9"/>';
-        if(col2) pill+='<rect x="'+cx+'" y="'+(cy-h/2)+'" width="'+(w/2)+'" height="'+h+'" rx="'+r+'" fill="'+col2+'" opacity="0.9"/>';
-        return pill;
-      }
-      eHtml+=colorPill(x1,y1,clrS.s,clrS.s2);
-      eHtml+=colorPill(x2,y2,clrS.s,clrS.s2);
+      var s1=msp(0.07),s2=msp(0.93);
+      var da='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
+      eHtml+='<path d="'+s1.fst+'" '+da+' stroke="'+clrS.s+'"/>';
+      eHtml+='<path d="'+s2.snd+'" '+da+' stroke="'+clrS.s+'"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
