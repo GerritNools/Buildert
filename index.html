@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.920m</title>
+<title>WTU · Buildert v3.922m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.920m</small></div>
+  <div class="logo">WTU <small>v3.922m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3605,7 +3605,7 @@ function _mNodeRender() {
   function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasDual,x1d,y1d,cpSpread){
     cpSpread=cpSpread||0;
     var forkH=16, hasDualSrc=(x1d!==undefined);
-    var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.min(y1p,y1d):y1p)-forkH;
+    var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.max(y1p,y1d):y1p)+forkH;
     var sPwr=hasDualSrc?'<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>':'';
     var sDat=hasDualSrc?'<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>':'';
     var dstMX=(x2p+x2d)/2, dstBotY=Math.min(y2p,y2d)-forkH;
@@ -3642,11 +3642,11 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
+    var x1=sp.x+NW/2, y1=sp.y+NH, x2=dp.x+NW/2, y2=dp.y;
     var dx=x2-x1, dy=y2-y1;
-    var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
+    var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.25,30);
     var sx=dx>=0?1:-1;
-    var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1-offy)+' '+(x2-sx*offx)+','+(y2+offy)+' '+x2+','+y2;
+    var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1+offy)+' '+(x2-sx*offx)+','+(y2-offy)+' '+x2+','+y2;
     // Check if combo cable - use T-fork rendering
     var _isCombo=false;
     if(cable && !isFoh){
@@ -3657,30 +3657,23 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     if(_isCombo){
       var _sp2=SPECS[d.model||'']||null;
       var _hasBothOut=_sp2&&_sp2.pwr_out&&_sp2.data_out;
-      var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y;
-      var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y;
-      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y+NH;
-      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH;
+      var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y+NH;
+      var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y+NH;
+      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y;
+      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y;
       eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
         _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
       // Color marks on the combo stem bezier
       var _clrC=_mCLC(cable);
       if(_clrC){
         var _forkH=16;
-        var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
-        var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
-        // Place combo color dots 10px along stem from T-junction
-        var _stemDx=_cdx-_csx, _stemDy=_cdy-_csy, _stemL=Math.sqrt(_stemDx*_stemDx+_stemDy*_stemDy)||1;
-        var _ux=_stemDx/_stemL, _uy=_stemDy/_stemL;
-        var _dot1x=_csx+_ux*12, _dot1y=_csy+_uy*12;
-        var _dot2x=_cdx-_ux*12, _dot2y=_cdy-_uy*12;
-        eHtml+='<circle cx="'+_dot1x+'" cy="'+_dot1y+'" r="5" fill="'+_clrC.s+'" opacity="0.9"/>';
-        eHtml+='<circle cx="'+_dot2x+'" cy="'+_dot2y+'" r="5" fill="'+_clrC.s+'" opacity="0.9"/>';
+        var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y+_forkH;
+        var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y-_forkH;
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
-        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
-        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
-        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
+        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.25,30);
+        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy+_coffy;
+        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy-_coffy,_cp3x=_cdx,_cp3y=_cdy;
         function _cmsp(t){
           var ax=_cp0x+(_cp1x-_cp0x)*t,ay=_cp0y+(_cp1y-_cp0y)*t;
           var bx=_cp1x+(_cp2x-_cp1x)*t,by=_cp1y+(_cp2y-_cp1y)*t;
@@ -3693,38 +3686,6 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
       }
     } else {
       eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
-    }
-    // Physical tape color at cable ends (first/last 7%)
-    var clrS=cable?_mCLC(cable):null;
-    if(clrS && !isFoh && !_isCombo){
-      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
-      function msp(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
-        var ddx=ax+(bx-ax)*t,ddy=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
-        var fx=ddx+(ex-ddx)*t,fy=ddy+(ey-ddy)*t;
-        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
-               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
-      }
-      // Inline bezier point at t=0.06 from each end (tape mark position)
-      var _t1=0.06,_t2=0.94;
-      var _a1x=p0x+(p1x-p0x)*_t1,_a1y=p0y+(p1y-p0y)*_t1;
-      var _b1x=p1x+(p2x-p1x)*_t1,_b1y=p1y+(p2y-p1y)*_t1;
-      var _c1x=p2x+(p3x-p2x)*_t1,_c1y=p2y+(p3y-p2y)*_t1;
-      var _d1x=_a1x+(_b1x-_a1x)*_t1,_d1y=_a1y+(_b1y-_a1y)*_t1;
-      var _e1x=_b1x+(_c1x-_b1x)*_t1,_e1y=_b1y+(_c1y-_b1y)*_t1;
-      var _px1=_d1x+(_e1x-_d1x)*_t1,_py1=_d1y+(_e1y-_d1y)*_t1;
-      var _a2x=p0x+(p1x-p0x)*_t2,_a2y=p0y+(p1y-p0y)*_t2;
-      var _b2x=p1x+(p2x-p1x)*_t2,_b2y=p1y+(p2y-p1y)*_t2;
-      var _c2x=p2x+(p3x-p2x)*_t2,_c2y=p2y+(p3y-p2y)*_t2;
-      var _d2x=_a2x+(_b2x-_a2x)*_t2,_d2y=_a2y+(_b2y-_a2y)*_t2;
-      var _e2x=_b2x+(_c2x-_b2x)*_t2,_e2y=_b2y+(_c2y-_b2y)*_t2;
-      var _px2=_d2x+(_e2x-_d2x)*_t2,_py2=_d2y+(_e2y-_d2y)*_t2;
-      eHtml+='<circle cx="'+_px1+'" cy="'+_py1+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
-      if(clrS.s2)eHtml+='<path d="M '+_px1+' '+(_py1-5)+' A 5 5 0 0 1 '+_px1+' '+(_py1+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
-      eHtml+='<circle cx="'+_px2+'" cy="'+_py2+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
-      if(clrS.s2)eHtml+='<path d="M '+_px2+' '+(_py2-5)+' A 5 5 0 0 1 '+_px2+' '+(_py2+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
-      if(clrS.s2)eHtml+='<path d="M '+pt2.x+' '+(pt2.y-5)+' A 5 5 0 0 1 '+pt2.x+' '+(pt2.y+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
@@ -3780,20 +3741,20 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var _sp2=SPECS?SPECS[m]:null;
     var PW=10,PH=7;
     if(_sp2&&_sp2.pwr_in){
-      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
+      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
     if(_sp2&&_sp2.data_in){
-      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_in)+'</text>';
+      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_in)+'</text>';
     }
     if(_sp2&&_sp2.pwr_out){
-      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_out)+'</text>';
+      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_out)+'</text>';
     }
     if(_sp2&&_sp2.data_out){
-      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_out)+'</text>';
+      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_out)+'</text>';
     }
     nHtml+='</g>';
   });
