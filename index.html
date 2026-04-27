@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.918m</title>
+<title>WTU · Buildert v3.919m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.918m</small></div>
+  <div class="logo">WTU <small>v3.919m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3669,8 +3669,13 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         var _forkH=16;
         var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
-        eHtml+='<circle cx="'+_csx+'" cy="'+_csy+'" r="5" fill="'+_clrC.s+'" opacity="0.85"/>';
-        eHtml+='<circle cx="'+_cdx+'" cy="'+_cdy+'" r="5" fill="'+_clrC.s+'" opacity="0.85"/>';
+        // Place combo color dots 10px along stem from T-junction
+        var _stemDx=_cdx-_csx, _stemDy=_cdy-_csy, _stemL=Math.sqrt(_stemDx*_stemDx+_stemDy*_stemDy)||1;
+        var _ux=_stemDx/_stemL, _uy=_stemDy/_stemL;
+        var _dot1x=_csx+_ux*12, _dot1y=_csy+_uy*12;
+        var _dot2x=_cdx-_ux*12, _dot2y=_cdy-_uy*12;
+        eHtml+='<circle cx="'+_dot1x+'" cy="'+_dot1y+'" r="5" fill="'+_clrC.s+'" opacity="0.9"/>';
+        eHtml+='<circle cx="'+_dot2x+'" cy="'+_dot2y+'" r="5" fill="'+_clrC.s+'" opacity="0.9"/>';
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
         var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
@@ -3701,10 +3706,18 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
       }
-      eHtml+='<circle cx="'+x1+'" cy="'+y1+'" r="5" fill="'+clrS.s+'" opacity="0.85"/>';
-      if(clrS.s2)eHtml+='<path d="M '+x1+' '+(y1-5)+' A 5 5 0 0 1 '+x1+' '+(y1+5)+' Z" fill="'+clrS.s2+'" opacity="0.85"/>';
-      eHtml+='<circle cx="'+x2+'" cy="'+y2+'" r="5" fill="'+clrS.s+'" opacity="0.85"/>';
-      if(clrS.s2)eHtml+='<path d="M '+x2+' '+(y2-5)+' A 5 5 0 0 1 '+x2+' '+(y2+5)+' Z" fill="'+clrS.s2+'" opacity="0.85"/>';
+      // Place color dots 6% along bezier from each end (tape mark position)
+      function mspt(t){
+        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
+        var cx2=p2x+(p3x-p2x)*t,cy2=p2y+(p3y-p2y)*t;
+        var dx=ax+(bx-ax)*t,dy=ay+(by-ay)*t,ex=bx+(cx2-bx)*t,ey=by+(cy2-by)*t;
+        return{x:dx+(ex-dx)*t, y:dy+(ey-dy)*t};
+      }
+      var pt1=mspt(0.06), pt2=mspt(0.94);
+      eHtml+='<circle cx="'+pt1.x+'" cy="'+pt1.y+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
+      if(clrS.s2)eHtml+='<path d="M '+pt1.x+' '+(pt1.y-5)+' A 5 5 0 0 1 '+pt1.x+' '+(pt1.y+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
+      eHtml+='<circle cx="'+pt2.x+'" cy="'+pt2.y+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
+      if(clrS.s2)eHtml+='<path d="M '+pt2.x+' '+(pt2.y-5)+' A 5 5 0 0 1 '+pt2.x+' '+(pt2.y+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
