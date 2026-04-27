@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.919m</title>
+<title>WTU · Buildert v3.920m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.919m</small></div>
+  <div class="logo">WTU <small>v3.920m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3706,17 +3706,24 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
       }
-      // Place color dots 6% along bezier from each end (tape mark position)
-      function mspt(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx2=p2x+(p3x-p2x)*t,cy2=p2y+(p3y-p2y)*t;
-        var dx=ax+(bx-ax)*t,dy=ay+(by-ay)*t,ex=bx+(cx2-bx)*t,ey=by+(cy2-by)*t;
-        return{x:dx+(ex-dx)*t, y:dy+(ey-dy)*t};
-      }
-      var pt1=mspt(0.06), pt2=mspt(0.94);
-      eHtml+='<circle cx="'+pt1.x+'" cy="'+pt1.y+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
-      if(clrS.s2)eHtml+='<path d="M '+pt1.x+' '+(pt1.y-5)+' A 5 5 0 0 1 '+pt1.x+' '+(pt1.y+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
-      eHtml+='<circle cx="'+pt2.x+'" cy="'+pt2.y+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
+      // Inline bezier point at t=0.06 from each end (tape mark position)
+      var _t1=0.06,_t2=0.94;
+      var _a1x=p0x+(p1x-p0x)*_t1,_a1y=p0y+(p1y-p0y)*_t1;
+      var _b1x=p1x+(p2x-p1x)*_t1,_b1y=p1y+(p2y-p1y)*_t1;
+      var _c1x=p2x+(p3x-p2x)*_t1,_c1y=p2y+(p3y-p2y)*_t1;
+      var _d1x=_a1x+(_b1x-_a1x)*_t1,_d1y=_a1y+(_b1y-_a1y)*_t1;
+      var _e1x=_b1x+(_c1x-_b1x)*_t1,_e1y=_b1y+(_c1y-_b1y)*_t1;
+      var _px1=_d1x+(_e1x-_d1x)*_t1,_py1=_d1y+(_e1y-_d1y)*_t1;
+      var _a2x=p0x+(p1x-p0x)*_t2,_a2y=p0y+(p1y-p0y)*_t2;
+      var _b2x=p1x+(p2x-p1x)*_t2,_b2y=p1y+(p2y-p1y)*_t2;
+      var _c2x=p2x+(p3x-p2x)*_t2,_c2y=p2y+(p3y-p2y)*_t2;
+      var _d2x=_a2x+(_b2x-_a2x)*_t2,_d2y=_a2y+(_b2y-_a2y)*_t2;
+      var _e2x=_b2x+(_c2x-_b2x)*_t2,_e2y=_b2y+(_c2y-_b2y)*_t2;
+      var _px2=_d2x+(_e2x-_d2x)*_t2,_py2=_d2y+(_e2y-_d2y)*_t2;
+      eHtml+='<circle cx="'+_px1+'" cy="'+_py1+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
+      if(clrS.s2)eHtml+='<path d="M '+_px1+' '+(_py1-5)+' A 5 5 0 0 1 '+_px1+' '+(_py1+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
+      eHtml+='<circle cx="'+_px2+'" cy="'+_py2+'" r="5" fill="'+clrS.s+'" opacity="0.9"/>';
+      if(clrS.s2)eHtml+='<path d="M '+_px2+' '+(_py2-5)+' A 5 5 0 0 1 '+_px2+' '+(_py2+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
       if(clrS.s2)eHtml+='<path d="M '+pt2.x+' '+(pt2.y-5)+' A 5 5 0 0 1 '+pt2.x+' '+(pt2.y+5)+' Z" fill="'+clrS.s2+'" opacity="0.9"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
