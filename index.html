@@ -3642,9 +3642,9 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
+    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH+7;
     var dx=x2-x1, dy=y2-y1;
-    var offx=Math.max(Math.abs(dx)*0.5,40), offy=Math.min(Math.max(Math.abs(dy)*0.35,30),Math.abs(dy)*0.45+20);
+    var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
     var sx=dx>=0?1:-1;
     var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1-offy)+' '+(x2-sx*offx)+','+(y2+offy)+' '+x2+','+y2;
     // Check if combo cable - use T-fork rendering
@@ -3671,7 +3671,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
-        var _coffx=Math.max(Math.abs(_cdxd)*0.5,40), _coffy=Math.min(Math.max(Math.abs(_cdyd)*0.35,30),Math.abs(_cdyd)*0.45+20);
+        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
         var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
         var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
         var _cmsp=function(t){
@@ -3697,39 +3697,25 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
       // path drawn below after color marks are computed
     }
     // Physical tape color at cable ends (first/last 7%)
-    var clrS=cable?_mCLC(cable):null;
-    if(clrS && !isFoh && !_isCombo){
-      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
-      function msp(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
-        var ddx=ax+(bx-ax)*t,ddy=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
-        var fx=ddx+(ex-ddx)*t,fy=ddy+(ey-ddy)*t;
-        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
-               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+    // Full cable + color marks on top (matches desktop exactly)
+    if(!_isCombo){
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
+      if(clrS && !isFoh){
+        var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
+        function _split(t){
+          var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
+          var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t,dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
+          var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t,fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+          return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+        }
+        var _s07=_split(0.07),_s93=_split(0.93),_da='stroke-dasharray="3,2"';
+        eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+        if(clrS.s2){
+          eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+          eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+        }
       }
-      // Desktop-style cable color marks: dashed strokes on first/last 7% of bezier
-      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
-      function _split(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t;
-        var bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
-        var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
-        var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
-        var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
-        return {fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
-                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
-      }
-      var _s07=_split(0.07),_s93=_split(0.93);
-      var _da='stroke-dasharray="3,2"';
-      eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
-      eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round" marker-end="url(#'+marker+')"/>';
-      if(clrS.s2){
-        eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-      }
-            // Gray cable from t=0 to t=0.93
-      eHtml+='<path d="'+_s93.fst+'" fill="none" stroke="'+stroke+'" stroke-width="2.5"/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
