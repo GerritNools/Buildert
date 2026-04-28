@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.929m</title>
+<title>WTU · Buildert v3.930m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.929m</small></div>
+  <div class="logo">WTU <small>v3.930m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -418,7 +418,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
+  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
 </header>
 
 <div style="display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border)">
@@ -3117,6 +3117,7 @@ function _handleProjectParam(){
 
 // ── Dropbox sync (OAuth + PKCE) ──────────────────────────────────
 
+var _syncLog=[];
 function _dbxSetStatus(msg,col){
   var el=document.getElementById('dbx-status');
   if(el){el.textContent=msg;el.style.color=col||'var(--muted)';}
@@ -3125,7 +3126,16 @@ function _dbxSetStatus(msg,col){
   var txt=document.getElementById('dbx-led-txt');
   var bg=ok?'#3ddc84':warn?'#f5a623':'#55606e';
   if(dot){dot.style.background=bg;dot.style.boxShadow=ok?'0 0 4px #3ddc84':warn?'0 0 4px #f5a623':'none';}
-  if(txt){txt.textContent=msg.length>12?msg.slice(0,12)+'…':msg;txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
+  if(txt){txt.textContent=msg.length>20?msg.slice(0,20)+'…':msg;txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
+  // Rolling sync log
+  var ts=new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  _syncLog.unshift({t:ts,m:msg,col:bg});
+  if(_syncLog.length>20)_syncLog.length=20;
+  // Update log in project sheet if open
+  var logEl=document.getElementById('conn-sync-log');
+  if(logEl) logEl.innerHTML=_syncLog.slice(0,5).map(function(e){
+    return '<span style="color:'+e.col+'">'+e.t+'</span> '+e.m;
+  }).join('<br>');
 }
 
 function _dbxNormPath(p){
@@ -4530,9 +4540,18 @@ function openProjectSheet(){
     +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
     +'<button class="sb sb-ghost" onclick="_mobDiag()" style="font-size:11px;padding:6px 10px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
     +'</div>'
-    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>';
+    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>'
+    +'<div id="conn-sync-log" style="margin-top:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--muted);min-height:24px">—</div>';
 
   body.innerHTML = html;
+
+  // Show sync log
+  var _sl=document.getElementById('conn-sync-log');
+  if(_sl){
+    _sl.innerHTML=(_syncLog||[]).slice(0,8).map(function(e){
+      return '<span style="color:'+e.col+'">'+e.t+'</span> '+e.m;
+    }).join('<br>')||'<span style="color:var(--muted)">No sync activity yet</span>';
+  }
 
   // Event delegation for stage rows
   body.onclick = function(e){
