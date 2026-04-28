@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.924m</title>
+<title>WTU · Buildert v3.923m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.924m</small></div>
+  <div class="logo">WTU <small>v3.923m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3694,11 +3694,20 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         }
       }
     } else {
-      // path drawn below after color marks are computed
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     }
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
     if(clrS && !isFoh && !_isCombo){
+      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
+      function msp(t){
+        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
+        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
+        var ddx=ax+(bx-ax)*t,ddy=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
+        var fx=ddx+(ex-ddx)*t,fy=ddy+(ey-ddy)*t;
+        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
+               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+      }
       // Desktop-style cable color marks: dashed strokes on first/last 7% of bezier
       var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
       function _split(t){
@@ -3719,11 +3728,6 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
         eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
       }
-      // Draw gray cable stopping at t=0.93 — color mark covers final approach to port
-      eHtml+='<path d="'+_s93.fst+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
-    }
-    if(!clrS && !_isCombo){
-      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"\/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
