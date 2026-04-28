@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.923m</title>
+<title>WTU · Buildert v3.924m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.923m</small></div>
+  <div class="logo">WTU <small>v3.924m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3694,7 +3694,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         }
       }
     } else {
-      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
+      // path drawn below after color marks are computed
     }
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
@@ -3728,6 +3728,29 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
         eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
       }
+      // Draw only t=0.07→0.93 so gray line stops where color marks begin
+      // Get the 4 new control points of the sub-bezier [0.07, 0.93]
+      // Step 1: trim from start to 0.93 (gives new p0..p3 ending at t=0.93)
+      var _q0x=p0x+(p1x-p0x)*0.93, _q0y=p0y+(p1y-p0y)*0.93;
+      var _q1x=p1x+(p2x-p1x)*0.93, _q1y=p1y+(p2y-p1y)*0.93;
+      var _q2x=p2x+(p3x-p2x)*0.93, _q2y=p2y+(p3y-p2y)*0.93;
+      var _q01x=_q0x+(_q1x-_q0x)*0.93, _q01y=_q0y+(_q1y-_q0y)*0.93;
+      var _q12x=_q1x+(_q2x-_q1x)*0.93, _q12y=_q1y+(_q2y-_q1y)*0.93;
+      var _qex=_q01x+(_q12x-_q01x)*0.93, _qey=_q01y+(_q12y-_q01y)*0.93;
+      // Step 2: trim the resulting curve from 0 to t' where t'=0.07/0.93≈0.0753
+      var _tp=0.0753;
+      var _r0x=p0x+(p1x-p0x)*_tp, _r0y=p0y+(p1y-p0y)*_tp;
+      var _r1x=p1x+(p2x-p1x)*_tp, _r1y=p1y+(p2y-p1y)*_tp;
+      var _r2x=p2x+(p3x-p2x)*_tp, _r2y=p2y+(p3y-p2y)*_tp;
+      var _r01x=_r0x+(_r1x-_r0x)*_tp, _r01y=_r0y+(_r1y-_r0y)*_tp;
+      var _r12x=_r1x+(_r2x-_r1x)*_tp, _r12y=_r1y+(_r2y-_r1y)*_tp;
+      var _rsx=_r01x+(_r12x-_r01x)*_tp, _rsy=_r01y+(_r12y-_r01y)*_tp;
+      // Middle path: from (_rsx,_rsy) to (_qex,_qey)
+      var _midPath='M'+_rsx+','+_rsy+' C'+_r12x+','+_r12y+' '+_q01x+','+_q01y+' '+_qex+','+_qey;
+      eHtml+='<path d="'+_midPath+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
+    }
+    if(!clrS && !_isCombo){
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"\/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
