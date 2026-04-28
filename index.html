@@ -3708,6 +3708,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     }
     // Physical tape color at cable ends (first/last 7%)
     // Full cable + color marks on top (matches desktop exactly)
+    var clrS=cable?_mCLC(cable):null;
     if(!_isCombo){
       eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
       if(clrS && !isFoh){
