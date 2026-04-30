@@ -509,6 +509,12 @@
 </header>
 
 <div id="version-warn" style="display:none;background:rgba(255,77,77,.12);
+<div id="https-warn" style="display:none;background:rgba(255,140,0,.15);border-bottom:1px solid rgba(255,140,0,.4);padding:8px 16px;font-size:13px;font-family:var(--mono);color:#ffaa44;align-items:center;gap:12px;">
+  ⚠ <b>Loaded over HTTPS</b> — Push to controller is blocked by the browser (mixed content).
+  <b>Save this file to your desktop and open it as a local file instead.</b>
+  <button style="margin-left:12px;padding:2px 10px;font-size:12px;cursor:pointer;border-radius:4px;border:1px solid #ffaa44;background:transparent;color:#ffaa44"
+    onclick="document.getElementById('https-warn').style.display='none'">Dismiss</button>
+</div>
   border-bottom:1px solid var(--danger);padding:7px 24px;
   font-family:var(--mono);font-size:12px;color:var(--danger);
   align-items:center;gap:10px;position:sticky;top:60px;z-index:98;">
@@ -2866,7 +2872,7 @@ function exportCsv() {
 }
 
 // ── Server version check ─────────────────────────────────────────────
-var WEBAPP_VERSION    = '3.61';
+var WEBAPP_VERSION    = '3.983';
 var MIN_SERVER_VERSION = 2;  // server must return server_version >= 2
 
 function checkServerVersion(baseUrl) {
@@ -3306,6 +3312,11 @@ function updateSyncTime(){
   addSyncLog('Sync OK at '+ts,'ok');
 }
 function pushToDevice(){
+  if(location.protocol === 'https:') {
+    showToast('Push blocked — open this file locally (not via HTTPS)','err');
+    document.getElementById('https-warn').style.display='flex';
+    return;
+  }
   var url=getDeviceUrl();
   if(!url){showToast('Enter device IP first','warn');return;}
   if(!_serverVersionOk){
@@ -4460,7 +4471,7 @@ var _controllerEnvelope = {};  // full envelope fetched from controller
 function _getProjectId() {
   // When worker sync is active, use _projectKey (the canonical worker key)
   if(_projectKey) return _projectKey;
-  return (project.id || project.name || 'default').replace(/[^a-zA-Z0-9_-]/g,'_');
+  return ((_projectMeta.id||_projectMeta.name||'default')).replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
 function buildPayload() {
@@ -4469,7 +4480,7 @@ function buildPayload() {
     devices: devices,
     stages:  _stages,
     _project_id:   pid,
-    _project_name: project.name || '',
+    _project_name: _projectMeta.name || '',
     _pushed_at:    new Date().toISOString(),
     _pushed_by:    'desktop',
     _log: _activityLog.slice(0, 100),  // last 100 entries
@@ -6650,6 +6661,8 @@ try{
 }catch(e){}
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){document.getElementById('device-ip').value=params.get('ip');startPolling();}
+// Show HTTPS warning immediately if opened over https (push will be blocked by browser)
+if(location.protocol==='https:'){document.getElementById('https-warn').style.display='flex';}
 _loadManualPackItems();
 loadSpecsFromStorage();
 _rebuildModelLists();
