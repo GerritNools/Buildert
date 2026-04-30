@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.937m</title>
+<title>WTU · Buildert v3.938m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.937m</small></div>
+  <div class="logo">WTU <small>v3.938m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3641,6 +3641,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var cable=d.cable_power_in||d.cable_data_in||d.cable_in||d.cable||'';
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
+    var PW=10,PH=7;
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
     var x1=sp.x+NW*0.35, y1=sp.y, x2=dp.x+NW*0.35, y2=dp.y+NH+PH;
     var dx=x2-x1, dy=y2-y1;
@@ -3769,8 +3770,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     }
     // Port indicator squares + connector labels (matching desktop)
     var _sp2=SPECS?SPECS[m]:null;
-    var PW=10,PH=7;
-    if(_sp2&&_sp2.pwr_in){
+        if(_sp2&&_sp2.pwr_in){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
