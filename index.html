@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.933m</title>
+<title>WTU · Buildert v3.934m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.933m</small></div>
+  <div class="logo">WTU <small>v3.934m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -418,7 +418,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
+  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
 </header>
 
 <div style="display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border)">
@@ -457,10 +457,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
           <marker id="mn-arrow-warn"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f5a623"/></marker>
           <marker id="mn-arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
           <marker id="mn-arrow-foh"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
-          <marker id="mn-arrow-in-ok"    markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto"><path d="M8,0 L8,6 L0,3 z" fill="#3ddc84"/></marker>
-          <marker id="mn-arrow-in-warn"  markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto"><path d="M8,0 L8,6 L0,3 z" fill="#f5a623"/></marker>
-          <marker id="mn-arrow-in-muted" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto"><path d="M8,0 L8,6 L0,3 z" fill="#55606e"/></marker>
-          <marker id="mn-arrow-in-foh"   markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto"><path d="M8,0 L8,6 L0,3 z" fill="#00d4ff"/></marker>
         </defs>
         <g id="mob-node-edges"></g>
         <g id="mob-node-nodes"></g>
@@ -3121,7 +3117,6 @@ function _handleProjectParam(){
 
 // ── Dropbox sync (OAuth + PKCE) ──────────────────────────────────
 
-var _syncLog=[];
 function _dbxSetStatus(msg,col){
   var el=document.getElementById('dbx-status');
   if(el){el.textContent=msg;el.style.color=col||'var(--muted)';}
@@ -3130,16 +3125,7 @@ function _dbxSetStatus(msg,col){
   var txt=document.getElementById('dbx-led-txt');
   var bg=ok?'#3ddc84':warn?'#f5a623':'#55606e';
   if(dot){dot.style.background=bg;dot.style.boxShadow=ok?'0 0 4px #3ddc84':warn?'0 0 4px #f5a623':'none';}
-  if(txt){txt.textContent=msg.length>20?msg.slice(0,20)+'…':msg;txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
-  // Rolling sync log
-  var ts=new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  _syncLog.unshift({t:ts,m:msg,col:bg});
-  if(_syncLog.length>20)_syncLog.length=20;
-  // Update log in project sheet if open
-  var logEl=document.getElementById('conn-sync-log');
-  if(logEl) logEl.innerHTML=_syncLog.slice(0,5).map(function(e){
-    return '<span style="color:'+e.col+'">'+e.t+'</span> '+e.m;
-  }).join('<br>');
+  if(txt){txt.textContent=msg.length>12?msg.slice(0,12)+'…':msg;txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
 }
 
 function _dbxNormPath(p){
@@ -3619,7 +3605,7 @@ function _mNodeRender() {
   function _edgeCombo(x1p,y1p,x2p,y2p,x2d,y2d,hasDual,x1d,y1d,cpSpread){
     cpSpread=cpSpread||0;
     var forkH=16, hasDualSrc=(x1d!==undefined);
-    var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.max(y1p,y1d):y1p)+forkH;
+    var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.min(y1p,y1d):y1p)-forkH;
     var sPwr=hasDualSrc?'<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>':'';
     var sDat=hasDualSrc?'<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>':'';
     var dstMX=(x2p+x2d)/2, dstBotY=Math.min(y2p,y2d)-forkH;
@@ -3656,11 +3642,11 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW*0.35, y1=sp.y+NH, x2=dp.x+NW*0.35, y2=dp.y;
+    var x1=sp.x+NW*0.35, y1=sp.y, x2=dp.x+NW*0.35, y2=dp.y+NH;
     var dx=x2-x1, dy=y2-y1;
-    var offx=Math.max(Math.abs(dx)*0.6,40), offy=Math.max(Math.abs(dy)*0.4,30);
+    var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
     var sx=dx>=0?1:-1;
-    var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1+offy)+' '+(x2-sx*offx)+','+(y2-offy)+' '+x2+','+y2;
+    var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1-offy)+' '+(x2-sx*offx)+','+(y2+offy)+' '+x2+','+y2;
     // Check if combo cable - use T-fork rendering
     var _isCombo=false;
     if(cable && !isFoh){
@@ -3671,10 +3657,10 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     if(_isCombo){
       var _sp2=SPECS[d.model||'']||null;
       var _hasBothOut=_sp2&&_sp2.pwr_out&&_sp2.data_out;
-      var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y+NH;
-      var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y+NH;
-      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y;
-      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y;
+      var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y;
+      var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y;
+      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y+NH;
+      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH;
       eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
         _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
       // Color marks on the combo stem bezier
@@ -3683,12 +3669,20 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         var _forkH=16;
         var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
+        // Desktop-style color marks on combo stem
+      var _cs07=_cmsp(0.07),_cs93=_cmsp(0.93),_cda='stroke-dasharray="3,2"';
+      eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+      eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+      if(_clrC.s2){
+        eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+        eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+      }
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
-        var _coffx=Math.max(Math.abs(_cdxd)*0.6,40), _coffy=Math.max(Math.abs(_cdyd)*0.4,30);
-        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy+_coffy;
-        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy-_coffy,_cp3x=_cdx,_cp3y=_cdy;
-        var _cmsp=function(t){
+        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
+        var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
+        var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
+        function _cmsp(t){
           var ax=_cp0x+(_cp1x-_cp0x)*t,ay=_cp0y+(_cp1y-_cp0y)*t;
           var bx=_cp1x+(_cp2x-_cp1x)*t,by=_cp1y+(_cp2y-_cp1y)*t;
           var cx=_cp2x+(_cp3x-_cp2x)*t,cy2=_cp2y+(_cp3y-_cp2y)*t;
@@ -3696,51 +3690,34 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
           var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
           return{fst:'M'+_cp0x+','+_cp0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
                  snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy2+' '+_cp3x+','+_cp3y};
-        };
-        // Desktop-style dashed color marks on stem ends
-        var _cs07=_cmsp(0.07),_cs93=_cmsp(0.93);
-        var _cda='stroke-dasharray="3,2"';
-        eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
-        eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
-        if(_clrC.s2){
-          eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-          eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
         }
       }
     } else {
-      // path drawn below after color marks are computed
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     }
     // Physical tape color at cable ends (first/last 7%)
-    // Full cable + color marks on top (matches desktop exactly)
     var clrS=cable?_mCLC(cable):null;
-    if(!_isCombo){
-      // Gray cable up to t=0.93 — color mark covers the last 7%
-      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1+offy,p2x=x2-sx*offx,p2y=y2-offy,p3x=x2,p3y=y2;
-      function _split(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t,dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
-        var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t,fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
-        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
-               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+    if(clrS && !isFoh && !_isCombo){
+      // Desktop-identical _bezierEnds implementation
+      var _p0x=x1,_p0y=y1,_p1x=x1+sx*offx,_p1y=y1-offy;
+      var _p2x=x2-sx*offx,_p2y=y2+offy,_p3x=x2,_p3y=y2;
+      function _bSplit(t){
+        var ax=_p0x+(_p1x-_p0x)*t,ay=_p0y+(_p1y-_p0y)*t;
+        var bx=_p1x+(_p2x-_p1x)*t,by=_p1y+(_p2y-_p1y)*t;
+        var cx=_p2x+(_p3x-_p2x)*t,cy=_p2y+(_p3y-_p2y)*t;
+        var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
+        var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
+        var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+        return{fst:'M'+_p0x+','+_p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
+               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+_p3x+','+_p3y};
       }
-      var _s07=_split(0.07),_s93=_split(0.93);
-      // Gray cable: only t=0.07 to t=0.93 (color marks cover the ends)
-      eHtml+='<path d="'+_s93.fst+'" fill="none" stroke="'+stroke+'" stroke-width="2.5"/>';
-      // Source color mark (t=0 to 0.07) — no arrow
+      var _s07=_bSplit(0.07),_s93=_bSplit(0.93);
       var _da='stroke-dasharray="3,2"';
-      if(clrS && !isFoh){
-        eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
-        // Dest color mark (t=0.93 to 1.0) — reversed arrow points INTO node
-        var _inMarker=marker; // Normal arrow — orient=auto makes it point in cable direction (into port)
-        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round" marker-end="url(#'+_inMarker+')"/>';
-        if(clrS.s2){
-          eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-          eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-        }
-      } else if(!isFoh) {
-        // No color code: draw dest end with reversed arrow
-        var _inMarker=marker; // Normal arrow — orient=auto makes it point in cable direction (into port)
-        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+_inMarker+')"/>';
+      eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+      eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+      if(clrS.s2){
+        eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
       }
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
@@ -3797,19 +3774,19 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var _sp2=SPECS?SPECS[m]:null;
     var PW=10,PH=7;
     if(_sp2&&_sp2.pwr_in){
-      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
+      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
     if(_sp2&&_sp2.data_in){
-      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
+      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_in)+'</text>';
     }
     if(_sp2&&_sp2.pwr_out){
-      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
+      nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_out)+'</text>';
     }
     if(_sp2&&_sp2.data_out){
-      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
+      nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_out)+'</text>';
     }
     nHtml+='</g>';
@@ -4556,18 +4533,9 @@ function openProjectSheet(){
     +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
     +'<button class="sb sb-ghost" onclick="_mobDiag()" style="font-size:11px;padding:6px 10px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
     +'</div>'
-    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>'
-    +'<div id="conn-sync-log" style="margin-top:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--muted);min-height:24px">—</div>';
+    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>';
 
   body.innerHTML = html;
-
-  // Show sync log
-  var _sl=document.getElementById('conn-sync-log');
-  if(_sl){
-    _sl.innerHTML=(_syncLog||[]).slice(0,8).map(function(e){
-      return '<span style="color:'+e.col+'">'+e.t+'</span> '+e.m;
-    }).join('<br>')||'<span style="color:var(--muted)">No sync activity yet</span>';
-  }
 
   // Event delegation for stage rows
   body.onclick = function(e){
