@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.915m</title>
+<title>WTU · Buildert v3.935m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.915m</small></div>
+  <div class="logo">WTU <small>v3.935m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3515,7 +3515,7 @@ function renderDiagram() {
 }
 
 // ── Mobile node SVG view ─────────────────────────────────────────────
-var _mNW = 130, _mNH = 62;
+var _mNW = 120, _mNH = 52;
 // _mNPos declared early (see top)
 var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
@@ -3619,6 +3619,7 @@ function _mNodeRender() {
 // ── Edges + cable labels ─────────────────────────────────────────
   var eHtml='', lHtml='';
   // Cable color function matching desktop
+function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Harting').replace('Powercon','PWRcon').replace('Ethercon','ETHcon').replace('PowerCAT','PCAT').replace('PowerLAN','PLAN').slice(0,10); }
   function _mCLC(v){
     if(!v) return null;
     var k=v.split('-')[0], l=parseFloat(v.split('-').slice(1).join('-'));
@@ -3641,9 +3642,9 @@ function _mNodeRender() {
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH;
+    var x1=sp.x+NW*0.35, y1=sp.y, x2=dp.x+NW*0.35, y2=dp.y+NH;
     var dx=x2-x1, dy=y2-y1;
-    var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
+    var offx=Math.max(Math.abs(dx)*0.5,30), offy=Math.max(Math.abs(dy)*0.35,25);
     var sx=dx>=0?1:-1;
     var path='M'+x1+','+y1+' C'+(x1+sx*offx)+','+(y1-offy)+' '+(x2-sx*offx)+','+(y2+offy)+' '+x2+','+y2;
     // Check if combo cable - use T-fork rendering
@@ -3668,9 +3669,17 @@ function _mNodeRender() {
         var _forkH=16;
         var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
+        // Desktop-style color marks on combo stem
+      var _cs07=_cmsp(0.07),_cs93=_cmsp(0.93),_cda='stroke-dasharray="3,2"';
+      eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+      eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+      if(_clrC.s2){
+        eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+        eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+      }
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
-        var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
+        var _coffx=Math.max(Math.abs(_cdxd)*0.5,30), _coffy=Math.max(Math.abs(_cdyd)*0.35,25);
         var _cp0x=_csx,_cp0y=_csy,_cp1x=_csx+_csx2*_coffx,_cp1y=_csy-_coffy;
         var _cp2x=_cdx-_csx2*_coffx,_cp2y=_cdy+_coffy,_cp3x=_cdx,_cp3y=_cdy;
         function _cmsp(t){
@@ -3682,10 +3691,6 @@ function _mNodeRender() {
           return{fst:'M'+_cp0x+','+_cp0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
                  snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy2+' '+_cp3x+','+_cp3y};
         }
-        var _cs1=_cmsp(0.07),_cs2=_cmsp(0.93);
-        var _cda='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
-        eHtml+='<path d="'+_cs1.fst+'" '+_cda+' stroke="'+_clrC.s+'"/>';
-        eHtml+='<path d="'+_cs2.snd+'" '+_cda+' stroke="'+_clrC.s+'"/>';
       }
     } else {
       eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
@@ -3693,19 +3698,27 @@ function _mNodeRender() {
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
     if(clrS && !isFoh && !_isCombo){
-      var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
-      function msp(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
-        var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
-        var ddx=ax+(bx-ax)*t,ddy=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
-        var fx=ddx+(ex-ddx)*t,fy=ddy+(ey-ddy)*t;
-        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
-               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+      // Desktop-identical _bezierEnds implementation
+      var _p0x=x1,_p0y=y1,_p1x=x1+sx*offx,_p1y=y1-offy;
+      var _p2x=x2-sx*offx,_p2y=y2+offy,_p3x=x2,_p3y=y2;
+      function _bSplit(t){
+        var ax=_p0x+(_p1x-_p0x)*t,ay=_p0y+(_p1y-_p0y)*t;
+        var bx=_p1x+(_p2x-_p1x)*t,by=_p1y+(_p2y-_p1y)*t;
+        var cx=_p2x+(_p3x-_p2x)*t,cy=_p2y+(_p3y-_p2y)*t;
+        var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
+        var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
+        var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
+        return{fst:'M'+_p0x+','+_p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
+               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+_p3x+','+_p3y};
       }
-      var s1=msp(0.07),s2=msp(0.93);
-      var da='fill="none" stroke-width="4" stroke-dasharray="3,2" stroke-linecap="round"';
-      eHtml+='<path d="'+s1.fst+'" '+da+' stroke="'+clrS.s+'"/>';
-      eHtml+='<path d="'+s2.snd+'" '+da+' stroke="'+clrS.s+'"/>';
+      var _s07=_bSplit(0.07),_s93=_bSplit(0.93);
+      var _da='stroke-dasharray="3,2"';
+      eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+      eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
+      if(clrS.s2){
+        eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+        eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+      }
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
@@ -3762,19 +3775,19 @@ function _mNodeRender() {
     var PW=10,PH=7;
     if(_sp2&&_sp2.pwr_in){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.pwr_in||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
     if(_sp2&&_sp2.data_in){
       nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.data_in||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_in)+'</text>';
     }
     if(_sp2&&_sp2.pwr_out){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.pwr_out||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.35)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_out)+'</text>';
     }
     if(_sp2&&_sp2.data_out){
       nHtml+='<rect x="'+(NW*0.65-PW/2)+'" y="'+(0-PH)+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#5b8fff" style="pointer-events:none"/>';
-      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="6" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+(_sp2.data_out||'')+'</text>';
+      nHtml+='<text x="'+(NW*0.65)+'" y="'+(0-PH-3)+'" text-anchor="middle" fill="#5b8fff" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.data_out)+'</text>';
     }
     nHtml+='</g>';
   });
