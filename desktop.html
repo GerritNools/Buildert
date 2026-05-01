@@ -1323,6 +1323,20 @@
 </div>
 
 <script>
+// ── Global Error Handler ───────────────────────────────────────
+window.onerror = function(msg, url, lineNo, colNo, error) {
+  var fullMsg = 'ERROR at line ' + lineNo + ': ' + msg;
+  console.error(fullMsg);
+  console.error('Details:', error);
+  // Display to user for 12 seconds so they can read it
+  if(typeof showToast === 'function') {
+    showToast(fullMsg, 'danger');
+  } else {
+    alert(fullMsg + '\n\nCheck console for details');
+  }
+  return false; // Let the browser handle it too
+};
+
 // ── Constants ─────────────────────────────────────────────────────────
 var TYPE_LASER  = 'Laser projector';
 var TYPE_SMOKE  = 'Smoke machine';
@@ -3627,6 +3641,7 @@ function _mergeProjectNoConflict(data) {
   _packSpares = data.pack_spares || [];
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
   if(Array.isArray(data.todos) && data.todos.length){
+    if(!_todos) _todos=[];
     var existingMap={};
     (_todos || []).filter(function(t){return !t.auto;}).forEach(function(t){existingMap[t.id]=t;});
     data.todos.forEach(function(t){
@@ -4167,7 +4182,12 @@ function showToast(msg,type){
   type=type||'ok';
   var t=document.getElementById('toast');
   t.textContent=msg;t.className='show '+type;
-  clearTimeout(_toastTimer);_toastTimer=setTimeout(function(){t.className='';},3000);
+  clearTimeout(_toastTimer);
+  // Keep error/warning messages visible longer for debugging
+  var duration = (type==='warn'||type==='danger'||type==='error') ? 8000 : 3000;
+  _toastTimer=setTimeout(function(){t.className='';},duration);
+  // Also log to console for visibility
+  console.log('['+type.toUpperCase()+'] '+msg);
 }
 
 document.addEventListener('keydown',function(e){
@@ -7929,6 +7949,8 @@ var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}
 
 function _todosLoad(){
   try{ var s=localStorage.getItem('buildert_todos'); if(s)_todos=JSON.parse(s); }catch(e){}
+  // Ensure _todos is always an array
+  if(!Array.isArray(_todos)) _todos=[];
 }
 function _todosSave(){
   try{ localStorage.setItem('buildert_todos',JSON.stringify(_todos)); }catch(e){}
