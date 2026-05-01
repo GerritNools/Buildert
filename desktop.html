@@ -3426,7 +3426,7 @@ function _buildProjectPayload() {
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     pack_shared:    _packShared,
-    todos:          _todos.filter(function(t){return !t.auto;}),
+    todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     _log:           window._projectLog || [],
   };
 }
@@ -3628,7 +3628,7 @@ function _mergeProjectNoConflict(data) {
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
   if(Array.isArray(data.todos) && data.todos.length){
     var existingMap={};
-    _todos.filter(function(t){return !t.auto;}).forEach(function(t){existingMap[t.id]=t;});
+    (_todos || []).filter(function(t){return !t.auto;}).forEach(function(t){existingMap[t.id]=t;});
     data.todos.forEach(function(t){
       if(t.auto) return;
       if(existingMap[t.id]){
@@ -4074,7 +4074,7 @@ async function _dbxPush(silent){
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     pack_shared:    _packShared,
-    todos:          _todos.filter(function(t){return !t.auto;}),
+    todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     _log:           window._projectLog || [],
     _node_positions: JSON.parse(_npRaw),
     _diag_positions: JSON.parse(_dpRaw),
@@ -7844,7 +7844,7 @@ async function wPush(silent){
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     pack_shared:_packShared,
-    todos:_todos.filter(function(t){return !t.auto;}),
+    todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:JSON.parse(np),
@@ -7935,12 +7935,12 @@ function _todosSave(){
   _updateTodosBadge();
 }
 function _updateTodosBadge(){
-  var open=_todos.filter(function(t){return !t.done;}).length;
+  var open=(_todos||[]).filter(function(t){return !t.done;}).length;
   var el=document.getElementById('todos-badge');
   if(el){ el.style.display=open?'':'none'; el.textContent=open; }
 }
 function _autoTodos(){
-  var keep=_todos.filter(function(t){return !t.auto;});
+  var keep=(_todos||[]).filter(function(t){return !t.auto;});
   var autos=[];
   var devs=[];
   try {
@@ -7972,8 +7972,8 @@ function renderTodosPanel(){
   var curStageId=_safeStg.id||'';
   var stageName=_safeStg.name||'';
   var stageCol=_safeStg.color||'var(--accent)';
-  var allManual=_todos.filter(function(t){return !t.auto;});
-  var auto=_todos.filter(function(t){return t.auto;});
+  var allManual=(_todos||[]).filter(function(t){return !t.auto;});
+  var auto=(_todos||[]).filter(function(t){return t.auto;});
   var autoMountDone=auto.filter(function(t){return t.id.startsWith('auto_mount')&&t.done;}).length;
   var autoSnDone=auto.filter(function(t){return t.id.startsWith('auto_sn')&&t.done;}).length;
   var autoTotal=auto.length/2||0;
@@ -8092,15 +8092,15 @@ function todoSaveEdit(id){
   _todosSave(); renderTodosPanel();
 }
 function todoToggle(id){
-  var t=_todos.find(function(x){return x.id===id;}); if(!t)return;
+  var t=(_todos||[]).find(function(x){return x.id===id;}); if(!t)return;
   if(t.auto){showToast('Auto todo - driven by device state','warn');return;}
   t.done=!t.done; _todosSave(); renderTodosPanel();
 }
 function todoDelete(id){
-  _todos=_todos.filter(function(x){return x.id!==id;}); _todosSave(); renderTodosPanel();
+  _todos=(_todos||[]).filter(function(x){return x.id!==id;}); _todosSave(); renderTodosPanel();
 }
 function todoClearDone(){
-  _todos=_todos.filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel();
+  _todos=(_todos||[]).filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel();
 }
 function todoAdd(){
   var tOpts='<option value="">No time</option>';
@@ -8135,6 +8135,7 @@ function todoSave(){
   var modal=document.getElementById('todo-modal');if(modal)modal.remove();
   var stgSel=document.getElementById('td-stage');
   var stgId=stgSel?stgSel.value:((_stages[_currentStageIdx]||{}).id||'');
+  if(!_todos) _todos=[];
   _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,done:false,auto:false,stage_id:stgId,created:new Date().toISOString()});
   _todosSave();renderTodosPanel();
 }
@@ -9265,7 +9266,7 @@ try{var _rf=localStorage.getItem('brt_recent');if(_rf)_recentFiles=JSON.parse(_r
 
 function _recentAdd(name){
   if(!name||name.includes('unsaved')||name.includes('no file')) return;
-  _recentFiles=_recentFiles.filter(function(r){return r.name!==name;});
+  _recentFiles=(_recentFiles||[]).filter(function(r){return r.name!==name;});
   _recentFiles.unshift({name:name, ts:Date.now(), project:_projectMeta.name||''});
   if(_recentFiles.length>8) _recentFiles=_recentFiles.slice(0,8);
   try{localStorage.setItem('brt_recent',JSON.stringify(_recentFiles));}catch(e){}
@@ -9274,7 +9275,7 @@ function showRecentMenu(){
   var sub=document.getElementById('fm-recent-sub');
   var list=document.getElementById('fm-recent-list');
   if(!sub||!list) return;
-  if(!_recentFiles.length){
+  if(!(_recentFiles && _recentFiles.length)){
     list.innerHTML='<div style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)">No recent files</div>';
   } else {
     list.innerHTML=_recentFiles.map(function(r,i){
