@@ -6669,6 +6669,7 @@ function renderSpecs(){
 }
 
 // ── Init
+document.addEventListener('DOMContentLoaded', function() {
 try{var s=localStorage.getItem('buildert_devices');if(s)devices=JSON.parse(s);}catch(e){}
 try{
   var _pm=localStorage.getItem('wtu_project_meta');
@@ -6680,9 +6681,18 @@ try{
   }
 }catch(e){}
 var params=new URLSearchParams(location.search);
-if(params.get('ip')){document.getElementById('device-ip').value=params.get('ip');startPolling();}
+if(params.get('ip')){
+  var ipEl=document.getElementById('device-ip');
+  if(ipEl) {
+    ipEl.value=params.get('ip');
+    startPolling();
+  }
+}
 // Show HTTPS warning immediately if opened over https (push will be blocked by browser)
-if(location.protocol==='https:'){document.getElementById('https-warn').style.display='flex';}
+if(location.protocol==='https:'){
+  var httpsWarn=document.getElementById('https-warn');
+  if(httpsWarn) httpsWarn.style.display='flex';
+}
 _loadManualPackItems();
 loadSpecsFromStorage();
 _rebuildModelLists();
@@ -9706,6 +9716,7 @@ function _syncCableIn() {
   var primary = (p && cableSignalType(p)==='combo') ? p : (dd && cableSignalType(dd)==='combo') ? dd : p||dd;
   var el = document.getElementById('m-cable-in'); if (el) el.value = primary;
 }
+}); // Close DOMContentLoaded handler
 </script>
 </body>
 </html>
