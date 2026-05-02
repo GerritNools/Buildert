@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.925m</title>
+<title>WTU · Buildert v3.939m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.925m</small></div>
+  <div class="logo">WTU <small>v3.938m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -561,14 +561,27 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div class="sheet-title" id="sheet-title">Add Device</div>
   <div class="sheet-body">
     <div id="m-model-row">
-      <label>Model</label>
-      <select id="m-model" onchange="syncId()"></select>
+      <label>Model <span style="color:var(--muted);font-size:9px">(editable)</span></label>
+      <input id="m-model" type="text" placeholder="e.g. LASER-PRO" style="font-family:var(--cond);font-weight:700;margin-bottom:8px">
     </div>
     <div id="m-model-display" style="display:none;font-family:var(--cond);font-size:16px;font-weight:700;color:var(--accent);padding:4px 0 8px 0"></div>
-    <label>Unit #</label>
-    <input id="m-unit" type="number" min="1" max="99" placeholder="1" oninput="syncId()">
-    <label>Device ID</label>
-    <div class="id-preview" id="m-id-prev">—</div>
+    
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="checkbox" id="m-auto-id" checked style="cursor:pointer;width:16px;height:16px">
+      <label for="m-auto-id" style="margin:0;cursor:pointer;flex:1;font-size:13px">Auto-generate ID from Model + Unit</label>
+    </div>
+    
+    <div id="m-unit-row">
+      <label>Unit #</label>
+      <input id="m-unit" type="number" min="1" max="99" placeholder="1" oninput="syncId()">
+      <label style="margin-top:8px">Device ID (auto)</label>
+      <div class="id-preview" id="m-id-prev">—</div>
+    </div>
+    
+    <div id="m-manual-id-row" style="display:none">
+      <label>Device ID (manual)</label>
+      <input id="m-device-id-manual" type="text" placeholder="e.g. LASER-PRO-1" style="font-family:var(--mono);font-weight:700">
+    </div>
     <div class="spec-info" id="m-spec" style="display:none"></div>
     <label>Serial <span style="color:var(--muted);font-size:9px">— scan or type</span></label>
     <input id="m-serial" type="text" maxlength="15" placeholder="LA0042"
@@ -1775,7 +1788,7 @@ function openAddSheet(type){
   editIdx=-1;
   document.getElementById('sheet-title').textContent='Add Device';
   document.getElementById('del-wrap').style.display='none';
-  populateModelDd(type,'');
+  document.getElementById('m-model').value='';
   document.getElementById('m-unit').value='';
   document.getElementById('m-id-prev').textContent='—';
   document.getElementById('m-spec').style.display='none';
@@ -1783,8 +1796,11 @@ function openAddSheet(type){
   document.getElementById('m-location').value='';
   document.getElementById('m-status').value='Concept';
   document.getElementById('m-notes').value='';
+  document.getElementById('m-auto-id').checked=true;
+  document.getElementById('m-unit-row').style.display='';
+  document.getElementById('m-manual-id-row').style.display='none';
+  document.getElementById('m-device-id-manual').value='';
   document.getElementById('m-cable-in').innerHTML=_cableOpts('','');
-  // cable-out display only
   populateChecksSheet(type,{},'',[]);
   updateSrcSel(type,'','');
   openSheet('device');
@@ -1799,39 +1815,38 @@ function openEdit(gi){
   document.getElementById('sheet-title').textContent='Edit '+(d.device_id||d.serial||'???');
   document.getElementById('del-wrap').style.display='';
   var parts=(d.device_id||'').trim().split(/\s+/);
-  // Detect multi-word model: last part is numeric = unit, rest = model
   var _lastPart=parts[parts.length-1];
   var _isNumericEnd=parts.length>1&&/^\d+$/.test(_lastPart);
   var _derivedModel=_isNumericEnd?parts.slice(0,-1).join(' '):parts.join(' ');
   var _derivedUnit=_isNumericEnd?_lastPart:'';
-  var modelRow=document.getElementById('m-model-row');
-  var modelDisp=document.getElementById('m-model-display');
+  
+  // Set model (editable text field now)
   var _mKey=d.model||_derivedModel||parts[0]||'';
-  if(_mKey){
-    if(modelRow) modelRow.style.display='none';
-    if(modelDisp){modelDisp.style.display='';modelDisp.textContent=_mKey;}
-    document.getElementById('m-model').innerHTML='<option value="'+_mKey+'">'+_mKey+'</option>';
-    document.getElementById('m-model').value=_mKey;
-  } else {
-    if(modelRow) modelRow.style.display='';
-    if(modelDisp) modelDisp.style.display='none';
-    populateModelDd(d.type,'');
-  }
+  document.getElementById('m-model').value=_mKey||'';
+  document.getElementById('m-model-row').style.display='';
+  document.getElementById('m-model-display').style.display='none';
+  
+  // For editing, allow manual ID mode by default (can't change from auto formula)
   document.getElementById('m-unit').value=_derivedUnit||'';
-  syncId();
+  document.getElementById('m-id-prev').textContent=d.device_id||'—';
+  document.getElementById('m-auto-id').checked=false;
+  document.getElementById('m-unit-row').style.display='none';
+  document.getElementById('m-manual-id-row').style.display='';
+  document.getElementById('m-device-id-manual').value=d.device_id||'';
+  
+  document.getElementById('m-spec').style.display='none';
   document.getElementById('m-serial').value=d.serial||'';
   document.getElementById('m-location').value=d.location||'';
   document.getElementById('m-status').value=d.status||'Concept';
   document.getElementById('m-notes').value=d.notes||'';
   var _sp=specFor(d);
-  var _srcConnM=''; // source device output connector
+  var _srcConnM='';
   if(d.source && d.source!=='FOH'){
     var _srcDM=null;
     _mStages.forEach(function(s){(s.devices||[]).forEach(function(x){if(x.device_id===d.source)_srcDM=x;});});
     if(!_srcDM) _srcDM=devices.find(function(x){return x.device_id===d.source;});
     if(_srcDM){var _sspM=specFor(_srcDM);_srcConnM=_sspM?(_sspM.pwr_out||_sspM.out_connector||''):'';}
   }
-  // Fill pwr source, pwr cable, data source, data cable
   var allSrcIds=[{v:'',l:'— not set —'},{v:'FOH',l:'FOH (controller)'}];
   devices.forEach(function(x){if(x.device_id&&x.device_id!==d.device_id)allSrcIds.push({v:x.device_id,l:x.device_id});});
   function buildSrcOpts2(cur){return allSrcIds.map(function(o){return '<option value="'+o.v+'"'+(o.v===cur?' selected':'')+'>'+o.l+'</option>';}).join('');}
@@ -1846,25 +1861,19 @@ function openEdit(gi){
   if(el_sp)el_sp.innerHTML=buildSrcOpts2(pwrSrc);
   if(el_cp)el_cp.innerHTML=_cableOpts(pwrCbl,devPwrIn,'',false);
   if(el_sd)el_sd.innerHTML=buildSrcOpts2(datSrc);
-  if(el_cd)el_cd.innerHTML=_cableOpts(datCbl,devDatIn,'',true); // true = also match data_b connector
-  // Pwr source → auto copy to data source
+  if(el_cd)el_cd.innerHTML=_cableOpts(datCbl,devDatIn,'',true);
   if(el_sp)el_sp.onchange=function(){if(el_sd)el_sd.value=el_sp.value;};
-  // Pwr cable → auto copy to data cable if combo
   if(el_cp)el_cp.onchange=function(){
     var v=el_cp.value, ck=v.split('-')[0];
     var ct=typeof CABLE_TYPES!=='undefined'&&CABLE_TYPES.find?CABLE_TYPES.find(function(c){return c.key===ck;}):null;
     if(ct&&ct.data_a&&ct.pwr_a){
-      // Combo cable: auto-set data cable and sync source
       if(el_cd){ el_cd.innerHTML=_cableOpts(v,devDatIn,'',true); el_cd.value=v; }
       if(el_sd&&el_sp&&el_sp.value) el_sd.value=el_sp.value;
     }
   };
-  // Legacy field
   document.getElementById('m-cable-in').innerHTML=_cableOpts(pwrCbl,devPwrIn,'');
-  // cable-out is read-only (computed from children)
   populateChecksSheet(d.type,d.checks||{},d.pointed||'',d.note_opts||[]);
   updateSrcSel(d.type,d.device_id,d.source||'');
-  // Cable OUT: computed from children
   var _coDisp=document.getElementById('m-cable-out-display');
   if(_coDisp){
     var _ch=devices.filter(function(x){return x.source===(d.device_id||'')&&(x.cable_in||x.cable);});
@@ -1874,21 +1883,33 @@ function openEdit(gi){
   openSheet('device');
 }
 function saveDevice(){
+  // Check auto vs manual mode
+  var useAutoId=document.getElementById('m-auto-id').checked;
   var model=(document.getElementById('m-model').value||'').trim();
   var unit=(document.getElementById('m-unit').value||'').trim();
-  // If editing existing device with known model, preserve device_id
-  if(!model && editIdx>=0 && devices[editIdx]){
-    var _ed=devices[editIdx];
-    var _parts=(_ed.device_id||'').trim().split(/\s+/);
-    model=(_ed.model||_parts[0]||'').toUpperCase();
-    if(!unit) unit=_parts.slice(1).join(' ')||'';
+  var deviceId;
+  
+  if(useAutoId){
+    // Auto-generate from model + unit
+    if(!model){showToast('Model required','warn');return;}
+    deviceId=model+(unit?' '+unit:'');
+  } else {
+    // Manual entry
+    deviceId=(document.getElementById('m-device-id-manual').value||'').trim().toUpperCase();
+    if(!deviceId){showToast('Device ID required','warn');return;}
   }
-  var deviceId=model?(model+(unit?' '+unit:'')):unit;
-  if(!deviceId){showToast('Device ID required','warn');return;}
+  
+  // Check for duplicates
   if(devices.some(function(d,i){return d.device_id===deviceId&&i!==editIdx;})){showToast('ID already exists','warn');return;}
+  
+  // Determine type from model
   var type=TL;
-  Object.keys(MODELS).forEach(function(t){if(MODELS[t].indexOf(model)>=0)type=t;});
-  if(editIdx>=0) type=model?type:devices[editIdx].type;
+  if(model){
+    Object.keys(MODELS).forEach(function(t){if(MODELS[t].indexOf(model)>=0)type=t;});
+  } else if(editIdx>=0){
+    type=devices[editIdx].type;
+  }
+  
   var chList=checksFor(type),secId=TKEY[type]||'laser';
   var checkEls=document.querySelectorAll('#'+secId+'-chk input');
   var checks={};
@@ -1901,12 +1922,9 @@ function saveDevice(){
   var _elSD=document.getElementById('m-src-dat'),_elCD=document.getElementById('m-cable-dat');
   var _pwrSrc=_elSP?_elSP.value:''; var _pwrCbl=_elCP?_elCP.value:'';
   var _datSrc=_elSD?_elSD.value:''; var _datCbl=_elCD?_elCD.value:'';
-  // If editing and model was shown as display (not dropdown), preserve existing model
-  var _modelDisp=document.getElementById('m-model-display');
-  var _modelFinal=model||(_modelDisp&&_modelDisp.style.display!=='none'&&editIdx>=0?devices[editIdx].model||'':'');
   var d={
     device_id:deviceId,serial:document.getElementById('m-serial').value.trim().toUpperCase().slice(0,15),
-    type:type,model:_modelFinal,location:document.getElementById('m-location').value.trim(),
+    type:type,model:model,location:document.getElementById('m-location').value.trim(),
     source:_pwrSrc||srcWrap.style.display!=='none'?document.getElementById('m-source').value:'',
     source_power:_pwrSrc, source_data:_datSrc,
     status:document.getElementById('m-status').value,
@@ -1921,6 +1939,9 @@ function saveDevice(){
   if(editIdx>=0){devices[editIdx]=d;showToast('Updated '+deviceId,'ok');}
   else{devices.push(d);showToast('Added '+deviceId,'ok');}
   var _savedId=devices[editIdx>=0?editIdx:devices.length-1].device_id;
+  closeSheet('device');
+  autoSave();
+}
   var _cableTxt=d.cable_in?'Cable: '+_cableLabel(d.cable_in):''; _logActivity(_savedId, 'Saved'+(d.serial?' SN:'+d.serial:'')+(_cableTxt?' '+_cableTxt:''));
   closeSheet('device'); renderMain(); autoSave(); updateLocDl();
 }
@@ -3608,7 +3629,7 @@ function _mNodeRender() {
     var srcMX=hasDualSrc?(x1p+x1d)/2:x1p, srcTopY=(hasDualSrc?Math.min(y1p,y1d):y1p)-forkH;
     var sPwr=hasDualSrc?'<line x1="'+x1p+'" y1="'+y1p+'" x2="'+x1p+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x1p+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/>':'';
     var sDat=hasDualSrc?'<line x1="'+x1d+'" y1="'+y1d+'" x2="'+x1d+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x1d+'" y1="'+srcTopY+'" x2="'+srcMX+'" y2="'+srcTopY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/>':'';
-    var dstMX=(x2p+x2d)/2, dstBotY=Math.min(y2p,y2d)-forkH;
+    var dstMX=(x2p+x2d)/2, dstBotY=Math.max(y2p,y2d)+forkH;
     var dPwr='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+dstBotY+'" stroke="#f5a623" stroke-width="2.5" opacity="0.9"/><line x1="'+x2p+'" y1="'+dstBotY+'" x2="'+x2p+'" y2="'+y2p+'" stroke="#f5a623" stroke-width="2.5" marker-end="url(#mn-arrow-warn)" opacity="0.9"/>';
     var dDat='<line x1="'+dstMX+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+dstBotY+'" stroke="#5b8fff" stroke-width="2.5" opacity="0.9"/><line x1="'+x2d+'" y1="'+dstBotY+'" x2="'+x2d+'" y2="'+y2d+'" stroke="#5b8fff" stroke-width="2.5" marker-end="url(#mn-arrow-foh)" opacity="0.9"/>';
     var _dx=dstMX-srcMX, _dy=dstBotY-srcTopY;
@@ -3641,8 +3662,9 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var cable=d.cable_power_in||d.cable_data_in||d.cable_in||d.cable||'';
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
+    var PW=10,PH=7;
     var marker=isFoh?'mn-arrow-foh':hasCable?'mn-arrow-ok':'mn-arrow-muted';
-    var x1=sp.x+NW/2, y1=sp.y, x2=dp.x+NW/2, y2=dp.y+NH+7;
+    var x1=sp.x+NW*0.35, y1=sp.y, x2=dp.x+NW*0.35, y2=dp.y+NH+PH;
     var dx=x2-x1, dy=y2-y1;
     var offx=Math.max(Math.abs(dx)*0.7,60), offy=Math.max(Math.abs(dy)*0.45,70);
     var sx=dx>=0?1:-1;
@@ -3659,8 +3681,8 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
       var _hasBothOut=_sp2&&_sp2.pwr_out&&_sp2.data_out;
       var _pwrOut_x=sp.x+NW*0.35, _pwrOut_y=sp.y;
       var _datOut_x=sp.x+NW*0.65, _datOut_y=sp.y;
-      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y+NH+7;
-      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH+7;
+      var _pwrIn_x=dp.x+NW*0.35, _pwrIn_y=dp.y+NH+PH;
+      var _datIn_x=dp.x+NW*0.65, _datIn_y=dp.y+NH+PH;
       eHtml+=_edgeCombo(_pwrOut_x,_pwrOut_y,_pwrIn_x,_pwrIn_y,_datIn_x,_datIn_y,false,
         _hasBothOut?_datOut_x:undefined,_hasBothOut?_datOut_y:undefined,0);
       // Color marks on the combo stem bezier
@@ -3669,6 +3691,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
         var _forkH=16;
         var _csx=_hasBothOut?(_pwrOut_x+_datOut_x)/2:_pwrOut_x, _csy=_pwrOut_y-_forkH;
         var _cdx=(_pwrIn_x+_datIn_x)/2, _cdy=_pwrIn_y+_forkH;
+        
         var _cdxd=_cdx-_csx, _cdyd=_cdy-_csy;
         var _csx2=_cdxd>=0?1:-1;
         var _coffx=Math.max(Math.abs(_cdxd)*0.7,60), _coffy=Math.max(Math.abs(_cdyd)*0.45,70);
@@ -3683,48 +3706,38 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
           return{fst:'M'+_cp0x+','+_cp0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
                  snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy2+' '+_cp3x+','+_cp3y};
         };
-        // Desktop-style dashed color marks on stem ends
-        var _cs07=_cmsp(0.07),_cs93=_cmsp(0.93);
+        var _cs1=_cmsp(0.07),_cs2=_cmsp(0.93);
         var _cda='stroke-dasharray="3,2"';
-        eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
-        eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+        eHtml+='<path d="'+_cs1.fst+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
+        eHtml+='<path d="'+_cs2.snd+'" fill="none" stroke="'+_clrC.s+'" stroke-width="4" '+_cda+' stroke-linecap="round"/>';
         if(_clrC.s2){
-          eHtml+='<path d="'+_cs07.fst+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
-          eHtml+='<path d="'+_cs93.snd+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+          eHtml+='<path d="'+_cs1.fst+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
+          eHtml+='<path d="'+_cs2.snd+'" fill="none" stroke="'+_clrC.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
         }
       }
     } else {
-      // path drawn below after color marks are computed
+      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"/>';
     }
     // Physical tape color at cable ends (first/last 7%)
     var clrS=cable?_mCLC(cable):null;
     if(clrS && !isFoh && !_isCombo){
       var p0x=x1,p0y=y1,p1x=x1+sx*offx,p1y=y1-offy,p2x=x2-sx*offx,p2y=y2+offy,p3x=x2,p3y=y2;
-      function _split(t){
-        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t;
-        var bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
+      var msp=function(t){
+        var ax=p0x+(p1x-p0x)*t,ay=p0y+(p1y-p0y)*t,bx=p1x+(p2x-p1x)*t,by=p1y+(p2y-p1y)*t;
         var cx=p2x+(p3x-p2x)*t,cy=p2y+(p3y-p2y)*t;
-        var dx2=ax+(bx-ax)*t,dy2=ay+(by-ay)*t;
-        var ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
-        var fx=dx2+(ex-dx2)*t,fy=dy2+(ey-dy2)*t;
-        return {fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+dx2+','+dy2+' '+fx+','+fy,
-                snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
-      }
-      var _s07=_split(0.07),_s93=_split(0.93);
-      var _da='stroke-dasharray="3,2"';
-      // Gray cable stops at t=0.93 (where dest color mark begins)
-      eHtml+='<path d="'+_s93.fst+'" fill="none" stroke="'+stroke+'" stroke-width="2.5"/>';
-      // Source color mark (t=0 to 0.07)
+        var ddx=ax+(bx-ax)*t,ddy=ay+(by-ay)*t,ex=bx+(cx-bx)*t,ey=by+(cy-by)*t;
+        var fx=ddx+(ex-ddx)*t,fy=ddy+(ey-ddy)*t;
+        return{fst:'M'+p0x+','+p0y+' C'+ax+','+ay+' '+ddx+','+ddy+' '+fx+','+fy,
+               snd:'M'+fx+','+fy+' C'+ex+','+ey+' '+cx+','+cy+' '+p3x+','+p3y};
+      };
+      // Desktop-style _bezierEnds: dashed strokes on first/last 7%
+      var _s07=msp(0.07),_s93=msp(0.93),_da='stroke-dasharray="3,2"';
       eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
-      // Dest color mark (t=0.93 to 1.0) — arrow points into port
-      eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round" marker-end="url(#'+marker+')"/>';
+      eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s+'" stroke-width="4" '+_da+' stroke-linecap="round"/>';
       if(clrS.s2){
         eHtml+='<path d="'+_s07.fst+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
         eHtml+='<path d="'+_s93.snd+'" fill="none" stroke="'+clrS.s2+'" stroke-width="4" stroke-dasharray="3,3" stroke-dashoffset="3" opacity="0.9" stroke-linecap="round"/>';
       }
-    }
-    if(!clrS && !_isCombo){
-      eHtml+='<path d="'+path+'" fill="none" stroke="'+stroke+'" stroke-width="2.5" marker-end="url(#'+marker+')"\/>';
     }
     var mx=(x1+x2)/2, my=(y1+y2)/2-4;
     var cLabel=cable?_cableLabel(cable):'';
@@ -3778,8 +3791,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     }
     // Port indicator squares + connector labels (matching desktop)
     var _sp2=SPECS?SPECS[m]:null;
-    var PW=10,PH=7;
-    if(_sp2&&_sp2.pwr_in){
+        if(_sp2&&_sp2.pwr_in){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
     }
@@ -4897,6 +4909,24 @@ function _addStageDoc(si){
   _mStages[si].docs.push({label:lbl,url:url});
   autoSave();_docsClose();_openDocsSheet(si);
 }
+
+// Auto/manual ID toggle handler
+(function(){
+  var toggle=document.getElementById('m-auto-id');
+  if(toggle){
+    toggle.addEventListener('change',function(){
+      var unitRow=document.getElementById('m-unit-row');
+      var manualRow=document.getElementById('m-manual-id-row');
+      if(this.checked){
+        if(unitRow)unitRow.style.display='';
+        if(manualRow)manualRow.style.display='none';
+      } else {
+        if(unitRow)unitRow.style.display='none';
+        if(manualRow)manualRow.style.display='';
+      }
+    });
+  }
+})();
 </script>
 <div id="pdf-overlay" style="display:none;position:fixed;inset:0;z-index:2000;background:#111;flex-direction:column">
   <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1a1a1a;flex-shrink:0">
