@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.984</title>
+<title>WTUniverse · Buildert Editor v3.985</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -2180,7 +2180,9 @@ function renderTable() {
             : '';
           return '<td style="min-width:80px"><div style="display:flex;align-items:center;gap:0;white-space:nowrap;'
             +'background:'+hexToRgba(col,0.08)+';border-left:3px solid '+col+';padding:2px 6px 2px 5px;border-radius:3px">'
-            +'<span style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:.5px;color:var(--text)" title="'+tip+'">'
+            +'<span contenteditable="true" data-placeholder="model" style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:.5px;color:var(--text);flex:1" title="'+tip+'"'
+            +' onblur="setField(' + gi + ',\'model\',this.innerText.trim())"'
+            +' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">'
             +(m||'&#8212;')+'</span>'+ioBadge+'</div></td>';
         })()
       + '<td style="min-width:52px"><span class="serial-cell" contenteditable="true" data-placeholder="------"'
