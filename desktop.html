@@ -1325,16 +1325,13 @@
 <script>
 // ── Global Error Handler ───────────────────────────────────────
 window.onerror = function(msg, url, lineNo, colNo, error) {
-  var fullMsg = 'ERROR at line ' + lineNo + ': ' + msg;
+  var fullMsg = '[DANGER] ERROR at line ' + lineNo + ': ' + msg;
   console.error(fullMsg);
-  console.error('Details:', error);
-  // Display to user for 12 seconds so they can read it
+  if(error) console.error('Stack:', error.stack);
   if(typeof showToast === 'function') {
     showToast(fullMsg, 'danger');
-  } else {
-    alert(fullMsg + '\n\nCheck console for details');
   }
-  return false; // Let the browser handle it too
+  return false;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -3643,7 +3640,7 @@ function _mergeProjectNoConflict(data) {
   if(Array.isArray(data.todos) && data.todos.length){
     if(!_todos) _todos=[];
     var existingMap={};
-    (_todos || []).filter(function(t){return !t.auto;}).forEach(function(t){existingMap[t.id]=t;});
+    (_todos||[]).filter(function(t){return !t.auto;}).forEach(function(t){existingMap[t.id]=t;});
     data.todos.forEach(function(t){
       if(t.auto) return;
       if(existingMap[t.id]){
@@ -4181,12 +4178,11 @@ var _toastTimer;
 function showToast(msg,type){
   type=type||'ok';
   var t=document.getElementById('toast');
+  if(!t) {console.warn('['+type+'] '+msg); return;}
   t.textContent=msg;t.className='show '+type;
   clearTimeout(_toastTimer);
-  // Keep error/warning messages visible longer for debugging
   var duration = (type==='warn'||type==='danger'||type==='error') ? 8000 : 3000;
   _toastTimer=setTimeout(function(){t.className='';},duration);
-  // Also log to console for visibility
   console.log('['+type.toUpperCase()+'] '+msg);
 }
 
@@ -6669,7 +6665,6 @@ function renderSpecs(){
 }
 
 // ── Init
-document.addEventListener('DOMContentLoaded', function() {
 try{var s=localStorage.getItem('buildert_devices');if(s)devices=JSON.parse(s);}catch(e){}
 try{
   var _pm=localStorage.getItem('wtu_project_meta');
@@ -6683,10 +6678,7 @@ try{
 var params=new URLSearchParams(location.search);
 if(params.get('ip')){
   var ipEl=document.getElementById('device-ip');
-  if(ipEl) {
-    ipEl.value=params.get('ip');
-    startPolling();
-  }
+  if(ipEl) {ipEl.value=params.get('ip');startPolling();}
 }
 // Show HTTPS warning immediately if opened over https (push will be blocked by browser)
 if(location.protocol==='https:'){
@@ -7959,7 +7951,6 @@ var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}
 
 function _todosLoad(){
   try{ var s=localStorage.getItem('buildert_todos'); if(s)_todos=JSON.parse(s); }catch(e){}
-  // Ensure _todos is always an array
   if(!Array.isArray(_todos)) _todos=[];
 }
 function _todosSave(){
@@ -8087,7 +8078,7 @@ function renderTodosPanel(){
 }
 
 function todoEdit(id){
-  var t=_todos.find(function(x){return x.id===id;}); if(!t) return;
+  var t=(_todos||[]).find(function(x){return x.id===id;}); if(!t) return;
   var tOpts='<option value="">No time</option>';
   for(var h=6;h<=24;h++){['00','30'].forEach(function(m){tOpts+='<option value="'+h+':'+('0'+m).slice(-2)+'"'+(t.label.startsWith(h+':'+('0'+m).slice(-2))?' selected':'')+'>'+h+':'+('0'+m).slice(-2)+'</option>';})}
   var curLabel=t.label.replace(/^\d+:\d+\s—\s/,'');
@@ -8114,7 +8105,7 @@ function todoEdit(id){
 }
 
 function todoSaveEdit(id){
-  var t=_todos.find(function(x){return x.id===id;}); if(!t) return;
+  var t=(_todos||[]).find(function(x){return x.id===id;}); if(!t) return;
   var lbl=(document.getElementById('td-lbl').value||'').trim(); if(!lbl) return;
   var urg=parseInt(document.getElementById('td-urg').value)||1;
   var time=document.getElementById('td-time').value||'';
@@ -8196,7 +8187,7 @@ function wPushLayout(){
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     pack_shared:_packShared,
-    todos:_todos.filter(function(t){return !t.auto;}),
+    todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:np_parsed,
@@ -8282,7 +8273,7 @@ function _buildFilePayload(){
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     pack_shared:_packShared,
-    todos:_todos.filter(function(t){return !t.auto;}),
+    todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
@@ -9716,7 +9707,6 @@ function _syncCableIn() {
   var primary = (p && cableSignalType(p)==='combo') ? p : (dd && cableSignalType(dd)==='combo') ? dd : p||dd;
   var el = document.getElementById('m-cable-in'); if (el) el.value = primary;
 }
-}); // Close DOMContentLoaded handler
 </script>
 </body>
 </html>
