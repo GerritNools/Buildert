@@ -3006,7 +3006,7 @@ async function wPull(){
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
     // Support both new multi-project API (GET /) and old API (GET /project?key=)
-    var resp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
+    var resp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store',headers:{'X-Buildert-Token':_mToken}});
     clearTimeout(_t);
     _dbxSyncing=false;
     if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
@@ -3057,13 +3057,13 @@ async function wPush(silent){
     var pid=_mobGetProjectId();
     var envelope={_schema:'v2',_projects:{}};
     try{
-      var gResp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
+      var gResp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store',headers:{'X-Buildert-Token':_mToken}});
       if(gResp.ok){var gRaw=await gResp.json();if(gRaw&&gRaw._schema==='v2')envelope=gRaw;}
     }catch(e){}
     envelope._projects[pid]=Object.assign({},payload,{_project_id:pid});
     var resp=await fetch(_workerUrl+'/',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-Buildert-Token':_mToken},
       body:JSON.stringify(envelope),
     });
     if(resp.ok){
@@ -3098,11 +3098,11 @@ function _handleProjectParam(){
     devices=[]; _projectVersion=0; _projectBaseVersion=0;
   }
   _projectKey=key;
-  // Worker URL: from param, or from localStorage (stored on first use)
-  var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'';
+  // Worker URL: from param, or from localStorage (stored on first use), or use default
+  var wurl=params.get('w')||params.get('worker')||localStorage.getItem('buildert_worker_url')||'https://buildert.untitledtechnologies.workers.dev';
   if(wurl){ _workerUrl=wurl; try{localStorage.setItem('buildert_worker_url',wurl);}catch(e){} }
-  var tok=params.get('token')||params.get('t')||'';
-  if(tok){ _mToken=tok; try{localStorage.setItem('brt_worker_token',tok);}catch(e){} }
+  var tok=params.get('token')||params.get('t')||localStorage.getItem('buildert_access_token')||'brt_2026_secure_buildert_token_12345';
+  if(tok){ _mToken=tok; try{localStorage.setItem('buildert_access_token',tok);}catch(e){} }
   try{localStorage.setItem('buildert_project_key',key);}catch(e){}
   var stage=params.get('stage')||'';
   if(stage){ _mAssignedStageId=decodeURIComponent(stage); }
