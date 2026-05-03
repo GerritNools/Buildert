@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.986</title>
+<title>WTUniverse · Buildert Editor v3.988</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -7802,7 +7802,7 @@ function wSyncInit(){
   _projectKey = localStorage.getItem('buildert_project_key')||'';
   if(_workerUrl && _projectKey){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
-    setTimeout(wPoll, 5000);  // delay startup pull — give time to load local data first
+    setTimeout(wPull, 5000);  // delay startup pull — give time to load local data first
     setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
   }
 }
@@ -7813,11 +7813,11 @@ function wStopPolling(){
 async function wPull(){
   if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
-  if(_dbxPushDebounce){ _dbxSetStatus('Pushing…','var(--muted)'); return; }
+  if(_dbxPushDebounce){ _dbxSetStatus('Pulling…','var(--muted)'); return; }
   _dbxSyncing=true;
   try{
     var resp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
-    if(resp.status===404){ _dbxSyncing=false; _dbxSetStatus('No data yet','var(--muted)'); return; }
+    if(resp.status===404){ _dbxSyncing=false; _dbxSetStatus('No data on worker yet','var(--muted)'); return; }
     if(!resp.ok){ _dbxSyncing=false; _dbxSetStatus('Worker error '+resp.status,'var(--danger)'); return; }
     var data = await resp.json();
     _isReceiving=true;
@@ -7827,9 +7827,25 @@ async function wPull(){
         var pid=_getProjectId();
         projData=data._projects[pid];
         if(!projData){_dbxSetStatus('No data for project "'+pid+'" yet','var(--muted)');_isReceiving=false;return;}
-        // Absorb remote activity log
-        if(projData._log){ _activityLog=(_activityLog||[]).concat(projData._log||[]).slice(0,300); }
       }
+      // Safety: only merge if incoming data is not empty when we have local data
+      var incomingDeviceCount = Array.isArray(projData.devices) ? projData.devices.length : 0;
+      // Also count across stages if staged format
+      if(incomingDeviceCount===0 && Array.isArray(projData.stages)){
+        projData.stages.forEach(function(s){ incomingDeviceCount += (s.devices||[]).length; });
+      }
+      var localDeviceCount = 0;
+      if(window._stages) _stages.forEach(function(s){ localDeviceCount += (s.devices||[]).length; });
+      else localDeviceCount = devices.length;
+
+      if(incomingDeviceCount === 0 && localDeviceCount > 0){
+        _dbxSetStatus('Worker empty — keeping local ✓','var(--muted)');
+        _isReceiving=false;
+        _dbxSyncing=false;
+        return;
+      }
+      // Absorb remote activity log
+      if(projData._log){ _activityLog=(_activityLog||[]).concat(projData._log||[]).slice(0,300); }
       _mergeProjectNoConflict(projData);
     }finally{ _isReceiving=false; }
     // Immediately cancel any pending push
