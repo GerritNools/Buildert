@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.939m</title>
+<title>WTU · Buildert v3.940m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1941,9 +1941,6 @@ function saveDevice(){
   var _savedId=devices[editIdx>=0?editIdx:devices.length-1].device_id;
   closeSheet('device');
   autoSave();
-}
-  var _cableTxt=d.cable_in?'Cable: '+_cableLabel(d.cable_in):''; _logActivity(_savedId, 'Saved'+(d.serial?' SN:'+d.serial:'')+(_cableTxt?' '+_cableTxt:''));
-  closeSheet('device'); renderMain(); autoSave(); updateLocDl();
 }
 var _deletedDevice=null;
 function deleteDevice(){
