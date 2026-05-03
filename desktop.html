@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.990</title>
+<title>WTUniverse · Buildert Editor v3.992</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.990</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.992</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -496,17 +496,28 @@
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
+    <!-- Anbernic controller section -->
     <label style="font-size:11px;color:var(--muted);font-family:var(--mono)">IP</label>
     <input type="text" id="device-ip" placeholder="192.168.x.x"
            onkeydown="if(event.key==='Enter'){stopPolling();startPolling();}">
     <div class="conn-dot" id="conn-dot"></div>
     <span id="conn-label">not connected</span>
     <button class="btn btn-ghost" id="poll-btn" onclick="togglePolling()">&#9654; Live sync</button>
-    <button class="btn btn-ok" onclick="pushToDevice();if(_workerUrl&&_projectKey)wPush(true);">&#8593; Push</button>
-    <button class="btn btn-ghost" onclick="if(!_workerUrl){alert('Set worker URL in Shares tab first');}else{wPush(false);}" style="font-size:12px" title="Push to Cloudflare worker">&#9729; Cloud push</button>
+    <button class="btn btn-ok" onclick="pushToDevice()" title="Push to Anbernic controller">&#8593; Anbernic</button>
     <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
+
+    <!-- Divider -->
+    <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
+
+    <!-- Cloudflare worker section -->
+    <button class="btn btn-ghost" onclick="wPush(false)" title="Push to Cloudflare worker" style="font-size:12px">&#9729; Cloud push</button>
+    <button class="btn btn-ghost" onclick="wPull()" title="Pull from Cloudflare worker" style="font-size:12px">&#8595; Pull</button>
+
+    <!-- Divider -->
+    <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
+
     <!-- Edit / Live mode toggle -->
-    <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;margin-left:4px">
+    <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0">
       <button id="btn-mode-edit" onclick="wSetMode('edit')"
         style="padding:5px 12px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;border:none;cursor:pointer;background:var(--accent);color:#000;transition:all .15s">
         ✏️ EDIT
@@ -7859,9 +7870,14 @@ function wSetMode(mode, silent){
   // Start/stop polling
   if(_wPollInterval){ clearInterval(_wPollInterval); _wPollInterval=null; }
   if(mode === 'live'){
-    setTimeout(wPull, 2000); // immediate pull on switch to live
+    // Push to worker first, then pull — never touch Anbernic here
+    wPush(false).then(function(){
+      setTimeout(wPull, 1000);
+    }).catch(function(){
+      setTimeout(wPull, 1000);
+    });
     _wPollInterval = setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
-    if(!silent) _dbxSetStatus('Live mode — syncing…','#e74c3c');
+    if(!silent) _dbxSetStatus('Live mode — pushing then syncing…','#e74c3c');
   } else {
     if(!silent) _dbxSetStatus('Edit mode — pull paused','var(--muted)');
   }
