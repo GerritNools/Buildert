@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.989</title>
+<title>WTUniverse · Buildert Editor v3.990</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.982</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.990</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -505,6 +505,17 @@
     <button class="btn btn-ok" onclick="pushToDevice();if(_workerUrl&&_projectKey)wPush(true);">&#8593; Push</button>
     <button class="btn btn-ghost" onclick="if(!_workerUrl){alert('Set worker URL in Shares tab first');}else{wPush(false);}" style="font-size:12px" title="Push to Cloudflare worker">&#9729; Cloud push</button>
     <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
+    <!-- Edit / Live mode toggle -->
+    <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;margin-left:4px">
+      <button id="btn-mode-edit" onclick="wSetMode('edit')"
+        style="padding:5px 12px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;border:none;cursor:pointer;background:var(--accent);color:#000;transition:all .15s">
+        ✏️ EDIT
+      </button>
+      <button id="btn-mode-live" onclick="wSetMode('live')"
+        style="padding:5px 12px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;border:none;cursor:pointer;background:var(--panel);color:var(--muted);transition:all .15s">
+        📡 LIVE
+      </button>
+    </div>
   </div>
 </header>
 
@@ -549,14 +560,6 @@
       <button class="tab-btn"            id="tab-docs"      onclick="setTab('docs')">&#128196; Docs</button>
       <button class="tab-btn" id="tab-activity" onclick="setTab('activity')">&#128200; Activity</button>
       <button class="tab-btn" onclick="openLabelModal()" style="margin-left:auto">&#127991; Labels</button>
-      <!-- Live/Edit mode quick toggle -->
-      <button id="mode-pill" onclick="wSetMode(_syncMode==='edit'?'live':'edit')"
-        title="Toggle Edit / Live mode"
-        style="margin-left:8px;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;
-               font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;
-               background:var(--panel);color:var(--muted);transition:all .2s">
-        ✏️ EDIT
-      </button>
     </div>
     <!-- Device category chips — shown only when Devices tab is active -->
     <div id="device-cat-bar" style="display:flex;gap:4px;padding:4px 0;flex-wrap:wrap;overflow-x:auto"></div>
@@ -7839,33 +7842,19 @@ function wSetMode(mode, silent){
   _syncMode = mode;
   try{ localStorage.setItem('buildert_sync_mode', mode); }catch(e){}
 
-  // Update UI buttons
-  var btnEdit = document.getElementById('btn-mode-edit');
-  var btnLive = document.getElementById('btn-mode-live');
-  var desc    = document.getElementById('mode-desc');
-  var pill    = document.getElementById('mode-pill');
-  if(btnEdit && btnLive){
-    if(mode === 'live'){
-      btnEdit.style.background = 'var(--panel)'; btnEdit.style.color = 'var(--muted)';
-      btnLive.style.background = '#e74c3c';       btnLive.style.color = '#fff';
-      if(desc) desc.innerHTML = '📡 <b>Live mode</b>: Pulling from worker every 10s. Desktop merges mobile updates in real-time.';
-    } else {
-      btnEdit.style.background = 'var(--accent)'; btnEdit.style.color = '#000';
-      btnLive.style.background = 'var(--panel)';  btnLive.style.color = 'var(--muted)';
-      if(desc) desc.innerHTML = '✏️ <b>Edit mode</b>: Desktop is source of truth. Auto-pull is paused. Push when ready.';
-    }
-  }
-  if(pill){
-    if(mode === 'live'){
-      pill.textContent = '📡 LIVE';
-      pill.style.background = '#e74c3c';
-      pill.style.color = '#fff';
-    } else {
-      pill.textContent = '✏️ EDIT';
-      pill.style.background = 'var(--panel)';
-      pill.style.color = 'var(--muted)';
-    }
-  }
+  // Update ALL matching buttons (header + settings modal)
+  var desc = document.getElementById('mode-desc');
+  document.querySelectorAll('#btn-mode-edit').forEach(function(b){
+    b.style.background = mode==='edit' ? 'var(--accent)' : 'var(--panel)';
+    b.style.color      = mode==='edit' ? '#000'          : 'var(--muted)';
+  });
+  document.querySelectorAll('#btn-mode-live').forEach(function(b){
+    b.style.background = mode==='live' ? '#e74c3c'       : 'var(--panel)';
+    b.style.color      = mode==='live' ? '#fff'          : 'var(--muted)';
+  });
+  if(desc) desc.innerHTML = mode==='live'
+    ? '📡 <b>Live mode</b>: Pulling from worker every 10s. Merges mobile updates in real-time.'
+    : '✏️ <b>Edit mode</b>: Desktop is source of truth. Auto-pull paused. Push when ready.';
 
   // Start/stop polling
   if(_wPollInterval){ clearInterval(_wPollInterval); _wPollInterval=null; }
