@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.992</title>
+<title>WTUniverse · Buildert Editor v3.993</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.992</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.993</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4526,9 +4526,11 @@ function resetSpecsToDefaults() {
 var _controllerEnvelope = {};  // full envelope fetched from controller
 
 function _getProjectId() {
-  // When worker sync is active, use _projectKey (the canonical worker key)
+  // Per-project key: prefer explicit _projectKey (set in shares tab),
+  // otherwise derive from project meta so each project has its own slot
   if(_projectKey) return _projectKey;
-  return ((_projectMeta.id||_projectMeta.name||'default')).replace(/[^a-zA-Z0-9_-]/g,'_');
+  var name = (_projectMeta.id || _projectMeta.name || 'default');
+  return name.toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,32);
 }
 
 function buildPayload() {
@@ -6763,7 +6765,19 @@ qaUpdateModel();
 _ensureStages();
 _renderStageBar();
 // Worker sync init
-(function(){var wu=localStorage.getItem('buildert_worker_url')||'';var wk=localStorage.getItem('buildert_project_key')||'';if(wu){var ei=document.getElementById('worker-url-inp');if(ei)ei.value=wu;}_projectKey=wk;var kd=document.getElementById('proj-key-display');if(kd)kd.textContent=wk;if(wu&&wk){_workerUrl=wu;wSyncInit();}})();
+(function(){
+  var wu=localStorage.getItem('buildert_worker_url')||'https://buildert.untitledtechnologies.workers.dev';
+  var wk=localStorage.getItem('buildert_project_key')||'';
+  if(wu){
+    var ei=document.getElementById('worker-url-inp');
+    if(ei) ei.value=wu;
+    _workerUrl=wu; // always set workerUrl so push works without explicit key
+  }
+  _projectKey=wk;
+  var kd=document.getElementById('proj-key-display');
+  if(kd) kd.textContent=wk||'(auto from project name)';
+  if(wu){ wSyncInit(); } // init even without key — key auto-derived from project
+})();
 // Attach scroll-to-zoom and background pan on the node SVG
 (function(){
   var svg = document.getElementById('node-svg');
@@ -7936,12 +7950,16 @@ async function wPull(){
 }
 var _wPushT=null;
 async function wPush(silent){
-  if(!_workerUrl) return;
-  // Auto-generate project key from project name if not set
+  if(!_workerUrl){
+    if(!silent) _dbxSetStatus('No worker URL — set in Settings','var(--warn)');
+    return;
+  }
+  // Derive project key from project meta if not explicitly set
   if(!_projectKey) {
-    _projectKey = (project.name||project.id||'default').replace(/[^a-zA-Z0-9_-]/g,'_');
-    try{localStorage.setItem('buildert_project_key',_projectKey);}catch(e){}
-    addSyncLog('Auto-set project key: '+_projectKey,'info');
+    _projectKey = _getProjectId();
+    try{ localStorage.setItem('buildert_project_key', _projectKey); }catch(e){}
+    var kd = document.getElementById('proj-key-display');
+    if(kd) kd.textContent = _projectKey;
   }
   // Exit Total view before push
   if(_currentStageIdx===-1){ _currentStageIdx=0; devices=_stages[0].devices; }
@@ -7955,6 +7973,8 @@ async function wPush(silent){
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
+    _project_id: _getProjectId(),
+    _project_name: _projectMeta.name || '',
     project:Object.assign({},_projectMeta),
     stages:JSON.parse(JSON.stringify(_stages)),
     devices:devices,
@@ -7973,18 +7993,26 @@ async function wPush(silent){
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
   _updateProjectBadge();
+  // Fetch existing envelope first so we don't overwrite other projects
+  var envelope = { _schema:'v2', _projects:{} };
+  try{
+    var gResp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
+    if(gResp.ok){ var gRaw=await gResp.json(); if(gRaw&&gRaw._schema==='v2') envelope=gRaw; }
+  }catch(e){}
+  if(!envelope._projects) envelope._projects={};
+  envelope._projects[_getProjectId()] = payload;
   try{
     var resp=await fetch(_workerUrl+'/',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify((function(){var e=Object.assign({},_controllerEnvelope,{_schema:'v2'});if(!e._projects)e._projects={};e._projects[_getProjectId()]=payload;return e;})(),null,2),
+      body:JSON.stringify(envelope),
     });
     if(resp.ok){
-      if(!silent) _dbxSetStatus('Saved v'+_projectVersion+' · '+_hhmm(),'var(--ok)');
+      if(!silent) _dbxSetStatus('☁ Pushed · '+_hhmm()+' ['+_getProjectId()+']','var(--ok)');
     } else {
-      if(!silent) _dbxSetStatus('Save error '+resp.status,'var(--danger)');
+      if(!silent) _dbxSetStatus('Push error '+resp.status,'var(--danger)');
     }
-  }catch(e){ if(!silent) _dbxSetStatus('Save failed','var(--warn)'); }
+  }catch(e){ if(!silent) _dbxSetStatus('Push failed — check worker URL','var(--warn)'); }
 }
 function wPoll(){ wPull(); }
 
