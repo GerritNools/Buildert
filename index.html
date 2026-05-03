@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.941m</title>
+<title>WTU · Buildert v3.942m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -3333,6 +3333,15 @@ var _pn=document.getElementById('proj-name');if(_pn)_pn.value=project.name||'';
 var _pv=document.getElementById('proj-venue');if(_pv)_pv.value=project.venue||'';
 
 // Load Worker settings
+// ── Migrate old worker URL ────────────────────────────────────────
+(function(){
+  var OLD='lasbuwt2026.untitledtechnologies.workers.dev';
+  var NEW='https://buildert.untitledtechnologies.workers.dev';
+  try{
+    var stored=localStorage.getItem('buildert_worker_url')||'';
+    if(stored.indexOf(OLD)>=0){ localStorage.setItem('buildert_worker_url',NEW); }
+  }catch(e){}
+})();
 _workerUrl=localStorage.getItem('buildert_worker_url')||'';
 _projectKey=localStorage.getItem('buildert_project_key')||'';
 // Load Dropbox settings
@@ -3610,6 +3619,7 @@ function _mNodeRender() {
   if (!_mNPos || !Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
 
   var NW = _mNW, NH = _mNH;
+  var PW = 10, PH = 7; // port indicator dimensions — used in edges and nodes
   var needFoh = devices.some(function(d){return d.source==='FOH';});
   var nodeIds = devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;});
   var allIds  = (needFoh?['FOH']:[]).concat(nodeIds);
@@ -3654,6 +3664,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     if(!d.device_id) return;
     var srcId=d.source_power||d.source_data||d.source||''; if(!srcId) return;
     var sp=_mNPos[srcId], dp=_mNPos[d.device_id]; if(!sp||!dp) return;
+    if(isNaN(sp.x)||isNaN(sp.y)||isNaN(dp.x)||isNaN(dp.y)) return;
     var cable=d.cable_power_in||d.cable_data_in||d.cable_in||d.cable||'';
     var hasCable=!!cable, isFoh=(srcId==='FOH');
     var stroke=isFoh?'#00d4ff':hasCable?'#8899bb':'#55606e';
@@ -3753,6 +3764,7 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
   allIds.forEach(function(id){
     var pos=_mNPos[id]; if(!pos) return;
     var x=pos.x, y=pos.y;
+    if(isNaN(x)||isNaN(y)) return;
     var isFoh=(id==='FOH');
     var dev=isFoh?null:devices.find(function(d){return d.device_id===id;});
     var m=dev?(dev.model||modelFromId(dev.device_id||'')):'';
