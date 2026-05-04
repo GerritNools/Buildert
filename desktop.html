@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.002</title>
+<title>WTUniverse · Buildert Editor v4.003</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.002</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.003</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3553,6 +3553,11 @@ function loadProjectFile(input) {
     try {
       var data = JSON.parse(e.target.result);
       _applyProjectLoad(data);
+      // After loading a NEW project file, auto-pull from worker to get any mobile updates.
+      // (Done only here, not inside _mergeProjectNoConflict — that would cause infinite loop.)
+      if(_workerUrl && _projectKey && typeof wPull === 'function'){
+        setTimeout(function(){ wPull(true); }, 800); // silent pull
+      }
     } catch(ex) { showToast('Invalid project file', 'err'); }
   };
   r.readAsText(file);
@@ -3837,10 +3842,6 @@ function _mergeProjectNoConflict(data) {
   showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
   if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
-  // Auto-pull from worker to fetch any mobile changes for this project
-  if(_workerUrl && _projectKey && typeof wPull === 'function'){
-    setTimeout(function(){ wPull(false); }, 600);
-  }
 }
 
 var _pendingFileData = null;
