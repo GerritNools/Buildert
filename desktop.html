@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.003</title>
+<title>WTUniverse · Buildert Editor v4.004</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.003</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.004</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3510,9 +3510,13 @@ function _buildProjectPayload() {
     _version:  _projectVersion + 1,
     _saved:    new Date().toISOString(),
     _saved_by: 'desktop',
+    _project_id:  _getProjectId(),         // ← worker key, so riggers' links keep working
+    _worker_url:  _workerUrl || '',         // ← so opening the file restores the worker
     project:   Object.assign({}, _projectMeta,
                  {anbernic_ip: (document.getElementById('device-ip')||{}).value||''}),
     devices:   devices,
+    stages:    _stages,                     // ← stages structure (was missing!)
+    shares:    _spShares || [],             // ← per-project shares so links stay valid
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     pack_shared:    _packShared,
@@ -3826,6 +3830,14 @@ function _mergeProjectNoConflict(data) {
     window._localDirty = {};
     // Reload shares for the new project
     if(typeof _loadSharesForCurrentProject === 'function') _loadSharesForCurrentProject();
+  }
+  // Restore worker URL from project file (so opening a saved project re-binds to the right worker)
+  if(data._worker_url && data._worker_url !== _workerUrl){
+    _workerUrl = data._worker_url;
+    try{ localStorage.setItem('buildert_worker_url', _workerUrl); }catch(e){}
+    var wEl = document.getElementById('worker-url-inp');
+    if(wEl) wEl.value = _workerUrl;
+    addSyncLog('Worker URL restored from file: '+_workerUrl,'info');
   }
   _projectVersion     = data._version || 0;
   _projectBaseVersion = _projectVersion;
