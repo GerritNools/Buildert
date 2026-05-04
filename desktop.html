@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.995</title>
+<title>WTUniverse · Buildert Editor v3.996</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.995</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.996</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1082,7 +1082,23 @@
   </div>
 </div>
 
-<!-- Specs Editor Modal -->
+<!-- Sync Conflict Resolution Modal -->
+<div class="modal-overlay" id="modal-sync-conflict">
+  <div class="modal" style="max-width:640px;width:96vw">
+    <h2 style="color:var(--warn)">&#9888; Sync Conflicts</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:4px">
+      You edited <b id="sync-conflict-count">0</b> field(s) locally that were also changed by a rigger. Pick which version to keep for each.
+    </p>
+    <div id="sync-conflict-list" style="max-height:50vh;overflow-y:auto;margin:14px 0;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></div>
+    <div class="modal-footer" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="_resolveAllConflicts('local')" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">&#9989; Keep all mine</button>
+      <button class="btn btn-ghost" onclick="_resolveAllConflicts('remote')" style="background:rgba(255,150,50,.1);border-color:var(--warn);color:var(--warn)">&#10145; Take all theirs</button>
+      <button class="btn btn-primary" onclick="_applyConflictResolutions()" style="margin-left:auto">Apply choices</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="modal-specs">
   <div class="modal" style="max-width:860px;width:96vw">
     <h2>&#9881; Model Specs Editor</h2>
@@ -2376,6 +2392,12 @@ function toggleCheck(gi, check) {
 function setField(gi, field, val) {
   _pushUndo(field + " on " + (devices[gi]&&devices[gi].device_id||gi));
   devices[gi][field] = val;
+  // Mark device as locally dirty (edited since last push)
+  if(devices[gi] && devices[gi].device_id){
+    if(!window._localDirty) window._localDirty = {};
+    if(!window._localDirty[devices[gi].device_id]) window._localDirty[devices[gi].device_id] = {};
+    window._localDirty[devices[gi].device_id][field] = val;
+  }
   if (field !== 'notes' && field !== 'location') renderTable();
   autoSave();
 }
@@ -3576,6 +3598,52 @@ function _mergeProjectNoConflict(data) {
     // Desktop owns: stages structure, nodePositions, device list, diagPositions
     // Mobile owns:  serial, status, checks, pointed, notes, cable_in, cable
     var MOBILE_FIELDS = ['serial','status','checks','pointed','notes','cable_in','cable'];
+
+    // ── CONFLICT DETECTION ───────────────────────────────────────────
+    // A conflict = local was edited (in _localDirty) AND incoming has a different value
+    var conflicts = [];
+    var localDirty = window._localDirty || {};
+    if(Object.keys(localDirty).length > 0){
+      var incomingByIdConflict = {};
+      if(Array.isArray(data.stages) && data.stages.length){
+        data.stages.forEach(function(stage){
+          (stage.devices||[]).forEach(function(fd){ if(fd.device_id) incomingByIdConflict[fd.device_id]=fd; });
+        });
+      } else {
+        (data.devices||[]).forEach(function(fd){ if(fd.device_id) incomingByIdConflict[fd.device_id]=fd; });
+      }
+      _stages.forEach(function(stage){
+        stage.devices.forEach(function(ld){
+          if(!localDirty[ld.device_id]) return; // not locally dirty, no conflict possible
+          var fd = incomingByIdConflict[ld.device_id];
+          if(!fd) return;
+          MOBILE_FIELDS.forEach(function(f){
+            // Only flag if local is dirty for this exact field AND values differ
+            if(localDirty[ld.device_id] && Object.prototype.hasOwnProperty.call(localDirty[ld.device_id], f)){
+              if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])){
+                conflicts.push({
+                  device_id: ld.device_id,
+                  field: f,
+                  local: ld[f],
+                  remote: fd[f],
+                  remote_by: data._saved_by || 'mobile'
+                });
+              }
+            }
+          });
+        });
+      });
+    }
+
+    if(conflicts.length > 0){
+      // Stash the incoming data and show conflict modal
+      window._pendingConflicts = conflicts;
+      window._pendingMergeData = data;
+      _showConflictModal();
+      return; // don't merge yet — wait for user
+    }
+
+    // No conflicts — proceed with normal merge
     var changed = {};
     // Build incoming device lookup from ALL incoming stages (mobile sends full stages[])
     var incomingById = {};
@@ -7993,6 +8061,137 @@ async function wPull(silent){
   }
   _dbxSyncing=false;
 }
+// ── Sync conflict modal ───────────────────────────────────────────
+window._pendingConflicts = [];
+window._pendingMergeData = null;
+window._conflictChoices = {}; // { 'device_id|field': 'local'|'remote' }
+
+function _showConflictModal(){
+  var list = window._pendingConflicts || [];
+  if(!list.length) return;
+  document.getElementById('sync-conflict-count').textContent = list.length;
+  window._conflictChoices = {};
+  // Default: all "remote" (so passive close = take theirs, like the old behavior)
+  list.forEach(function(c){ window._conflictChoices[c.device_id+'|'+c.field] = 'remote'; });
+
+  var html = '';
+  list.forEach(function(c, idx){
+    var key = c.device_id+'|'+c.field;
+    var localStr = JSON.stringify(c.local);
+    var remoteStr = JSON.stringify(c.remote);
+    if(localStr.length>60) localStr = localStr.slice(0,60)+'…';
+    if(remoteStr.length>60) remoteStr = remoteStr.slice(0,60)+'…';
+    html += '<div style="padding:12px 14px;border-bottom:1px solid var(--border)">'
+         +   '<div style="font-family:var(--cond);font-weight:700;font-size:13px;margin-bottom:6px">'
+         +     '<span style="color:var(--accent)">'+c.device_id+'</span>'
+         +     '<span style="color:var(--muted);margin:0 6px">·</span>'
+         +     '<span>'+c.field+'</span>'
+         +   '</div>'
+         +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">'
+         +     '<label style="cursor:pointer;padding:8px 10px;border-radius:5px;border:2px solid var(--accent);background:rgba(0,212,255,.08);font-family:var(--mono);font-size:12px">'
+         +       '<input type="radio" name="conf-'+idx+'" value="local" onchange="window._conflictChoices[\''+key+'\']=this.value" style="margin-right:6px">'
+         +       '<b style="color:var(--accent)">Mine:</b> '+localStr
+         +     '</label>'
+         +     '<label style="cursor:pointer;padding:8px 10px;border-radius:5px;border:2px solid var(--warn);background:rgba(255,150,50,.08);font-family:var(--mono);font-size:12px">'
+         +       '<input type="radio" name="conf-'+idx+'" value="remote" checked onchange="window._conflictChoices[\''+key+'\']=this.value" style="margin-right:6px">'
+         +       '<b style="color:var(--warn)">'+(c.remote_by||'theirs')+':</b> '+remoteStr
+         +     '</label>'
+         +   '</div>'
+         + '</div>';
+  });
+  document.getElementById('sync-conflict-list').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--muted)">No conflicts</div>';
+  document.getElementById('modal-sync-conflict').classList.add('open');
+  // Also show toast and log
+  showToast(list.length+' sync conflict'+(list.length===1?'':'s')+' need attention','warn');
+  addSyncLog(list.length+' conflict(s) detected — modal opened','warn');
+}
+
+function _resolveAllConflicts(choice){
+  var list = window._pendingConflicts || [];
+  list.forEach(function(c){
+    window._conflictChoices[c.device_id+'|'+c.field] = choice;
+  });
+  // Update radios visually
+  list.forEach(function(c, idx){
+    var radios = document.getElementsByName('conf-'+idx);
+    for(var i=0;i<radios.length;i++) radios[i].checked = (radios[i].value === choice);
+  });
+}
+
+function _applyConflictResolutions(){
+  var list = window._pendingConflicts || [];
+  var data = window._pendingMergeData;
+  if(!list.length || !data){
+    document.getElementById('modal-sync-conflict').classList.remove('open');
+    return;
+  }
+  var MOBILE_FIELDS = ['serial','status','checks','pointed','notes','cable_in','cable'];
+  // Build conflict-resolution map: device_id -> field -> 'local'|'remote'
+  var resolutionMap = {};
+  list.forEach(function(c){
+    if(!resolutionMap[c.device_id]) resolutionMap[c.device_id] = {};
+    resolutionMap[c.device_id][c.field] = window._conflictChoices[c.device_id+'|'+c.field] || 'remote';
+  });
+
+  // Build incoming lookup
+  var incomingById = {};
+  if(Array.isArray(data.stages) && data.stages.length){
+    data.stages.forEach(function(stage){
+      (stage.devices||[]).forEach(function(fd){ if(fd.device_id) incomingById[fd.device_id]=fd; });
+    });
+  } else {
+    (data.devices||[]).forEach(function(fd){ if(fd.device_id) incomingById[fd.device_id]=fd; });
+  }
+
+  // Apply: for each local device, take fields per resolution
+  var keptLocal = 0, tookRemote = 0;
+  _stages.forEach(function(stage){
+    stage.devices.forEach(function(ld){
+      var fd = incomingById[ld.device_id];
+      if(!fd) return;
+      MOBILE_FIELDS.forEach(function(f){
+        var res = resolutionMap[ld.device_id] && resolutionMap[ld.device_id][f];
+        if(res === 'local'){
+          // keep local — do nothing, but count
+          if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])) keptLocal++;
+        } else {
+          // take remote (also default for non-conflicting fields)
+          if(JSON.stringify(fd[f]) !== JSON.stringify(ld[f])){
+            ld[f] = fd[f];
+            tookRemote++;
+          }
+        }
+      });
+    });
+  });
+
+  // Clear local dirty for resolved devices (they're synced now)
+  Object.keys(resolutionMap).forEach(function(did){
+    if(window._localDirty && window._localDirty[did]) delete window._localDirty[did];
+  });
+
+  // Cleanup
+  window._pendingConflicts = [];
+  window._pendingMergeData = null;
+  window._conflictChoices = {};
+  document.getElementById('modal-sync-conflict').classList.remove('open');
+
+  // Update version + render
+  if(data._version > _projectVersion){
+    _projectVersion = data._version;
+    _projectBaseVersion = _projectVersion;
+    _persistProjectMeta();
+  }
+  devices = _stages[_currentStageIdx].devices;
+  _markUnsaved();
+  autoSave();
+  renderTable();
+  _updateProjectBadge();
+
+  showToast('Resolved: kept '+keptLocal+' local, took '+tookRemote+' remote','ok');
+  addSyncLog('Conflicts resolved: '+keptLocal+' local kept, '+tookRemote+' remote taken','ok');
+}
+
 var _wPushT=null;
 async function wPush(silent){
   // Step 1: Validate worker URL
@@ -8086,6 +8285,8 @@ async function wPush(silent){
       _projectBaseVersion=_projectVersion;
       _persistProjectMeta();
       _updateProjectBadge();
+      // Clear dirty tracking — pushed devices are no longer "dirty"
+      window._localDirty = {};
       var msg = '✓ Pushed v'+_projectVersion+' ['+pid+']';
       if(!silent){
         showToast(msg,'ok');
