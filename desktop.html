@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.000</title>
+<title>WTUniverse · Buildert Editor v4.001</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.000</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.001</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3762,6 +3762,11 @@ function _mergeProjectNoConflict(data) {
   window._mobileChanged = {};
   _packSpares = data.pack_spares || [];
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
+  // Restore shares from project file (per-project, replaces previous project's shares)
+  if(Array.isArray(data.shares)){
+    _spShares = data.shares;
+    if(typeof _saveSharesForCurrentProject === 'function') _saveSharesForCurrentProject();
+  }
   if(Array.isArray(data.todos) && data.todos.length){
     if(!_todos) _todos=[];
     var existingMap={};
@@ -3814,6 +3819,8 @@ function _mergeProjectNoConflict(data) {
     if(kd) kd.textContent = _projectKey;
     // Clear local dirty tracking — different project, fresh start
     window._localDirty = {};
+    // Reload shares for the new project
+    if(typeof _loadSharesForCurrentProject === 'function') _loadSharesForCurrentProject();
   }
   _projectVersion     = data._version || 0;
   _projectBaseVersion = _projectVersion;
@@ -3830,6 +3837,10 @@ function _mergeProjectNoConflict(data) {
   showToast('Loaded v'+_projectVersion+(data._saved_by?' · by '+data._saved_by:''), 'ok');
   _updateProjectBadge();
   if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
+  // Auto-pull from worker to fetch any mobile changes for this project
+  if(_workerUrl && _projectKey && typeof wPull === 'function'){
+    setTimeout(function(){ wPull(false); }, 600);
+  }
 }
 
 var _pendingFileData = null;
@@ -7267,7 +7278,22 @@ window._projectLog = [];
 
 // ── Shares & Activity Panel ───────────────────────────────────────────
 var _spLink = '';
-var _spShares = []; // [{name, created, url}] — stored in localStorage
+// Per-project shares storage helpers
+function _sharesStorageKey(){
+  var pid = (typeof _getProjectId === 'function') ? _getProjectId() : 'default';
+  return 'wtu_shares__'+pid;
+}
+function _loadSharesForCurrentProject(){
+  try {
+    var s = localStorage.getItem(_sharesStorageKey());
+    _spShares = s ? (JSON.parse(s) || []) : [];
+  } catch(e){ _spShares = []; }
+}
+function _saveSharesForCurrentProject(){
+  try { localStorage.setItem(_sharesStorageKey(), JSON.stringify(_spShares)); } catch(e){}
+}
+
+var _spShares = []; // [{name, created, url}] — per-project, saved with project key suffix
 
 function renderSharesPanel() {
   _spFilterRigger = null;
@@ -7364,7 +7390,7 @@ function spCopyLink() {
   _spShares = _spShares.filter(function(s){ return s.name !== name; }); // replace if exists
   _spShares.unshift({name: name, created: new Date().toISOString(), url: _spLink, stagePerms: Object.assign({}, _spStagePerms)});
   if (_spShares.length > 25) _spShares = _spShares.slice(0, 25);
-  try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
+  try { _saveSharesForCurrentProject(); } catch(e) {}
   // Copy
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(_spLink).then(function(){
@@ -7391,7 +7417,7 @@ function spNativeShare() {
 }
 
 function _spRenderShares() {
-  try { var s = localStorage.getItem('wtu_shares'); if (s) _spShares = JSON.parse(s); } catch(e) {}
+  try { _loadSharesForCurrentProject(); } catch(e) {}
   var el = document.getElementById('sp-shares-list');
   if (!el) return;
   if (!_spShares.length) { el.innerHTML = '<div style="color:var(--muted);padding:8px 0">No links generated yet</div>'; return; }
@@ -7470,7 +7496,7 @@ function spRecopyLink(name) {
     + '&rigger=' + encodeURIComponent(name)
     + (_workerToken ? '&token=' + encodeURIComponent(_workerToken) : '');
   sh.created = new Date().toISOString();
-  try{ localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); }catch(e){}
+  try{ _saveSharesForCurrentProject(); }catch(e){}
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(sh.url).then(function(){
       showToast('Link for '+name+' updated & copied ✓','ok'); _spRenderShares();
@@ -7506,14 +7532,14 @@ function spEditPerm(el){
       if(row2){ var eChk=row2.querySelector('input[data-sperm="e"][data-stid="'+stid+'"]'); if(eChk) eChk.checked=false; }
     }
   }
-  try{localStorage.setItem('wtu_shares',JSON.stringify(_spShares));}catch(e){}
+  try{_saveSharesForCurrentProject();}catch(e){}
   // Push to Worker so mobile gets updated perms without a new link
   autoSave();
   showToast('Permissions updated for '+name+' — syncing to Worker…','ok');
 }
 function spDeleteShare(name) {
   _spShares = _spShares.filter(function(s){ return s.name !== name; });
-  try { localStorage.setItem('wtu_shares', JSON.stringify(_spShares)); } catch(e) {}
+  try { _saveSharesForCurrentProject(); } catch(e) {}
   _spRenderShares();
 }
 
