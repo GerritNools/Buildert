@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.997</title>
+<title>WTUniverse · Buildert Editor v3.998</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -276,14 +276,19 @@
   .conflict-hint{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;}
 
   /* Toast */
-  #toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--surface);
-    border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:6px;
-    font-family:var(--mono);font-size:13px;transform:translateY(80px);opacity:0;
-    transition:all .25s cubic-bezier(.34,1.56,.64,1);max-width:280px;}
-  #toast.show{transform:none;opacity:1;}
-  #toast.ok  {border-color:var(--ok);    color:var(--ok);}
-  #toast.err {border-color:var(--danger);color:var(--danger);}
-  #toast.warn{border-color:var(--warn);  color:var(--warn);}
+  #toast{position:fixed;top:24px;right:24px;z-index:9999;background:var(--surface);
+    border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:6px;
+    font-family:var(--mono);font-size:13px;font-weight:600;transform:translateY(-80px);opacity:0;
+    transition:all .25s cubic-bezier(.34,1.56,.64,1);max-width:340px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;}
+  #toast.show{transform:none;opacity:1;pointer-events:auto;}
+  #toast.ok    {border-color:var(--ok);    color:var(--ok);    background:rgba(61,220,132,.08);}
+  #toast.err,
+  #toast.error,
+  #toast.danger{border-color:var(--danger);color:var(--danger);background:rgba(255,77,77,.08);}
+  #toast.warn  {border-color:var(--warn);  color:var(--warn);  background:rgba(255,150,50,.08);}
+  #toast.info  {border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08);}
+  #toast.muted {border-color:var(--border);color:var(--muted);background:var(--surface);}
 
   .empty-state{padding:60px 20px;text-align:center;color:var(--muted);}
   .empty-state .big{font-size:48px;margin-bottom:10px;}
@@ -458,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.997</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.998</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
