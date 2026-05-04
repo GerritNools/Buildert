@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.996</title>
+<title>WTUniverse · Buildert Editor v3.997</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.996</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.997</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -8194,6 +8194,20 @@ function _applyConflictResolutions(){
 
 var _wPushT=null;
 async function wPush(silent){
+  try {
+    return await _wPushImpl(silent);
+  } catch(err){
+    var msg = 'Push exception: '+(err && err.message ? err.message : String(err));
+    if(!silent){
+      showToast(msg,'danger');
+      _dbxSetStatus(msg,'var(--danger)');
+    }
+    addSyncLog(msg,'danger');
+    console.error('[wPush] error:', err);
+  }
+}
+
+async function _wPushImpl(silent){
   // Step 1: Validate worker URL
   if(!_workerUrl){
     showToast('No worker URL configured','warn');
@@ -8216,14 +8230,21 @@ async function wPush(silent){
   addSyncLog('Push started for project: '+pid,'info');
   _dbxSetStatus('☁ Pushing…','var(--muted)');
 
-  // Step 3: Exit Total view before push
-  if(_currentStageIdx===-1){ _currentStageIdx=0; devices=_stages[0].devices; }
+  // Step 3: Make sure stages exist (avoid undefined errors)
+  if(!Array.isArray(_stages) || _stages.length === 0){
+    addSyncLog('No stages exist — creating default stage','warn');
+    _stages = [{id:'main', name:'Main', devices: devices||[]}];
+    _currentStageIdx = 0;
+  }
+
+  // Step 4: Exit Total view before push
+  if(_currentStageIdx===-1 || _currentStageIdx>=_stages.length){ _currentStageIdx=0; devices=_stages[0].devices||[]; }
   var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
   var dp='{}'; try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
 
-  // Step 4: Save current stage before pushing
-  _saveCurrentStageLayout();
-  _stages[_currentStageIdx].devices = devices;
+  // Step 5: Save current stage before pushing
+  if(typeof _saveCurrentStageLayout === 'function') _saveCurrentStageLayout();
+  if(_stages[_currentStageIdx]) _stages[_currentStageIdx].devices = devices;
 
   // Step 5: Build payload
   var payload={
