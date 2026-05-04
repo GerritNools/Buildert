@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.944m</title>
+<title>WTU · Buildert v3.945m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.944m</small></div>
+  <div class="logo">WTU <small>v3.945m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3004,22 +3004,20 @@ async function wPull(){
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
-    // Support both new multi-project API (GET /) and old API (GET /project?key=)
-    var resp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
+    var _wPid=_mobGetProjectId();
+    // Use per-project endpoint to avoid loading huge multi-project envelope
+    var resp=await fetch(_workerUrl+'/project/'+encodeURIComponent(_wPid)+'?_='+Date.now(),{cache:'no-store'});
     clearTimeout(_t);
     _dbxSyncing=false;
     if(resp.status===404){_dbxSetStatus('No project yet','var(--muted)');return;}
     if(!resp.ok){_dbxSetStatus('Error '+resp.status,'var(--danger)');return;}
     var data=await resp.json();
-    _isPulling=true; var projData=data; if(data&&data._schema==="v2"&&data._projects){var _wPid=_mobGetProjectId();projData=data._projects[_wPid];
-    if(!projData){
-      // Try fallback keys (project name, 'default')
-      var _fallKeys=[project&&project.name?project.name.replace(/[^a-zA-Z0-9_-]/g,'_'):'','default'];
-      for(var _fi=0;_fi<_fallKeys.length;_fi++){
-        if(_fallKeys[_fi]&&data._projects[_fallKeys[_fi]]){projData=data._projects[_fallKeys[_fi]];break;}
-      }
+    _isPulling=true;
+    var projData=null;
+    if(data && data._schema==='v2' && data._projects){
+      projData = data._projects[_wPid];
     }
-    if(!projData){_dbxSetStatus("No project data on worker","var(--muted)");_isPulling=false;return;}}
+    if(!projData){_dbxSetStatus("No project data on worker","var(--muted)");_isPulling=false;return;}
     try{
       // Worker sync: always apply — no version gating, desktop is source of truth
       _mergeProjectNoConflict(projData);
@@ -3132,12 +3130,8 @@ async function wPush(silent){
     return;
   }
   try{
-    // Build multi-project envelope for new worker API
+    // Build single-project envelope — worker merges per-project, no need to fetch existing first
     var envelope={_schema:'v2',_projects:{}};
-    try{
-      var gResp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
-      if(gResp.ok){var gRaw=await gResp.json();if(gRaw&&gRaw._schema==='v2')envelope=gRaw;}
-    }catch(e){}
     envelope._projects[pid]=Object.assign({},payload,{_project_id:pid});
     var resp=await fetch(_workerUrl+'/',{
       method:'POST',
