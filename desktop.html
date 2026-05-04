@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v3.993</title>
+<title>WTUniverse · Buildert Editor v3.994</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -458,7 +458,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.993</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v3.994</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -511,7 +511,7 @@
 
     <!-- Cloudflare worker section -->
     <button class="btn btn-ghost" onclick="wPush(false)" title="Push to Cloudflare worker" style="font-size:12px">&#9729; Cloud push</button>
-    <button class="btn btn-ghost" onclick="wPull()" title="Pull from Cloudflare worker" style="font-size:12px">&#8595; Pull</button>
+    <button class="btn btn-ghost" onclick="wPull(false)" title="Pull from Cloudflare worker" style="font-size:12px">&#8595; Pull</button>
 
     <!-- Divider -->
     <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
@@ -7883,14 +7883,13 @@ function wSetMode(mode, silent){
 
   // Start/stop polling
   if(_wPollInterval){ clearInterval(_wPollInterval); _wPollInterval=null; }
-  if(mode === 'live'){
     // Push to worker first, then pull — never touch Anbernic here
     wPush(false).then(function(){
-      setTimeout(wPull, 1000);
+      setTimeout(function(){ wPull(true); }, 1000); // silent pull after push
     }).catch(function(){
-      setTimeout(wPull, 1000);
+      setTimeout(function(){ wPull(true); }, 1000);
     });
-    _wPollInterval = setInterval(function(){ if(!_dbxSyncing) wPull(); }, 10000);
+    _wPollInterval = setInterval(function(){ if(!_dbxSyncing) wPull(true); }, 10000);
     if(!silent) _dbxSetStatus('Live mode — pushing then syncing…','#e74c3c');
   } else {
     if(!silent) _dbxSetStatus('Edit mode — pull paused','var(--muted)');
@@ -7900,28 +7899,61 @@ function wSetMode(mode, silent){
 function wStopPolling(){
   if(typeof _dbxPollTimer!=="undefined"&&_dbxPollTimer){clearInterval(_dbxPollTimer);_dbxPollTimer=null;}
 }
-async function wPull(){
-  if(!_workerUrl||!_projectKey) return;
-  if(_syncMode === 'edit') return; // Edit mode: never auto-pull
-  if(_dbxSyncing) return;
+async function wPull(silent){
+  if(!_workerUrl){
+    if(!silent) showToast('No worker URL configured','warn');
+    return;
+  }
+  // Auto-pulls in edit mode are blocked, but manual pulls should always work
+  if(_syncMode === 'edit' && silent) return; // silent = auto-pull from polling
+  if(_dbxSyncing){
+    if(!silent) showToast('Sync already in progress','warn');
+    return;
+  }
   if(_dbxPushDebounce){ _dbxSetStatus('Pushing…','var(--muted)'); return; }
+
+  // Derive project key if needed
+  if(!_projectKey) _projectKey = _getProjectId();
+  var pid = _getProjectId();
+
+  if(!silent){
+    showToast('☁ Pulling '+pid+'…','info');
+    addSyncLog('Pull started for project: '+pid,'info');
+    _dbxSetStatus('☁ Pulling…','var(--muted)');
+  }
+
   _dbxSyncing=true;
   try{
     var resp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
-    if(resp.status===404){ _dbxSyncing=false; _dbxSetStatus('No data on worker yet','var(--muted)'); return; }
-    if(!resp.ok){ _dbxSyncing=false; _dbxSetStatus('Worker error '+resp.status,'var(--danger)'); return; }
+    if(resp.status===404){
+      _dbxSyncing=false;
+      if(!silent){ showToast('No data on worker yet','muted'); _dbxSetStatus('No data on worker yet','var(--muted)'); }
+      addSyncLog('Worker has no data yet','info');
+      return;
+    }
+    if(!resp.ok){
+      _dbxSyncing=false;
+      var err = 'Worker error '+resp.status+' '+resp.statusText;
+      if(!silent){ showToast(err,'danger'); _dbxSetStatus(err,'var(--danger)'); }
+      addSyncLog(err,'danger');
+      return;
+    }
     var data = await resp.json();
     _isReceiving=true;
     try{
       var projData=data;
       if(data&&data._schema==='v2'&&data._projects){
-        var pid=_getProjectId();
         projData=data._projects[pid];
-        if(!projData){_dbxSetStatus('No data for project "'+pid+'" yet','var(--muted)');_isReceiving=false;return;}
+        if(!projData){
+          if(!silent){ showToast('No data for "'+pid+'" yet','muted'); _dbxSetStatus('No data for project "'+pid+'" yet','var(--muted)'); }
+          addSyncLog('No data for project "'+pid+'" on worker','info');
+          _isReceiving=false;
+          _dbxSyncing=false;
+          return;
+        }
       }
       // Safety: only merge if incoming data is not empty when we have local data
       var incomingDeviceCount = Array.isArray(projData.devices) ? projData.devices.length : 0;
-      // Also count across stages if staged format
       if(incomingDeviceCount===0 && Array.isArray(projData.stages)){
         projData.stages.forEach(function(s){ incomingDeviceCount += (s.devices||[]).length; });
       }
@@ -7930,50 +7962,76 @@ async function wPull(){
       else localDeviceCount = devices.length;
 
       if(incomingDeviceCount === 0 && localDeviceCount > 0){
-        _dbxSetStatus('Worker empty — keeping local ✓','var(--muted)');
+        if(!silent){ showToast('Worker empty — keeping local ('+localDeviceCount+' devices)','warn'); _dbxSetStatus('Worker empty — keeping local ✓','var(--muted)'); }
+        addSyncLog('Worker has 0 devices but local has '+localDeviceCount+' — skipped merge','warn');
         _isReceiving=false;
         _dbxSyncing=false;
         return;
       }
+      addSyncLog('Pulled '+incomingDeviceCount+' devices from worker, merging…','info');
       // Absorb remote activity log
       if(projData._log){ _activityLog=(_activityLog||[]).concat(projData._log||[]).slice(0,300); }
       _mergeProjectNoConflict(projData);
     }finally{ _isReceiving=false; }
     // Immediately cancel any pending push
     clearTimeout(_dbxPushDebounce);
-    _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
+    if(!silent){
+      showToast('✓ Pulled '+pid+' · '+_hhmm(),'ok');
+      _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
+    } else {
+      _dbxSetStatus('Synced · '+_hhmm(),'var(--ok)');
+    }
+    addSyncLog('Pull completed','ok');
     _updateProjectBadge();
     if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
     _spUpdateBadge();
-  }catch(e){ _dbxSetStatus('Pull failed','var(--warn)'); }
+  }catch(e){
+    var failMsg = 'Pull failed: '+(e.message||'network error');
+    if(!silent){ showToast(failMsg,'danger'); _dbxSetStatus('Pull failed','var(--warn)'); }
+    addSyncLog(failMsg,'danger');
+  }
   _dbxSyncing=false;
 }
 var _wPushT=null;
 async function wPush(silent){
+  // Step 1: Validate worker URL
   if(!_workerUrl){
-    if(!silent) _dbxSetStatus('No worker URL — set in Settings','var(--warn)');
+    showToast('No worker URL configured','warn');
+    addSyncLog('Push cancelled: no worker URL','warn');
+    _dbxSetStatus('No worker URL — set in Settings','var(--warn)');
     return;
   }
-  // Derive project key from project meta if not explicitly set
+
+  // Step 2: Derive project key from project meta if not explicitly set
   if(!_projectKey) {
     _projectKey = _getProjectId();
     try{ localStorage.setItem('buildert_project_key', _projectKey); }catch(e){}
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
+    addSyncLog('Auto-derived project key: '+_projectKey,'info');
   }
-  // Exit Total view before push
+
+  var pid = _getProjectId();
+  if(!silent) showToast('☁ Pushing to '+pid+'…','info');
+  addSyncLog('Push started for project: '+pid,'info');
+  _dbxSetStatus('☁ Pushing…','var(--muted)');
+
+  // Step 3: Exit Total view before push
   if(_currentStageIdx===-1){ _currentStageIdx=0; devices=_stages[0].devices; }
   var np='{}'; try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
   var dp='{}'; try{dp=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
-  // Save current stage before pushing
+
+  // Step 4: Save current stage before pushing
   _saveCurrentStageLayout();
   _stages[_currentStageIdx].devices = devices;
+
+  // Step 5: Build payload
   var payload={
     _format:'wtu-project',
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
-    _project_id: _getProjectId(),
+    _project_id: pid,
     _project_name: _projectMeta.name || '',
     project:Object.assign({},_projectMeta),
     stages:JSON.parse(JSON.stringify(_stages)),
@@ -7989,18 +8047,33 @@ async function wPush(silent){
     _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
   };
-  _projectVersion++;
-  _projectBaseVersion=_projectVersion;
-  _persistProjectMeta();
-  _updateProjectBadge();
-  // Fetch existing envelope first so we don't overwrite other projects
+
+  var deviceCount = 0;
+  _stages.forEach(function(s){ deviceCount += (s.devices||[]).length; });
+  addSyncLog('Pushing '+deviceCount+' devices across '+_stages.length+' stages','info');
+
+  // Step 6: Fetch existing envelope so we don't overwrite other projects
   var envelope = { _schema:'v2', _projects:{} };
   try{
     var gResp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
-    if(gResp.ok){ var gRaw=await gResp.json(); if(gRaw&&gRaw._schema==='v2') envelope=gRaw; }
-  }catch(e){}
+    if(gResp.ok){
+      var gRaw = await gResp.json();
+      if(gRaw && gRaw._schema==='v2'){
+        envelope = gRaw;
+        var otherCount = Object.keys(envelope._projects||{}).filter(function(k){return k!==pid;}).length;
+        if(otherCount > 0) addSyncLog('Preserving '+otherCount+' other project(s) on worker','info');
+      }
+    } else {
+      addSyncLog('Worker GET returned '+gResp.status+' — starting fresh envelope','warn');
+    }
+  }catch(e){
+    addSyncLog('Worker GET failed: '+e.message+' — starting fresh envelope','warn');
+  }
+
   if(!envelope._projects) envelope._projects={};
-  envelope._projects[_getProjectId()] = payload;
+  envelope._projects[pid] = payload;
+
+  // Step 7: POST the envelope
   try{
     var resp=await fetch(_workerUrl+'/',{
       method:'POST',
@@ -8008,11 +8081,32 @@ async function wPush(silent){
       body:JSON.stringify(envelope),
     });
     if(resp.ok){
-      if(!silent) _dbxSetStatus('☁ Pushed · '+_hhmm()+' ['+_getProjectId()+']','var(--ok)');
+      _projectVersion++;
+      _projectBaseVersion=_projectVersion;
+      _persistProjectMeta();
+      _updateProjectBadge();
+      var msg = '✓ Pushed v'+_projectVersion+' ['+pid+']';
+      if(!silent){
+        showToast(msg,'ok');
+        _dbxSetStatus(msg+' · '+_hhmm(),'var(--ok)');
+      }
+      addSyncLog(msg+' ('+deviceCount+' devices)','ok');
     } else {
-      if(!silent) _dbxSetStatus('Push error '+resp.status,'var(--danger)');
+      var errMsg = 'Push error '+resp.status+' '+resp.statusText;
+      if(!silent){
+        showToast(errMsg,'danger');
+        _dbxSetStatus(errMsg,'var(--danger)');
+      }
+      addSyncLog(errMsg,'danger');
     }
-  }catch(e){ if(!silent) _dbxSetStatus('Push failed — check worker URL','var(--warn)'); }
+  }catch(e){
+    var failMsg = 'Push failed: '+(e.message||'network error');
+    if(!silent){
+      showToast(failMsg,'danger');
+      _dbxSetStatus(failMsg,'var(--warn)');
+    }
+    addSyncLog(failMsg,'danger');
+  }
 }
 function wPoll(){ wPull(); }
 
