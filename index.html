@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.943m</title>
+<title>WTU · Buildert v3.944m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.943m</small></div>
+  <div class="logo">WTU <small>v3.944m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3202,7 +3202,10 @@ function _handleProjectParam(){
     if(_workerUrl) localStorage.setItem('buildert_worker_url',_workerUrl);
     localStorage.setItem('buildert_project_key',_projectKey);
   }catch(e){}
-  if(history.replaceState) history.replaceState({},'',location.pathname);
+  // NOTE: We intentionally KEEP the URL params (project, rigger, w, stage, stages)
+  // so a refresh keeps the user bound to the same project. Stripping them caused
+  // riggers to fall back to localStorage and see the wrong project.
+  // (Was: history.replaceState({},'',location.pathname); — removed)
   // Show rigger banner if name set
   if(window._riggerName){
     var banner=document.createElement('div');
