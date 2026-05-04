@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.001</title>
+<title>WTUniverse · Buildert Editor v4.002</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.001</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.002</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -8050,7 +8050,8 @@ async function wPull(silent){
 
   _dbxSyncing=true;
   try{
-    var resp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
+    // Use per-project endpoint to avoid fetching all 22+ projects at once
+    var resp = await fetch(_workerUrl+'/project/'+encodeURIComponent(pid)+'?_='+Date.now(), {cache:'no-store'});
     if(resp.status===404){
       _dbxSyncing=false;
       if(!silent){ showToast('No data on worker yet','muted'); _dbxSetStatus('No data on worker yet','var(--muted)'); }
@@ -8311,18 +8312,8 @@ async function _wFlushOfflineQueue(){
   if(queue.length === 0) return;
   showToast('Flushing '+queue.length+' queued push'+(queue.length===1?'':'es')+'…','info');
   addSyncLog('Flushing offline queue: '+queue.length+' item(s)','info');
-  // Fetch current envelope to merge into
+  // Build envelope from queue only — worker merges per-project, no GET needed
   var envelope = { _schema:'v2', _projects:{} };
-  try{
-    var gResp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
-    if(gResp.ok){ var gRaw = await gResp.json(); if(gRaw && gRaw._schema==='v2') envelope = gRaw; }
-  }catch(e){
-    addSyncLog('Flush failed: cannot reach worker','danger');
-    showToast('Cannot reach worker','danger');
-    return;
-  }
-  if(!envelope._projects) envelope._projects = {};
-  // Apply each queued push (newest wins per project, already deduped on queue)
   queue.forEach(function(entry){
     envelope._projects[entry.pid] = entry.payload;
   });
@@ -8448,25 +8439,9 @@ async function _wPushImpl(silent){
   _stages.forEach(function(s){ deviceCount += (s.devices||[]).length; });
   addSyncLog('Pushing '+deviceCount+' devices across '+_stages.length+' stages','info');
 
-  // Step 6: Fetch existing envelope so we don't overwrite other projects
+  // Build single-project envelope — the worker merges per-project so we don't need to fetch first.
+  // This avoids loading 22+ projects (megabytes) on every push.
   var envelope = { _schema:'v2', _projects:{} };
-  try{
-    var gResp = await fetch(_workerUrl+'/?_='+Date.now(), {cache:'no-store'});
-    if(gResp.ok){
-      var gRaw = await gResp.json();
-      if(gRaw && gRaw._schema==='v2'){
-        envelope = gRaw;
-        var otherCount = Object.keys(envelope._projects||{}).filter(function(k){return k!==pid;}).length;
-        if(otherCount > 0) addSyncLog('Preserving '+otherCount+' other project(s) on worker','info');
-      }
-    } else {
-      addSyncLog('Worker GET returned '+gResp.status+' — starting fresh envelope','warn');
-    }
-  }catch(e){
-    addSyncLog('Worker GET failed: '+e.message+' — starting fresh envelope','warn');
-  }
-
-  if(!envelope._projects) envelope._projects={};
   envelope._projects[pid] = payload;
 
   // Step 7: POST the envelope (with offline queueing on failure)
