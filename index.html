@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.942m</title>
+<title>WTU · Buildert v3.943m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,12 +410,14 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.938m</small></div>
+  <div class="logo">WTU <small>v3.943m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.2">—</div>
-    <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2"></div>
+    <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2">
+      <span id="m-net-status" style="color:#3ddc84">🟢 Online</span>
+    </div>
   </div>
   <div class="conn-dot" id="conn-dot"></div>
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap">tap to sync</span></span>
@@ -3027,6 +3029,79 @@ async function wPull(){
   }catch(e){clearTimeout(_t);_dbxSyncing=false;console.error('[SYNC] wPull error:',e);_dbxSetStatus('Error: '+e.message,'var(--danger)');}
 }
 
+// ── Offline queue for mobile ─────────────────────────────────────
+window._mObQueue = [];
+try{
+  var _saved = localStorage.getItem('buildert_mob_offline_queue');
+  if(_saved) window._mObQueue = JSON.parse(_saved) || [];
+}catch(e){ window._mObQueue = []; }
+
+function _mObPersist(){ try{ localStorage.setItem('buildert_mob_offline_queue', JSON.stringify(window._mObQueue)); }catch(e){} }
+
+function _mObQueuePush(payload, pid){
+  window._mObQueue = (window._mObQueue||[]).filter(function(e){ return e.pid !== pid; });
+  window._mObQueue.push({pid:pid, payload:payload, queued_at:new Date().toISOString()});
+  _mObPersist();
+  _mUpdateNetStatus();
+}
+
+function _mUpdateNetStatus(){
+  var el = document.getElementById('m-net-status');
+  if(!el) return;
+  var online = navigator.onLine !== false;
+  var pending = (window._mObQueue||[]).length;
+  if(!online){
+    el.textContent = pending>0 ? '🔴 Offline · '+pending+' queued' : '🔴 Offline';
+    el.style.color = '#ff4d4d';
+  } else if(pending > 0){
+    el.textContent = '🟡 '+pending+' pending';
+    el.style.color = '#f5a623';
+  } else {
+    el.textContent = '🟢 Online';
+    el.style.color = '#3ddc84';
+  }
+}
+
+async function _mObFlush(){
+  if(navigator.onLine === false) return;
+  var q = (window._mObQueue||[]).slice();
+  if(q.length === 0) return;
+  if(!_workerUrl) return;
+  showToast('Syncing '+q.length+' queued change'+(q.length===1?'':'s')+'…','ok');
+  var envelope = {_schema:'v2', _projects:{}};
+  try{
+    var gResp = await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
+    if(gResp.ok){ var gRaw = await gResp.json(); if(gRaw && gRaw._schema==='v2') envelope = gRaw; }
+  }catch(e){ return; }
+  if(!envelope._projects) envelope._projects = {};
+  q.forEach(function(entry){ envelope._projects[entry.pid] = entry.payload; });
+  try{
+    var resp = await fetch(_workerUrl+'/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(envelope),
+    });
+    if(resp.ok){
+      window._mObQueue = [];
+      _mObPersist();
+      _mUpdateNetStatus();
+      showToast('✓ '+q.length+' synced','ok');
+    }
+  }catch(e){}
+}
+
+window.addEventListener('online', function(){
+  showToast('🟢 Back online','ok');
+  _mUpdateNetStatus();
+  if((window._mObQueue||[]).length>0) setTimeout(_mObFlush, 1500);
+});
+window.addEventListener('offline', function(){
+  showToast('🔴 Offline — changes will sync later','warn');
+  _mUpdateNetStatus();
+});
+setTimeout(_mUpdateNetStatus, 100);
+setInterval(_mUpdateNetStatus, 5000);
+
 async function wPush(silent){
   if(!_workerUrl||!_projectKey) return;
   var combinedLog=(window._remoteLog||[]).concat(window._activityLog||[]);
@@ -3049,9 +3124,15 @@ async function wPush(silent){
   };
   _projectVersion++;_projectBaseVersion=_projectVersion;
   _persistProjectMeta();_updateMobileProjectBadge();
+  var pid=_mobGetProjectId();
+  // Offline? Queue and bail
+  if(navigator.onLine === false){
+    _mObQueuePush(Object.assign({},payload,{_project_id:pid}), pid);
+    if(!silent)_dbxSetStatus('Offline — change queued','var(--warn)');
+    return;
+  }
   try{
     // Build multi-project envelope for new worker API
-    var pid=_mobGetProjectId();
     var envelope={_schema:'v2',_projects:{}};
     try{
       var gResp=await fetch(_workerUrl+'/?_='+Date.now(),{cache:'no-store'});
@@ -3066,10 +3147,15 @@ async function wPush(silent){
     if(resp.ok){
       window._remoteLog=combinedLog;window._activityLog=[];
       if(!silent)_dbxSetStatus('✓ pushed · '+_hhmm(),'var(--ok)');
+      _mUpdateNetStatus();
     } else {
-      if(!silent)_dbxSetStatus('Save error '+resp.status,'var(--danger)');
+      _mObQueuePush(Object.assign({},payload,{_project_id:pid}), pid);
+      if(!silent)_dbxSetStatus('Save error '+resp.status+' — queued','var(--warn)');
     }
-  }catch(e){if(!silent)_dbxSetStatus('Save failed','var(--warn)');}
+  }catch(e){
+    _mObQueuePush(Object.assign({},payload,{_project_id:pid}), pid);
+    if(!silent)_dbxSetStatus('Network error — queued','var(--warn)');
+  }
 }
 
 function wStartPolling(){
