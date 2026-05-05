@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.948m</title>
+<title>WTU · Buildert v3.949m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -277,9 +277,11 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .m-chk-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
 .m-chk{display:flex;align-items:center;gap:8px;padding:10px 11px;border-radius:8px;
   background:var(--panel);border:1px solid var(--border);cursor:pointer;
-  user-select:none;transition:all .13s;font-size:13px;}
-.m-chk input[type=checkbox]{accent-color:var(--ok);width:16px;height:16px;flex-shrink:0;}
-.m-chk.ck{border-color:var(--ok);background:rgba(61,220,132,.07);}
+  user-select:none;transition:all .13s;font-size:13px;position:relative;padding-right:32px;}
+.m-chk input[type=checkbox]{accent-color:var(--ok);width:20px;height:20px;flex-shrink:0;cursor:pointer;}
+.m-chk.ck{border-color:var(--ok);background:rgba(61,220,132,.15);color:var(--ok);font-weight:700;}
+.m-chk.ck::after{content:'✓';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  color:var(--ok);font-size:20px;font-weight:900;line-height:1;pointer-events:none;}
 .note-opts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
 .note-opt{padding:7px 13px;border-radius:20px;font-size:12px;font-family:var(--cond);
   font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--panel);
@@ -410,7 +412,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.948m</small></div>
+  <div class="logo">WTU <small>v3.949m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -529,6 +531,47 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <button class="fab" id="fab" onclick="openSheet('fab')">+</button>
 <nav id="bottom-nav"></nav>
 
+<!-- Feedback floating button -->
+<button id="fb-fab" onclick="openFeedbackSheet()" title="Report a bug, share an idea or comment"
+  style="position:fixed;right:14px;bottom:calc(var(--nav-h)+var(--sb)+72px);z-index:101;
+  width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--accent);color:#000;font-size:22px;font-weight:900;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);-webkit-tap-highlight-color:rgba(0,0,0,0)">💬</button>
+
+<!-- Feedback sheet -->
+<div class="sheet" id="sheet-feedback">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">💬 Feedback</div>
+  <div class="sheet-body">
+    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.5">
+      Found a bug? Have an idea? Just want to vent? Send it here — it'll reach the team without bothering anyone in chat.
+    </p>
+    <label>What kind?</label>
+    <div id="fb-type-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+      <button class="fb-type-btn" data-type="bug" onclick="_setFbType('bug')"
+        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
+        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">🐞 Bug</button>
+      <button class="fb-type-btn" data-type="idea" onclick="_setFbType('idea')"
+        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
+        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">💡 Idea</button>
+      <button class="fb-type-btn" data-type="comment" onclick="_setFbType('comment')"
+        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
+        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">💬 Comment</button>
+    </div>
+
+    <label>Your name <span style="color:var(--muted);font-size:9px">(optional)</span></label>
+    <input id="fb-from" type="text" placeholder="Your name" style="margin-bottom:10px">
+
+    <label>Message</label>
+    <textarea id="fb-message" rows="6" placeholder="Describe the bug, idea or comment…&#10;What were you trying to do? What happened? What did you expect?" style="margin-bottom:14px"></textarea>
+
+    <div style="display:flex;gap:8px">
+      <button class="sb sb-ghost" onclick="closeSheet('feedback')" style="flex:1">Cancel</button>
+      <button class="sb" onclick="submitFeedback()" style="flex:2;background:var(--accent);color:#000;font-weight:700">Send</button>
+    </div>
+  </div>
+</div>
+
 <!-- Overlays -->
 <div class="ovl" id="ovl-conn"   onclick="closeSheet('conn')"></div>
 <div class="ovl" id="ovl-fab"    onclick="closeSheet('fab')"></div>
@@ -563,9 +606,9 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div class="sheet-title" id="sheet-title">Add Device</div>
   <div class="sheet-body">
     <div id="m-model-row">
-      <label>Model <span style="color:var(--muted);font-size:9px">(pick or type)</span></label>
-      <input id="m-model" type="text" placeholder="e.g. LASER-PRO" list="m-model-dl" style="font-family:var(--cond);font-weight:700;margin-bottom:8px">
-      <datalist id="m-model-dl"></datalist>
+      <label>Model</label>
+      <select id="m-model-select" onchange="_onModelSelectChange()" style="font-family:var(--cond);font-weight:700;margin-bottom:6px"></select>
+      <input id="m-model" type="text" placeholder="Type custom model name…" style="font-family:var(--cond);font-weight:700;margin-bottom:8px;display:none">
     </div>
     <div id="m-model-display" style="display:none;font-family:var(--cond);font-size:16px;font-weight:700;color:var(--accent);padding:4px 0 8px 0"></div>
     
@@ -1813,17 +1856,53 @@ function openSpecSheet(gi) {
 }
 
 function _populateModelDatalist(){
-  var dl = document.getElementById('m-model-dl');
-  if(!dl) return;
-  var all = [];
-  Object.keys(MODELS).forEach(function(t){ MODELS[t].forEach(function(m){ all.push({m:m, t:t}); }); });
-  // Also include any custom specs the user has added
-  Object.keys(SPECS||{}).forEach(function(m){ if(!all.some(function(x){return x.m===m;})) all.push({m:m, t:''}); });
-  // Sort alphabetically
-  all.sort(function(a,b){ return a.m.localeCompare(b.m); });
-  dl.innerHTML = all.map(function(o){
-    return '<option value="'+o.m.replace(/"/g,'&quot;')+'">'+(o.t?o.t.charAt(0).toUpperCase()+o.t.slice(1):'')+'</option>';
-  }).join('');
+  var sel = document.getElementById('m-model-select');
+  if(!sel) return;
+  var allByCat = {};
+  Object.keys(MODELS).forEach(function(t){
+    MODELS[t].forEach(function(m){
+      if(!allByCat[t]) allByCat[t] = [];
+      allByCat[t].push(m);
+    });
+  });
+  // Also include any custom specs the user has added that aren't in MODELS
+  var allList = [];
+  Object.keys(MODELS).forEach(function(t){ MODELS[t].forEach(function(m){ allList.push(m); }); });
+  Object.keys(SPECS||{}).forEach(function(m){
+    if(allList.indexOf(m) === -1){
+      if(!allByCat['Other']) allByCat['Other'] = [];
+      allByCat['Other'].push(m);
+    }
+  });
+  // Build option groups by category
+  var html = '<option value="">— pick a model —</option>';
+  var catNames = {laser:'⚡ Laser', smoke:'💨 Smoke', distro:'🟧 Distro', psu:'🔌 PSU', Adapter:'🔄 Adapter', Other:'… Other'};
+  Object.keys(allByCat).sort().forEach(function(t){
+    var label = catNames[t] || t.charAt(0).toUpperCase()+t.slice(1);
+    html += '<optgroup label="'+label+'">';
+    allByCat[t].sort().forEach(function(m){
+      html += '<option value="'+m.replace(/"/g,'&quot;')+'">'+m+'</option>';
+    });
+    html += '</optgroup>';
+  });
+  html += '<option value="__custom__">✏️ Custom model name…</option>';
+  sel.innerHTML = html;
+}
+
+function _onModelSelectChange(){
+  var sel = document.getElementById('m-model-select');
+  var inp = document.getElementById('m-model');
+  if(!sel || !inp) return;
+  if(sel.value === '__custom__'){
+    inp.style.display = '';
+    inp.value = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = sel.value;
+  }
+  // Trigger ID re-sync if available
+  if(typeof syncId === 'function') syncId();
 }
 
 function openAddSheet(type){
@@ -1832,6 +1911,9 @@ function openAddSheet(type){
   document.getElementById('sheet-title').textContent='Add Device';
   document.getElementById('del-wrap').style.display='none';
   document.getElementById('m-model').value='';
+  document.getElementById('m-model').style.display='none';
+  var msel = document.getElementById('m-model-select');
+  if(msel){ msel.value = ''; msel.style.display = ''; }
   document.getElementById('m-unit').value='';
   document.getElementById('m-id-prev').textContent='—';
   document.getElementById('m-spec').style.display='none';
@@ -1864,9 +1946,21 @@ function openEdit(gi){
   var _derivedModel=_isNumericEnd?parts.slice(0,-1).join(' '):parts.join(' ');
   var _derivedUnit=_isNumericEnd?_lastPart:'';
   
-  // Set model (editable text field now)
+  // Set model — try to match in dropdown, otherwise use custom input
   var _mKey=d.model||_derivedModel||parts[0]||'';
-  document.getElementById('m-model').value=_mKey||'';
+  var _msel = document.getElementById('m-model-select');
+  var _minp = document.getElementById('m-model');
+  var _knownInDl = _msel && Array.prototype.some.call(_msel.options, function(o){ return o.value === _mKey; });
+  if(_knownInDl){
+    _msel.value = _mKey;
+    _msel.style.display = '';
+    _minp.style.display = 'none';
+    _minp.value = _mKey; // mirror so saveDevice reads it
+  } else {
+    // Custom (not in list)
+    if(_msel){ _msel.value = '__custom__'; }
+    if(_minp){ _minp.style.display = ''; _minp.value = _mKey || ''; }
+  }
   document.getElementById('m-model-row').style.display='';
   document.getElementById('m-model-display').style.display='none';
   
@@ -4600,6 +4694,60 @@ function _mobDiag() {
     el.innerHTML += '⚠️ No worker URL — set via share link from desktop';
   }
 }
+// ── Feedback (bugs, ideas, comments) ──────────────────────────────
+var _fbType = 'bug';
+function _setFbType(t){
+  _fbType = t;
+  document.querySelectorAll('.fb-type-btn').forEach(function(b){
+    var active = b.dataset.type === t;
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.background = active ? 'rgba(0,212,255,.15)' : 'var(--panel)';
+    b.style.color = active ? 'var(--accent)' : 'var(--muted)';
+  });
+}
+function openFeedbackSheet(){
+  // Prefill name from rigger if known
+  var nameInp = document.getElementById('fb-from');
+  if(nameInp && !nameInp.value && window._riggerName) nameInp.value = window._riggerName;
+  // Default type
+  _setFbType('bug');
+  // Clear message
+  var msg = document.getElementById('fb-message');
+  if(msg) msg.value = '';
+  openSheet('feedback');
+}
+async function submitFeedback(){
+  var msg = (document.getElementById('fb-message').value||'').trim();
+  if(!msg){ showToast('Please write something first','warn'); return; }
+  if(!_workerUrl){ showToast('No worker configured — cannot send','warn'); return; }
+  var from = (document.getElementById('fb-from').value||'').trim() || (window._riggerName||'');
+  var payload = {
+    type: _fbType,
+    from: from,
+    project: (project && project.name) || _projectKey || '',
+    client: 'mobile',
+    version: 'v3.949m',
+    message: msg,
+  };
+  showToast('Sending feedback…','info');
+  try {
+    var resp = await fetch(_workerUrl + '/feedback', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if(resp.ok){
+      showToast('✓ Thanks — feedback sent','ok');
+      closeSheet('feedback');
+      document.getElementById('fb-message').value = '';
+    } else {
+      showToast('Send failed: '+resp.status,'danger');
+    }
+  } catch(e){
+    showToast('Send failed: '+(e.message||'network'),'danger');
+  }
+}
+
 function openProjectSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
