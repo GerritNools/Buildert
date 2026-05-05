@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.004</title>
+<title>WTUniverse · Buildert Editor v4.005</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.004</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.005</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -8878,6 +8878,9 @@ function _buildFilePayload(){
     _format:'wtu-project',
     _version:_projectVersion,
     _saved:new Date().toISOString(),
+    _saved_by:'desktop',
+    _project_id: _getProjectId(),         // ← worker key for rigger links
+    _worker_url: _workerUrl || '',         // ← so opening file restores worker
     project:Object.assign({},_projectMeta),
     stages:JSON.parse(JSON.stringify(_stages)),
     // Legacy single-stage fields (for Worker compatibility with mobile)
@@ -8887,7 +8890,7 @@ function _buildFilePayload(){
     pack_spares:_packSpares,
     pack_shared:_packShared,
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
-    shares:_spShares,
+    shares:_spShares || [],
     _log:window._projectLog||[],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
     _diag_positions:_stages[_currentStageIdx].diagPositions||{},
@@ -8913,11 +8916,18 @@ function fileNew(){
   _fileHandle=null; _setFileName('New Project (unsaved)');
   // Stop Worker/Dropbox sync so old data can't reload
   wStopPolling(); dbxStopPolling();
-  _workerUrl=''; _projectKey='';
+  _projectKey='';
   try{localStorage.removeItem('buildert_project_key');}catch(e){}
-  _dbxSetStatus('No sync — new project','var(--muted)');
+  // Clear shares — new project starts with no rigger links
+  _spShares = [];
+  if(typeof _saveSharesForCurrentProject === 'function') _saveSharesForCurrentProject();
+  // Clear local-dirty tracking
+  window._localDirty = {};
+  // Keep worker URL — don't force user to retype it for every new project
+  _dbxSetStatus('No project key — set name & push to create','var(--muted)');
   _markSaved();
   _renderStageBar(); renderTable(); _updateProjectBadge();
+  if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
   showToast('New project — add devices to get started','ok');
 }
 
