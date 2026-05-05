@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.947m</title>
+<title>WTU · Buildert v3.948m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -14,7 +14,7 @@
   --accent:#00d4ff;--laser:#5b8fff;--smoke:#4de6b8;--distro:#f5a623;--psu:#c77dff;
   --warn:#f5a623;--danger:#ff4d4d;--ok:#3ddc84;
   --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;--cond:'Barlow Condensed',sans-serif;
-  --nav-h:64px;--hdr-h:52px;--ban-h:40px;--sb:env(safe-area-inset-bottom,0px);
+  --nav-h:64px;--hdr-h:52px;--ban-h:40px;--stg-h:42px;--sb:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
@@ -52,7 +52,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hdr-h);
 
 /* ── Scroll area ── */
 #scroll{position:fixed;
-  top:calc(var(--hdr-h) + var(--ban-h));left:0;right:0;
+  top:calc(var(--hdr-h) + var(--ban-h) + var(--stg-h));left:0;right:0;
   bottom:calc(var(--nav-h) + var(--sb));
   overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 10px 16px;}
 
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.947m</small></div>
+  <div class="logo">WTU <small>v3.948m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -423,7 +423,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0;max-width:130px;overflow:hidden" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
 </header>
 
-<div style="display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border)">
+<div style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border)">
   <div id="mob-stage-bar" style="flex:1;padding:4px 6px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
   <button id="mob-docs-btn" onclick="_openDocsSheet(_mCurrentStageIdx)" style="display:none;flex-shrink:0;padding:6px 10px;background:none;border:none;border-left:1px solid var(--border);color:var(--muted);font-size:18px;cursor:pointer" title="Documents">📄</button>
 </div>
@@ -563,8 +563,9 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div class="sheet-title" id="sheet-title">Add Device</div>
   <div class="sheet-body">
     <div id="m-model-row">
-      <label>Model <span style="color:var(--muted);font-size:9px">(editable)</span></label>
-      <input id="m-model" type="text" placeholder="e.g. LASER-PRO" style="font-family:var(--cond);font-weight:700;margin-bottom:8px">
+      <label>Model <span style="color:var(--muted);font-size:9px">(pick or type)</span></label>
+      <input id="m-model" type="text" placeholder="e.g. LASER-PRO" list="m-model-dl" style="font-family:var(--cond);font-weight:700;margin-bottom:8px">
+      <datalist id="m-model-dl"></datalist>
     </div>
     <div id="m-model-display" style="display:none;font-family:var(--cond);font-size:16px;font-weight:700;color:var(--accent);padding:4px 0 8px 0"></div>
     
@@ -592,8 +593,8 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
     <label>Location / Slot</label>
     <input id="m-location" type="text" placeholder="Truss A – pos 3" list="loc-dl">
     <datalist id="loc-dl"></datalist>
-    <div id="src-wrap">
-      <label>Source</label>
+    <!-- Single source field is hidden; ⚡ Pwr source and ● Data source below are used instead -->
+    <div id="src-wrap" style="display:none">
       <select id="m-source"></select>
     </div>
     <label>Status</label>
@@ -862,7 +863,30 @@ var STATUS_OPTS=['Concept','Mounted','Online','Offline','GoAndCheck','Swap','Swa
 // ── Helpers ────────────────────────────────────────────────────────
 function today(){return new Date().toISOString().slice(0,10);}
 function checksFor(t){return t===TL?LC:t===TS?SC:t===TD?DC:t===TP?PC:[];}
-function modelFromId(id){return id?(id.trim().split(/\s+/)[0]||'').toUpperCase():'';}
+function modelFromId(id){
+  if(!id) return '';
+  var s = id.trim();
+  if(!s) return '';
+  // Try matching against SPECS keys: longest matching prefix wins.
+  // Handles multi-word model names like "PEASOUP 110V", "SHOCKFOG V2".
+  if(typeof SPECS === 'object' && SPECS){
+    var keys = Object.keys(SPECS);
+    // Sort longest first so "PEASOUP 110V" wins over "PEASOUP" if both existed
+    keys.sort(function(a,b){ return b.length - a.length; });
+    var sUp = s.toUpperCase();
+    for(var i=0;i<keys.length;i++){
+      var k = keys[i];
+      // Case-insensitive prefix match
+      if(sUp.indexOf(k.toUpperCase()) === 0){
+        // Verify it's a full word boundary — next char must be space, end, or digit-only suffix
+        var rest = s.slice(k.length);
+        if(rest === '' || /^\s/.test(rest)) return k;
+      }
+    }
+  }
+  // Fallback: first word, uppercased (legacy behavior)
+  return (s.split(/\s+/)[0]||'').toUpperCase();
+}
 function specFor(d){return SPECS[d.model||modelFromId(d.device_id)]||null;}
 function pct(d){
   if(d.type===TA) return 0; // adapters have no progress milestones
@@ -1752,8 +1776,10 @@ function selPointed(val){
 }
 function updateSrcSel(type,curId,selSrc){
   var opts=srcOpts(type,curId),wrap=document.getElementById('src-wrap'),sel=document.getElementById('m-source');
-  if(!opts.length){wrap.style.display='none';return;}
-  wrap.style.display='';
+  if(!wrap||!sel) return;
+  // Always hidden in v3.948+ — power and data sources are managed separately below
+  wrap.style.display='none';
+  // Still populate the hidden select so saveDevice can read it as a fallback
   sel.innerHTML='<option value="">— not set —</option>'+opts.map(function(o){return '<option value="'+o.id+'"'+(selSrc===o.id?' selected':'')+'>'+o.label+'</option>';}).join('');
 }
 function openSpecSheet(gi) {
@@ -1786,8 +1812,23 @@ function openSpecSheet(gi) {
   openSheet('spec');
 }
 
+function _populateModelDatalist(){
+  var dl = document.getElementById('m-model-dl');
+  if(!dl) return;
+  var all = [];
+  Object.keys(MODELS).forEach(function(t){ MODELS[t].forEach(function(m){ all.push({m:m, t:t}); }); });
+  // Also include any custom specs the user has added
+  Object.keys(SPECS||{}).forEach(function(m){ if(!all.some(function(x){return x.m===m;})) all.push({m:m, t:''}); });
+  // Sort alphabetically
+  all.sort(function(a,b){ return a.m.localeCompare(b.m); });
+  dl.innerHTML = all.map(function(o){
+    return '<option value="'+o.m.replace(/"/g,'&quot;')+'">'+(o.t?o.t.charAt(0).toUpperCase()+o.t.slice(1):'')+'</option>';
+  }).join('');
+}
+
 function openAddSheet(type){
   editIdx=-1;
+  _populateModelDatalist();
   document.getElementById('sheet-title').textContent='Add Device';
   document.getElementById('del-wrap').style.display='none';
   document.getElementById('m-model').value='';
@@ -1810,6 +1851,7 @@ function openAddSheet(type){
 }
 function openEdit(gi){
   if(_mPeekMode){showToast('Peek mode — read only','warn');return;}
+  _populateModelDatalist();
   // Check stage edit permission
   var curStage=_mStages[_mCurrentStageIdx];
   if(curStage && !_permCanEdit(curStage.id)){showToast('No edit rights for '+curStage.name,'warn');return;}
