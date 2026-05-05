@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.945m</title>
+<title>WTU · Buildert v3.946m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -410,7 +410,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 <body>
 
 <header>
-  <div class="logo">WTU <small>v3.945m</small></div>
+  <div class="logo">WTU <small>v3.946m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4630,18 +4630,23 @@ function openProjectSheet(){
       +devices.length+' devices loaded</div>';
   }
 
-  // ── Sync row (minimal) ────────────────────────────────────────
+  // ── Sync row ──────────────────────────────────────────────────
   var syncTxt = (document.getElementById('dbx-led-txt')||{}).textContent || '—';
-  html += '<div style="border-top:1px solid var(--border2);padding-top:12px;margin-top:8px;'
-    +'display:flex;align-items:center;gap:8px">'
-    +'<div style="flex:1;font-family:var(--mono);font-size:10px;color:var(--muted)">'
+  html += '<div style="border-top:1px solid var(--border2);padding-top:12px;margin-top:8px">'
+    +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;word-break:break-all">'
     +'🔗 '+(_projectKey||'no key')+' · '+syncTxt+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
     +'<button class="sb sb-ghost" onclick="wPull();_dbxSetStatus(\'Syncing...\',\'var(--muted)\');closeSheet(\'conn\')" '
-    +'style="font-size:11px;padding:6px 12px;flex-shrink:0">↓ Sync</button>'
-    +'<button class="sb sb-ghost" onclick="wForceClear()" style="font-size:11px;padding:6px 10px;flex-shrink:0">🗑</button>'
-    +'<button class="sb sb-ghost" onclick="_mobDiag()" style="font-size:11px;padding:6px 10px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
+    +'style="font-size:13px;padding:10px 8px">↓ Sync now</button>'
+    +'<button class="sb sb-ghost" onclick="wPush(false);closeSheet(\'conn\')" '
+    +'style="font-size:13px;padding:10px 8px">↑ Push now</button>'
+    +'<button class="sb sb-ghost" onclick="_mobDiag()" '
+    +'style="font-size:12px;padding:8px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
+    +'<button class="sb sb-ghost" onclick="wForceClear()" '
+    +'style="font-size:12px;padding:8px;color:var(--warn);border-color:var(--warn)">🗑 Reset</button>'
     +'</div>'
-    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text)"></div>';
+    +'</div>'
+    +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
   body.innerHTML = html;
 
