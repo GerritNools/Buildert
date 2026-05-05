@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.009</title>
+<title>WTUniverse · Buildert Editor v4.010</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -464,7 +464,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.009</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.010</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1104,7 +1104,7 @@
   <div class="modal" style="max-width:520px;width:96vw">
     <h2>💬 Feedback</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:14px">
-      Found a bug? Have an idea? Just want to share a comment? Send it here — it'll reach the team without bothering anyone in chat.
+      Found a bug? Have an idea? Just want to share a comment? Send it here — it'll reach Wintavel without bothering anyone in chat.
     </p>
 
     <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:6px">What kind?</label>
@@ -1129,8 +1129,29 @@
       style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:10px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:14px"></textarea>
 
     <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openFeedbackInbox()" style="font-size:12px;color:var(--muted)">📥 View inbox</button>
       <button class="btn btn-ghost" onclick="document.getElementById('modal-feedback').classList.remove('open')">Cancel</button>
       <button class="btn btn-primary" onclick="submitDesktopFeedback()" style="margin-left:auto">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Inbox modal -->
+<div class="modal-overlay" id="modal-feedback-inbox">
+  <div class="modal" style="max-width:760px;width:96vw;max-height:85vh;display:flex;flex-direction:column">
+    <h2 style="display:flex;align-items:center;gap:10px">📥 Feedback Inbox <span id="fbi-count" style="font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400">—</span></h2>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="fbi-filter" data-f="all" onclick="_setFbiFilter('all')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--accent);background:rgba(0,212,255,.15);color:var(--accent);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">All</button>
+      <button class="fbi-filter" data-f="bug" onclick="_setFbiFilter('bug')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">🐞 Bug</button>
+      <button class="fbi-filter" data-f="idea" onclick="_setFbiFilter('idea')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">💡 Idea</button>
+      <button class="fbi-filter" data-f="comment" onclick="_setFbiFilter('comment')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">💬 Comment</button>
+      <button onclick="loadFeedbackInbox()" title="Refresh" style="margin-left:auto;padding:5px 12px;border-radius:5px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;font-size:11px">↻ Refresh</button>
+    </div>
+    <div id="fbi-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg);min-height:200px">
+      <div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>
+    </div>
+    <div class="modal-footer" style="margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-feedback-inbox').classList.remove('open')">Close</button>
     </div>
   </div>
 </div>
@@ -7405,25 +7426,46 @@ function spUpdateLink() {
   var warn    = document.getElementById('sp-link-warn');
   if (appUrl) localStorage.setItem('wtu_share_app_url', appUrl);
 
-  // Render stage checkboxes (always, even without name)
+  // Render stage permission pickers (always, even without name)
   var sc = document.getElementById('sp-stage-checks');
   if (sc && _stages.length) {
-    sc.innerHTML = _stages.map(function(s, i) {
+    sc.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)">Tap to set access for each stage:</div>'
+      + _stages.map(function(s, i) {
       var chk = _spStagePerms[s.id];
-      // Default: current stage = edit+view, others = view only
-      var editChk = chk ? !!chk.edit : (i === _currentStageIdx);
-      var viewChk = chk ? !!chk.view : true;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">'
+      var defaultLevel = (i === _currentStageIdx) ? 'edit' : 'view';
+      var level = 'none';
+      if(chk){ level = chk.edit ? 'edit' : (chk.view ? 'view' : 'none'); }
+      else { level = defaultLevel; }
+
+      function btn(lvl, label, ok){
+        var active = (level === lvl);
+        var col = lvl==='edit' ? 'var(--ok)' : (lvl==='view' ? 'var(--accent)' : 'var(--muted)');
+        return '<button onclick="spSetStagePerm(\''+s.id+'\',\''+lvl+'\')" '
+          + 'style="padding:4px 10px;border-radius:5px;border:1.5px solid '
+          + (active ? col : 'var(--border)')+';'
+          + 'background:'+(active ? (lvl==='edit'?'rgba(61,220,132,.15)':lvl==='view'?'rgba(0,212,255,.15)':'rgba(120,120,120,.15)') : 'var(--panel)')+';'
+          + 'color:'+(active ? col : 'var(--muted)')+';'
+          + 'font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer;letter-spacing:.5px;">'
+          + label + '</button>';
+      }
+
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border2)">'
         + '<div style="width:10px;height:10px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div>'
         + '<span style="font-family:var(--cond);font-weight:700;font-size:13px;flex:1;color:'+s.color+'">'+s.name+'</span>'
-        + '<label style="display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer">'
-        + '<input type="checkbox" data-sid="'+s.id+'" data-perm="view" '+(viewChk?'checked':'')
-        + ' onchange="spPermChange(this)" style="accent-color:var(--muted)"> View</label>'
-        + '<label style="display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;color:var(--ok);cursor:pointer">'
-        + '<input type="checkbox" data-sid="'+s.id+'" data-perm="edit" '+(editChk?'checked':'')
-        + ' onchange="spPermChange(this)" style="accent-color:var(--ok)"> Edit</label>'
+        + '<div style="display:flex;gap:4px">'
+        +   btn('none','✕ HIDE')
+        +   btn('view','👁 VIEW')
+        +   btn('edit','✏ EDIT')
+        + '</div>'
         + '</div>';
     }).join('');
+    // Make sure defaults are recorded for the URL builder
+    _stages.forEach(function(s, i){
+      if(!_spStagePerms[s.id]){
+        if(i === _currentStageIdx) _spStagePerms[s.id] = {view:true, edit:true};
+        else _spStagePerms[s.id] = {view:true, edit:false};
+      }
+    });
   }
 
   if (!name || !appUrl) {
@@ -7470,6 +7512,14 @@ function spPermChange(el){
   _spStagePerms[sid][perm] = el.checked;
   // If edit checked, auto-check view
   if (perm==='edit' && el.checked) _spStagePerms[sid].view = true;
+  spUpdateLink();
+}
+
+function spSetStagePerm(sid, level){
+  // level = 'none' | 'view' | 'edit'
+  if(level === 'none')      _spStagePerms[sid] = {view:false, edit:false};
+  else if(level === 'view') _spStagePerms[sid] = {view:true,  edit:false};
+  else if(level === 'edit') _spStagePerms[sid] = {view:true,  edit:true};
   spUpdateLink();
 }
 
@@ -8122,7 +8172,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.009',
+    version: 'v4.010',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -8141,6 +8191,102 @@ async function submitDesktopFeedback(){
     }
   } catch(e){
     showToast('Send failed: '+(e.message||'network'),'danger');
+  }
+}
+
+// ── Feedback Inbox ────────────────────────────────────────────────
+var _fbiFilter = 'all';
+var _fbiList = [];
+
+function openFeedbackInbox(){
+  document.getElementById('modal-feedback').classList.remove('open');
+  document.getElementById('modal-feedback-inbox').classList.add('open');
+  loadFeedbackInbox();
+}
+
+function _setFbiFilter(f){
+  _fbiFilter = f;
+  document.querySelectorAll('.fbi-filter').forEach(function(b){
+    var active = b.dataset.f === f;
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.background  = active ? 'rgba(0,212,255,.15)' : 'var(--panel)';
+    b.style.color       = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  _renderFbiList();
+}
+
+async function loadFeedbackInbox(){
+  if(!_workerUrl){
+    document.getElementById('fbi-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--warn)">No worker configured</div>';
+    return;
+  }
+  document.getElementById('fbi-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>';
+  try {
+    var resp = await fetch(_workerUrl + '/feedback?_=' + Date.now(), {cache:'no-store'});
+    if(!resp.ok){
+      document.getElementById('fbi-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger)">Error '+resp.status+'</div>';
+      return;
+    }
+    var data = await resp.json();
+    _fbiList = data.feedback || [];
+    _renderFbiList();
+  } catch(e){
+    document.getElementById('fbi-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger)">'+(e.message||'load failed')+'</div>';
+  }
+}
+
+function _renderFbiList(){
+  var box = document.getElementById('fbi-list');
+  var countEl = document.getElementById('fbi-count');
+  if(!box) return;
+  var list = _fbiList || [];
+  if(_fbiFilter !== 'all') list = list.filter(function(f){ return f.type === _fbiFilter; });
+  if(countEl) countEl.textContent = list.length + ' / ' + (_fbiList||[]).length;
+  if(!list.length){
+    box.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">No feedback yet</div>';
+    return;
+  }
+  var typeIcon = { bug: '🐞', idea: '💡', comment: '💬' };
+  var typeColor = { bug: 'var(--danger)', idea: 'var(--warn)', comment: 'var(--accent)' };
+  box.innerHTML = list.map(function(f){
+    var icon = typeIcon[f.type] || '💬';
+    var col = typeColor[f.type] || 'var(--muted)';
+    var dt = f.at ? new Date(f.at).toLocaleString() : '';
+    var meta = [];
+    if(f.from) meta.push('👤 ' + f.from);
+    if(f.project) meta.push('📁 ' + f.project);
+    if(f.client) meta.push('💻 ' + f.client + (f.version ? ' ' + f.version : ''));
+    if(dt) meta.push('🕒 ' + dt);
+    return '<div style="border-bottom:1px solid var(--border);padding:12px 14px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +   '<span style="font-size:18px">'+icon+'</span>'
+      +   '<span style="font-family:var(--cond);font-weight:700;color:'+col+';text-transform:uppercase;font-size:12px;letter-spacing:1px">'+f.type+'</span>'
+      +   '<button onclick="deleteFeedback(\''+f.id+'\')" title="Delete" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:4px;padding:3px 8px;font-size:11px">🗑</button>'
+      + '</div>'
+      + '<div style="font-size:13px;line-height:1.5;color:var(--text);white-space:pre-wrap;margin-bottom:6px">'+_escHtml(f.message||'')+'</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+meta.join(' · ')+'</div>'
+      + '</div>';
+  }).join('');
+}
+
+function _escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function deleteFeedback(id){
+  if(!confirm('Delete this feedback?')) return;
+  if(!_workerUrl) return;
+  try {
+    var resp = await fetch(_workerUrl + '/feedback/' + encodeURIComponent(id), {method:'DELETE'});
+    if(resp.ok){
+      _fbiList = _fbiList.filter(function(f){ return f.id !== id; });
+      _renderFbiList();
+      showToast('Deleted','ok');
+    } else {
+      showToast('Delete failed: '+resp.status,'danger');
+    }
+  } catch(e){
+    showToast('Delete failed: '+(e.message||'network'),'danger');
   }
 }
 
