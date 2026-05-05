@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.008</title>
+<title>WTUniverse · Buildert Editor v4.009</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,8 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.008</div>
+    <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.009</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -531,14 +532,6 @@
       <span id="net-status-dot" style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>
       <span id="net-status-text">ONLINE</span>
     </span>
-
-    <!-- Feedback button -->
-    <button onclick="openFeedbackModal()" title="Report a bug, share an idea or comment"
-      style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);
-      background:var(--panel);color:var(--muted);cursor:pointer;font-size:14px;
-      transition:all .15s;flex-shrink:0"
-      onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
-      onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">💬</button>
 
     <!-- Auto-sync toggles -->
     <div style="display:flex;flex-direction:column;gap:1px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:10px">
@@ -8129,7 +8122,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.008',
+    version: 'v4.009',
     message: msg,
   };
   showToast('Sending feedback…','info');
