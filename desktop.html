@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.006</title>
+<title>WTUniverse · Buildert Editor v4.007</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,7 +463,7 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
-    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.006</div>
+    <div style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px">v4.007</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -532,16 +532,16 @@
       <span id="net-status-text">ONLINE</span>
     </span>
 
-    <!-- Edit / Live mode toggle -->
-    <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0">
-      <button id="btn-mode-edit" onclick="wSetMode('edit')"
-        style="padding:5px 12px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;border:none;cursor:pointer;background:var(--accent);color:#000;transition:all .15s">
-        ✏️ EDIT
-      </button>
-      <button id="btn-mode-live" onclick="wSetMode('live')"
-        style="padding:5px 12px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;border:none;cursor:pointer;background:var(--panel);color:var(--muted);transition:all .15s">
-        📡 LIVE
-      </button>
+    <!-- Auto-sync toggles -->
+    <div style="display:flex;flex-direction:column;gap:1px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:10px">
+      <label title="Auto-pull every 10s — receive mobile updates in real-time" style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted);white-space:nowrap">
+        <input type="checkbox" id="cb-auto-pull" onchange="wSetAutoPull(this.checked)" style="margin:0;width:11px;height:11px;cursor:pointer">
+        <span>↓ auto-pull</span>
+      </label>
+      <label title="Auto-push 2s after any edit — riggers see your changes fast" style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted);white-space:nowrap">
+        <input type="checkbox" id="cb-auto-push" onchange="wSetAutoPush(this.checked)" style="margin:0;width:11px;height:11px;cursor:pointer">
+        <span>↑ auto-push</span>
+      </label>
     </div>
   </div>
 </header>
@@ -4344,8 +4344,9 @@ function autoSave(){
   if(_pollTimer){ _autoPush(); }
   if(!_isReceiving){
     clearTimeout(_dbxPushDebounce);
-    if(_workerUrl&&_projectKey){
-      _dbxPushDebounce=setTimeout(function(){ _dbxPushDebounce=null; wPush(true); }, 3000);
+    // Only auto-push to worker if user opted in via the auto-push checkbox
+    if(_workerUrl && _projectKey && _autoPushOn){
+      _dbxPushDebounce=setTimeout(function(){ _dbxPushDebounce=null; wPush(true); }, 2000);
     } else if(_dbxToken||_dbxRefreshToken){
       _dbxPushDebounce=setTimeout(function(){ _dbxPush(true); }, 2500);
     }
@@ -8029,48 +8030,59 @@ function _wGenKey(){
 function wSyncInit(){
   _workerUrl = localStorage.getItem('buildert_worker_url')||'';
   _projectKey = localStorage.getItem('buildert_project_key')||'';
-  if(_workerUrl && _projectKey){
+  // Worker URL is always loaded; project key is per-file (loaded separately)
+  if(_workerUrl){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
-    // Restore mode from localStorage (default: edit)
-    var savedMode = localStorage.getItem('buildert_sync_mode')||'edit';
-    wSetMode(savedMode, true); // true = silent init
+  }
+  // Restore auto-pull / auto-push toggle states (default: both off)
+  _autoPullOn = localStorage.getItem('buildert_auto_pull') === '1';
+  _autoPushOn = localStorage.getItem('buildert_auto_push') === '1';
+  var cbPull = document.getElementById('cb-auto-pull');
+  var cbPush = document.getElementById('cb-auto-push');
+  if(cbPull) cbPull.checked = _autoPullOn;
+  if(cbPush) cbPush.checked = _autoPushOn;
+  if(_autoPullOn) _wStartAutoPull();
+}
+
+var _autoPullOn = false;
+var _autoPushOn = false;
+var _wPollInterval = null;
+// Backward-compat alias — _syncMode is no longer used but some code paths may check it
+var _syncMode = 'live';
+
+function _wStartAutoPull(){
+  if(_wPollInterval) clearInterval(_wPollInterval);
+  _wPollInterval = setInterval(function(){ if(!_dbxSyncing && _autoPullOn) wPull(true); }, 10000);
+}
+function _wStopAutoPull(){
+  if(_wPollInterval){ clearInterval(_wPollInterval); _wPollInterval = null; }
+}
+
+function wSetAutoPull(on){
+  _autoPullOn = !!on;
+  try{ localStorage.setItem('buildert_auto_pull', _autoPullOn?'1':'0'); }catch(e){}
+  if(_autoPullOn){
+    _wStartAutoPull();
+    showToast('↓ Auto-pull ON — refreshing every 10s','ok');
+    addSyncLog('Auto-pull enabled (10s interval)','info');
+    setTimeout(function(){ if(!_dbxSyncing) wPull(true); }, 500); // first pull right away
+  } else {
+    _wStopAutoPull();
+    showToast('↓ Auto-pull OFF','muted');
+    addSyncLog('Auto-pull disabled','info');
   }
 }
 
-var _syncMode = 'edit'; // 'edit' or 'live'
-var _wPollInterval = null;
-
-function wSetMode(mode, silent){
-  _syncMode = mode;
-  try{ localStorage.setItem('buildert_sync_mode', mode); }catch(e){}
-
-  // Update ALL matching buttons (header + settings modal)
-  var desc = document.getElementById('mode-desc');
-  document.querySelectorAll('#btn-mode-edit').forEach(function(b){
-    b.style.background = mode==='edit' ? 'var(--accent)' : 'var(--panel)';
-    b.style.color      = mode==='edit' ? '#000'          : 'var(--muted)';
-  });
-  document.querySelectorAll('#btn-mode-live').forEach(function(b){
-    b.style.background = mode==='live' ? '#e74c3c'       : 'var(--panel)';
-    b.style.color      = mode==='live' ? '#fff'          : 'var(--muted)';
-  });
-  if(desc) desc.innerHTML = mode==='live'
-    ? '📡 <b>Live mode</b>: Pulling from worker every 10s. Merges mobile updates in real-time.'
-    : '✏️ <b>Edit mode</b>: Desktop is source of truth. Auto-pull paused. Push when ready.';
-
-  // Start/stop polling
-  if(_wPollInterval){ clearInterval(_wPollInterval); _wPollInterval=null; }
-  if(mode === 'live'){
-    // Push to worker first, then pull — never touch Anbernic here
-    wPush(false).then(function(){
-      setTimeout(function(){ wPull(true); }, 1000); // silent pull after push
-    }).catch(function(){
-      setTimeout(function(){ wPull(true); }, 1000);
-    });
-    _wPollInterval = setInterval(function(){ if(!_dbxSyncing) wPull(true); }, 10000);
-    if(!silent) _dbxSetStatus('Live mode — pushing then syncing…','#e74c3c');
+function wSetAutoPush(on){
+  _autoPushOn = !!on;
+  try{ localStorage.setItem('buildert_auto_push', _autoPushOn?'1':'0'); }catch(e){}
+  if(_autoPushOn){
+    showToast('↑ Auto-push ON — pushing 2s after edits','ok');
+    addSyncLog('Auto-push enabled (2s debounce)','info');
   } else {
-    if(!silent) _dbxSetStatus('Edit mode — pull paused','var(--muted)');
+    showToast('↑ Auto-push OFF','muted');
+    addSyncLog('Auto-push disabled','info');
+    if(_dbxPushDebounce){ clearTimeout(_dbxPushDebounce); _dbxPushDebounce = null; }
   }
 }
 
@@ -8082,8 +8094,8 @@ async function wPull(silent){
     if(!silent) showToast('No worker URL configured','warn');
     return;
   }
-  // Auto-pulls in edit mode are blocked, but manual pulls should always work
-  if(_syncMode === 'edit' && silent) return; // silent = auto-pull from polling
+  // Auto-pulls (silent=true) are blocked when auto-pull toggle is off; manual pulls always work
+  if(silent && !_autoPullOn) return;
   if(_dbxSyncing){
     if(!silent) showToast('Sync already in progress','warn');
     return;
