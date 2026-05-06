@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.010</title>
+<title>WTUniverse · Buildert Editor v4.011</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -464,7 +464,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.010</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.011</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1136,6 +1136,22 @@
   </div>
 </div>
 
+<!-- Stage Manager modal -->
+<div class="modal-overlay" id="modal-stage-manager">
+  <div class="modal" style="max-width:560px;width:96vw;max-height:85vh;display:flex;flex-direction:column">
+    <h2>⚙ Manage Stages</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+      Drag the ☰ handle to reorder. Click ➕ to insert a new stage at that position.
+    </p>
+    <div id="sm-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg);min-height:200px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-stage-manager').classList.remove('open')">Close</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary" onclick="_smInsertAt(_stages.length)">+ Add at end</button>
+    </div>
+  </div>
+</div>
+
 <!-- Feedback Inbox modal -->
 <div class="modal-overlay" id="modal-feedback-inbox">
   <div class="modal" style="max-width:760px;width:96vw;max-height:85vh;display:flex;flex-direction:column">
@@ -1567,7 +1583,7 @@ function insertStageBefore(idx){
   // Insert a new stage before the stage at index `idx`
   _saveCurrentStageLayout();
   var defaultName = 'Stage '+(_stages.length+1);
-  var name = prompt('New stage name (will be inserted before "'+_stages[idx].name+'"):', defaultName);
+  var name = prompt('New stage name:', defaultName);
   if(!name) return;
   var col = _stageColors()[_stages.length % _stageColors().length];
   var newStage = {id:'stage_'+Date.now(), name:name, color:col, devices:[], nodePositions:{}, diagPositions:{}};
@@ -1580,6 +1596,141 @@ function insertStageBefore(idx){
   _nodePositions = {}; _diagPositions = {};
   _renderStageBar(); renderTable(); _updateProjectBadge(); autoSave();
   showToast('Inserted "'+name+'" at position '+(idx+1),'ok');
+}
+
+// ── Stage Manager modal ───────────────────────────────────────────
+function openStageManager(){
+  document.getElementById('modal-stage-manager').classList.add('open');
+  _smRender();
+}
+
+function _smRender(){
+  var box = document.getElementById('sm-list');
+  if(!box) return;
+  box.innerHTML = '';
+  _stages.forEach(function(s, i){
+    var row = document.createElement('div');
+    row.draggable = true;
+    row.dataset.idx = i;
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg);transition:background .15s';
+
+    // Drag handle
+    var handle = document.createElement('span');
+    handle.textContent = '☰';
+    handle.style.cssText = 'cursor:grab;color:var(--muted);font-size:16px;user-select:none;padding:0 6px';
+    row.appendChild(handle);
+
+    // Color dot
+    var dot = document.createElement('div');
+    dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:'+s.color+';flex-shrink:0';
+    row.appendChild(dot);
+
+    // Name + count
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;font-family:var(--cond);font-weight:700;font-size:14px;color:'+s.color;
+    info.innerHTML = s.name + ' <span style="font-family:var(--mono);font-size:11px;opacity:.6;color:var(--muted)">'+s.devices.length+' devices</span>';
+    row.appendChild(info);
+
+    // Buttons: Insert before, Rename, Delete
+    var btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display:flex;gap:4px';
+
+    var insBtn = document.createElement('button');
+    insBtn.textContent = '➕ before';
+    insBtn.title = 'Insert new stage before this one';
+    insBtn.style.cssText = 'padding:4px 8px;border:1px solid var(--accent);background:rgba(0,212,255,.1);color:var(--accent);border-radius:4px;font-size:11px;cursor:pointer;font-family:var(--cond);font-weight:700';
+    insBtn.onclick = function(e){ e.stopPropagation(); _smInsertAt(i); };
+    btnGroup.appendChild(insBtn);
+
+    var renBtn = document.createElement('button');
+    renBtn.textContent = '✎';
+    renBtn.title = 'Rename';
+    renBtn.style.cssText = 'padding:4px 8px;border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:4px;font-size:11px;cursor:pointer';
+    renBtn.onclick = function(e){
+      e.stopPropagation();
+      var n = prompt('Rename stage:', s.name);
+      if(n && n.trim()){
+        s.name = n.trim();
+        autoSave(); _smRender(); _renderStageBar();
+      }
+    };
+    btnGroup.appendChild(renBtn);
+
+    var delBtn = document.createElement('button');
+    delBtn.textContent = '🗑';
+    delBtn.title = 'Delete';
+    delBtn.style.cssText = 'padding:4px 8px;border:1px solid var(--danger);background:rgba(255,77,77,.1);color:var(--danger);border-radius:4px;font-size:11px;cursor:pointer';
+    delBtn.onclick = function(e){
+      e.stopPropagation();
+      if(_stages.length <= 1){ showToast('Cannot delete the last stage','warn'); return; }
+      if(!confirm('Delete stage "'+s.name+'" and all its '+s.devices.length+' device(s)?')) return;
+      _stages.splice(i, 1);
+      if(_currentStageIdx >= _stages.length) _currentStageIdx = _stages.length - 1;
+      devices = _stages[_currentStageIdx].devices;
+      autoSave(); _smRender(); _renderStageBar(); renderTable();
+      showToast('Deleted "'+s.name+'"','ok');
+    };
+    btnGroup.appendChild(delBtn);
+
+    row.appendChild(btnGroup);
+
+    // Drag handlers
+    row.ondragstart = function(e){
+      e.dataTransfer.setData('text/plain', String(i));
+      e.dataTransfer.effectAllowed = 'move';
+      this.style.opacity = '0.4';
+    };
+    row.ondragend = function(){ this.style.opacity = '1'; };
+    row.ondragover = function(e){
+      e.preventDefault();
+      this.style.background = 'rgba(0,212,255,.1)';
+    };
+    row.ondragleave = function(){ this.style.background = 'var(--bg)'; };
+    row.ondrop = function(e){
+      e.preventDefault();
+      this.style.background = 'var(--bg)';
+      var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+      var toIdx = parseInt(this.dataset.idx);
+      if(isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
+      _smReorder(fromIdx, toIdx);
+    };
+
+    box.appendChild(row);
+  });
+}
+
+function _smReorder(fromIdx, toIdx){
+  _saveCurrentStageLayout();
+  var moved = _stages.splice(fromIdx, 1)[0];
+  _stages.splice(toIdx, 0, moved);
+  // Update _currentStageIdx so user stays on the same stage they were viewing
+  if(_currentStageIdx === fromIdx){
+    _currentStageIdx = toIdx;
+  } else if(fromIdx < _currentStageIdx && toIdx >= _currentStageIdx){
+    _currentStageIdx--;
+  } else if(fromIdx > _currentStageIdx && toIdx <= _currentStageIdx){
+    _currentStageIdx++;
+  }
+  devices = _stages[_currentStageIdx].devices;
+  autoSave(); _smRender(); _renderStageBar();
+  showToast('Stage moved','ok');
+}
+
+function _smInsertAt(idx){
+  var defaultName = 'Stage '+(_stages.length+1);
+  var name = prompt('New stage name:', defaultName);
+  if(!name || !name.trim()) return;
+  _saveCurrentStageLayout();
+  var col = _stageColors()[_stages.length % _stageColors().length];
+  var newStage = {id:'stage_'+Date.now(), name:name.trim(), color:col, devices:[], nodePositions:{}, diagPositions:{}};
+  _stages.splice(idx, 0, newStage);
+  if(_currentStageIdx >= idx) _currentStageIdx++;
+  // Switch to the newly inserted stage so the user can immediately start adding devices
+  _currentStageIdx = idx;
+  devices = _stages[_currentStageIdx].devices;
+  _nodePositions = {}; _diagPositions = {};
+  autoSave(); _smRender(); _renderStageBar(); renderTable();
+  showToast('Inserted "'+name.trim()+'" at position '+(idx+1),'ok');
 }
 
 function renameStage(idx){
@@ -1603,19 +1754,6 @@ function _renderStageBar(){
   var bar=document.getElementById('stage-bar');if(!bar)return;
   bar.innerHTML='';
   _stages.forEach(function(s,i){
-    // Insert "+" between stages (not before first one — use the regular Add button for that)
-    if(i > 0){
-      var ins = document.createElement('button');
-      ins.title = 'Insert stage between "'+_stages[i-1].name+'" and "'+s.name+'"';
-      ins.textContent = '+';
-      ins.style.cssText = 'padding:0;width:18px;height:18px;border-radius:50%;border:1px dashed var(--border2);'
-        +'background:var(--panel);color:var(--muted);font-size:11px;line-height:1;cursor:pointer;'
-        +'opacity:.5;transition:opacity .15s;align-self:center;margin:0 -2px';
-      ins.onmouseover=function(){this.style.opacity='1';this.style.color='var(--accent)';this.style.borderColor='var(--accent)';};
-      ins.onmouseout =function(){this.style.opacity='.5';this.style.color='var(--muted)';this.style.borderColor='var(--border2)';};
-      ins.onclick = function(e){ e.stopPropagation(); insertStageBefore(i); };
-      bar.appendChild(ins);
-    }
     var active=(i===_currentStageIdx);
     var btn=document.createElement('button');
     btn.style.cssText='padding:4px 14px;border-radius:20px;border:2px solid '+(active?s.color:'var(--border2)')+';'
@@ -1626,7 +1764,7 @@ function _renderStageBar(){
     btn.ondblclick=function(e){e.stopPropagation();renameStage(i);};
     btn.oncontextmenu=function(e){e.preventDefault();deleteStage(i);};
     bar.appendChild(btn);
-    // Show rename + delete buttons for active stage
+    // Show rename button for active stage
     if(active){
       var editBtn=document.createElement('button');
       editBtn.title='Rename stage';
@@ -1638,9 +1776,15 @@ function _renderStageBar(){
   });
   var add=document.createElement('button');
   add.style.cssText='padding:4px 10px;border-radius:20px;border:2px dashed var(--border2);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;';
-  add.title='Add stage (click)'; add.textContent='+';
+  add.title='Add stage at the end'; add.textContent='+';
   add.onclick=addStage;
   bar.appendChild(add);
+  // Manage stages button — open the modal
+  var mng=document.createElement('button');
+  mng.style.cssText='padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--cond);font-weight:700;letter-spacing:.5px;';
+  mng.title='Manage stages — reorder, rename, delete'; mng.textContent='⚙ MANAGE';
+  mng.onclick=openStageManager;
+  bar.appendChild(mng);
   // TOTAL button — shows all stages combined
   var tot=document.createElement('button');
   var isTotal=(_currentStageIdx===-1);
@@ -8172,7 +8316,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.010',
+    version: 'v4.011',
     message: msg,
   };
   showToast('Sending feedback…','info');
