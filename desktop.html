@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.011</title>
+<title>WTUniverse · Buildert Editor v4.012</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -464,7 +464,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.011</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.012</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1136,6 +1136,28 @@
   </div>
 </div>
 
+<!-- Project Manager modal — clean up old project keys on worker -->
+<div class="modal-overlay" id="modal-project-manager">
+  <div class="modal" style="max-width:680px;width:96vw;max-height:85vh;display:flex;flex-direction:column">
+    <h2 style="display:flex;align-items:center;gap:10px">📁 Projects on worker <span id="pm-count" style="font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400">—</span></h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+      Old random project keys can be deleted to keep your worker clean. Your <b>current project</b> is highlighted — don't delete it.
+    </p>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <input id="pm-search" placeholder="Filter…" oninput="_pmRender()"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--mono)">
+      <button onclick="loadProjectManager()" title="Refresh"
+        style="padding:6px 12px;border-radius:5px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;font-size:11px">↻ Refresh</button>
+    </div>
+    <div id="pm-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg);min-height:240px">
+      <div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>
+    </div>
+    <div class="modal-footer" style="margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-project-manager').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Stage Manager modal -->
 <div class="modal-overlay" id="modal-stage-manager">
   <div class="modal" style="max-width:560px;width:96vw;max-height:85vh;display:flex;flex-direction:column">
@@ -1331,6 +1353,10 @@
       <button class="btn btn-ghost" onclick="wGenNewKey()" style="font-size:11px;padding:6px 10px">New key</button>
       <button class="btn btn-primary" onclick="wApplySettings()" style="font-size:11px;padding:6px 10px">Apply</button>
       <button class="btn btn-ok" onclick="wPush(false)" style="font-size:11px;padding:6px 10px">&#8593; Push now</button>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <button class="btn btn-ghost" onclick="openProjectManager()" style="font-size:11px;padding:6px 10px;width:100%;color:var(--muted)">📁 Manage projects on worker…</button>
     </div>
 
     <!-- Edit / Live mode toggle -->
@@ -8316,7 +8342,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.011',
+    version: 'v4.012',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -8426,6 +8452,137 @@ async function deleteFeedback(id){
       _fbiList = _fbiList.filter(function(f){ return f.id !== id; });
       _renderFbiList();
       showToast('Deleted','ok');
+    } else {
+      showToast('Delete failed: '+resp.status,'danger');
+    }
+  } catch(e){
+    showToast('Delete failed: '+(e.message||'network'),'danger');
+  }
+}
+
+// ── Project Manager (clean up old project keys on worker) ─────────
+var _pmList = [];
+
+function openProjectManager(){
+  document.getElementById('modal-project-manager').classList.add('open');
+  loadProjectManager();
+}
+
+async function loadProjectManager(){
+  if(!_workerUrl){
+    document.getElementById('pm-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--warn)">No worker URL configured</div>';
+    return;
+  }
+  document.getElementById('pm-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>';
+  try {
+    // Get the project list from /health (cheap), then fetch each one's metadata individually
+    var hResp = await fetch(_workerUrl + '/health?_=' + Date.now(), {cache:'no-store'});
+    if(!hResp.ok){
+      document.getElementById('pm-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger)">Health check failed: '+hResp.status+'</div>';
+      return;
+    }
+    var health = await hResp.json();
+    var keys = health.projects || [];
+    if(!keys.length){
+      _pmList = [];
+      _pmRender();
+      return;
+    }
+    // Fetch each project's metadata (small) — we only need name, _saved, _saved_by, device count
+    var fetched = await Promise.all(keys.map(function(k){
+      return fetch(_workerUrl + '/project/' + encodeURIComponent(k) + '?_=' + Date.now(), {cache:'no-store'})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if(!j || !j._projects || !j._projects[k]) return {key:k, name:'', saved:'', by:'', devices:0, raw:null};
+          var p = j._projects[k];
+          var devCount = (p.devices||[]).length;
+          if(devCount===0 && Array.isArray(p.stages)){
+            p.stages.forEach(function(s){ devCount += (s.devices||[]).length; });
+          }
+          return {
+            key: k,
+            name: (p.project && p.project.name) || p._project_name || '',
+            saved: p._saved || '',
+            by: p._saved_by || '',
+            devices: devCount,
+            raw: p,
+          };
+        })
+        .catch(function(){ return {key:k, name:'(error)', saved:'', by:'', devices:0, raw:null}; });
+    }));
+    // Sort: by last saved desc (most recent first), unsaved at the end
+    fetched.sort(function(a,b){
+      if(!a.saved && !b.saved) return 0;
+      if(!a.saved) return 1;
+      if(!b.saved) return -1;
+      return b.saved.localeCompare(a.saved);
+    });
+    _pmList = fetched;
+    _pmRender();
+  } catch(e){
+    document.getElementById('pm-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger)">'+(e.message||'load failed')+'</div>';
+  }
+}
+
+function _pmRender(){
+  var box = document.getElementById('pm-list');
+  var countEl = document.getElementById('pm-count');
+  if(!box) return;
+  var filter = ((document.getElementById('pm-search')||{}).value||'').trim().toLowerCase();
+  var list = _pmList || [];
+  if(filter){
+    list = list.filter(function(p){
+      return p.key.toLowerCase().indexOf(filter) >= 0
+        || (p.name||'').toLowerCase().indexOf(filter) >= 0;
+    });
+  }
+  if(countEl) countEl.textContent = list.length + ' / ' + (_pmList||[]).length;
+  if(!list.length){
+    box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No projects</div>';
+    return;
+  }
+  box.innerHTML = list.map(function(p){
+    var isCurrent = (p.key === _projectKey);
+    var dt = p.saved ? new Date(p.saved).toLocaleString() : '—';
+    var nameDisplay = p.name ? '<b style="color:var(--text)">'+_escHtml(p.name)+'</b>' : '<span style="color:var(--muted)">(unnamed)</span>';
+    return '<div style="border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:12px;'
+      + (isCurrent ? 'background:rgba(0,212,255,.07)' : '') + '">'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+      +     '<span style="font-family:var(--mono);font-size:12px;color:var(--accent)">'+_escHtml(p.key)+'</span>'
+      +     (isCurrent ? '<span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-family:var(--cond);font-weight:700">CURRENT</span>' : '')
+      +   '</div>'
+      +   '<div style="font-family:var(--cond);font-size:13px">'+nameDisplay+'</div>'
+      +   '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px">'
+      +     '📅 '+dt+' · 👤 '+(p.by||'?')+' · 📦 '+p.devices+' device'+(p.devices===1?'':'s')
+      +   '</div>'
+      + '</div>'
+      + '<button onclick="deleteProjectFromWorker(\''+p.key.replace(/'/g,"\\'")+'\')" '
+      +   'title="Delete from worker" '
+      +   'style="padding:6px 10px;border:1px solid '+(isCurrent?'var(--border)':'var(--danger)')+';'
+      +   'background:'+(isCurrent?'var(--panel)':'rgba(255,77,77,.1)')+';'
+      +   'color:'+(isCurrent?'var(--muted)':'var(--danger)')+';'
+      +   'border-radius:5px;font-size:11px;cursor:'+(isCurrent?'not-allowed':'pointer')+';'
+      +   'opacity:'+(isCurrent?'.4':'1')+'" '
+      +   (isCurrent?'disabled':'')+'>🗑 Delete</button>'
+      + '</div>';
+  }).join('');
+}
+
+async function deleteProjectFromWorker(key){
+  if(key === _projectKey){
+    showToast('Cannot delete the current project','warn');
+    return;
+  }
+  if(!confirm('Delete project "'+key+'" from the worker?\n\nThis cannot be undone. Riggers using this project key will lose sync.')) return;
+  if(!_workerUrl) return;
+  try {
+    var resp = await fetch(_workerUrl + '/project/' + encodeURIComponent(key), {method:'DELETE'});
+    if(resp.ok){
+      _pmList = _pmList.filter(function(p){ return p.key !== key; });
+      _pmRender();
+      showToast('Deleted "'+key+'"','ok');
+      addSyncLog('Deleted project from worker: '+key,'info');
     } else {
       showToast('Delete failed: '+resp.status,'danger');
     }
