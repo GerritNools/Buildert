@@ -4671,37 +4671,41 @@ function _mobDiag() {
   el.innerHTML += '🌐 Worker: <b>'+(wurl||'not set')+'</b><br>';
   el.innerHTML += '📡 Device IP: <b>'+(url||'not set')+'</b><br><br>';
 
-  if(wurl) {
-    el.innerHTML += '⏳ GET /...<br>';
-    fetch(wurl+'/?_='+Date.now(), {cache:'no-store'})
-      .then(function(r){ el.innerHTML += 'HTTP: <b>'+r.status+'</b><br>'; return r.text(); })
-      .then(function(txt){
-        try {
-          var j = JSON.parse(txt);
-          el.innerHTML += 'Schema: <b>'+(j._schema||'old flat')+'</b><br>';
-          if(j._projects) {
-            el.innerHTML += 'Projects: <b>'+Object.keys(j._projects).join(', ')+'</b><br>';
-            if(j._projects[pid]) {
-              el.innerHTML += '✅ Found! <b>'+(j._projects[pid].devices||[]).length+' devices</b><br>';
-            } else {
-              el.innerHTML += '❌ Key "<b>'+pid+'</b>" not found<br>';
-              el.innerHTML += 'Worker has: <b>'+Object.keys(j._projects).join(', ')+'</b><br>';
-            }
-          } else if(j.devices) {
-            el.innerHTML += 'Old format — <b>'+j.devices.length+' devices</b><br>';
-            if(j._project_id && j._project_id!==pid)
-              el.innerHTML += '⚠️ Key mismatch: worker="<b>'+j._project_id+'</b>" local="<b>'+pid+'</b>"<br>';
-            else
-              el.innerHTML += '✅ Keys match<br>';
-          } else {
-            el.innerHTML += 'Unknown: '+txt.slice(0,100);
-          }
-        } catch(e){ el.innerHTML += '❌ '+e.message+'<br>'+txt.slice(0,100); }
-      })
-      .catch(function(e){ el.innerHTML += '❌ '+e.message; });
-  } else {
+  if(!wurl){
     el.innerHTML += '⚠️ No worker URL — set via share link from desktop';
+    return;
   }
+
+  // Test: per-project endpoint (the one sync actually uses)
+  el.innerHTML += '⏳ GET /project/'+pid+' …<br>';
+  fetch(wurl+'/project/'+encodeURIComponent(pid)+'?_='+Date.now(), {cache:'no-store'})
+    .then(function(r){ el.innerHTML += 'HTTP: <b>'+r.status+'</b><br>'; return r.text(); })
+    .then(function(txt){
+      try {
+        var j = JSON.parse(txt);
+        var proj = (j._projects && j._projects[pid]) || null;
+        if(proj){
+          var devCount = (proj.devices||[]).length;
+          if(devCount===0 && Array.isArray(proj.stages)){
+            proj.stages.forEach(function(s){ devCount += (s.devices||[]).length; });
+          }
+          el.innerHTML += '✅ Found! <b>'+devCount+' devices</b><br>';
+          el.innerHTML += '📅 Last saved: <b>'+(proj._saved||'?').slice(0,19).replace('T',' ')+'</b><br>';
+          el.innerHTML += '👤 By: <b>'+(proj._saved_by||'?')+'</b><br>';
+        } else {
+          el.innerHTML += '❌ Project "<b>'+pid+'</b>" not on worker yet<br>';
+          el.innerHTML += '<span style="color:var(--muted)">→ Push from desktop first</span><br>';
+        }
+      } catch(e){ el.innerHTML += '❌ '+e.message+'<br>'+txt.slice(0,100); }
+      // Also show how many other projects live on the worker (info only)
+      fetch(wurl+'/health', {cache:'no-store'})
+        .then(function(r){ return r.json(); })
+        .then(function(h){
+          var n = (h && h.project_count) || 0;
+          el.innerHTML += '<br><span style="color:var(--muted);font-size:10px">ℹ Worker has '+n+' project'+(n===1?'':'s')+' total — sync only fetches yours</span>';
+        }).catch(function(){});
+    })
+    .catch(function(e){ el.innerHTML += '❌ '+e.message; });
 }
 // ── Feedback (bugs, ideas, comments) ──────────────────────────────
 var _fbType = 'bug';
