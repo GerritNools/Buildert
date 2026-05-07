@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.013</title>
+<title>WTUniverse · Buildert Editor v4.014</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -408,6 +408,7 @@
   .node-toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 0 6px;}
   .node-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;
     font-family:var(--mono);color:var(--muted);padding:4px 0 8px;}
+  .node-memo-text:empty::before{content:attr(data-placeholder);color:#aaa;font-style:italic;pointer-events:none;}
   /* Packing list */
   .pack-section{margin-bottom:20px;}
   .pack-section-title{font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;
@@ -464,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.013</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.014</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1601,11 +1602,14 @@ function _saveCurrentStageLayout(){
 }
 
 function switchStage(idx){
+  // Save current stage's memos before leaving
+  _saveMemos();
   _saveCurrentStageLayout();
   if(idx===-1){
     // TOTAL: show all devices across all stages
     _currentStageIdx=-1;
     devices=_stages.reduce(function(all,s){return all.concat(s.devices||[]);}, []);
+    _nodeMemos = []; // hide memos in TOTAL view
     _renderStageBar(); renderTable(); updateStats();
     if(currentTab==='pack') renderPackList();
     if(currentTab==='todos') renderTodosPanel();
@@ -1615,6 +1619,8 @@ function switchStage(idx){
   if(_stages[_currentStageIdx]) devices=_stages[_currentStageIdx].devices;
   _nodePositions=_stages[_currentStageIdx].nodePositions||{};
   _diagPositions=_stages[_currentStageIdx].diagPositions||{};
+  // Load memos for the new stage (strictly per-stage)
+  _loadMemos();
   try{localStorage.setItem('buildert_node_pos',JSON.stringify(_nodePositions));}catch(e){}
   try{localStorage.setItem('buildert_diag_pos',JSON.stringify(_diagPositions));}catch(e){}
   _renderStageBar(); renderTable(); _updateProjectBadge(); autoSave();
@@ -3151,8 +3157,38 @@ function saveDevice() {
     outlet_port:   null,
   };
 
-  if (editIndex >= 0) { devices[editIndex] = d; showToast('Updated '+deviceId,'ok'); }
-  else { devices.push(d); showToast('Added '+deviceId,'ok'); }
+  if (editIndex >= 0) {
+    var prev = devices[editIndex];
+    // Detect what changed and log per-field
+    var changes = [];
+    var TRACK = ['status','location','source','source_power','source_data','notes','serial','pointed','cable_in','cable_data_in','cable_power_in','model'];
+    TRACK.forEach(function(f){
+      var pv = prev[f]||'', nv = d[f]||'';
+      if(JSON.stringify(pv) !== JSON.stringify(nv)){
+        changes.push(f+': '+(String(pv).slice(0,30)||'(empty)')+' → '+(String(nv).slice(0,30)||'(empty)'));
+      }
+    });
+    // Detect check changes
+    var prevChecks = prev.checks||{}, newChecks = d.checks||{};
+    var checkKeys = {};
+    Object.keys(prevChecks).forEach(function(k){checkKeys[k]=true;});
+    Object.keys(newChecks).forEach(function(k){checkKeys[k]=true;});
+    Object.keys(checkKeys).forEach(function(k){
+      if(!!prevChecks[k] !== !!newChecks[k]){
+        changes.push('check '+k+': '+(newChecks[k]?'✓':'✗'));
+      }
+    });
+    devices[editIndex] = d;
+    if(changes.length){
+      _logActivity(changes.some(function(c){return c.indexOf('notes:')===0;})?'note':'edit', deviceId, changes.join('; '));
+    }
+    showToast('Updated '+deviceId,'ok');
+  }
+  else {
+    devices.push(d);
+    _logActivity('add', deviceId, 'Type: '+type+(d.location?' · '+d.location:''));
+    showToast('Added '+deviceId,'ok');
+  }
 
   _markUnsaved(); // immediately protect against wPull overwrite
   closeModal(); renderTable(); autoSave();
@@ -4080,6 +4116,23 @@ function _mergeProjectNoConflict(data) {
   window._mobileChanged = {};
   _packSpares = data.pack_spares || [];
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
+  // Pack list signoffs from mobile riggers
+  if(Array.isArray(data.pack_signoffs)){
+    window._packSignoffs = data.pack_signoffs;
+    try{ localStorage.setItem('brt_packsigns_desktop', JSON.stringify(window._packSignoffs)); }catch(e){}
+    // Log new signoffs to activity log so user is alerted
+    data.pack_signoffs.forEach(function(s){
+      if(!s || !s.id) return;
+      if(!window._seenSignoffIds) window._seenSignoffIds = {};
+      if(window._seenSignoffIds[s.id]) return;
+      window._seenSignoffIds[s.id] = true;
+      // Only log if it's relatively recent (within last 30 days)
+      var ageDays = (Date.now() - new Date(s.at||0).getTime())/86400000;
+      if(ageDays < 30){
+        _logActivity('signoff', s.stageName||'', s.name+' signed off — '+s.checked+'/'+s.total+' items'+(s.note?' · '+s.note:''), 'rigger');
+      }
+    });
+  }
   // Restore shares from project file (per-project, replaces previous project's shares)
   if(Array.isArray(data.shares)){
     _spShares = data.shares;
@@ -5027,6 +5080,10 @@ function _logActivity(action, deviceId, detail, by) {
   });
   if(_activityLog.length > MAX_ACTIVITY) _activityLog.length = MAX_ACTIVITY;
   addSyncLog('['+action+'] '+(deviceId?deviceId+': ':'')+detail, 'info');
+  // Live-update the panel if it's currently open
+  if(currentTab === 'activity'){
+    try { renderActivityLog(); } catch(e) {}
+  }
 }
 
 function renderActivityLog() {
@@ -5219,17 +5276,16 @@ function _saveMemos() {
   try { localStorage.setItem('buildert_memos', JSON.stringify(_nodeMemos)); } catch(e) {}
 }
 function _loadMemos() {
+  // Strictly per-stage — no fallback to global localStorage (was causing
+  // memos from one stage to leak into another)
   _nodeMemos = (_stages[_currentStageIdx] && _stages[_currentStageIdx].nodeMemos) || [];
-  if (!_nodeMemos.length) {
-    try { _nodeMemos = JSON.parse(localStorage.getItem('buildert_memos')||'[]'); } catch(e) { _nodeMemos=[]; }
-  }
 }
 function addNodeMemo() {
   var id = 'memo-' + Date.now();
   var wrap = document.getElementById('node-canvas-wrap');
   var cx = wrap ? wrap.scrollLeft + wrap.clientWidth/2 - 70 : 200;
   var cy = wrap ? wrap.scrollTop + wrap.clientHeight/2 - 50 : 150;
-  _nodeMemos.push({id:id, x:cx/_nodeScale, y:cy/_nodeScale, text:'📝 Note...', color:'#ffe066'});
+  _nodeMemos.push({id:id, x:cx/_nodeScale, y:cy/_nodeScale, text:'', color:'#ffe066'});
   _saveMemos();
   renderNodeView();
 }
@@ -5263,16 +5319,17 @@ function _setGuideX(x) {
 function _toggleGuideLine() {
   var cur = _getGuideX();
   if(cur === null){
-    // Initialize at horizontal center of current viewport
+    // Initialize at horizontal center of current viewport, in SVG world coords.
     var wrap = document.getElementById('node-canvas-wrap');
-    var defaultX = wrap ? (wrap.scrollLeft + wrap.clientWidth/2) / _nodeScale : 400;
+    var screenCenter = wrap ? wrap.clientWidth/2 : 400;
+    var defaultX = (screenCenter - _nodePanX) / _nodeScale;
     _setGuideX(defaultX);
-    showToast('Guide line added — drag to reposition','ok');
+    showToast('Center line added — drag the CENTER label to reposition','ok');
   } else {
     var s = _stages[_currentStageIdx];
     if(s) delete s.guideX;
     autoSave();
-    showToast('Guide line removed','muted');
+    showToast('Center line removed','muted');
   }
   renderNodeView();
 }
@@ -5281,13 +5338,14 @@ function _renderGuideLine() {
   if(!g) return;
   var gx = _getGuideX();
   if(gx === null){ g.innerHTML = ''; return; }
-  var svg = document.getElementById('node-svg');
-  var height = svg ? parseInt(svg.getAttribute('height')||'2000') : 2000;
-  // Render: dashed cyan line + grab handle at top
+  // Use a generous fixed range that covers the whole world at any zoom.
+  // (Cant use viewport because guide layer is inside the transform group.)
+  var Y_TOP = -2000;
+  var Y_BOT = 5000;
   g.innerHTML =
-    '<line x1="'+gx+'" y1="0" x2="'+gx+'" y2="'+(height+1000)+'" '
+    '<line x1="'+gx+'" y1="'+Y_TOP+'" x2="'+gx+'" y2="'+Y_BOT+'" '
     +'stroke="rgba(0,212,255,.6)" stroke-width="1.5" stroke-dasharray="6,5" pointer-events="none"/>'
-    // Top label
+    // Top label — drag handle
     +'<g transform="translate('+gx+',8)" style="cursor:ew-resize" onmousedown="_guideStartDrag(event)">'
     +  '<rect x="-26" y="0" width="52" height="16" rx="3" fill="#0a0c0f" stroke="rgba(0,212,255,.6)" stroke-width="1"/>'
     +  '<text x="0" y="11" font-size="9" fill="rgba(0,212,255,.9)" font-family="monospace" text-anchor="middle" font-weight="700" letter-spacing="1">CENTER</text>'
@@ -5296,12 +5354,13 @@ function _renderGuideLine() {
 function _guideStartDrag(e) {
   e.preventDefault(); e.stopPropagation();
   var svg = document.getElementById('node-svg');
-  var wrap = document.getElementById('node-canvas-wrap');
-  if(!svg || !wrap) return;
+  if(!svg) return;
   var rect = svg.getBoundingClientRect();
   function onMove(ev) {
-    var x = (ev.clientX - rect.left + wrap.scrollLeft) / _nodeScale;
-    _setGuideX(x);
+    // Convert screen pixel → SVG world coordinate (undo current pan + zoom)
+    var screenX = ev.clientX - rect.left;
+    var worldX = (screenX - _nodePanX) / _nodeScale;
+    _setGuideX(worldX);
     _renderGuideLine();
   }
   function onUp() {
@@ -6112,9 +6171,14 @@ function _lbCol(sigType, cable) {
       // Editable text area via foreignObject
       +'<foreignObject x="4" y="18" width="'+(+_mw-8)+'" height="'+(+_mh-22)+'">'
       +'<div xmlns="http://www.w3.org/1999/xhtml" contenteditable="true" '
-      +'style="font-size:10px;color:#111;font-family:Georgia,serif;line-height:1.4;outline:none;width:100%;height:100%;overflow:hidden;word-break:break-word" '
-      +'data-mid="'+memo.id+'" onblur="memoSaveText(this.dataset.mid,this.innerText)">'
-      +(memo.text||'').replace(/</g,'&lt;').replace(/&/g,'&amp;')
+      +'class="node-memo-text" '
+      +'style="font-size:10px;color:#111;font-family:Georgia,serif;line-height:1.4;outline:none;width:100%;height:100%;overflow:hidden;word-break:break-word;cursor:text" '
+      +'data-mid="'+memo.id+'" '
+      +'data-placeholder="Type note…" '
+      +'onmousedown="event.stopPropagation()" '
+      +'oninput="memoSaveText(this.dataset.mid,this.innerText)" '
+      +'onblur="memoSaveText(this.dataset.mid,this.innerText)">'
+      +(memo.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
       +'</div></foreignObject>'
       // Drag handle (invisible rect over header)
       +'<rect width="'+(_mw-20)+'" height="16" fill="transparent" style="cursor:move" '
@@ -6472,13 +6536,11 @@ function nodeZoom(factor) {
 }
 
 function _applyNodeTransform() {
-  var g1 = document.getElementById('node-edges');
-  var g2 = document.getElementById('node-nodes');
-  var g3 = document.getElementById('node-labels');
   var tr = 'translate('+_nodePanX+','+_nodePanY+') scale('+_nodeScale+')';
-  if (g1) g1.setAttribute('transform', tr);
-  if (g2) g2.setAttribute('transform', tr);
-  if (g3) g3.setAttribute('transform', tr);
+  ['node-edges','node-guide','node-nodes','node-labels'].forEach(function(id){
+    var g = document.getElementById(id);
+    if(g) g.setAttribute('transform', tr);
+  });
 }
 
 // Scroll-to-zoom is attached to the SVG at init time (see Init section below)
@@ -8549,7 +8611,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.013',
+    version: 'v4.014',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -9258,7 +9320,7 @@ async function _wPushImpl(silent){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared,
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
@@ -9618,7 +9680,7 @@ function wPushLayout(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared,
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
@@ -9707,7 +9769,7 @@ function _buildFilePayload(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared,
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares || [],
     _log: _activityLog || [],
