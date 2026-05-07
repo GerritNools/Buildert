@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.012</title>
+<title>WTUniverse · Buildert Editor v4.013</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -464,7 +464,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.012</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.013</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -713,6 +713,7 @@
       <span id="node-zoom-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:38px;text-align:center">100%</span>
       <button class="icon-btn" onclick="nodeZoom(0.8)" title="Zoom out" style="font-size:14px;font-weight:700">−</button>
       <button class="btn btn-ghost" onclick="addNodeMemo()" style="padding:5px 11px;font-size:12px" title="Add sticky note memo">📝 Add memo</button>
+      <button class="btn btn-ghost" onclick="_toggleGuideLine()" style="padding:5px 11px;font-size:12px" title="Toggle a draggable vertical center/orientation line">⫯ Center line</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom · drag ↦ to connect · click edge label for cable</span>
       <button class="btn" onclick="wPushLayout()" style="padding:5px 12px;font-size:12px;background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent);margin-left:6px">&#8593; Push layout to phones</button>
       <div style="margin-left:auto;display:flex;gap:5px">
@@ -732,6 +733,7 @@
         <marker id="arrow-foh"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
       </defs>
       <g id="node-edges"></g>
+      <g id="node-guide"></g>
       <g id="node-nodes"></g>
       <g id="node-labels"></g>
     </svg>
@@ -958,10 +960,48 @@
 <!-- Shares & Activity Panel -->
 <div id="activity-panel" style="display:none;padding:16px;height:calc(100vh - 140px);overflow:auto">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-    <h2 style="font-family:var(--cond);font-size:18px;margin:0">📈 Sync Activity</h2>
-    <span style="color:var(--muted);font-size:12px;font-family:var(--mono)">Live history of all project changes across desktop and rigger devices</span>
-    <button onclick="_activityLog=[];renderActivityLog()" style="margin-left:auto;padding:4px 10px;background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;cursor:pointer">Clear</button>
+    <h2 style="font-family:var(--cond);font-size:18px;margin:0">📈 Activity Log</h2>
+    <span style="color:var(--muted);font-size:12px;font-family:var(--mono)">All project changes — newest first</span>
+    <button onclick="exportActivityCsv()" style="margin-left:auto;padding:4px 10px;background:rgba(61,220,132,.1);border:1px solid var(--ok);color:var(--ok);border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--cond);font-weight:700">⬇ Export CSV</button>
+    <button onclick="if(confirm('Clear activity log? Cannot be undone.')){_activityLog=[];renderActivityLog();}" style="padding:4px 10px;background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;cursor:pointer">Clear</button>
   </div>
+
+  <!-- Filter bar -->
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+    <input id="alog-search" placeholder="🔍 Search devices, details, names…" oninput="renderActivityLog()"
+      style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--mono)">
+
+    <select id="alog-action-filter" onchange="renderActivityLog()"
+      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 8px;font-size:12px;cursor:pointer">
+      <option value="">All actions</option>
+      <option value="edit">✏ Edit</option>
+      <option value="note">📝 Note</option>
+      <option value="add">➕ Add</option>
+      <option value="delete">🗑 Delete</option>
+      <option value="merge">🔄 Merge</option>
+      <option value="push">☁ Push</option>
+      <option value="error">⚠ Error</option>
+    </select>
+
+    <select id="alog-by-filter" onchange="renderActivityLog()"
+      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 8px;font-size:12px;cursor:pointer">
+      <option value="">All sources</option>
+      <option value="desktop">💻 Desktop</option>
+      <option value="rigger">📱 Rigger</option>
+      <option value="mobile">📱 Mobile</option>
+    </select>
+
+    <select id="alog-when-filter" onchange="renderActivityLog()"
+      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 8px;font-size:12px;cursor:pointer">
+      <option value="">Any time</option>
+      <option value="1h">Last hour</option>
+      <option value="24h">Last 24h</option>
+      <option value="7d">Last 7 days</option>
+    </select>
+
+    <span id="alog-count" style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap"></span>
+  </div>
+
   <table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead>
       <tr style="border-bottom:1px solid var(--border)">
@@ -1184,6 +1224,7 @@
       <button class="fbi-filter" data-f="idea" onclick="_setFbiFilter('idea')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">💡 Idea</button>
       <button class="fbi-filter" data-f="comment" onclick="_setFbiFilter('comment')" style="padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11px;font-family:var(--cond);font-weight:700;cursor:pointer">💬 Comment</button>
       <button onclick="loadFeedbackInbox()" title="Refresh" style="margin-left:auto;padding:5px 12px;border-radius:5px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;font-size:11px">↻ Refresh</button>
+      <button onclick="exportFeedbackCsv()" title="Export filtered list to CSV" style="padding:5px 12px;border-radius:5px;border:1px solid var(--ok);background:rgba(61,220,132,.1);color:var(--ok);cursor:pointer;font-size:11px;font-family:var(--cond);font-weight:700">⬇ Export CSV</button>
     </div>
     <div id="fbi-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg);min-height:200px">
       <div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>
@@ -1513,7 +1554,7 @@ var TYPE_PSU    = 'Power supply';
 var TYPE_ADAPTER = 'Adapter';
 
 var LASER_CHECKS  = ['Mounted','Pointed','Cabled'];
-var SMOKE_CHECKS  = ['Placed','Fan','CO2','Regulator','Power cable'];
+var SMOKE_CHECKS  = ['Placed','Fan','CO2','Regulator','Power cable','Output tested'];
 var DISTRO_CHECKS = ['Racked','Cabled','Labelled','Tested'];
 var PSU_CHECKS    = ['Placed','Cabled','Tested'];
 var SMOKE_NOTE_OPTS = ['Needs: power source','Change 230v/110v','Needs: tube'];
@@ -2385,7 +2426,7 @@ function renderTable() {
   cols.push('<th>Status</th>');
   // Per-type check columns — NOT shown in All view (too wide)
   if (isLaser)  cols.push('<th>Pointed</th>', '<th>Mounted</th>', '<th>Cabled</th>');
-  if (isSmoke)  cols.push('<th>Placed</th>','<th>Fan</th>','<th>CO2</th>','<th>Reg</th>','<th>Pwr</th>');
+  if (isSmoke)  cols.push('<th>Placed</th>','<th>Fan</th>','<th>CO2</th>','<th>Reg</th>','<th>Pwr</th>','<th>Output</th>');
   if (isDistro) cols.push('<th title="Chain load downstream">Load W</th>','<th>Racked</th>','<th>Cabled</th>','<th>Labelled</th>','<th>Tested</th>');
   if (isPsu)    cols.push('<th title="PSU chain load">Load W</th>','<th>Placed</th>','<th>Cabled</th>','<th>Tested</th>');
   // All view: compact — just Load (if distro/PSU) and mounted time
@@ -2437,7 +2478,7 @@ function renderTable() {
     }
     if (isSmoke) {
       if (d.type === TYPE_SMOKE) {
-        ['Placed','Fan','CO2','Regulator','Power cable'].forEach(function(c) { chk += '<td>' + pill(gi,c,d.checks&&d.checks[c]) + '</td>'; });
+        ['Placed','Fan','CO2','Regulator','Power cable','Output tested'].forEach(function(c) { chk += '<td>' + pill(gi,c,d.checks&&d.checks[c]) + '</td>'; });
       } else chk += '<td>&#8212;</td>'.repeat(5);
     }
     if (isDistro) {
@@ -2667,12 +2708,18 @@ function toggleCheck(gi, check) {
 
 function setField(gi, field, val) {
   _pushUndo(field + " on " + (devices[gi]&&devices[gi].device_id||gi));
+  var prev = devices[gi][field];
   devices[gi][field] = val;
   // Mark device as locally dirty (edited since last push)
   if(devices[gi] && devices[gi].device_id){
     if(!window._localDirty) window._localDirty = {};
     if(!window._localDirty[devices[gi].device_id]) window._localDirty[devices[gi].device_id] = {};
     window._localDirty[devices[gi].device_id][field] = val;
+  }
+  // Log activity (skip noisy fields, only log meaningful ones)
+  if(devices[gi] && devices[gi].device_id){
+    var detail = field+': '+(prev===undefined||prev===''?'(empty)':String(prev).slice(0,40))+' → '+(String(val).slice(0,40)||'(empty)');
+    _logActivity(field==='notes'?'note':'edit', devices[gi].device_id, detail);
   }
   if (field !== 'notes' && field !== 'location') renderTable();
   autoSave();
@@ -2681,6 +2728,8 @@ function setField(gi, field, val) {
 function deleteDevice(gi) {
   _pushUndo("delete " + (devices[gi]&&devices[gi].device_id||gi));
   if (!confirm('Delete ' + (devices[gi].device_id || devices[gi].serial || '(unnamed)') + '?')) return;
+  var did = devices[gi].device_id || '(unnamed)';
+  _logActivity('delete', did, '');
   devices.splice(gi, 1); renderTable(); autoSave();
 }
 
@@ -4983,20 +5032,91 @@ function _logActivity(action, deviceId, detail, by) {
 function renderActivityLog() {
   var el = document.getElementById('activity-log-body');
   if(!el) return;
-  if(!_activityLog.length) {
-    el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No activity recorded yet. Start Live Sync to see rigger changes.</td></tr>';
+  // Read filters
+  var qEl = document.getElementById('alog-search');
+  var aEl = document.getElementById('alog-action-filter');
+  var bEl = document.getElementById('alog-by-filter');
+  var wEl = document.getElementById('alog-when-filter');
+  var q = qEl ? (qEl.value||'').trim().toLowerCase() : '';
+  var actFilter = aEl ? aEl.value : '';
+  var byFilter  = bEl ? bEl.value : '';
+  var whenFilter = wEl ? wEl.value : '';
+
+  var cutoff = 0;
+  if(whenFilter){
+    var now = Date.now();
+    if(whenFilter==='1h')  cutoff = now - 3600000;
+    if(whenFilter==='24h') cutoff = now - 86400000;
+    if(whenFilter==='7d')  cutoff = now - 7*86400000;
+  }
+
+  var list = (_activityLog || []).filter(function(e){
+    if(actFilter && e.action !== actFilter) return false;
+    if(byFilter){
+      var by = (e.by||'').toLowerCase();
+      if(byFilter === 'rigger' && by.indexOf('rigger') < 0) return false;
+      else if(byFilter === 'desktop' && by !== 'desktop') return false;
+      else if(byFilter === 'mobile' && by !== 'mobile' && by.indexOf('rigger') < 0) return false;
+    }
+    if(cutoff){
+      // e.at is "YYYY-MM-DD HH:MM:SS"
+      var t = Date.parse((e.at||'').replace(' ','T')+'Z');
+      if(isNaN(t) || t < cutoff) return false;
+    }
+    if(q){
+      var hay = (e.action+' '+e.device_id+' '+e.detail+' '+e.by+' '+e.project).toLowerCase();
+      if(hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Update count badge
+  var cnt = document.getElementById('alog-count');
+  if(cnt) cnt.textContent = list.length + ' / ' + (_activityLog||[]).length + ' entries';
+
+  if(!list.length) {
+    el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No matching activity</td></tr>';
     return;
   }
-  el.innerHTML = _activityLog.map(function(e) {
-    var col = e.action==='push'||e.action==='save'?'var(--ok)':e.action==='merge'?'var(--accent)':e.action==='error'?'var(--danger)':'var(--muted)';
+  // Already sorted newest-first by _logActivity (uses unshift)
+  el.innerHTML = list.map(function(e) {
+    var col = e.action==='push'||e.action==='save'?'var(--ok)'
+            : e.action==='merge'?'var(--accent)'
+            : e.action==='delete'?'var(--danger)'
+            : e.action==='note'?'var(--warn)'
+            : e.action==='error'?'var(--danger)':'var(--muted)';
+    var icon = e.action==='note'?'📝 ':e.action==='delete'?'🗑 ':e.action==='add'?'➕ ':e.action==='edit'?'✏ ':e.action==='merge'?'🔄 ':e.action==='push'?'☁ ':e.action==='error'?'⚠ ':'';
     return '<tr>'
       +'<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--muted)">'+e.at+'</td>'
       +'<td style="font-family:var(--cond);font-weight:700;color:var(--accent);font-size:12px">'+e.by+'</td>'
       +'<td style="font-size:12px;font-family:var(--mono)">'+e.project+'</td>'
-      +'<td style="color:'+col+';font-size:12px;font-weight:700">'+e.action+'</td>'
-      +'<td style="font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis">'+e.device_id+(e.detail?' — '+e.detail:'')+'</td>'
+      +'<td style="color:'+col+';font-size:12px;font-weight:700">'+icon+e.action+'</td>'
+      +'<td style="font-size:12px;max-width:400px;overflow:hidden;text-overflow:ellipsis">'+_escHtml(e.device_id||'')+(e.detail?' — '+_escHtml(e.detail):'')+'</td>'
       +'</tr>';
   }).join('');
+}
+
+function exportActivityCsv(){
+  var list = _activityLog || [];
+  if(!list.length){ showToast('Nothing to export','warn'); return; }
+  function csvCell(v){
+    var s = String(v == null ? '' : v);
+    if(/[",\n\r]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+  var headers = ['time','by','project','action','device_id','detail'];
+  var rows = [headers.join(',')];
+  list.forEach(function(e){
+    rows.push([e.at, e.by, e.project, e.action, e.device_id, e.detail].map(csvCell).join(','));
+  });
+  var blob = new Blob(['\ufeff'+rows.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'buildert-activity-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  showToast('Exported '+list.length+' entries','ok');
 }
 function parsePayload(raw) {
   if(Array.isArray(raw)) return {devices:raw,specs:null,_project_id:'',_pushed_at:''};
@@ -5117,6 +5237,80 @@ function deleteNodeMemo(id) {
   _nodeMemos = _nodeMemos.filter(function(m){return m.id!==id;});
   _saveMemos();
   renderNodeView();
+}
+function memoSaveText(id, text) {
+  var memo = _nodeMemos.find(function(m){return m.id===id;});
+  if(!memo) return;
+  memo.text = (text||'').slice(0, 1000);
+  _saveMemos();
+  autoSave();
+}
+
+// ── Center / orientation guide line ──────────────────────────────
+// Per stage. Stored as {x: number} — vertical line at SVG x coordinate.
+function _getGuideX() {
+  var s = _stages[_currentStageIdx];
+  if(!s) return null;
+  if(typeof s.guideX === 'number') return s.guideX;
+  return null;
+}
+function _setGuideX(x) {
+  var s = _stages[_currentStageIdx];
+  if(!s) return;
+  s.guideX = x;
+  autoSave();
+}
+function _toggleGuideLine() {
+  var cur = _getGuideX();
+  if(cur === null){
+    // Initialize at horizontal center of current viewport
+    var wrap = document.getElementById('node-canvas-wrap');
+    var defaultX = wrap ? (wrap.scrollLeft + wrap.clientWidth/2) / _nodeScale : 400;
+    _setGuideX(defaultX);
+    showToast('Guide line added — drag to reposition','ok');
+  } else {
+    var s = _stages[_currentStageIdx];
+    if(s) delete s.guideX;
+    autoSave();
+    showToast('Guide line removed','muted');
+  }
+  renderNodeView();
+}
+function _renderGuideLine() {
+  var g = document.getElementById('node-guide');
+  if(!g) return;
+  var gx = _getGuideX();
+  if(gx === null){ g.innerHTML = ''; return; }
+  var svg = document.getElementById('node-svg');
+  var height = svg ? parseInt(svg.getAttribute('height')||'2000') : 2000;
+  // Render: dashed cyan line + grab handle at top
+  g.innerHTML =
+    '<line x1="'+gx+'" y1="0" x2="'+gx+'" y2="'+(height+1000)+'" '
+    +'stroke="rgba(0,212,255,.6)" stroke-width="1.5" stroke-dasharray="6,5" pointer-events="none"/>'
+    // Top label
+    +'<g transform="translate('+gx+',8)" style="cursor:ew-resize" onmousedown="_guideStartDrag(event)">'
+    +  '<rect x="-26" y="0" width="52" height="16" rx="3" fill="#0a0c0f" stroke="rgba(0,212,255,.6)" stroke-width="1"/>'
+    +  '<text x="0" y="11" font-size="9" fill="rgba(0,212,255,.9)" font-family="monospace" text-anchor="middle" font-weight="700" letter-spacing="1">CENTER</text>'
+    +'</g>';
+}
+function _guideStartDrag(e) {
+  e.preventDefault(); e.stopPropagation();
+  var svg = document.getElementById('node-svg');
+  var wrap = document.getElementById('node-canvas-wrap');
+  if(!svg || !wrap) return;
+  var rect = svg.getBoundingClientRect();
+  function onMove(ev) {
+    var x = (ev.clientX - rect.left + wrap.scrollLeft) / _nodeScale;
+    _setGuideX(x);
+    _renderGuideLine();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    autoSave();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 function _renderMemos() {
   // Memos rendered inline in SVG by renderNodeView
@@ -5937,6 +6131,9 @@ function _lbCol(sigType, cable) {
   svg.setAttribute('height', Math.max(300, maxY));
   svg.style.minHeight='100%';
 
+  // Render the optional center/orientation guide line (sits behind nodes, above edges)
+  _renderGuideLine();
+
   // Re-apply zoom/pan transform after every render
   _applyNodeTransform();
 }
@@ -6201,7 +6398,9 @@ function nodeEdgeClick(e, gi) {
   var selSrcPwr = pop.querySelector('.ncp-src-pwr');
   if (selSrcPwr) selSrcPwr.addEventListener('change', function() {
     var v = this.value, d = devices[gi]; if (!d) return;
+    _pushUndo('pwr source on '+(d.device_id||gi));
     d.source_power = v; d.source_data = v; d.source = v;
+    _logActivity('edit', d.device_id||'', 'pwr source → '+v);
     saveAndRefresh();
   });
 
@@ -6209,6 +6408,7 @@ function nodeEdgeClick(e, gi) {
   var selCblPwr = pop.querySelector('.ncp-cbl-pwr');
   if (selCblPwr) selCblPwr.addEventListener('change', function() {
     var v = this.value, dv = devices[gi]; if (!dv) return;
+    _pushUndo('pwr cable on '+(dv.device_id||gi));
     dv.cable_power_in = v; dv.cable_in = v; dv.cable = v;
     var ckey = v.split('-')[0];
     var ct   = CABLE_TYPES.find(function(c){ return c.key===ckey; });
@@ -6216,6 +6416,7 @@ function nodeEdgeClick(e, gi) {
       dv.cable_data_in = v;
       if (dv.source_power) dv.source_data = dv.source_power;
     }
+    _logActivity('edit', dv.device_id||'', 'pwr cable → '+v);
     saveAndRefresh();
   });
 
@@ -6223,7 +6424,9 @@ function nodeEdgeClick(e, gi) {
   var selSrcDat = pop.querySelector('.ncp-src-dat');
   if (selSrcDat) selSrcDat.addEventListener('change', function() {
     var v = this.value, d = devices[gi]; if (!d) return;
+    _pushUndo('data source on '+(d.device_id||gi));
     d.source_data = v; if (!d.source) d.source = v;
+    _logActivity('edit', d.device_id||'', 'data source → '+v);
     saveAndRefresh();
   });
 
@@ -6231,15 +6434,19 @@ function nodeEdgeClick(e, gi) {
   var selCblDat = pop.querySelector('.ncp-cbl-dat');
   if (selCblDat) selCblDat.addEventListener('change', function() {
     var v = this.value, d = devices[gi]; if (!d) return;
+    _pushUndo('data cable on '+(d.device_id||gi));
     d.cable_data_in = v;
+    _logActivity('edit', d.device_id||'', 'data cable → '+v);
     saveAndRefresh();
   });
 
   // Disconnect
   pop.querySelector('.ncp-disconnect').addEventListener('click', function() {
     var dv = devices[gi]; if (!dv) return;
+    _pushUndo('disconnect '+(dv.device_id||gi));
     dv.source=''; dv.source_power=''; dv.source_data='';
     dv.cable_in=''; dv.cable=''; dv.cable_power_in=''; dv.cable_data_in='';
+    _logActivity('edit', dv.device_id||'', 'disconnected all cables');
     saveAndRefresh();
   });
 
@@ -8342,7 +8549,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.012',
+    version: 'v4.013',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -8441,6 +8648,34 @@ function _renderFbiList(){
 
 function _escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function exportFeedbackCsv(){
+  var list = _fbiList || [];
+  if(_fbiFilter !== 'all') list = list.filter(function(f){ return f.type === _fbiFilter; });
+  if(!list.length){ showToast('Nothing to export','warn'); return; }
+  function csvCell(v){
+    var s = String(v == null ? '' : v);
+    if(/[",\n\r]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+  var headers = ['date','type','from','project','client','version','message','id'];
+  var rows = [headers.join(',')];
+  list.forEach(function(f){
+    rows.push([
+      f.at || '', f.type || '', f.from || '', f.project || '',
+      f.client || '', f.version || '', (f.message||'').replace(/\r?\n/g,' '), f.id || ''
+    ].map(csvCell).join(','));
+  });
+  // Add UTF-8 BOM for Excel compatibility
+  var blob = new Blob(['\ufeff'+rows.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'buildert-feedback-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  showToast('Exported '+list.length+' entries','ok');
 }
 
 async function deleteFeedback(id){
