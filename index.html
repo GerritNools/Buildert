@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.953m</title>
+<title>WTU · Buildert v3.954m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.953m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.954m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -537,6 +537,35 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <button class="fab" id="fab" onclick="openSheet('fab')">+</button>
 <nav id="bottom-nav"></nav>
+
+<!-- Pack signoff overlay + sheet -->
+<div class="ovl" id="ovl-packsignoff" onclick="closeSheet('packsignoff')"></div>
+<div class="sheet" id="sheet-packsignoff">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">✎ Sign off pack list</div>
+  <div class="sheet-body">
+    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.5">
+      Confirm that all items on the pack list have been checked. Your sign-off will appear in the desktop activity log.
+    </p>
+
+    <label>Your name</label>
+    <input id="psg-name" type="text" placeholder="Your name" style="margin-bottom:10px">
+
+    <label>Stage</label>
+    <div id="psg-stage" style="font-family:var(--cond);font-weight:700;font-size:14px;color:var(--accent);padding:8px 10px;background:var(--panel);border-radius:6px;margin-bottom:10px;border:1px solid var(--border)">—</div>
+
+    <label>Items <span style="color:var(--muted);font-size:9px">(snapshot at sign-off)</span></label>
+    <div id="psg-summary" style="font-family:var(--mono);font-size:11px;color:var(--text);padding:8px 10px;background:var(--panel);border-radius:6px;margin-bottom:10px;border:1px solid var(--border);line-height:1.6">—</div>
+
+    <label>Optional note</label>
+    <textarea id="psg-note" rows="3" placeholder="Anything missing? Notes for the next shift…" style="margin-bottom:14px"></textarea>
+
+    <div style="display:flex;gap:8px">
+      <button class="sb sb-ghost" onclick="closeSheet('packsignoff')" style="flex:1">Cancel</button>
+      <button class="sb" onclick="submitPackSignoff()" style="flex:2;background:var(--ok);color:#000;font-weight:700">✓ Sign off</button>
+    </div>
+  </div>
+</div>
 
 <!-- Feedback overlay + sheet -->
 <div class="ovl" id="ovl-feedback" onclick="closeSheet('feedback')"></div>
@@ -926,6 +955,20 @@ function _mergePackShared(incoming){
     _packShared[cat] = merged;
   });
   try{ localStorage.setItem('brt_psh', JSON.stringify(_packShared)); }catch(e){}
+}
+
+function _mergePackSignoffs(incoming){
+  if(!Array.isArray(incoming)) return;
+  if(!window._packSignoffs) window._packSignoffs = [];
+  // Append incoming entries that we don't already have (dedupe by id)
+  var have = {};
+  window._packSignoffs.forEach(function(s){ if(s && s.id) have[s.id]=true; });
+  incoming.forEach(function(s){
+    if(s && s.id && !have[s.id]) window._packSignoffs.push(s);
+  });
+  // Sort by date asc
+  window._packSignoffs.sort(function(a,b){ return (a.at||'').localeCompare(b.at||''); });
+  try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
 }
 // Restore spec overrides on top of baked specs
 try{var _sov=localStorage.getItem('buildert_specs_overrides');if(_sov){var _sovObj=JSON.parse(_sov);Object.keys(_sovObj).forEach(function(k){if(SPECS[k])Object.assign(SPECS[k],_sovObj[k]);else SPECS[k]=_sovObj[k];});}}catch(e){}
@@ -1418,7 +1461,53 @@ function renderPack(){
     sharedHtml+='</div>';
   });
   sharedHtml+='</div>';
-  cont.innerHTML=stageHtml+devHtml+sharedHtml;
+
+  // ── Sign-off section ────────────────────────────────────────────
+  var signoffs = (window._packSignoffs || []);
+  var stageId = _mStages[_mCurrentStageIdx] ? _mStages[_mCurrentStageIdx].id : '';
+  var stageSignoffs = signoffs.filter(function(s){ return s.stageId === stageId; });
+  var signoffHtml = '<div style="padding:14px 12px 30px;border-top:1px solid var(--border)">'
+    + '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);padding:6px 0 10px">SIGN-OFF</div>';
+
+  if(stageSignoffs.length){
+    signoffHtml += '<div style="margin-bottom:12px">';
+    stageSignoffs.forEach(function(s){
+      var dt = s.at ? new Date(s.at).toLocaleString() : '';
+      signoffHtml += '<div style="background:rgba(61,220,132,.1);border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:8px"><span style="color:var(--ok);font-size:18px">✓</span>'
+        +   '<div style="flex:1"><div style="font-family:var(--cond);font-weight:700;color:var(--ok);font-size:14px">'+s.name+'</div>'
+        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+dt+(s.note?' · '+s.note:'')+'</div>'
+        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+s.checked+'/'+s.total+' items checked</div>'
+        +   '</div>'
+        + '</div></div>';
+    });
+    signoffHtml += '</div>';
+  }
+
+  // Calculate counts to show what's being signed off
+  var totalItems = 0, checkedItems = 0;
+  ['toolcase','office','spares'].forEach(function(cat){
+    (_packShared[cat]||[]).forEach(function(it){ totalItems++; if(it.checked) checkedItems++; });
+  });
+  // Add cable items from current stage
+  var stage = _mStages[_mCurrentStageIdx];
+  if(stage){
+    (stage.devices||[]).forEach(function(d){
+      if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
+    });
+  }
+
+  var ready = (totalItems > 0 && checkedItems === totalItems);
+  signoffHtml += '<button onclick="openPackSignoffSheet()" '
+    + 'style="width:100%;padding:14px;border-radius:10px;border:2px solid '+(ready?'var(--ok)':'var(--border2)')+';'
+    + 'background:'+(ready?'rgba(61,220,132,.15)':'var(--panel)')+';'
+    + 'color:'+(ready?'var(--ok)':'var(--muted)')+';'
+    + 'font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer">'
+    + (ready?'✓ Ready — sign off now':'✎ Sign off pack list ('+checkedItems+'/'+totalItems+')')
+    + '</button>';
+
+  signoffHtml += '</div>';
+  cont.innerHTML=stageHtml+devHtml+sharedHtml+signoffHtml;
 }
 function mPackSetStage(idx){if(!_mStages[idx])return;_mCurrentStageIdx=idx;devices=_mStages[idx].devices||[];_renderMobileStageBar();renderPack();}
 function _packPersist(){
@@ -2538,7 +2627,7 @@ function _mergeProjectNoConflict(data){
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
-  _mergePackShared(data.pack_shared);
+  _mergePackShared(data.pack_shared);_mergePackSignoffs(data.pack_signoffs);
   // Merge todos — add new ones from desktop, keep local edits
   if(Array.isArray(data.todos) && data.todos.length){
     _mTodosLoad();
@@ -2686,7 +2775,7 @@ function _mergeSmartFromFile(data){
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
-  _mergePackShared(data.pack_shared);
+  _mergePackShared(data.pack_shared);_mergePackSignoffs(data.pack_signoffs);
   // Merge todos — add new ones from desktop, keep local edits
   if(Array.isArray(data.todos) && data.todos.length){
     _mTodosLoad();
@@ -3348,6 +3437,7 @@ async function wPush(silent){
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
     pack_shared:_packShared,
+    pack_signoffs:window._packSignoffs||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
@@ -4825,6 +4915,88 @@ function _setFbType(t){
     b.style.color = active ? 'var(--accent)' : 'var(--muted)';
   });
 }
+// ── Pack list sign-off ────────────────────────────────────────────
+window._packSignoffs = [];
+try{
+  var _pso = localStorage.getItem('brt_packsigns');
+  if(_pso) window._packSignoffs = JSON.parse(_pso) || [];
+}catch(e){}
+
+function openPackSignoffSheet(){
+  var stage = _mStages[_mCurrentStageIdx];
+  if(!stage){ showToast('No stage selected','warn'); return; }
+  // Prefill rigger name
+  var nameInp = document.getElementById('psg-name');
+  if(nameInp && !nameInp.value && window._riggerName) nameInp.value = window._riggerName;
+  // Show stage name
+  document.getElementById('psg-stage').textContent = stage.name;
+  // Build summary
+  var totalItems = 0, checkedItems = 0;
+  var summary = [];
+  ['toolcase','office','spares'].forEach(function(cat){
+    var arr = _packShared[cat] || [];
+    var done = arr.filter(function(x){return x.checked;}).length;
+    if(arr.length){
+      summary.push(cat+': '+done+'/'+arr.length);
+      totalItems += arr.length;
+      checkedItems += done;
+    }
+  });
+  var cableTotal = 0, cableDone = 0;
+  (stage.devices||[]).forEach(function(d){
+    if(d.cable_in){ cableTotal++; if(d.checks && d.checks.Cabled) cableDone++; }
+  });
+  if(cableTotal > 0){
+    summary.push('cables: '+cableDone+'/'+cableTotal);
+    totalItems += cableTotal;
+    checkedItems += cableDone;
+  }
+  document.getElementById('psg-summary').textContent =
+    summary.length ? summary.join(' · ')+' (total: '+checkedItems+'/'+totalItems+')' : 'Nothing to sign off';
+  // Clear note
+  var noteEl = document.getElementById('psg-note');
+  if(noteEl) noteEl.value = '';
+  openSheet('packsignoff');
+}
+
+function submitPackSignoff(){
+  var name = (document.getElementById('psg-name').value||'').trim() || (window._riggerName||'');
+  if(!name){ showToast('Please enter your name','warn'); return; }
+  var stage = _mStages[_mCurrentStageIdx];
+  if(!stage){ showToast('No stage','warn'); return; }
+  // Calculate totals
+  var totalItems = 0, checkedItems = 0;
+  ['toolcase','office','spares'].forEach(function(cat){
+    (_packShared[cat]||[]).forEach(function(it){ totalItems++; if(it.checked) checkedItems++; });
+  });
+  (stage.devices||[]).forEach(function(d){
+    if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
+  });
+  var entry = {
+    id: 'psg_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    at: new Date().toISOString(),
+    name: name,
+    stageId: stage.id,
+    stageName: stage.name,
+    note: (document.getElementById('psg-note').value||'').trim(),
+    total: totalItems,
+    checked: checkedItems,
+  };
+  window._packSignoffs = window._packSignoffs || [];
+  window._packSignoffs.push(entry);
+  try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+  // Log to activity (will be synced via _log when wPush runs)
+  if(typeof _logActivity === 'function'){
+    _logActivity('Pack signed by '+name, 'Stage '+stage.name+' — '+checkedItems+'/'+totalItems+' items'+(entry.note?' · '+entry.note:''));
+  }
+  _lastLocalEdit = Date.now();
+  // Push immediately so desktop sees it ASAP
+  if(_workerUrl && _projectKey){ wPush(true); }
+  showToast('✓ Signed off — desktop will see it on next sync','ok');
+  closeSheet('packsignoff');
+  renderPack();
+}
+
 function openFeedbackSheet(){
   // Prefill name from rigger if known
   var nameInp = document.getElementById('fb-from');
@@ -4846,7 +5018,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.953m',
+    version: 'v3.954m',
     message: msg,
   };
   showToast('Sending feedback…','info');
