@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.014</title>
+<title>WTUniverse · Buildert Editor v4.015</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.014</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.015</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -962,13 +962,16 @@
 <div id="activity-panel" style="display:none;padding:16px;height:calc(100vh - 140px);overflow:auto">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
     <h2 style="font-family:var(--cond);font-size:18px;margin:0">📈 Activity Log</h2>
-    <span style="color:var(--muted);font-size:12px;font-family:var(--mono)">All project changes — newest first</span>
+    <span style="color:var(--muted);font-size:12px;font-family:var(--mono)">All project changes</span>
     <button onclick="exportActivityCsv()" style="margin-left:auto;padding:4px 10px;background:rgba(61,220,132,.1);border:1px solid var(--ok);color:var(--ok);border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--cond);font-weight:700">⬇ Export CSV</button>
     <button onclick="if(confirm('Clear activity log? Cannot be undone.')){_activityLog=[];renderActivityLog();}" style="padding:4px 10px;background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;cursor:pointer">Clear</button>
   </div>
 
+  <!-- Stats summary -->
+  <div id="alog-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
+
   <!-- Filter bar -->
-  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
     <input id="alog-search" placeholder="🔍 Search devices, details, names…" oninput="renderActivityLog()"
       style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--mono)">
 
@@ -981,6 +984,7 @@
       <option value="delete">🗑 Delete</option>
       <option value="merge">🔄 Merge</option>
       <option value="push">☁ Push</option>
+      <option value="signoff">✓ Signoff</option>
       <option value="error">⚠ Error</option>
     </select>
 
@@ -1001,6 +1005,18 @@
     </select>
 
     <span id="alog-count" style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap"></span>
+  </div>
+
+  <!-- Active filter pill row + grouping toggle -->
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;font-size:11px">
+    <span id="alog-device-pill" style="display:none"></span>
+    <label style="display:flex;align-items:center;gap:5px;color:var(--muted);font-family:var(--mono);cursor:pointer">
+      <input type="checkbox" id="alog-group-day" onchange="renderActivityLog()"> Group by day
+    </label>
+    <label style="display:flex;align-items:center;gap:5px;color:var(--muted);font-family:var(--mono);cursor:pointer">
+      <input type="checkbox" id="alog-sort-asc" onchange="renderActivityLog()"> Oldest first
+    </label>
+    <span id="alog-quick-actions" style="margin-left:auto;color:var(--muted);font-style:italic">Tip: click a device ID below to filter to just that device</span>
   </div>
 
   <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1173,6 +1189,17 @@
       <button class="btn btn-ghost" onclick="openFeedbackInbox()" style="font-size:12px;color:var(--muted)">📥 View inbox</button>
       <button class="btn btn-ghost" onclick="document.getElementById('modal-feedback').classList.remove('open')">Cancel</button>
       <button class="btn btn-primary" onclick="submitDesktopFeedback()" style="margin-left:auto">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pack Signoff Detail modal -->
+<div class="modal-overlay" id="modal-signoff-detail">
+  <div class="modal" style="max-width:520px;width:96vw">
+    <h2 style="color:var(--ok);display:flex;align-items:center;gap:10px">✓ Pack list sign-off</h2>
+    <div id="signoff-detail-body" style="font-size:13px;line-height:1.6">—</div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-signoff-detail').classList.remove('open')">Close</button>
     </div>
   </div>
 </div>
@@ -5086,6 +5113,97 @@ function _logActivity(action, deviceId, detail, by) {
   }
 }
 
+var _alogDeviceFilter = ''; // active device-id filter
+
+function openSignoffDetail(at){
+  // Find the matching signoff entry by timestamp
+  var entry = (window._packSignoffs||[]).find(function(s){
+    return s && s.at && s.at.indexOf(at.replace(' ','T').slice(0,16)) === 0;
+  });
+  // Fallback: match in activity log
+  var actEntry = (_activityLog||[]).find(function(e){ return e.at === at && e.action === 'signoff'; });
+  var box = document.getElementById('signoff-detail-body');
+  if(!box){ return; }
+  if(entry){
+    var pct = entry.total > 0 ? Math.round(100*entry.checked/entry.total) : 0;
+    var dt = new Date(entry.at).toLocaleString();
+    box.innerHTML = '<div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin-bottom:12px">'
+      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Signed by</div>'
+      + '<div style="font-family:var(--cond);font-weight:700;font-size:14px;color:var(--ok)">'+_escHtml(entry.name||'?')+'</div>'
+      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Date</div>'
+      + '<div style="font-family:var(--mono);font-size:12px">'+_escHtml(dt)+'</div>'
+      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Stage</div>'
+      + '<div style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--accent)">'+_escHtml(entry.stageName||'?')+'</div>'
+      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Items</div>'
+      + '<div style="font-family:var(--mono);font-size:13px">'+entry.checked+' / '+entry.total+' checked <span style="color:'+(pct===100?'var(--ok)':pct>=80?'var(--warn)':'var(--danger)')+';font-weight:700">('+pct+'%)</span></div>'
+      + '</div>'
+      + (entry.note ? '<div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:8px"><div style="color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;margin-bottom:4px">RIGGER NOTE</div><div style="font-style:italic;line-height:1.5">'+_escHtml(entry.note)+'</div></div>' : '');
+  } else if(actEntry){
+    box.innerHTML = '<div style="font-family:var(--mono);font-size:12px;line-height:1.6">'
+      + '<div><b>Signed by:</b> '+_escHtml(actEntry.by||'?')+'</div>'
+      + '<div><b>When:</b> '+_escHtml(actEntry.at||'')+'</div>'
+      + '<div><b>Stage:</b> '+_escHtml(actEntry.device_id||'')+'</div>'
+      + '<div style="margin-top:8px">'+_escHtml(actEntry.detail||'')+'</div>'
+      + '</div>'
+      + '<p style="color:var(--muted);font-size:11px;font-style:italic;margin-top:10px">Full sign-off details not yet synced from mobile.</p>';
+  } else {
+    box.innerHTML = '<p style="color:var(--muted)">Sign-off details not available.</p>';
+  }
+  document.getElementById('modal-signoff-detail').classList.add('open');
+}
+
+function _alogSetDeviceFilter(did){
+  _alogDeviceFilter = did || '';
+  var pill = document.getElementById('alog-device-pill');
+  if(pill){
+    if(_alogDeviceFilter){
+      pill.style.display = '';
+      pill.innerHTML = '<span style="background:var(--accent);color:#000;padding:3px 10px;border-radius:12px;font-family:var(--mono);font-size:11px;font-weight:700">device: '+_escHtml(_alogDeviceFilter)+'</span> '
+        +'<button onclick="_alogSetDeviceFilter(\'\')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px" title="Clear filter">✕</button>';
+    } else {
+      pill.style.display = 'none';
+      pill.innerHTML = '';
+    }
+  }
+  renderActivityLog();
+}
+
+function _alogRenderStats(filteredList, allList){
+  var box = document.getElementById('alog-stats');
+  if(!box) return;
+  // Compute stats over filtered list
+  var counts = {edit:0,note:0,add:0,delete:0,merge:0,push:0,signoff:0,error:0,other:0};
+  var byUsers = {};
+  var devices = {};
+  var todayStr = new Date().toISOString().slice(0,10);
+  var todayCount = 0;
+  filteredList.forEach(function(e){
+    if(counts[e.action]!==undefined) counts[e.action]++;
+    else counts.other++;
+    if(e.by) byUsers[e.by] = (byUsers[e.by]||0)+1;
+    if(e.device_id) devices[e.device_id] = (devices[e.device_id]||0)+1;
+    if((e.at||'').slice(0,10) === todayStr) todayCount++;
+  });
+  function card(label, value, color){
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px">'
+      + '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:2px">'+label+'</div>'
+      + '<div style="font-family:var(--cond);font-weight:900;font-size:18px;color:'+(color||'var(--text)')+'">'+value+'</div>'
+      + '</div>';
+  }
+  var html = '';
+  html += card('SHOWING', filteredList.length+' / '+allList.length, 'var(--accent)');
+  html += card('TODAY', todayCount, 'var(--ok)');
+  html += card('EDITS', counts.edit, 'var(--text)');
+  html += card('NOTES', counts.note, 'var(--warn)');
+  html += card('ADDS', counts.add, 'var(--ok)');
+  html += card('DELETES', counts.delete, 'var(--danger)');
+  html += card('SIGNOFFS', counts.signoff, 'var(--ok)');
+  html += card('UNIQUE DEVICES', Object.keys(devices).length);
+  var topUser = Object.keys(byUsers).sort(function(a,b){return byUsers[b]-byUsers[a];})[0] || '—';
+  html += card('TOP USER', topUser+(byUsers[topUser]?' ('+byUsers[topUser]+')':''));
+  box.innerHTML = html;
+}
+
 function renderActivityLog() {
   var el = document.getElementById('activity-log-body');
   if(!el) return;
@@ -5094,6 +5212,8 @@ function renderActivityLog() {
   var aEl = document.getElementById('alog-action-filter');
   var bEl = document.getElementById('alog-by-filter');
   var wEl = document.getElementById('alog-when-filter');
+  var groupDay = (document.getElementById('alog-group-day')||{}).checked;
+  var sortAsc  = (document.getElementById('alog-sort-asc')||{}).checked;
   var q = qEl ? (qEl.value||'').trim().toLowerCase() : '';
   var actFilter = aEl ? aEl.value : '';
   var byFilter  = bEl ? bEl.value : '';
@@ -5107,7 +5227,8 @@ function renderActivityLog() {
     if(whenFilter==='7d')  cutoff = now - 7*86400000;
   }
 
-  var list = (_activityLog || []).filter(function(e){
+  var allList = (_activityLog || []);
+  var list = allList.filter(function(e){
     if(actFilter && e.action !== actFilter) return false;
     if(byFilter){
       var by = (e.by||'').toLowerCase();
@@ -5115,8 +5236,8 @@ function renderActivityLog() {
       else if(byFilter === 'desktop' && by !== 'desktop') return false;
       else if(byFilter === 'mobile' && by !== 'mobile' && by.indexOf('rigger') < 0) return false;
     }
+    if(_alogDeviceFilter && (e.device_id||'') !== _alogDeviceFilter) return false;
     if(cutoff){
-      // e.at is "YYYY-MM-DD HH:MM:SS"
       var t = Date.parse((e.at||'').replace(' ','T')+'Z');
       if(isNaN(t) || t < cutoff) return false;
     }
@@ -5129,28 +5250,56 @@ function renderActivityLog() {
 
   // Update count badge
   var cnt = document.getElementById('alog-count');
-  if(cnt) cnt.textContent = list.length + ' / ' + (_activityLog||[]).length + ' entries';
+  if(cnt) cnt.textContent = list.length + ' / ' + allList.length + ' entries';
+
+  // Render stats
+  _alogRenderStats(list, allList);
 
   if(!list.length) {
     el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No matching activity</td></tr>';
     return;
   }
-  // Already sorted newest-first by _logActivity (uses unshift)
-  el.innerHTML = list.map(function(e) {
+  // Sort
+  if(sortAsc){
+    list = list.slice().reverse(); // _activityLog stores newest-first, reverse for asc
+  }
+
+  var rowHtml = '';
+  var lastDay = null;
+  list.forEach(function(e){
+    if(groupDay){
+      var day = (e.at||'').slice(0,10);
+      if(day !== lastDay){
+        rowHtml += '<tr style="background:var(--panel)"><td colspan="5" style="padding:8px 12px;font-family:var(--cond);font-weight:700;color:var(--accent);font-size:12px;letter-spacing:1px;border-top:2px solid var(--accent)">'+day+'</td></tr>';
+        lastDay = day;
+      }
+    }
     var col = e.action==='push'||e.action==='save'?'var(--ok)'
             : e.action==='merge'?'var(--accent)'
             : e.action==='delete'?'var(--danger)'
             : e.action==='note'?'var(--warn)'
+            : e.action==='signoff'?'var(--ok)'
             : e.action==='error'?'var(--danger)':'var(--muted)';
-    var icon = e.action==='note'?'📝 ':e.action==='delete'?'🗑 ':e.action==='add'?'➕ ':e.action==='edit'?'✏ ':e.action==='merge'?'🔄 ':e.action==='push'?'☁ ':e.action==='error'?'⚠ ':'';
-    return '<tr>'
+    var icon = e.action==='note'?'📝 ':e.action==='delete'?'🗑 ':e.action==='add'?'➕ ':e.action==='edit'?'✏ ':e.action==='merge'?'🔄 ':e.action==='push'?'☁ ':e.action==='signoff'?'✓ ':e.action==='error'?'⚠ ':'';
+    var detailHtml = '';
+    if(e.action === 'signoff'){
+      // Find the matching signoff entry for full detail
+      var did = e.device_id || '';
+      var dt = _escHtml(e.detail||'');
+      detailHtml = '<a href="#" onclick="event.preventDefault();openSignoffDetail(\''+(e.at||'').replace(/\'/g,"")+'\')" style="color:var(--ok);text-decoration:underline">'+_escHtml(did)+(dt?' — '+dt:'')+'</a>';
+    } else {
+      var devClick = e.device_id ? '<a href="#" onclick="event.preventDefault();_alogSetDeviceFilter(\''+_escHtml(e.device_id).replace(/\'/g,"")+'\')" style="color:var(--accent);text-decoration:none">'+_escHtml(e.device_id)+'</a>' : '';
+      detailHtml = devClick + (e.detail?' — '+_escHtml(e.detail):'');
+    }
+    rowHtml += '<tr>'
       +'<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--muted)">'+e.at+'</td>'
-      +'<td style="font-family:var(--cond);font-weight:700;color:var(--accent);font-size:12px">'+e.by+'</td>'
-      +'<td style="font-size:12px;font-family:var(--mono)">'+e.project+'</td>'
+      +'<td style="font-family:var(--cond);font-weight:700;color:var(--accent);font-size:12px">'+_escHtml(e.by||'')+'</td>'
+      +'<td style="font-size:12px;font-family:var(--mono)">'+_escHtml(e.project||'')+'</td>'
       +'<td style="color:'+col+';font-size:12px;font-weight:700">'+icon+e.action+'</td>'
-      +'<td style="font-size:12px;max-width:400px;overflow:hidden;text-overflow:ellipsis">'+_escHtml(e.device_id||'')+(e.detail?' — '+_escHtml(e.detail):'')+'</td>'
+      +'<td style="font-size:12px;max-width:400px;overflow:hidden;text-overflow:ellipsis">'+detailHtml+'</td>'
       +'</tr>';
-  }).join('');
+  });
+  el.innerHTML = rowHtml;
 }
 
 function exportActivityCsv(){
@@ -8611,7 +8760,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.014',
+    version: 'v4.015',
     message: msg,
   };
   showToast('Sending feedback…','info');
