@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.018</title>
+<title>WTUniverse · Buildert Editor v4.019</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.018</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.019</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4178,6 +4178,10 @@ function _mergeProjectNoConflict(data) {
   }
   window._mobileChanged = {};
   _packSpares = data.pack_spares || [];
+  // Backfill ids on legacy items (so additive merge by id works)
+  _packSpares.forEach(function(s,i){
+    if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
+  });
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
   // Pack list signoffs from mobile riggers
   if(Array.isArray(data.pack_signoffs) && data.pack_signoffs.length){
@@ -7028,7 +7032,7 @@ function _cableLabel(key) {
 }
 
 function packAddSpare() {
-  _packSpares.push({qty:1, desc:'', checked:false});
+  _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5), qty:1, desc:'', checked:false});
   renderPackList();
   // Focus the new description field
   var rows = document.querySelectorAll('#pack-spares-table tbody tr');
@@ -8826,7 +8830,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.018',
+    version: 'v4.019',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10000,6 +10004,17 @@ function fileNew(){
   // Full reset
   _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
   _packSpares=[]; _packShared={toolcase:[],office:[],spares:[]}; window._projectLog=[];
+  // Clear pack signoffs
+  window._packSignoffs = [];
+  window._seenSignoffIds = {};
+  try{ localStorage.removeItem('brt_packsigns_desktop'); }catch(e){}
+  try{ localStorage.removeItem('brt_psh'); }catch(e){}
+  try{ localStorage.removeItem('buildert_pack_spares'); }catch(e){}
+  // Clear input fields so old project name/venue/date don't linger
+  ['proj-name','proj-venue','proj-date'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = '';
+  });
   // Keep specs — they belong to the stock DB, not the project
   loadSpecsFromStorage();
   _projectVersion=0; _projectBaseVersion=0;
@@ -10026,6 +10041,7 @@ function fileNew(){
   _dbxSetStatus('No project key — set name & push to create','var(--muted)');
   _markSaved();
   _renderStageBar(); renderTable(); _updateProjectBadge();
+  if(currentTab==='pack'){ renderPackList(); }
   if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
   showToast('New project — add devices to get started','ok');
 }
