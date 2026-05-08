@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.958m</title>
+<title>WTU · Buildert v3.959m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.958m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.959m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -918,6 +918,10 @@ function _cableOpts(val, devConn, srcConn, isData){
 var devices=[], project={name:'',venue:''};
 var _packSpares=[];
 try{var _ps=localStorage.getItem('brt_pspares');if(_ps){var _arr=JSON.parse(_ps);if(Array.isArray(_arr))_packSpares=_arr;}}catch(e){}
+// Backfill ids on legacy items (so additive merge by id works)
+_packSpares.forEach(function(s,i){
+  if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
+});
 var _packShared={toolcase:[],office:[],spares:[]};
 try{var _psh=localStorage.getItem('brt_psh');if(_psh)_packShared=Object.assign({toolcase:[],office:[],spares:[]},JSON.parse(_psh));}catch(e){}
 
@@ -1486,14 +1490,19 @@ function renderPack(){
     signoffHtml += '<div style="margin-bottom:12px">';
     stageSignoffs.forEach(function(s){
       var dt = s.at ? new Date(s.at).toLocaleString() : '';
+      var safeId = (s.id||'').replace(/'/g,"");
       signoffHtml += '<div style="background:rgba(61,220,132,.1);border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-bottom:6px">'
         + '<div style="display:flex;align-items:center;gap:8px"><span style="color:var(--ok);font-size:18px">✓</span>'
         +   '<div style="flex:1"><div style="font-family:var(--cond);font-weight:700;color:var(--ok);font-size:14px">'+s.name+'</div>'
         +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+dt+(s.note?' · '+s.note:'')+'</div>'
         +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+s.checked+'/'+s.total+' items checked</div>'
         +   '</div>'
+        +   '<button onclick="mDeleteSignoff(\''+safeId+'\')" title="Delete this sign-off" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:5px;padding:4px 8px;font-size:14px;cursor:pointer">🗑</button>'
         + '</div></div>';
     });
+    if(stageSignoffs.length > 1){
+      signoffHtml += '<button onclick="mClearStageSignoffs()" style="width:100%;padding:8px;background:transparent;border:1px dashed var(--border2);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--mono)">🗑 Clear all sign-offs for this stage</button>';
+    }
     signoffHtml += '</div>';
   }
 
@@ -1571,9 +1580,36 @@ function mPackSharedAdd(cat){
     }
   },60);
 }
+function mDeleteSignoff(id){
+  if(!id || !window._packSignoffs) return;
+  var s = window._packSignoffs.find(function(x){return x && x.id === id;});
+  if(!s) return;
+  if(!confirm('Delete sign-off by '+s.name+' ('+(s.stageName||'')+')?\n\nNote: this only removes it locally. If desktop has already pulled, it will still appear there.')) return;
+  window._packSignoffs = window._packSignoffs.filter(function(x){return x && x.id !== id;});
+  try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+  _lastLocalEdit = Date.now();
+  if(_workerUrl && _projectKey){ wPush(true); }
+  renderPack();
+  showToast('Sign-off deleted','ok');
+}
+
+function mClearStageSignoffs(){
+  var stage = _mStages[_mCurrentStageIdx];
+  if(!stage || !window._packSignoffs) return;
+  var n = window._packSignoffs.filter(function(s){return s && s.stageId === stage.id;}).length;
+  if(!n) return;
+  if(!confirm('Clear all '+n+' sign-off'+(n===1?'':'s')+' for stage "'+stage.name+'"?')) return;
+  window._packSignoffs = window._packSignoffs.filter(function(s){return s && s.stageId !== stage.id;});
+  try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+  _lastLocalEdit = Date.now();
+  if(_workerUrl && _projectKey){ wPush(true); }
+  renderPack();
+  showToast('Cleared '+n+' sign-off'+(n===1?'':'s'),'ok');
+}
+
 function packAddSpare(){
   if(!_packSpares) _packSpares=[];
-  _packSpares.push({qty:1,desc:'',checked:false});
+  _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),qty:1,desc:'',checked:false});
   _sparePersist();
   renderPack();
   // Focus the new description input
@@ -2648,7 +2684,17 @@ function _mergeProjectNoConflict(data){
       var local=_curMap[d.device_id];
       if(!local) return d;
       var merged=Object.assign({},d);
-      MFIELDS.forEach(function(f){ if(local[f]!==undefined&&local[f]!==null&&local[f]!=='') merged[f]=local[f]; });
+      MFIELDS.forEach(function(f){
+        if(f === 'checks'){
+          // Merge checks key-by-key: local wins per-key
+          if(local.checks && typeof local.checks === 'object'){
+            merged.checks = Object.assign({}, d.checks||{});
+            Object.keys(local.checks).forEach(function(k){ merged.checks[k] = local.checks[k]; });
+          }
+        } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
+          merged[f]=local[f];
+        }
+      });
       return merged;
     });
   }
@@ -2716,7 +2762,19 @@ function _mergeProjectNoConflict(data){
         if(!existing){ _localDevMap[d.device_id]=d; return; }
         // Prefer localStorage value for MOBILE_FIELDS — it's written on every edit
         MOBILE_FIELDS.forEach(function(f){
-          if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') existing[f]=d[f];
+          if(f === 'checks'){
+            // Merge checks key-by-key, never replace whole object
+            if(d.checks && typeof d.checks === 'object'){
+              if(!existing.checks || typeof existing.checks !== 'object') existing.checks = {};
+              Object.keys(d.checks).forEach(function(k){
+                // Preserve any TRUE check from either side (rigger's checked state wins)
+                if(d.checks[k]) existing.checks[k] = true;
+                else if(existing.checks[k] === undefined) existing.checks[k] = false;
+              });
+            }
+          } else if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') {
+            existing[f]=d[f];
+          }
         });
       });
     }catch(e){}
@@ -2873,7 +2931,19 @@ function _mergeSmartFromFile(data){
         if(!existing){ _localDevMap[d.device_id]=d; return; }
         // Prefer localStorage value for MOBILE_FIELDS — it's written on every edit
         MOBILE_FIELDS.forEach(function(f){
-          if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') existing[f]=d[f];
+          if(f === 'checks'){
+            // Merge checks key-by-key, never replace whole object
+            if(d.checks && typeof d.checks === 'object'){
+              if(!existing.checks || typeof existing.checks !== 'object') existing.checks = {};
+              Object.keys(d.checks).forEach(function(k){
+                // Preserve any TRUE check from either side (rigger's checked state wins)
+                if(d.checks[k]) existing.checks[k] = true;
+                else if(existing.checks[k] === undefined) existing.checks[k] = false;
+              });
+            }
+          } else if(d[f]!==undefined&&d[f]!==null&&d[f]!=='') {
+            existing[f]=d[f];
+          }
         });
       });
     }catch(e){}
@@ -5101,7 +5171,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.958m',
+    version: 'v3.959m',
     message: msg,
   };
   showToast('Sending feedback…','info');
