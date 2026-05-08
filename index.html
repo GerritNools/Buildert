@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.955m</title>
+<title>WTU · Buildert v3.956m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.955m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.956m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1444,23 +1444,8 @@ function renderPack(){
   } else { devHtml+='<p style="color:var(--muted);font-size:13px;padding:6px 0">No cables yet.</p>'; }
   devHtml+='</div></div>';
 
-  // Shared section
-  var CATS=[{key:'toolcase',label:'Toolcase',icon:'🧰',col:'var(--distro)'},{key:'office',label:'Office',icon:'📋',col:'var(--smoke)'},{key:'spares',label:'Spares',icon:'⚙️',col:'var(--laser)'}];
-  var sharedHtml='<div style="padding:0 12px 20px;margin-top:6px"><div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);padding:6px 0 8px">SHARED — ALL STAGES</div>';
-  CATS.forEach(function(cat){
-    var items=_packShared[cat.key]||[];
-    var done=items.filter(function(x){return x.checked;}).length;
-    sharedHtml+='<div class="pack-section"><div class="pack-section-title" style="display:flex;align-items:center;gap:6px;color:'+cat.col+'">'+cat.icon+' '+cat.label+(items.length?' <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+done+'/'+items.length+'</span>':'')+'<button data-pcat="'+cat.key+'" onclick="mPackSharedAdd(this.dataset.pcat)" style="margin-left:auto;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">+ Add</button></div>';
-    if(items.length){
-      sharedHtml+='<table class="pack-table"><thead><tr><th></th><th style="width:44px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
-      items.forEach(function(s,i){
-        sharedHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' data-pcat="'+cat.key+'" data-pidx="'+i+'" onclick="mPackSharedCheck(this.dataset.pcat,+this.dataset.pidx,this.checked)"></td><td><input type="number" min="1" value="'+s.qty+'" data-pcat="'+cat.key+'" data-pidx="'+i+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSharedQty(this.dataset.pcat,+this.dataset.pidx,this.value)"></td><td><input type="text" value="'+s.desc.replace(/"/g,'&quot;')+'" data-pcat="'+cat.key+'" data-pidx="'+i+'" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSharedDesc(this.dataset.pcat,+this.dataset.pidx,this.value)"></td><td><button data-pcat="'+cat.key+'" data-pidx="'+i+'" onclick="mPackSharedDel(this.dataset.pcat,+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td></tr>';
-      });
-      sharedHtml+='</tbody></table>';
-    } else { sharedHtml+='<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:3px 0">Empty</div>'; }
-    sharedHtml+='</div>';
-  });
-  sharedHtml+='</div>';
+  // Shared section — disabled (user doesn't use this)
+  var sharedHtml='';
 
   // ── Sign-off section ────────────────────────────────────────────
   var signoffs = (window._packSignoffs || []);
@@ -1484,12 +1469,8 @@ function renderPack(){
     signoffHtml += '</div>';
   }
 
-  // Calculate counts to show what's being signed off
+  // Calculate counts to show what's being signed off (cables only — shared section disabled)
   var totalItems = 0, checkedItems = 0;
-  ['toolcase','office','spares'].forEach(function(cat){
-    (_packShared[cat]||[]).forEach(function(it){ totalItems++; if(it.checked) checkedItems++; });
-  });
-  // Add cable items from current stage
   var stage = _mStages[_mCurrentStageIdx];
   if(stage){
     (stage.devices||[]).forEach(function(d){
@@ -3949,13 +3930,11 @@ var _mNW = 120, _mNH = 52;
 var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
 function _mNodeApplyTransform() {
-  var g1 = document.getElementById('mob-node-edges');
-  var g2 = document.getElementById('mob-node-nodes');
-  var g3 = document.getElementById('mob-node-labels');
   var tr = 'translate('+_mNPanX+','+_mNPanY+') scale('+_mNScale+')';
-  if(g1) g1.setAttribute('transform', tr);
-  if(g2) g2.setAttribute('transform', tr);
-  if(g3) g3.setAttribute('transform', tr);
+  ['mob-node-edges','mob-node-guide','mob-node-nodes','mob-node-labels'].forEach(function(id){
+    var g = document.getElementById(id);
+    if(g) g.setAttribute('transform', tr);
+  });
 }
 
 function mNodeZoom(f) {
@@ -4286,9 +4265,10 @@ function _mRenderGuideLine(svgHeight){
   var stage = _mStages[_mCurrentStageIdx];
   if(!stage || typeof stage.guideX !== 'number'){ g.innerHTML=''; return; }
   var gx = stage.guideX;
-  var h = svgHeight || 1000;
+  // Generous fixed range to cover the world at any zoom
+  var Y_TOP = -2000, Y_BOT = 5000;
   g.innerHTML =
-    '<line x1="'+gx+'" y1="0" x2="'+gx+'" y2="'+(h+200)+'" '
+    '<line x1="'+gx+'" y1="'+Y_TOP+'" x2="'+gx+'" y2="'+Y_BOT+'" '
     +'stroke="rgba(0,212,255,.55)" stroke-width="1.5" stroke-dasharray="6,5" pointer-events="none"/>'
     +'<g transform="translate('+gx+',8)" pointer-events="none">'
     +  '<rect x="-26" y="0" width="52" height="14" rx="3" fill="#0a0c0f" stroke="rgba(0,212,255,.55)" stroke-width="1"/>'
@@ -4964,15 +4944,6 @@ function openPackSignoffSheet(){
   // Build summary
   var totalItems = 0, checkedItems = 0;
   var summary = [];
-  ['toolcase','office','spares'].forEach(function(cat){
-    var arr = _packShared[cat] || [];
-    var done = arr.filter(function(x){return x.checked;}).length;
-    if(arr.length){
-      summary.push(cat+': '+done+'/'+arr.length);
-      totalItems += arr.length;
-      checkedItems += done;
-    }
-  });
   var cableTotal = 0, cableDone = 0;
   (stage.devices||[]).forEach(function(d){
     if(d.cable_in){ cableTotal++; if(d.checks && d.checks.Cabled) cableDone++; }
@@ -4995,11 +4966,8 @@ function submitPackSignoff(){
   if(!name){ showToast('Please enter your name','warn'); return; }
   var stage = _mStages[_mCurrentStageIdx];
   if(!stage){ showToast('No stage','warn'); return; }
-  // Calculate totals
+  // Calculate totals (cables only — shared section disabled)
   var totalItems = 0, checkedItems = 0;
-  ['toolcase','office','spares'].forEach(function(cat){
-    (_packShared[cat]||[]).forEach(function(it){ totalItems++; if(it.checked) checkedItems++; });
-  });
   (stage.devices||[]).forEach(function(d){
     if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
   });
@@ -5049,7 +5017,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.955m',
+    version: 'v3.956m',
     message: msg,
   };
   showToast('Sending feedback…','info');
