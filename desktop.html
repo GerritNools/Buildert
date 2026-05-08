@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.015</title>
+<title>WTUniverse · Buildert Editor v4.016</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.015</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.016</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -768,8 +768,16 @@
     <!-- Stage selection via main stage bar -->
     <div id="pack-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:calc(100vh - 310px)"></div>
   <div id="pack-manual-section" style="padding:0 12px 16px"></div>
-    <div style="margin-top:10px">
+    <div style="margin-top:10px;display:none">
       <div id="pack-shared-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-y:auto;max-height:360px"></div>
+    </div>
+    <!-- Sign-offs from mobile riggers -->
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <h3 style="font-family:var(--cond);font-size:14px;margin:0;color:var(--ok)">✓ Sign-offs</h3>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">— riggers' confirmations after pack list completion</span>
+      </div>
+      <div id="pack-signoffs-content" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;overflow-y:auto;max-height:300px"></div>
     </div>
   </div>
 
@@ -5116,36 +5124,27 @@ function _logActivity(action, deviceId, detail, by) {
 var _alogDeviceFilter = ''; // active device-id filter
 
 function openSignoffDetail(at){
-  // Find the matching signoff entry by timestamp
+  // Find by timestamp match (activity log entry → original signoff)
   var entry = (window._packSignoffs||[]).find(function(s){
-    return s && s.at && s.at.indexOf(at.replace(' ','T').slice(0,16)) === 0;
+    if(!s || !s.at) return false;
+    return s.at.indexOf(at.replace(' ','T').slice(0,16)) === 0;
   });
-  // Fallback: match in activity log
+  if(entry){
+    _showSignoffDetail(entry);
+    return;
+  }
+  // Fallback to activity log entry
   var actEntry = (_activityLog||[]).find(function(e){ return e.at === at && e.action === 'signoff'; });
   var box = document.getElementById('signoff-detail-body');
-  if(!box){ return; }
-  if(entry){
-    var pct = entry.total > 0 ? Math.round(100*entry.checked/entry.total) : 0;
-    var dt = new Date(entry.at).toLocaleString();
-    box.innerHTML = '<div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin-bottom:12px">'
-      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Signed by</div>'
-      + '<div style="font-family:var(--cond);font-weight:700;font-size:14px;color:var(--ok)">'+_escHtml(entry.name||'?')+'</div>'
-      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Date</div>'
-      + '<div style="font-family:var(--mono);font-size:12px">'+_escHtml(dt)+'</div>'
-      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Stage</div>'
-      + '<div style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--accent)">'+_escHtml(entry.stageName||'?')+'</div>'
-      + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Items</div>'
-      + '<div style="font-family:var(--mono);font-size:13px">'+entry.checked+' / '+entry.total+' checked <span style="color:'+(pct===100?'var(--ok)':pct>=80?'var(--warn)':'var(--danger)')+';font-weight:700">('+pct+'%)</span></div>'
-      + '</div>'
-      + (entry.note ? '<div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:8px"><div style="color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;margin-bottom:4px">RIGGER NOTE</div><div style="font-style:italic;line-height:1.5">'+_escHtml(entry.note)+'</div></div>' : '');
-  } else if(actEntry){
+  if(!box) return;
+  if(actEntry){
     box.innerHTML = '<div style="font-family:var(--mono);font-size:12px;line-height:1.6">'
       + '<div><b>Signed by:</b> '+_escHtml(actEntry.by||'?')+'</div>'
       + '<div><b>When:</b> '+_escHtml(actEntry.at||'')+'</div>'
       + '<div><b>Stage:</b> '+_escHtml(actEntry.device_id||'')+'</div>'
       + '<div style="margin-top:8px">'+_escHtml(actEntry.detail||'')+'</div>'
       + '</div>'
-      + '<p style="color:var(--muted);font-size:11px;font-style:italic;margin-top:10px">Full sign-off details not yet synced from mobile.</p>';
+      + '<p style="color:var(--muted);font-size:11px;font-style:italic;margin-top:10px">Tip: full sign-off detail also visible in the Pack list page.</p>';
   } else {
     box.innerHTML = '<p style="color:var(--muted)">Sign-off details not available.</p>';
   }
@@ -7077,15 +7076,36 @@ function packPrint(printAll) {
   }
 
   // Shared items
-  var cats=[{key:'toolcase',label:'Toolcase'},{key:'office',label:'Office'},{key:'spares',label:'Spares'}];
-  cats.forEach(function(cat){
-    var items=_packShared[cat.key]||[];
-    if(!items.length) return;
-    bodyHtml+='<div class="section"><div class="sec-title">Shared — '+cat.label+'</div>';
+  // Manual extra items (the user-typed spares list at the bottom of the pack tab)
+  if(Array.isArray(_packSpares) && _packSpares.length){
+    bodyHtml+='<div class="section"><div class="sec-title">Extra Items</div>';
     bodyHtml+='<table><thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
-    items.forEach(function(s){bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td style="font-weight:bold">'+s.qty+'×</td><td>'+s.desc+'</td></tr>';});
+    _packSpares.forEach(function(s){
+      // Skip empty rows
+      if(!s.desc && !s.qty) return;
+      bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td style="font-weight:bold">'+(s.qty||1)+'×</td><td>'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
+    });
     bodyHtml+='</tbody></table></div>';
-  });
+  }
+
+  // Pack list sign-offs (from mobile riggers)
+  var sigList = (window._packSignoffs||[]).slice();
+  if(sigList.length){
+    sigList.sort(function(a,b){return (a.at||'').localeCompare(b.at||'');});
+    bodyHtml+='<div class="section"><div class="sec-title">Sign-offs</div>';
+    bodyHtml+='<table><thead><tr><th>When</th><th>Stage</th><th>By</th><th>Items</th><th>Note</th></tr></thead><tbody>';
+    sigList.forEach(function(s){
+      var dt = s.at ? new Date(s.at).toLocaleString() : '';
+      bodyHtml+='<tr>'
+        +'<td style="font-family:monospace;font-size:10px">'+dt+'</td>'
+        +'<td>'+(s.stageName||'').replace(/</g,'&lt;')+'</td>'
+        +'<td><b>'+(s.name||'?').replace(/</g,'&lt;')+'</b></td>'
+        +'<td>'+(s.checked||0)+'/'+(s.total||0)+'</td>'
+        +'<td style="font-style:italic">'+(s.note||'').replace(/</g,'&lt;')+'</td>'
+        +'</tr>';
+    });
+    bodyHtml+='</tbody></table></div>';
+  }
 
   var win=window.open('','_blank','width=900,height=700');
   win.document.write('<!DOCTYPE html><html><head><title>'+fileTitle+'</title>'
@@ -8296,7 +8316,7 @@ function _spRenderLog() {
   // Populate stage filter dropdown
   var stgSel=document.getElementById('sp-log-stage');
   if(stgSel){ var cur=stgSel.value; stgSel.innerHTML='<option value="">All stages</option>'+_stages.map(function(s){return '<option value="'+s.id+'"'+(cur===s.id?' selected':'')+'>'+s.name+'</option>';}).join(''); }
-  var log = (window._projectLog || []).slice().reverse();
+  var log = (window._projectLog || []).slice().sort(function(a,b){return (b.at||'').localeCompare(a.at||'');});
 
   // Build unique rigger list for filter chips
   var riggers = [];
@@ -8760,7 +8780,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.015',
+    version: 'v4.016',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10527,6 +10547,64 @@ function renderPackList() {
   }
   renderPackShared();
   _renderManualPackItems();
+  _renderPackSignoffs();
+}
+
+function _renderPackSignoffs(){
+  var el = document.getElementById('pack-signoffs-content');
+  if(!el) return;
+  var list = (window._packSignoffs||[]).slice();
+  if(!list.length){
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic">No sign-offs yet — riggers can confirm pack list completion from mobile</div>';
+    return;
+  }
+  // Newest first
+  list.sort(function(a,b){return (b.at||'').localeCompare(a.at||'');});
+  el.innerHTML = list.map(function(s){
+    var dt = s.at ? new Date(s.at).toLocaleString() : '—';
+    var pct = s.total > 0 ? Math.round(100*s.checked/s.total) : 0;
+    var pctColor = pct===100?'var(--ok)':pct>=80?'var(--warn)':'var(--danger)';
+    return '<div onclick="openSignoffDetailById(\''+(s.id||'').replace(/\'/g,"")+'\')" '
+      + 'style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin-bottom:8px;cursor:pointer;'
+      + 'background:rgba(61,220,132,.05);transition:background .15s" '
+      + 'onmouseover="this.style.background=\'rgba(61,220,132,.12)\'" '
+      + 'onmouseout="this.style.background=\'rgba(61,220,132,.05)\'">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+      +   '<span style="color:var(--ok);font-size:18px">✓</span>'
+      +   '<span style="font-family:var(--cond);font-weight:700;color:var(--ok);font-size:14px">'+_escHtml(s.name||'?')+'</span>'
+      +   '<span style="color:var(--muted);font-family:var(--mono);font-size:11px">'+_escHtml(s.stageName||'')+'</span>'
+      +   '<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:'+pctColor+';font-weight:700">'+s.checked+'/'+s.total+' ('+pct+'%)</span>'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:'+(s.note?'4px':'0')+'">'+dt+'</div>'
+      + (s.note ? '<div style="font-style:italic;color:var(--text);font-size:12px;line-height:1.4;padding-left:28px">"'+_escHtml(s.note)+'"</div>' : '')
+      + '<div style="font-size:10px;color:var(--accent);margin-top:4px;text-align:right">click for details →</div>'
+      + '</div>';
+  }).join('');
+}
+
+function openSignoffDetailById(id){
+  var entry = (window._packSignoffs||[]).find(function(s){return s && s.id === id;});
+  if(!entry){ showToast('Sign-off not found','warn'); return; }
+  _showSignoffDetail(entry);
+}
+
+function _showSignoffDetail(entry){
+  var box = document.getElementById('signoff-detail-body');
+  if(!box) return;
+  var pct = entry.total > 0 ? Math.round(100*entry.checked/entry.total) : 0;
+  var dt = new Date(entry.at).toLocaleString();
+  box.innerHTML = '<div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin-bottom:12px">'
+    + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Signed by</div>'
+    + '<div style="font-family:var(--cond);font-weight:700;font-size:14px;color:var(--ok)">'+_escHtml(entry.name||'?')+'</div>'
+    + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Date</div>'
+    + '<div style="font-family:var(--mono);font-size:12px">'+_escHtml(dt)+'</div>'
+    + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Stage</div>'
+    + '<div style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--accent)">'+_escHtml(entry.stageName||'?')+'</div>'
+    + '<div style="color:var(--muted);font-family:var(--mono);font-size:11px">Items</div>'
+    + '<div style="font-family:var(--mono);font-size:13px">'+entry.checked+' / '+entry.total+' checked <span style="color:'+(pct===100?'var(--ok)':pct>=80?'var(--warn)':'var(--danger)')+';font-weight:700">('+pct+'%)</span></div>'
+    + '</div>'
+    + (entry.note ? '<div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:8px"><div style="color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;margin-bottom:4px">RIGGER NOTE</div><div style="font-style:italic;line-height:1.5">'+_escHtml(entry.note)+'</div></div>' : '');
+  document.getElementById('modal-signoff-detail').classList.add('open');
 }
 
 var _manualPackItems = {}; // {stageKey: [{id, name, qty, note}]}
