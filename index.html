@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.957m</title>
+<title>WTU · Buildert v3.958m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.957m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.958m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1451,10 +1451,10 @@ function renderPack(){
   // Extra items section (manual list — single flat list, not categorised)
   var extraDone = (_packSpares||[]).filter(function(x){return x.checked;}).length;
   var extraTotal = (_packSpares||[]).length;
-  var extraHtml = '<div style="padding:0 12px 12px;margin-top:6px">'
-    + '<div style="display:flex;align-items:center;gap:6px;padding:6px 0 8px">'
-    +   '<span style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted)">EXTRA ITEMS</span>'
-    +   (extraTotal?'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+extraDone+'/'+extraTotal+'</span>':'')
+  var extraHtml = '<div class="pack-section" style="padding:0 12px 16px;margin-top:6px">'
+    + '<div class="pack-section-title" style="display:flex;align-items:center;gap:6px;color:var(--accent)">'
+    +   '🧰 Extra items'
+    +   (extraTotal?' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">'+extraDone+'/'+extraTotal+'</span>':'')
     +   '<button onclick="packAddSpare()" style="margin-left:auto;background:var(--accent);border:none;color:#000;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:var(--cond);font-weight:700">+ Add</button>'
     + '</div>';
   if(extraTotal){
@@ -1470,7 +1470,7 @@ function renderPack(){
     });
     extraHtml += '</tbody></table>';
   } else {
-    extraHtml += '<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:6px 0;font-style:italic">No extra items — tap + Add to add equipment, supplies, etc.</div>';
+    extraHtml += '<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:6px 0;font-style:italic">No extra items — tap + Add</div>';
   }
   extraHtml += '</div>';
   sharedHtml = extraHtml;
@@ -2727,7 +2727,16 @@ function _mergeProjectNoConflict(data){
         var local=_localDevMap[d.device_id];
         if(!local) return;
         MOBILE_FIELDS.forEach(function(f){
-          if(local[f]!==undefined && local[f]!==null && local[f]!=='') d[f]=local[f];
+          if(f === 'checks'){
+            // Merge checks key-by-key: local wins per-key, preserve incoming keys
+            if(local.checks && typeof local.checks === 'object'){
+              var merged = Object.assign({}, d.checks||{});
+              Object.keys(local.checks).forEach(function(k){ merged[k] = local.checks[k]; });
+              d.checks = merged;
+            }
+          } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
+            d[f]=local[f];
+          }
         });
       });
     });
@@ -2875,7 +2884,16 @@ function _mergeSmartFromFile(data){
         var local=_localDevMap[d.device_id];
         if(!local) return;
         MOBILE_FIELDS.forEach(function(f){
-          if(local[f]!==undefined && local[f]!==null && local[f]!=='') d[f]=local[f];
+          if(f === 'checks'){
+            // Merge checks key-by-key: local wins per-key, preserve incoming keys
+            if(local.checks && typeof local.checks === 'object'){
+              var merged = Object.assign({}, d.checks||{});
+              Object.keys(local.checks).forEach(function(k){ merged[k] = local.checks[k]; });
+              d.checks = merged;
+            }
+          } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
+            d[f]=local[f];
+          }
         });
       });
     });
@@ -5083,7 +5101,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.957m',
+    version: 'v3.958m',
     message: msg,
   };
   showToast('Sending feedback…','info');
