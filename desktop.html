@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.016</title>
+<title>WTUniverse · Buildert Editor v4.018</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.016</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.018</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4078,6 +4078,34 @@ function _mergeProjectNoConflict(data) {
     devices = _stages[_currentStageIdx].devices;
     window._mobileChanged = changed;
     window._mobileChangedBy = data._saved_by || 'mobile';
+    // Merge pack list signoffs from mobile (additive — never lose entries)
+    if(Array.isArray(data.pack_signoffs)){
+      if(!window._packSignoffs) window._packSignoffs = [];
+      var existingSig = {};
+      window._packSignoffs.forEach(function(s){ if(s && s.id) existingSig[s.id]=true; });
+      var newSig = data.pack_signoffs.filter(function(s){
+        if(!s || !s.id) return false;
+        if(existingSig[s.id]) return false;
+        existingSig[s.id] = true;
+        return true;
+      });
+      if(newSig.length){
+        window._packSignoffs = window._packSignoffs.concat(newSig);
+        try{ localStorage.setItem('brt_packsigns_desktop', JSON.stringify(window._packSignoffs)); }catch(e){}
+        // Log each new signoff to activity log so user is alerted
+        if(!window._seenSignoffIds) window._seenSignoffIds = {};
+        newSig.forEach(function(s){
+          if(window._seenSignoffIds[s.id]) return;
+          window._seenSignoffIds[s.id] = true;
+          _logActivity('signoff', s.stageName||'', s.name+' signed off — '+s.checked+'/'+s.total+' items'+(s.note?' · '+s.note:''), 'rigger');
+        });
+        // If the pack tab is open, refresh the signoffs panel right away
+        if(currentTab === 'pack' && typeof _renderPackSignoffs === 'function'){
+          _renderPackSignoffs();
+        }
+        showToast((data._saved_by||'Rigger')+' signed off pack list ✓','ok');
+      }
+    }
     // Merge activity log from mobile
     if(Array.isArray(data._log) && data._log.length){
       var existing = window._projectLog || [];
@@ -4152,21 +4180,29 @@ function _mergeProjectNoConflict(data) {
   _packSpares = data.pack_spares || [];
   if(data.pack_shared) { _packShared=Object.assign({toolcase:[],office:[],spares:[]},data.pack_shared); _packSharedSave(); }
   // Pack list signoffs from mobile riggers
-  if(Array.isArray(data.pack_signoffs)){
-    window._packSignoffs = data.pack_signoffs;
-    try{ localStorage.setItem('brt_packsigns_desktop', JSON.stringify(window._packSignoffs)); }catch(e){}
-    // Log new signoffs to activity log so user is alerted
+  if(Array.isArray(data.pack_signoffs) && data.pack_signoffs.length){
+    if(!window._packSignoffs) window._packSignoffs = [];
+    var existSig = {};
+    window._packSignoffs.forEach(function(s){ if(s && s.id) existSig[s.id]=true; });
+    var added = 0;
     data.pack_signoffs.forEach(function(s){
-      if(!s || !s.id) return;
+      if(!s || !s.id || existSig[s.id]) return;
+      existSig[s.id] = true;
+      window._packSignoffs.push(s);
+      added++;
+      // Log if recent
       if(!window._seenSignoffIds) window._seenSignoffIds = {};
       if(window._seenSignoffIds[s.id]) return;
       window._seenSignoffIds[s.id] = true;
-      // Only log if it's relatively recent (within last 30 days)
       var ageDays = (Date.now() - new Date(s.at||0).getTime())/86400000;
       if(ageDays < 30){
         _logActivity('signoff', s.stageName||'', s.name+' signed off — '+s.checked+'/'+s.total+' items'+(s.note?' · '+s.note:''), 'rigger');
       }
     });
+    try{ localStorage.setItem('brt_packsigns_desktop', JSON.stringify(window._packSignoffs)); }catch(e){}
+    if(currentTab === 'pack' && typeof _renderPackSignoffs === 'function'){
+      _renderPackSignoffs();
+    }
   }
   // Restore shares from project file (per-project, replaces previous project's shares)
   if(Array.isArray(data.shares)){
@@ -6849,6 +6885,16 @@ function _packSharedLoad(){try{var s=localStorage.getItem("brt_psh");if(s)_packS
 function _packSharedSave(){try{localStorage.setItem("brt_psh",JSON.stringify(_packShared));}catch(e){}}
 _packSharedLoad();
 
+// Restore pack signoffs from previous session
+window._packSignoffs = window._packSignoffs || [];
+try{
+  var _psoLocal = localStorage.getItem('brt_packsigns_desktop');
+  if(_psoLocal){
+    var arr = JSON.parse(_psoLocal);
+    if(Array.isArray(arr)) window._packSignoffs = arr;
+  }
+}catch(e){}
+
 function _packStageHtml(stageDevices) {
   // Returns {html, devices, cables} — does NOT touch the DOM
   // Sort devices according to _packSort
@@ -8780,7 +8826,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.016',
+    version: 'v4.018',
     message: msg,
   };
   showToast('Sending feedback…','info');
