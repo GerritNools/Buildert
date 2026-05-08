@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.956m</title>
+<title>WTU · Buildert v3.957m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.956m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.957m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -917,6 +917,7 @@ function _cableOpts(val, devConn, srcConn, isData){
 // ── State ──────────────────────────────────────────────────────────
 var devices=[], project={name:'',venue:''};
 var _packSpares=[];
+try{var _ps=localStorage.getItem('brt_pspares');if(_ps){var _arr=JSON.parse(_ps);if(Array.isArray(_arr))_packSpares=_arr;}}catch(e){}
 var _packShared={toolcase:[],office:[],spares:[]};
 try{var _psh=localStorage.getItem('brt_psh');if(_psh)_packShared=Object.assign({toolcase:[],office:[],spares:[]},JSON.parse(_psh));}catch(e){}
 
@@ -1447,6 +1448,33 @@ function renderPack(){
   // Shared section — disabled (user doesn't use this)
   var sharedHtml='';
 
+  // Extra items section (manual list — single flat list, not categorised)
+  var extraDone = (_packSpares||[]).filter(function(x){return x.checked;}).length;
+  var extraTotal = (_packSpares||[]).length;
+  var extraHtml = '<div style="padding:0 12px 12px;margin-top:6px">'
+    + '<div style="display:flex;align-items:center;gap:6px;padding:6px 0 8px">'
+    +   '<span style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted)">EXTRA ITEMS</span>'
+    +   (extraTotal?'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+extraDone+'/'+extraTotal+'</span>':'')
+    +   '<button onclick="packAddSpare()" style="margin-left:auto;background:var(--accent);border:none;color:#000;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:var(--cond);font-weight:700">+ Add</button>'
+    + '</div>';
+  if(extraTotal){
+    extraHtml += '<table class="pack-table"><thead><tr><th></th><th style="width:44px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
+    _packSpares.forEach(function(s,i){
+      var safeDesc = (s.desc||'').replace(/"/g,'&quot;');
+      extraHtml += '<tr>'
+        + '<td><input type="checkbox" '+(s.checked?'checked':'')+' data-pidx="'+i+'" onclick="mPackSpareCheck(+this.dataset.pidx,this.checked)"></td>'
+        + '<td><input type="number" min="1" value="'+(s.qty||1)+'" data-pidx="'+i+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSpareQty(+this.dataset.pidx,this.value)"></td>'
+        + '<td><input type="text" value="'+safeDesc+'" data-pidx="'+i+'" placeholder="Item…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSpareDesc(+this.dataset.pidx,this.value)"></td>'
+        + '<td><button data-pidx="'+i+'" onclick="mPackSpareDel(+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td>'
+        + '</tr>';
+    });
+    extraHtml += '</tbody></table>';
+  } else {
+    extraHtml += '<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:6px 0;font-style:italic">No extra items — tap + Add to add equipment, supplies, etc.</div>';
+  }
+  extraHtml += '</div>';
+  sharedHtml = extraHtml;
+
   // ── Sign-off section ────────────────────────────────────────────
   var signoffs = (window._packSignoffs || []);
   var stageId = _mStages[_mCurrentStageIdx] ? _mStages[_mCurrentStageIdx].id : '';
@@ -1543,7 +1571,45 @@ function mPackSharedAdd(cat){
     }
   },60);
 }
-function packAddSpare(){_packSpares.push({qty:1,desc:'',checked:false});renderPack();}
+function packAddSpare(){
+  if(!_packSpares) _packSpares=[];
+  _packSpares.push({qty:1,desc:'',checked:false});
+  _sparePersist();
+  renderPack();
+  // Focus the new description input
+  setTimeout(function(){
+    var rows = document.querySelectorAll('table.pack-table tbody tr');
+    if(rows.length){
+      var last = rows[rows.length-1];
+      var inp = last.querySelector('input[type="text"]');
+      if(inp) inp.focus();
+    }
+  }, 60);
+}
+function _spareSet(i, key, val){
+  if(!_packSpares || !_packSpares[i]) return;
+  _packSpares[i][key] = val;
+  _sparePersist();
+}
+function _sparePersist(){
+  try{ localStorage.setItem('brt_pspares', JSON.stringify(_packSpares)); }catch(e){}
+  _lastLocalEdit = Date.now();
+  if(_workerUrl && _projectKey){
+    clearTimeout(window._sparePushTimer);
+    window._sparePushTimer = setTimeout(function(){ wPush(true); }, 1500);
+  }
+}
+function mPackSpareCheck(i, v){ _spareSet(i,'checked',!!v); _logActivity('Extra item','Checked '+(_packSpares[i].desc||'(item)')); }
+function mPackSpareQty(i, v){ _spareSet(i,'qty', parseInt(v)||1); }
+function mPackSpareDesc(i, v){ _spareSet(i,'desc', v); }
+function mPackSpareDel(i){
+  if(!_packSpares || !_packSpares[i]) return;
+  var name = _packSpares[i].desc || '(item)';
+  _packSpares.splice(i,1);
+  _logActivity('Extra item','Deleted '+name);
+  _sparePersist();
+  renderPack();
+}
 
 // ── Specs tab ─────────────────────────────────────────────────────
 var _spExpanded = {};
@@ -2586,7 +2652,7 @@ function _mergeProjectNoConflict(data){
       return merged;
     });
   }
-  _packSpares=data.pack_spares||[];
+  if((Date.now()-(_lastLocalEdit||0))>10000)_packSpares=data.pack_spares||[];
   if(data.project){
     project=Object.assign(project,data.project);
     var ip=data.project.anbernic_ip||'';
@@ -2736,7 +2802,7 @@ function _mergeSmartFromFile(data){
       return merged;
     });
   }
-  _packSpares = data.pack_spares || [];
+  if((Date.now()-(_lastLocalEdit||0))>10000) _packSpares = data.pack_spares || [];
   if(data.project){
     project = Object.assign(project, data.project);
     var pn=document.getElementById('proj-name'); var pv=document.getElementById('proj-venue');
@@ -5017,7 +5083,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.956m',
+    version: 'v3.957m',
     message: msg,
   };
   showToast('Sending feedback…','info');
