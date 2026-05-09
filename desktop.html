@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.021</title>
+<title>WTUniverse · Buildert Editor v4.022</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.021</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.022</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4078,6 +4078,46 @@ function _mergeProjectNoConflict(data) {
     devices = _stages[_currentStageIdx].devices;
     window._mobileChanged = changed;
     window._mobileChangedBy = data._saved_by || 'mobile';
+
+    // Merge pack_spares (manual extra items) additively by id —
+    // additions from mobile show up on desktop without wiping desktop's items
+    if(Array.isArray(data.pack_spares)){
+      if(!_packSpares) _packSpares = [];
+      // Backfill ids on local items missing them
+      _packSpares.forEach(function(s,i){
+        if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
+      });
+      // Build map by id for quick lookup
+      var spareMap = {};
+      _packSpares.forEach(function(s){ if(s && s.id) spareMap[s.id] = s; });
+      // Add or update each incoming item
+      data.pack_spares.forEach(function(inc){
+        if(!inc) return;
+        if(!inc.id) inc.id = 'spare_inc_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+        // If user has local edit within last 10s, prefer local; otherwise incoming wins
+        if(spareMap[inc.id]){
+          if((Date.now() - (window._lastPackEdit||0)) > 10000){
+            Object.assign(spareMap[inc.id], inc);
+          }
+        } else {
+          _packSpares.push(inc);
+          spareMap[inc.id] = inc;
+        }
+      });
+      // Re-render pack page if it's visible
+      if(currentTab === 'pack' && typeof renderPackList === 'function'){
+        renderPackList();
+      }
+    }
+
+    // Merge pack_shared additively too
+    if(data.pack_shared && typeof data.pack_shared === 'object'){
+      if((Date.now() - (window._lastPackEdit||0)) > 10000){
+        _packShared = Object.assign({toolcase:[],office:[],spares:[]}, data.pack_shared);
+        _packSharedSave();
+      }
+    }
+
     // Apply sign-off tombstones from server (deletions propagate via this list)
     if(Array.isArray(data.pack_signoffs_deleted)){
       if(!window._packSignoffsDeleted) window._packSignoffsDeleted = [];
@@ -6987,10 +7027,24 @@ function _packStageHtml(stageDevices) {
   });
   devHtml += '</tbody></table></div>';
 
-  // Cable summary — aggregate by cable type+length
+  // Cable summary — aggregate by cable type+length, covering ALL cable fields
   var cableCounts = {};
   stageDevices.forEach(function(d){
-    [d.cable_in||d.cable||'', d.cable_out||'', d.data_cable||''].filter(Boolean).forEach(function(c){
+    // All possible cable fields on a device:
+    // - cable_in / cable (legacy combined IN cable, used when one cable carries both pwr+data)
+    // - cable_out (output cable)
+    // - cable_power_in (separate power IN)
+    // - cable_data_in (separate data IN)
+    // - cable_power_ext (extension power cable)
+    // - data_cable (legacy data field)
+    [
+      d.cable_in || d.cable || '',
+      d.cable_out || '',
+      d.cable_power_in || '',
+      d.cable_data_in || '',
+      d.cable_power_ext || '',
+      d.data_cable || ''
+    ].filter(Boolean).forEach(function(c){
       cableCounts[c] = (cableCounts[c]||0) + 1;
     });
   });
@@ -7056,7 +7110,9 @@ function _cableLabel(key) {
 
 function packAddSpare() {
   _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5), qty:1, desc:'', checked:false});
+  window._lastPackEdit = Date.now();
   renderPackList();
+  autoSave();
   // Focus the new description field
   var rows = document.querySelectorAll('#pack-spares-table tbody tr');
   if (rows.length) {
@@ -7117,7 +7173,7 @@ function packPrint(printAll) {
     out+='</tbody></table></div>';
     // Cables summary
     var cc={};
-    devs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+    devs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||'',d.cable_power_in||'',d.cable_data_in||'',d.cable_power_ext||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
     var ckeys=Object.keys(cc).sort();
     if(ckeys.length){
       out+='<div class="section"><div class="sec-title">Cables</div>';
@@ -8857,7 +8913,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.021',
+    version: 'v4.022',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10596,7 +10652,7 @@ function renderPackList() {
     // Aggregate cable totals across all stages
     var totalCableCounts = {};
     allDevs.forEach(function(d){
-      [d.cable_in||d.cable||'', d.cable_out||''].filter(Boolean).forEach(function(c){
+      [d.cable_in||d.cable||'', d.cable_out||'', d.cable_power_in||'', d.cable_data_in||'', d.cable_power_ext||''].filter(Boolean).forEach(function(c){
         totalCableCounts[c] = (totalCableCounts[c]||0) + 1;
       });
     });
@@ -10696,27 +10752,74 @@ function _showSignoffDetail(entry){
   document.getElementById('modal-signoff-detail').classList.add('open');
 }
 
-var _manualPackItems = {}; // {stageKey: [{id, name, qty, note}]}
 function _renderManualPackItems() {
   var el = document.getElementById('pack-manual-section');
   if(!el) return;
-  var si = document.getElementById('pack-stage-sel');
-  var stageKey = si ? si.value : 'all';
-  var items = _manualPackItems[stageKey] || [];
-  var html = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">'
-    +'<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">📦 MANUAL ITEMS</div>';
-  items.forEach(function(it, i) {
-    html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border2)">'
-      +'<input type="number" min="1" value="'+it.qty+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="qty" style="width:48px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:4px;font-size:12px;font-family:var(--mono)" onchange="_miUpdate(this)">'
-      +'<input type="text" value="'+it.name+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="name" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:12px" placeholder="Item name..." onchange="_miUpdate(this)">'
-      +'<input type="text" value="'+(it.note||'')+'" data-sk="'+stageKey+'" data-i="'+i+'" data-f="note" style="width:100px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:3px 6px;border-radius:4px;font-size:11px" placeholder="Note..." onchange="_miUpdate(this)">'
-      +'<button data-sk="'+stageKey+'" data-i="'+i+'" onclick="_miRemove(this)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button>'
-      +'</div>';
+  // Use the SYNCED _packSpares list (matches mobile, included in push payload)
+  if(!_packSpares) _packSpares = [];
+  // Backfill ids
+  _packSpares.forEach(function(s,i){
+    if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
   });
-  html += '<button data-sk="'+stageKey+'" onclick="_miAdd(this)" style="margin-top:8px;background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-family:var(--cond);font-weight:700">+ Add item</button>';
+  var done = _packSpares.filter(function(x){return x.checked;}).length;
+  var html = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+    +  '<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;color:var(--muted)">📦 EXTRA ITEMS</div>'
+    +  (_packSpares.length?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+done+'/'+_packSpares.length+'</span>':'')
+    +'</div>';
+  if(_packSpares.length){
+    _packSpares.forEach(function(it, i) {
+      var safeDesc = (it.desc||'').replace(/"/g,'&quot;');
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border2)">'
+        +'<input type="checkbox" '+(it.checked?'checked':'')+' data-i="'+i+'" data-f="checked" onclick="_miUpdate2(this)">'
+        +'<input type="number" min="1" value="'+(it.qty||1)+'" data-i="'+i+'" data-f="qty" style="width:48px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:4px;font-size:12px;font-family:var(--mono)" onchange="_miUpdate2(this)">'
+        +'<input type="text" value="'+safeDesc+'" data-i="'+i+'" data-f="desc" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:12px" placeholder="Item name..." onchange="_miUpdate2(this)">'
+        +'<button data-i="'+i+'" onclick="_miRemove2(this)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button>'
+        +'</div>';
+    });
+  }
+  html += '<button onclick="_miAdd2()" style="margin-top:8px;background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-family:var(--cond);font-weight:700">+ Add item</button>';
   html += '</div>';
   el.innerHTML = html;
 }
+function _miAdd2(){
+  if(!_packSpares) _packSpares = [];
+  _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5), qty:1, desc:'', checked:false});
+  window._lastPackEdit = Date.now();
+  _renderManualPackItems();
+  autoSave();
+  // Focus new input
+  setTimeout(function(){
+    var inputs = document.querySelectorAll('#pack-manual-section input[type="text"]');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+function _miRemove2(btn){
+  var i = parseInt(btn.dataset.i);
+  if(_packSpares && _packSpares[i]){
+    _packSpares.splice(i, 1);
+    window._lastPackEdit = Date.now();
+    _renderManualPackItems();
+    autoSave();
+  }
+}
+function _miUpdate2(inp){
+  var i = parseInt(inp.dataset.i);
+  var f = inp.dataset.f;
+  if(!_packSpares || !_packSpares[i]) return;
+  if(f === 'checked'){
+    _packSpares[i].checked = inp.checked;
+  } else if(f === 'qty'){
+    _packSpares[i].qty = parseInt(inp.value)||1;
+  } else {
+    _packSpares[i][f] = inp.value;
+  }
+  window._lastPackEdit = Date.now();
+  autoSave();
+}
+
+// Legacy _manualPackItems handlers — keep for backwards compat but not used
+var _manualPackItems = {};
 function _miAdd(btn){_addManualItem(btn.dataset.sk);}
 function _miRemove(btn){_removeManualItem(btn.dataset.sk,parseInt(btn.dataset.i));}
 function _miUpdate(inp){_updateManualItem(inp.dataset.sk,parseInt(inp.dataset.i),inp.dataset.f,inp.value);}
