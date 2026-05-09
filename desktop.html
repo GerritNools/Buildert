@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.019</title>
+<title>WTUniverse · Buildert Editor v4.021</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.019</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.021</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -4078,6 +4078,21 @@ function _mergeProjectNoConflict(data) {
     devices = _stages[_currentStageIdx].devices;
     window._mobileChanged = changed;
     window._mobileChangedBy = data._saved_by || 'mobile';
+    // Apply sign-off tombstones from server (deletions propagate via this list)
+    if(Array.isArray(data.pack_signoffs_deleted)){
+      if(!window._packSignoffsDeleted) window._packSignoffsDeleted = [];
+      data.pack_signoffs_deleted.forEach(function(id){
+        if(id && window._packSignoffsDeleted.indexOf(id) < 0) window._packSignoffsDeleted.push(id);
+      });
+      try{ localStorage.setItem('brt_packsigns_del_desktop', JSON.stringify(window._packSignoffsDeleted)); }catch(e){}
+      // Filter local signoffs by tombstones
+      if(window._packSignoffs){
+        window._packSignoffs = window._packSignoffs.filter(function(s){
+          return !s || !s.id || window._packSignoffsDeleted.indexOf(s.id) < 0;
+        });
+        try{ localStorage.setItem('brt_packsigns_desktop', JSON.stringify(window._packSignoffs)); }catch(e){}
+      }
+    }
     // Merge pack list signoffs from mobile (additive — never lose entries)
     if(Array.isArray(data.pack_signoffs)){
       if(!window._packSignoffs) window._packSignoffs = [];
@@ -6891,11 +6906,19 @@ _packSharedLoad();
 
 // Restore pack signoffs from previous session
 window._packSignoffs = window._packSignoffs || [];
+window._packSignoffsDeleted = window._packSignoffsDeleted || [];
 try{
   var _psoLocal = localStorage.getItem('brt_packsigns_desktop');
   if(_psoLocal){
     var arr = JSON.parse(_psoLocal);
     if(Array.isArray(arr)) window._packSignoffs = arr;
+  }
+}catch(e){}
+try{
+  var _psdLocal = localStorage.getItem('brt_packsigns_del_desktop');
+  if(_psdLocal){
+    var darr = JSON.parse(_psdLocal);
+    if(Array.isArray(darr)) window._packSignoffsDeleted = darr;
   }
 }catch(e){}
 
@@ -8429,14 +8452,18 @@ function _spRenderLog() {
     var stageCol = '';
     if(e.stage){ var stc=_stages.find(function(s){return s.id===e.stage;}); stageCol=stc?stc.color:'var(--muted)'; }
     var bg = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.02)';
+    // Build rich detail line: device + model + action
+    var devText = e.device || '';
+    if(e.device_model) devText += ' <span style="color:#7fa8d6">('+_escHtml(e.device_model)+')</span>';
+    if(e.action) devText += ' <span style="color:var(--text)">· '+_escHtml(e.action)+'</span>';
     return '<div style="display:grid;grid-template-columns:70px 56px 90px 100px 1fr;gap:0;'
       + 'padding:6px 12px;background:' + bg + ';border-bottom:1px solid var(--border2);'
       + 'font-family:var(--mono);font-size:11px;align-items:center">'
       + '<span style="color:var(--muted);font-size:10px">' + date + '</span>'
       + '<span style="color:var(--muted);font-size:10px">' + t + '</span>'
       + '<span style="color:var(--accent);font-family:var(--cond);font-weight:700;font-size:12px">' + (e.by||'?') + '</span>'
-      + '<span style="color:'+(stageCol||'var(--muted)')+';font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + stageName + '</span>'
-      + '<span style="color:var(--muted)">' + (e.device||'') + (e.action?' · '+e.action:'') + '</span>'
+      + '<span style="color:'+(stageCol||'var(--muted)')+';font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (stageName || e.stage_name || '') + '</span>'
+      + '<span style="color:var(--muted)">' + devText + '</span>'
       + '</div>';
   }).join('');
 }
@@ -8830,7 +8857,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.019',
+    version: 'v4.021',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -9539,7 +9566,7 @@ async function _wPushImpl(silent){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
@@ -9899,7 +9926,7 @@ function wPushLayout(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
     _log:window._projectLog||[],
@@ -9988,7 +10015,7 @@ function _buildFilePayload(){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
-    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]),
+    pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares || [],
     _log: _activityLog || [],
