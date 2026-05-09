@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.959m</title>
+<title>WTU · Buildert v3.961m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.959m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.961m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -965,15 +965,33 @@ function _mergePackShared(incoming){
 function _mergePackSignoffs(incoming){
   if(!Array.isArray(incoming)) return;
   if(!window._packSignoffs) window._packSignoffs = [];
+  // Merge tombstones from server first
+  // (the worker also embeds its merged tombstone list back to clients)
+  var ts = window._packSignoffsDeleted || [];
   // Append incoming entries that we don't already have (dedupe by id)
   var have = {};
   window._packSignoffs.forEach(function(s){ if(s && s.id) have[s.id]=true; });
   incoming.forEach(function(s){
-    if(s && s.id && !have[s.id]) window._packSignoffs.push(s);
+    if(s && s.id && !have[s.id] && ts.indexOf(s.id) < 0) window._packSignoffs.push(s);
   });
+  // Filter out anything matching local tombstones (in case server hasn't applied yet)
+  if(ts.length){
+    window._packSignoffs = window._packSignoffs.filter(function(s){
+      return !s || !s.id || ts.indexOf(s.id) < 0;
+    });
+  }
   // Sort by date asc
   window._packSignoffs.sort(function(a,b){ return (a.at||'').localeCompare(b.at||''); });
   try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+}
+
+function _mergeSignoffTombstones(incoming){
+  if(!Array.isArray(incoming)) return;
+  if(!window._packSignoffsDeleted) window._packSignoffsDeleted = [];
+  incoming.forEach(function(id){
+    if(id && window._packSignoffsDeleted.indexOf(id) < 0) window._packSignoffsDeleted.push(id);
+  });
+  try{ localStorage.setItem('brt_packsigns_del', JSON.stringify(window._packSignoffsDeleted)); }catch(e){}
 }
 // Restore spec overrides on top of baked specs
 try{var _sov=localStorage.getItem('buildert_specs_overrides');if(_sov){var _sovObj=JSON.parse(_sov);Object.keys(_sovObj).forEach(function(k){if(SPECS[k])Object.assign(SPECS[k],_sovObj[k]);else SPECS[k]=_sovObj[k];});}}catch(e){}
@@ -1584,9 +1602,13 @@ function mDeleteSignoff(id){
   if(!id || !window._packSignoffs) return;
   var s = window._packSignoffs.find(function(x){return x && x.id === id;});
   if(!s) return;
-  if(!confirm('Delete sign-off by '+s.name+' ('+(s.stageName||'')+')?\n\nNote: this only removes it locally. If desktop has already pulled, it will still appear there.')) return;
+  if(!confirm('Delete sign-off by '+s.name+' ('+(s.stageName||'')+')?\n\nThis will be removed everywhere on next sync.')) return;
   window._packSignoffs = window._packSignoffs.filter(function(x){return x && x.id !== id;});
+  // Add to tombstone list so the deletion propagates to desktop
+  window._packSignoffsDeleted = window._packSignoffsDeleted || [];
+  if(window._packSignoffsDeleted.indexOf(id) < 0) window._packSignoffsDeleted.push(id);
   try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+  try{ localStorage.setItem('brt_packsigns_del', JSON.stringify(window._packSignoffsDeleted)); }catch(e){}
   _lastLocalEdit = Date.now();
   if(_workerUrl && _projectKey){ wPush(true); }
   renderPack();
@@ -1596,15 +1618,20 @@ function mDeleteSignoff(id){
 function mClearStageSignoffs(){
   var stage = _mStages[_mCurrentStageIdx];
   if(!stage || !window._packSignoffs) return;
-  var n = window._packSignoffs.filter(function(s){return s && s.stageId === stage.id;}).length;
-  if(!n) return;
-  if(!confirm('Clear all '+n+' sign-off'+(n===1?'':'s')+' for stage "'+stage.name+'"?')) return;
+  var toDelete = window._packSignoffs.filter(function(s){return s && s.stageId === stage.id;});
+  if(!toDelete.length) return;
+  if(!confirm('Clear all '+toDelete.length+' sign-off'+(toDelete.length===1?'':'s')+' for stage "'+stage.name+'"?\n\nThis will be removed everywhere on next sync.')) return;
+  window._packSignoffsDeleted = window._packSignoffsDeleted || [];
+  toDelete.forEach(function(s){
+    if(s && s.id && window._packSignoffsDeleted.indexOf(s.id) < 0) window._packSignoffsDeleted.push(s.id);
+  });
   window._packSignoffs = window._packSignoffs.filter(function(s){return s && s.stageId !== stage.id;});
   try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
+  try{ localStorage.setItem('brt_packsigns_del', JSON.stringify(window._packSignoffsDeleted)); }catch(e){}
   _lastLocalEdit = Date.now();
   if(_workerUrl && _projectKey){ wPush(true); }
   renderPack();
-  showToast('Cleared '+n+' sign-off'+(n===1?'':'s'),'ok');
+  showToast('Cleared '+toDelete.length+' sign-off'+(toDelete.length===1?'':'s'),'ok');
 }
 
 function packAddSpare(){
@@ -2686,11 +2713,13 @@ function _mergeProjectNoConflict(data){
       var merged=Object.assign({},d);
       MFIELDS.forEach(function(f){
         if(f === 'checks'){
-          // Merge checks key-by-key: local wins per-key
-          if(local.checks && typeof local.checks === 'object'){
-            merged.checks = Object.assign({}, d.checks||{});
-            Object.keys(local.checks).forEach(function(k){ merged.checks[k] = local.checks[k]; });
-          }
+          // TRUE-WINS: if either side has TRUE, keep TRUE. Never lose a check.
+          var lc = (local.checks && typeof local.checks === 'object') ? local.checks : {};
+          var ic = (d.checks && typeof d.checks === 'object') ? d.checks : {};
+          var keys = Object.keys(lc).concat(Object.keys(ic).filter(function(k){return !(k in lc);}));
+          var mc = {};
+          keys.forEach(function(k){ mc[k] = !!(lc[k] || ic[k]); });
+          merged.checks = mc;
         } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
           merged[f]=local[f];
         }
@@ -2720,7 +2749,7 @@ function _mergeProjectNoConflict(data){
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
-  _mergePackShared(data.pack_shared);_mergePackSignoffs(data.pack_signoffs);
+  _mergePackShared(data.pack_shared);_mergeSignoffTombstones(data.pack_signoffs_deleted);_mergePackSignoffs(data.pack_signoffs);
   // Merge todos — add new ones from desktop, keep local edits
   if(Array.isArray(data.todos) && data.todos.length){
     _mTodosLoad();
@@ -2779,25 +2808,32 @@ function _mergeProjectNoConflict(data){
       });
     }catch(e){}
     _mStages = data.stages;
-    // Re-apply local mobile fields over incoming data
+    // Re-apply local mobile fields over incoming data with TRUE-WINS for checks
+    var _diagPreserved = 0;
     _mStages.forEach(function(s){
       (s.devices||[]).forEach(function(d){
         var local=_localDevMap[d.device_id];
         if(!local) return;
         MOBILE_FIELDS.forEach(function(f){
           if(f === 'checks'){
-            // Merge checks key-by-key: local wins per-key, preserve incoming keys
-            if(local.checks && typeof local.checks === 'object'){
-              var merged = Object.assign({}, d.checks||{});
-              Object.keys(local.checks).forEach(function(k){ merged[k] = local.checks[k]; });
-              d.checks = merged;
-            }
+            // TRUE-WINS merge: if local OR incoming has TRUE for a key, keep TRUE.
+            // Never let pull downgrade a check from true to false.
+            var lc = (local.checks && typeof local.checks === 'object') ? local.checks : {};
+            var ic = (d.checks && typeof d.checks === 'object') ? d.checks : {};
+            var keys = Object.keys(lc).concat(Object.keys(ic).filter(function(k){return !(k in lc);}));
+            var merged = {};
+            keys.forEach(function(k){
+              merged[k] = !!(lc[k] || ic[k]);
+              if(lc[k] && !ic[k]) _diagPreserved++;
+            });
+            d.checks = merged;
           } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
             d[f]=local[f];
           }
         });
       });
     });
+    if(_diagPreserved > 0) console.log('[SYNC DIAG] preserved '+_diagPreserved+' local check(s) from being unchecked');
     // Only reset current stage on first load — never interrupt user browsing
     if(wasEmpty){
       var assignedIdx = 0;
@@ -2889,7 +2925,7 @@ function _mergeSmartFromFile(data){
     data.cable_types.forEach(function(ct){CABLE_TYPES.push(ct);});
   }
   // Load shared pack
-  _mergePackShared(data.pack_shared);_mergePackSignoffs(data.pack_signoffs);
+  _mergePackShared(data.pack_shared);_mergeSignoffTombstones(data.pack_signoffs_deleted);_mergePackSignoffs(data.pack_signoffs);
   // Merge todos — add new ones from desktop, keep local edits
   if(Array.isArray(data.todos) && data.todos.length){
     _mTodosLoad();
@@ -2948,25 +2984,32 @@ function _mergeSmartFromFile(data){
       });
     }catch(e){}
     _mStages = data.stages;
-    // Re-apply local mobile fields over incoming data
+    // Re-apply local mobile fields over incoming data with TRUE-WINS for checks
+    var _diagPreserved = 0;
     _mStages.forEach(function(s){
       (s.devices||[]).forEach(function(d){
         var local=_localDevMap[d.device_id];
         if(!local) return;
         MOBILE_FIELDS.forEach(function(f){
           if(f === 'checks'){
-            // Merge checks key-by-key: local wins per-key, preserve incoming keys
-            if(local.checks && typeof local.checks === 'object'){
-              var merged = Object.assign({}, d.checks||{});
-              Object.keys(local.checks).forEach(function(k){ merged[k] = local.checks[k]; });
-              d.checks = merged;
-            }
+            // TRUE-WINS merge: if local OR incoming has TRUE for a key, keep TRUE.
+            // Never let pull downgrade a check from true to false.
+            var lc = (local.checks && typeof local.checks === 'object') ? local.checks : {};
+            var ic = (d.checks && typeof d.checks === 'object') ? d.checks : {};
+            var keys = Object.keys(lc).concat(Object.keys(ic).filter(function(k){return !(k in lc);}));
+            var merged = {};
+            keys.forEach(function(k){
+              merged[k] = !!(lc[k] || ic[k]);
+              if(lc[k] && !ic[k]) _diagPreserved++;
+            });
+            d.checks = merged;
           } else if(local[f]!==undefined && local[f]!==null && local[f]!=='') {
             d[f]=local[f];
           }
         });
       });
     });
+    if(_diagPreserved > 0) console.log('[SYNC DIAG] preserved '+_diagPreserved+' local check(s) from being unchecked');
     // Only reset current stage on first load — never interrupt user browsing
     if(wasEmpty){
       var assignedIdx = 0;
@@ -3453,8 +3496,9 @@ function _nodeStopScan(){
 async function wPull(){
   if(!_workerUrl||!_projectKey) return;
   if(_dbxSyncing) return;
-  // Skip pull if user edited locally within last 5s — let push complete first
-  if(Date.now()-_lastLocalEdit < 5000){ console.log("[SYNC] wPull skipped — recent local edit"); return; }
+  // Skip pull if user edited locally within last 15s — let push complete first.
+  // Longer window than 5s prevents stale data from briefly overwriting fresh edits.
+  if(Date.now()-_lastLocalEdit < 15000){ console.log("[SYNC] wPull skipped — recent local edit"); return; }
   _dbxSyncing=true;
   var _t=setTimeout(function(){_dbxSyncing=false;},12000);
   try{
@@ -3573,6 +3617,7 @@ async function wPush(silent){
     pack_spares:_packSpares,
     pack_shared:_packShared,
     pack_signoffs:window._packSignoffs||[],
+    pack_signoffs_deleted:window._packSignoffsDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
@@ -5082,9 +5127,14 @@ function _setFbType(t){
 }
 // ── Pack list sign-off ────────────────────────────────────────────
 window._packSignoffs = [];
+window._packSignoffsDeleted = [];
 try{
   var _pso = localStorage.getItem('brt_packsigns');
   if(_pso) window._packSignoffs = JSON.parse(_pso) || [];
+}catch(e){}
+try{
+  var _psd = localStorage.getItem('brt_packsigns_del');
+  if(_psd) window._packSignoffsDeleted = JSON.parse(_psd) || [];
 }catch(e){}
 
 function openPackSignoffSheet(){
@@ -5171,7 +5221,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.959m',
+    version: 'v3.961m',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -5387,8 +5437,23 @@ function mSwitchStage(idx){
 
 function _logActivity(deviceId,action){
   var by=window._riggerName||project.name||'mobile';
-  var stageId=(_mStages[_mCurrentStageIdx]||{}).id||'';
-  var entry={by:by,at:new Date().toISOString(),device:deviceId||'',action:action||'',stage:stageId};
+  var stage=_mStages[_mCurrentStageIdx]||{};
+  var stageId=stage.id||'';
+  var stageName=stage.name||'';
+  // Find device type for richer detail
+  var dev=null;
+  if(deviceId && Array.isArray(stage.devices)) dev=stage.devices.find(function(d){return d.device_id===deviceId;});
+  if(!dev && deviceId) dev=devices.find(function(d){return d.device_id===deviceId;});
+  var entry={
+    by:by,
+    at:new Date().toISOString(),
+    device:deviceId||'',
+    device_type:(dev && dev.type)||'',
+    device_model:(dev && (dev.model || (typeof modelFromId==='function'?modelFromId(deviceId||''):'')))||'',
+    action:action||'',
+    stage:stageId,
+    stage_name:stageName,
+  };
   window._activityLog.push(entry);
   var cnt=document.getElementById('rigger-log-count');
   if(cnt)cnt.textContent=window._activityLog.length+' action'+(window._activityLog.length===1?'':'s');
