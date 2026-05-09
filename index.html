@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.961m</title>
+<title>WTU · Buildert v3.962m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.961m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.962m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1451,7 +1451,7 @@ function renderPack(){
 
   // Cables
   var cc={};
-  stageDevs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+  stageDevs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||'',d.cable_power_in||'',d.cable_data_in||'',d.cable_power_ext||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
   var ckeys=Object.keys(cc).sort();
   devHtml+='<div class="pack-section"><div class="pack-section-title">Cables</div>';
   if(ckeys.length){
@@ -2703,6 +2703,32 @@ function _applyProjectLoad(data){
 }
 
 function _mergeProjectNoConflict(data){
+  // SAFETY NET: snapshot all current local checks BEFORE any merge runs.
+  // After merge, if any check went from true→false, restore it.
+  // This catches any merge path bug that might still slip through.
+  var _preMergeChecks = {};
+  try {
+    function snap(arr){
+      (arr||[]).forEach(function(d){
+        if(d && d.device_id && d.checks){
+          Object.keys(d.checks).forEach(function(k){
+            if(d.checks[k] === true){
+              if(!_preMergeChecks[d.device_id]) _preMergeChecks[d.device_id] = {};
+              _preMergeChecks[d.device_id][k] = true;
+            }
+          });
+        }
+      });
+    }
+    snap(devices);
+    (_mStages||[]).forEach(function(s){ snap(s.devices); });
+    // Also from localStorage in case devices is empty
+    try{
+      var _lsd = JSON.parse(localStorage.getItem('wtu_devices')||'[]');
+      snap(_lsd);
+    }catch(e){}
+  } catch(e) {}
+
   if(data.devices && data.devices.length>0){
     // Preserve mobile-owned fields over incoming flat device list
     var MFIELDS=['serial','status','checks','pointed','notes','cable_in','cable','note_opts','source_power','source_data','cable_power_in','cable_data_in'];
@@ -2873,6 +2899,29 @@ function _mergeProjectNoConflict(data){
     }
   }
   _renderMobileStageBar();
+  // SAFETY NET: restore any check that went from true→false during merge.
+  // This is the final guardrail — even if the merge logic has a hidden bug,
+  // a previously-checked box can never become unchecked through a sync.
+  var _restoredCount = 0;
+  function _restoreChecks(arr){
+    (arr||[]).forEach(function(d){
+      if(!d || !d.device_id) return;
+      var snapshot = _preMergeChecks[d.device_id];
+      if(!snapshot) return;
+      if(!d.checks) d.checks = {};
+      Object.keys(snapshot).forEach(function(k){
+        if(snapshot[k] === true && d.checks[k] !== true){
+          d.checks[k] = true;
+          _restoredCount++;
+        }
+      });
+    });
+  }
+  _restoreChecks(devices);
+  (_mStages||[]).forEach(function(s){ _restoreChecks(s.devices); });
+  if(_restoredCount > 0){
+    console.log('[SYNC SAFETY] restored '+_restoredCount+' check(s) that were unchecked by merge');
+  }
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
@@ -3533,6 +3582,15 @@ try{
 }catch(e){ window._mObQueue = []; }
 
 function _mObPersist(){ try{ localStorage.setItem('buildert_mob_offline_queue', JSON.stringify(window._mObQueue)); }catch(e){} }
+
+function _mObQueueClear(){
+  if(!confirm('Clear '+(window._mObQueue||[]).length+' queued change(s)?\n\nThis will discard pending offline edits without sending them to the worker.')) return;
+  window._mObQueue = [];
+  _mObPersist();
+  _mUpdateNetStatus();
+  showToast('Queue cleared','ok');
+  closeSheet('conn');
+}
 
 function _mObQueuePush(payload, pid){
   window._mObQueue = (window._mObQueue||[]).filter(function(e){ return e.pid !== pid; });
@@ -5221,7 +5279,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.961m',
+    version: 'v3.962m',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -5330,6 +5388,12 @@ function openProjectSheet(){
     +'<button class="sb sb-ghost" onclick="wForceClear()" '
     +'style="font-size:12px;padding:8px;color:var(--warn);border-color:var(--warn)">🗑 Reset</button>'
     +'</div>'
+    + (((window._mObQueue||[]).length>0)
+      ? '<div style="margin-top:10px;padding:10px;background:rgba(245,166,35,.1);border:1px solid var(--warn);border-radius:8px;font-family:var(--mono);font-size:11px">'
+        + '⚠ '+window._mObQueue.length+' queued change'+(window._mObQueue.length===1?'':'s')+' (waiting to sync)'
+        + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
+        + '</div>'
+      : '')
     +'</div>'
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
