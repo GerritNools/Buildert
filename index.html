@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.962m</title>
+<title>WTU · Buildert v3.966m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -413,7 +413,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.962m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.966m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1451,7 +1451,7 @@ function renderPack(){
 
   // Cables
   var cc={};
-  stageDevs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||'',d.cable_power_in||'',d.cable_data_in||'',d.cable_power_ext||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+  stageDevs.forEach(function(d){var cabs=[];if(d.cable_in||d.cable){cabs.push(d.cable_in||d.cable);}else{if(d.cable_power_in)cabs.push(d.cable_power_in);if(d.cable_data_in)cabs.push(d.cable_data_in);}if(d.cable_power_ext)cabs.push(d.cable_power_ext);cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
   var ckeys=Object.keys(cc).sort();
   devHtml+='<div class="pack-section"><div class="pack-section-title">Cables</div>';
   if(ckeys.length){
@@ -1513,7 +1513,7 @@ function renderPack(){
         + '<div style="display:flex;align-items:center;gap:8px"><span style="color:var(--ok);font-size:18px">✓</span>'
         +   '<div style="flex:1"><div style="font-family:var(--cond);font-weight:700;color:var(--ok);font-size:14px">'+s.name+'</div>'
         +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+dt+(s.note?' · '+s.note:'')+'</div>'
-        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+s.checked+'/'+s.total+' items checked</div>'
+        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+(s.checked||0)+'/'+(s.total||0)+' devices · '+(s.check_summary||((s.checks_made||0)+' check(s)'))+'</div>'
         +   '</div>'
         +   '<button onclick="mDeleteSignoff(\''+safeId+'\')" title="Delete this sign-off" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:5px;padding:4px 8px;font-size:14px;cursor:pointer">🗑</button>'
         + '</div></div>';
@@ -2703,10 +2703,13 @@ function _applyProjectLoad(data){
 }
 
 function _mergeProjectNoConflict(data){
+  // VERSION MARKER — confirms v3.962m+ code is running
+  console.log('[SYNC] _mergeProjectNoConflict v3.962m running. data._saved_by='+(data._saved_by||'?'));
   // SAFETY NET: snapshot all current local checks BEFORE any merge runs.
   // After merge, if any check went from true→false, restore it.
   // This catches any merge path bug that might still slip through.
   var _preMergeChecks = {};
+  var _snapCount = 0;
   try {
     function snap(arr){
       (arr||[]).forEach(function(d){
@@ -2714,6 +2717,7 @@ function _mergeProjectNoConflict(data){
           Object.keys(d.checks).forEach(function(k){
             if(d.checks[k] === true){
               if(!_preMergeChecks[d.device_id]) _preMergeChecks[d.device_id] = {};
+              if(!_preMergeChecks[d.device_id][k]) _snapCount++;
               _preMergeChecks[d.device_id][k] = true;
             }
           });
@@ -2722,12 +2726,12 @@ function _mergeProjectNoConflict(data){
     }
     snap(devices);
     (_mStages||[]).forEach(function(s){ snap(s.devices); });
-    // Also from localStorage in case devices is empty
     try{
       var _lsd = JSON.parse(localStorage.getItem('wtu_devices')||'[]');
       snap(_lsd);
     }catch(e){}
   } catch(e) {}
+  console.log('[SYNC] pre-merge snapshot: '+_snapCount+' true check(s) across '+Object.keys(_preMergeChecks).length+' device(s)');
 
   if(data.devices && data.devices.length>0){
     // Preserve mobile-owned fields over incoming flat device list
@@ -2919,8 +2923,10 @@ function _mergeProjectNoConflict(data){
   }
   _restoreChecks(devices);
   (_mStages||[]).forEach(function(s){ _restoreChecks(s.devices); });
+  // Always log so user sees the safety net is alive — even if no restoration needed
+  console.log('[SYNC] post-merge: restored '+_restoredCount+' check(s) (snapshot had '+_snapCount+')');
   if(_restoredCount > 0){
-    console.log('[SYNC SAFETY] restored '+_restoredCount+' check(s) that were unchecked by merge');
+    showToast('Restored '+_restoredCount+' check(s) from sync','warn');
   }
   // Save locally WITHOUT triggering push — wPull must never push back
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
@@ -2932,6 +2938,26 @@ function _mergeProjectNoConflict(data){
 
 
 function _mergeSmartFromFile(data){
+  console.log('[SYNC] _mergeSmartFromFile v3.962m running');
+  // SAFETY NET: same snapshot/restore as _mergeProjectNoConflict
+  var _preMergeChecks2 = {};
+  try {
+    function snap2(arr){
+      (arr||[]).forEach(function(d){
+        if(d && d.device_id && d.checks){
+          Object.keys(d.checks).forEach(function(k){
+            if(d.checks[k] === true){
+              if(!_preMergeChecks2[d.device_id]) _preMergeChecks2[d.device_id] = {};
+              _preMergeChecks2[d.device_id][k] = true;
+            }
+          });
+        }
+      });
+    }
+    snap2(devices);
+    (_mStages||[]).forEach(function(s){ snap2(s.devices); });
+    try{ snap2(JSON.parse(localStorage.getItem('wtu_devices')||'[]')); }catch(e){}
+  } catch(e) {}
   // Fields mobile owns (rigger work) — preserve local values
   var MOBILE_FIELDS = ['checks','status','serial','pointed','note_opts','notes','cable_in','cable'];
   var fileDevices = data.devices || [];
@@ -3080,6 +3106,28 @@ function _mergeSmartFromFile(data){
     if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
   }
   _renderMobileStageBar();
+  // SAFETY NET: restore any check that went from true→false
+  var _restored2 = 0;
+  try {
+    function restore2(arr){
+      (arr||[]).forEach(function(d){
+        if(!d || !d.device_id) return;
+        var snap = _preMergeChecks2[d.device_id];
+        if(!snap) return;
+        if(!d.checks) d.checks = {};
+        Object.keys(snap).forEach(function(k){
+          if(snap[k] === true && d.checks[k] !== true){
+            d.checks[k] = true;
+            _restored2++;
+          }
+        });
+      });
+    }
+    restore2(devices);
+    (_mStages||[]).forEach(function(s){ restore2(s.devices); });
+  } catch(e){}
+  console.log('[SYNC SmartMerge] post-merge: restored '+_restored2+' check(s)');
+  if(_restored2 > 0) showToast('Restored '+_restored2+' check(s) from file','warn');
   try{localStorage.setItem('wtu_devices',JSON.stringify(devices));}catch(e){}
   try{localStorage.setItem('wtu_project',JSON.stringify(project));}catch(e){}
   renderMain();
@@ -3715,8 +3763,35 @@ function wStartPolling(){
   console.log("[SYNC] wStartPolling url=",_workerUrl,"key=",_projectKey);
   if(!_workerUrl||!_projectKey){console.error("[SYNC] Missing URL or key!");_dbxSetStatus("No Worker URL","var(--danger)");return;}
   if(_dbxPollTimer){clearInterval(_dbxPollTimer);_dbxPollTimer=null;}
+  // Initial pull only — fetches latest state on session start
   wPull();
-  _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},20000);
+  // Auto-pull is OFF by default to prevent accidentally overwriting local edits.
+  // User can enable it via the "Auto-sync" toggle in the project sheet.
+  // (Push still happens automatically via the autoSave wrapper.)
+  if(localStorage.getItem('buildert_auto_pull')==='1'){
+    _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},30000);
+    console.log("[SYNC] Auto-pull enabled — will poll every 30s");
+  } else {
+    console.log("[SYNC] Auto-pull disabled (default). Use 'Sync now' button to pull manually.");
+  }
+}
+
+function wToggleAutoPull(){
+  var on = localStorage.getItem('buildert_auto_pull')==='1';
+  if(on){
+    localStorage.setItem('buildert_auto_pull','0');
+    if(_dbxPollTimer){ clearInterval(_dbxPollTimer); _dbxPollTimer=null; }
+    showToast('Auto-sync OFF — use Sync now to pull manually','warn');
+  } else {
+    localStorage.setItem('buildert_auto_pull','1');
+    if(_workerUrl && _projectKey){
+      if(_dbxPollTimer) clearInterval(_dbxPollTimer);
+      _dbxPollTimer=setInterval(function(){if(!_dbxSyncing)wPull();},30000);
+    }
+    showToast('Auto-sync ON — will poll every 30s','ok');
+  }
+  // Refresh project sheet
+  if(typeof openProjectSheet==='function') openProjectSheet();
 }
 
 // Handle ?project=key&worker=url&rigger=name params (Worker-based, zero-friction)
@@ -5228,11 +5303,36 @@ function submitPackSignoff(){
   if(!name){ showToast('Please enter your name','warn'); return; }
   var stage = _mStages[_mCurrentStageIdx];
   if(!stage){ showToast('No stage','warn'); return; }
-  // Calculate totals (cables only — shared section disabled)
-  var totalItems = 0, checkedItems = 0;
-  (stage.devices||[]).forEach(function(d){
-    if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
+  // Calculate totals: count fully-completed devices and per-check breakdown
+  var stageDevs = stage.devices || [];
+  var totalDevices = stageDevs.length;
+  var checkTypes = ['Mounted','Cabled','Pointed','Powered','Tested','Output tested'];
+  var counts = {};
+  checkTypes.forEach(function(c){ counts[c] = {done:0, total:0}; });
+  var devicesFullyChecked = 0;
+  var totalChecksMade = 0;
+  stageDevs.forEach(function(d){
+    if(!d.checks) return;
+    var deviceCheckTotal = 0, deviceCheckDone = 0;
+    checkTypes.forEach(function(c){
+      // Only count check types that exist on this device
+      if(c in d.checks){
+        counts[c].total++;
+        deviceCheckTotal++;
+        if(d.checks[c]){
+          counts[c].done++;
+          deviceCheckDone++;
+          totalChecksMade++;
+        }
+      }
+    });
+    if(deviceCheckTotal > 0 && deviceCheckTotal === deviceCheckDone) devicesFullyChecked++;
   });
+  // Build a readable summary string
+  var checkSummary = checkTypes
+    .filter(function(c){ return counts[c].total > 0; })
+    .map(function(c){ return c+': '+counts[c].done+'/'+counts[c].total; })
+    .join(', ');
   var entry = {
     id: 'psg_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
     at: new Date().toISOString(),
@@ -5240,15 +5340,23 @@ function submitPackSignoff(){
     stageId: stage.id,
     stageName: stage.name,
     note: (document.getElementById('psg-note').value||'').trim(),
-    total: totalItems,
-    checked: checkedItems,
+    // Use the most meaningful counts: total checks ticked vs total devices
+    total: totalDevices,
+    checked: devicesFullyChecked,
+    // Detailed breakdown
+    checks_made: totalChecksMade,
+    check_summary: checkSummary,
+    counts: counts,
   };
   window._packSignoffs = window._packSignoffs || [];
   window._packSignoffs.push(entry);
   try{ localStorage.setItem('brt_packsigns', JSON.stringify(window._packSignoffs)); }catch(e){}
   // Log to activity (will be synced via _log when wPush runs)
   if(typeof _logActivity === 'function'){
-    _logActivity('Pack signed by '+name, 'Stage '+stage.name+' — '+checkedItems+'/'+totalItems+' items'+(entry.note?' · '+entry.note:''));
+    _logActivity('Pack signed by '+name,
+      'Stage '+stage.name+' — '+devicesFullyChecked+'/'+totalDevices+' devices fully checked'
+      +(checkSummary?' ('+checkSummary+')':'')
+      +(entry.note?' · '+entry.note:''));
   }
   _lastLocalEdit = Date.now();
   // Push immediately so desktop sees it ASAP
@@ -5279,7 +5387,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.962m',
+    version: 'v3.966m',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -5301,6 +5409,223 @@ async function submitFeedback(){
   }
 }
 
+// ── PARODY TIER SYSTEM — Rigger Buildert Rewards™ ───────────────────
+// Loyalty mashup: Golden Nugget × Pangolin Beyond × KLM Flying Blue × Marriott Bonvoy
+// Don't take it too seriously. Or do.
+var _TIERS = [
+  { min: 0,    name: 'Cable Coiler Explorer',           emoji: '🎒', color: '#9d7842',
+    perks: [
+      'Welcome aboard! You qualified by opening the app.',
+      'Access to public catering (until 18:00, no seconds)',
+      'Entry-level toilet line privileges'
+    ] },
+  { min: 50,   name: 'Bronze Gaffer Essentials',         emoji: '🥉', color: '#cd7f32',
+    perks: [
+      'May coil cables in a figure-8 without supervision',
+      '1× extra granola bar per show day',
+      'Allowed to say "load in" in casual conversation'
+    ] },
+  { min: 200,  name: 'Silver Nugget Advanced Member',    emoji: '🥈', color: '#c0c0c0',
+    perks: [
+      'Skip-the-line at FOH (one beer per skip)',
+      'Priority claim on the good multi-tool',
+      'Permission to take your shirt off after 21:00'
+    ] },
+  { min: 500,  name: 'Gold Pangolin Wingman Elite',      emoji: '🥇', color: '#ffd700',
+    perks: [
+      'Complimentary lukewarm coffee — yours to keep',
+      'Address production manager by first name (with respect)',
+      'Reserved ladder access during peak hour'
+    ] },
+  { min: 1000, name: 'Platinum Bonvoy Beyond Ultimate',  emoji: '💎', color: '#9bb7e0',
+    perks: [
+      'You get The Good Radio. Channel 1.',
+      'First crack at the air-conditioned cherry picker',
+      'Lounge access (FOH bench counts as lounge)',
+      'Complimentary upgrade to a bigger gaffer roll'
+    ] },
+  { min: 2500, name: 'Titanium Aurora Ambassador',       emoji: '🌌', color: '#b9f2ff',
+    perks: [
+      'The hat is included',
+      'May nap during sound check, no consequences',
+      'Personal pyro assistant (one per festival)',
+      'Lifetime backstage Wi-Fi password access',
+      'A small parking spot, very close to the truck'
+    ] },
+  { min: 5000, name: 'Beyond Diamond Bonvoy Lifetime Royal Elite Ambassador GOAT',
+    emoji: '👑', color: '#ff6b9d',
+    perks: [
+      'You are now spoken of in hushed tones',
+      'A statue may or may not be commissioned',
+      'Permanent FOH seat, even when not at the venue',
+      'Free upgrade to anything, including your career',
+      'You can pronounce "Pangolin" correctly. Even the silent ones.',
+      'Crew chief automatically asks YOU what the plan is'
+    ] }
+];
+
+var _POINTS = {
+  signoff:     50,
+  stage_done:  25,
+  device_full: 5,
+  note_added:  3,
+  status_set:  2,
+  check_tick:  1,
+  manual_item: 2
+};
+
+function _calcRiggerStats(name){
+  if(!name) return {points:0, actions:0, checks:0, signoffs:0};
+  var seen = {};
+  var pool = (window._activityLog||[]).concat(window._projectLog||[]);
+  var actions = 0, points = 0, checks = 0, signoffs = 0;
+  pool.forEach(function(e){
+    if(!e || !e.by || e.by !== name) return;
+    var key = (e.at||'')+'|'+e.by+'|'+(e.action||'');
+    if(seen[key]) return;
+    seen[key] = 1;
+    actions++;
+    var act = (e.action||'').toLowerCase();
+    if(act.indexOf('signed') >= 0 || act.indexOf('signoff') >= 0){
+      points += _POINTS.signoff; signoffs++;
+    } else if(act.indexOf('mounted') >= 0 || act.indexOf('cabled') >= 0
+            || act.indexOf('pointed') >= 0 || act.indexOf('powered') >= 0
+            || act.indexOf('output tested') >= 0 || act.indexOf('tested') >= 0){
+      points += _POINTS.check_tick; checks++;
+    } else if(act.indexOf('status') >= 0){
+      points += _POINTS.status_set;
+    } else if(act.indexOf('note') >= 0){
+      points += _POINTS.note_added;
+    } else if(act.indexOf('extra item') >= 0 || act.indexOf('manual') >= 0){
+      points += _POINTS.manual_item;
+    } else {
+      points += 1;
+    }
+  });
+  return {points:points, actions:actions, checks:checks, signoffs:signoffs};
+}
+
+function _tierFromPoints(pts){
+  pts = pts || 0;
+  for(var i = _TIERS.length-1; i >= 0; i--){
+    if(pts >= _TIERS[i].min) return _TIERS[i];
+  }
+  return _TIERS[0];
+}
+function _nextTier(currentTier){
+  var idx = _TIERS.indexOf(currentTier);
+  if(idx < 0 || idx >= _TIERS.length-1) return null;
+  return _TIERS[idx+1];
+}
+function _getLeaderboard(){
+  var names = {};
+  var pool = (window._activityLog||[]).concat(window._projectLog||[]);
+  pool.forEach(function(e){
+    if(!e || !e.by) return;
+    names[e.by] = true;
+  });
+  var board = Object.keys(names).map(function(n){
+    var s = _calcRiggerStats(n);
+    return Object.assign({name:n, tier:_tierFromPoints(s.points)}, s);
+  });
+  board.sort(function(a,b){ return b.points - a.points; });
+  return board;
+}
+
+function openRankSheet(){
+  var body  = document.getElementById('conn-sheet-body');
+  var title = document.getElementById('conn-sheet-title');
+  if(!body) return;
+  if(title) title.textContent = '🏆 Rigger Rewards';
+
+  var me = window._riggerName||'';
+  var myStats = _calcRiggerStats(me);
+  var tier = _tierFromPoints(myStats.points);
+  var nextTier = _nextTier(tier);
+  var board = _getLeaderboard();
+
+  var html = '<button onclick="openProjectSheet()" style="background:transparent;border:none;color:var(--accent);font-size:12px;padding:0 0 10px;cursor:pointer">← back to project</button>';
+
+  // Hero card
+  html += '<div style="background:linear-gradient(135deg,'+tier.color+'33,'+tier.color+'11);'
+    +'border:1px solid '+tier.color+';border-radius:14px;padding:18px 14px;margin-bottom:16px;text-align:center">'
+    +  '<div style="font-size:48px;line-height:1">'+tier.emoji+'</div>'
+    +  '<div style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:2px;color:'+tier.color+';margin-top:6px;text-transform:uppercase;line-height:1.3">'+tier.name+'</div>'
+    +  '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px">'+(me||'you')+' · '+myStats.points+' pts · '+myStats.actions+' actions</div>';
+
+  if(nextTier){
+    var pct = Math.round((myStats.points - tier.min) / (nextTier.min - tier.min) * 100);
+    html += '<div style="background:rgba(255,255,255,.08);border-radius:6px;height:10px;overflow:hidden;margin-top:12px">'
+      +'<div style="width:'+Math.min(100,pct)+'%;height:100%;background:linear-gradient(90deg,'+tier.color+','+nextTier.color+');transition:width .4s"></div>'
+      +'</div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">'
+      +'<b style="color:var(--text)">'+(nextTier.min - myStats.points)+'</b> pts away from <span style="color:'+nextTier.color+'">'+nextTier.name+' '+nextTier.emoji+'</span>'
+      +'</div>';
+  } else {
+    html += '<div style="font-family:var(--mono);font-size:11px;color:'+tier.color+';margin-top:10px;font-weight:700">⭐ MAX TIER UNLOCKED ⭐<br>You are a legend among riggers</div>';
+  }
+  html += '</div>';
+
+  // Perks list
+  html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:2px;color:'+tier.color+';margin-bottom:8px">★ YOUR PERKS ★</div>';
+  tier.perks.forEach(function(p){
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text);padding:4px 0;border-bottom:1px dashed var(--border2)">✓ '+p+'</div>';
+  });
+  html += '</div>';
+
+  // Stats breakdown
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">'
+    + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">'
+    +   '<div style="font-family:var(--mono);font-size:20px;color:var(--ok);font-weight:700">'+myStats.checks+'</div>'
+    +   '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">CHECKS</div>'
+    + '</div>'
+    + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">'
+    +   '<div style="font-family:var(--mono);font-size:20px;color:var(--accent);font-weight:700">'+myStats.signoffs+'</div>'
+    +   '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">SIGN-OFFS</div>'
+    + '</div>'
+    + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">'
+    +   '<div style="font-family:var(--mono);font-size:20px;color:var(--warn);font-weight:700">'+myStats.actions+'</div>'
+    +   '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">ACTIONS</div>'
+    + '</div>'
+    +'</div>';
+
+  // Leaderboard
+  html += '<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--text);margin-bottom:8px">🏆 LEADERBOARD</div>';
+  if(board.length === 0){
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:14px;text-align:center;border:1px dashed var(--border2);border-radius:8px">No activity yet. Tap some checks to get on the board.</div>';
+  } else {
+    board.slice(0, 10).forEach(function(r, i){
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+(i+1)+'</span>';
+      var isMe = r.name === me;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;'
+        +'background:'+(isMe?'rgba(0,212,255,.08)':'var(--bg)')+';'
+        +'border:1px solid '+(isMe?'var(--accent)':'var(--border2)')+';'
+        +'border-radius:8px;margin-bottom:5px">'
+        +'<div style="font-size:20px;width:24px;text-align:center">'+medal+'</div>'
+        +'<div style="font-size:18px">'+r.tier.emoji+'</div>'
+        +'<div style="flex:1;min-width:0">'
+        +  '<div style="font-family:var(--cond);font-weight:700;font-size:14px;color:'+(isMe?'var(--accent)':'var(--text)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+(isMe?' (you)':'')+'</div>'
+        +  '<div style="font-family:var(--mono);font-size:10px;color:'+r.tier.color+';line-height:1.2">'+r.tier.name+'</div>'
+        +'</div>'
+        +'<div style="text-align:right">'
+        +  '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">'+r.points+'</div>'
+        +  '<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">pts</div>'
+        +'</div>'
+        +'</div>';
+    });
+  }
+
+  // Footer joke
+  html += '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;padding:14px 0 4px;line-height:1.5;font-style:italic">'
+    + 'Buildert Rewards™ Program · Terms apply · No actual perks redeemable<br>'
+    + 'Points expire when the festival ends · Hat not really included'
+    + '</div>';
+
+  body.innerHTML = html;
+  openSheet('conn');
+}
+
 function openProjectSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
@@ -5316,6 +5641,31 @@ function openProjectSheet(){
       +'<span style="font-size:22px">👤</span>'
       +'<div><div style="font-family:var(--cond);font-weight:900;font-size:18px;color:var(--accent)">'+window._riggerName+'</div>'
       +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">rigger · logged in</div></div>'
+      +'</div>';
+
+    // ── Rank card ─────────────────────────────────────────────────
+    var myStats = _calcRiggerStats(window._riggerName);
+    var tier = _tierFromPoints(myStats.points);
+    var nextTier = _nextTier(tier);
+    var progressPct = nextTier
+      ? Math.min(100, Math.round((myStats.points - tier.min) / (nextTier.min - tier.min) * 100))
+      : 100;
+    html += '<div style="background:linear-gradient(135deg,'+tier.color+'22,'+tier.color+'08);'
+      +'border:1px solid '+tier.color+';border-radius:10px;padding:12px;margin-bottom:14px;cursor:pointer"'
+      +' onclick="openRankSheet()">'
+      +  '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+      +    '<span style="font-size:28px">'+tier.emoji+'</span>'
+      +    '<div style="flex:1">'
+      +      '<div style="font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:1.5px;color:'+tier.color+';line-height:1.2">'+tier.name.toUpperCase()+'</div>'
+      +      '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">'+myStats.points+' pts · tap for leaderboard 🏆</div>'
+      +    '</div>'
+      +  '</div>'
+      +  (nextTier
+        ? '<div style="background:rgba(255,255,255,.05);border-radius:4px;height:6px;overflow:hidden;margin-top:4px">'
+          +'<div style="width:'+progressPct+'%;height:100%;background:'+tier.color+';transition:width .3s"></div>'
+          +'</div>'
+          +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px">'+(nextTier.min - myStats.points)+' pts to '+nextTier.name+' '+nextTier.emoji+'</div>'
+        : '<div style="font-family:var(--mono);font-size:9px;color:'+tier.color+';margin-top:3px">MAX TIER UNLOCKED — you legend</div>')
       +'</div>';
   }
 
@@ -5383,6 +5733,8 @@ function openProjectSheet(){
     +'style="font-size:13px;padding:10px 8px">↓ Sync now</button>'
     +'<button class="sb sb-ghost" onclick="wPush(false);closeSheet(\'conn\')" '
     +'style="font-size:13px;padding:10px 8px">↑ Push now</button>'
+    +'<button class="sb sb-ghost" onclick="wToggleAutoPull()" '
+    +'style="font-size:12px;padding:8px;color:'+(localStorage.getItem('buildert_auto_pull')==='1'?'var(--ok)':'var(--muted)')+';border-color:'+(localStorage.getItem('buildert_auto_pull')==='1'?'var(--ok)':'var(--border)')+'">'+(localStorage.getItem('buildert_auto_pull')==='1'?'⚡ Auto-sync ON':'⏸ Auto-sync OFF')+'</button>'
     +'<button class="sb sb-ghost" onclick="_mobDiag()" '
     +'style="font-size:12px;padding:8px;color:var(--accent);border-color:var(--accent)">🔍 Diagnose</button>'
     +'<button class="sb sb-ghost" onclick="wForceClear()" '
