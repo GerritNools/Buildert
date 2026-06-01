@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.966m</title>
+<title>WTU · Buildert v3.968m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -406,14 +406,122 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   .cat-chip{padding:4px 12px;border:1px solid var(--border);border-radius:16px;background:none;color:var(--muted);font-size:12px;font-family:var(--cond);font-weight:700;cursor:pointer;white-space:nowrap}
   .cat-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
   #cat-filter-bar{display:none}
+/* ── Stage view: mirror nodes/diagram left↔right (rigger ON stage perspective) ─ */
+body.stage-view #mob-node-svg,
+body.stage-view #map-wrap > svg {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+body.stage-view #mob-node-svg text,
+body.stage-view #map-wrap > svg text {
+  transform: scaleX(-1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+body.stage-view #btn-stage-view {
+  background: rgba(245,166,35,.15);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.stage-view-banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(90deg, var(--warn), #ff8800);
+  color: #000;
+  text-align: center;
+  padding: 4px 8px;
+  font-family: var(--cond);
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  display: none;
+}
+body.stage-view .stage-view-banner { display: block; }
+
+/* ── Sun mode: light theme for outdoor visibility ───────────────────── */
+body.sun-mode {
+  --bg: #f7f4ee;
+  --surface: #ffffff;
+  --panel: #ffffff;
+  --text: #1a1a1a;
+  --muted: #555;
+  --border: #c8c4ba;
+  --border2: #e0ddd5;
+  --accent: #0066cc;
+  --ok: #128a3e;
+  --warn: #b86a00;
+  --danger: #b32020;
+  background: #f7f4ee;
+  color: #1a1a1a;
+}
+body.sun-mode .card,
+body.sun-mode .sheet,
+body.sun-mode .sb,
+body.sun-mode .empty {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #c8c4ba !important;
+}
+body.sun-mode .sb-ghost {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+}
+body.sun-mode .sb-primary {
+  background: #0066cc !important;
+  color: #ffffff !important;
+}
+body.sun-mode input,
+body.sun-mode select,
+body.sun-mode textarea {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #c8c4ba !important;
+}
+body.sun-mode #btn-sun-mode {
+  background: rgba(255,200,0,.25);
+  border-color: #b86a00;
+  color: #b86a00;
+}
+/* Make the node SVG background light in sun mode */
+body.sun-mode #mob-node-svg,
+body.sun-mode #map-wrap {
+  background: #fefcf6 !important;
+}
+/* Sun mode: light-grey node fill so text contrasts well against light background */
+body.sun-mode #mob-node-svg rect[stroke] {
+  fill: #d9d4c4 !important;
+}
+/* Sun mode: dark text inside nodes for readability on light grey */
+body.sun-mode #mob-node-svg text {
+  fill: #1a1a1a !important;
+}
+/* Restore status row badge text contrast (filled badges have black text already) */
+body.sun-mode #mob-node-svg rect[fill="#3ddc84"] + text,
+body.sun-mode #mob-node-svg rect[fill="#5b8fff"] + text,
+body.sun-mode #mob-node-svg rect[fill="#c77dff"] + text,
+body.sun-mode #mob-node-svg rect[fill="#f5a623"] + text {
+  fill: #1a1a1a !important;
+}
+body.sun-mode .pack-section,
+body.sun-mode .pack-table {
+  color: #1a1a1a !important;
+}
+body.sun-mode .pack-table th,
+body.sun-mode .pack-table td {
+  border-color: #c8c4ba !important;
+  color: #1a1a1a !important;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
+<div class="stage-view-banner">⚠ STAGE VIEW — MIRRORED ← FROM THE STAGE → ⚠</div>
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.966m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.968m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -454,11 +562,12 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   <div id="card-list"></div>
   <!-- Nodes tab — SVG signal flow view -->
   <div id="diagram-wrap" style="display:none;flex-direction:column;height:calc(100vh - 116px)">
-    <div style="display:flex;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="display:flex;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap">
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeFit()">&#8982; Fit</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(1.25)">+</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(0.8)">&minus;</button>
-      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center">Tap node to edit</span>
+      <button id="btn-stage-view" class="sb sb-ghost" style="padding:6px 10px;font-size:12px" onclick="mToggleStageView()" title="Mirror left/right — view as if standing on stage">🔄 <span id="stage-view-label">From FOH</span></button>
+      <button id="btn-sun-mode" class="sb sb-ghost" style="padding:6px 10px;font-size:12px" onclick="mToggleSunMode()" title="Light theme for outdoor / sunny day visibility">☀️</button>
     </div>
     <div id="mob-node-outer" style="flex:1;overflow:hidden;position:relative;min-height:200px">
       <svg id="mob-node-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-height:300px;cursor:grab;touch-action:none">
@@ -4486,33 +4595,79 @@ function _mShortConn(s){ if(!s)return ''; return s.replace('HartingPushPull','Ha
     var col=isFoh?'#00d4ff':(COLS[dev&&dev.type]||'#55606e');
     var sub1=m||'';
     var sub2=isFoh?'Controller':(dev?(dev.location||dev.status||''):'');
+    var serial=(dev && dev.serial)?dev.serial:'';
     var st=dev?(dev.status||''):'';
-    var bgTint=st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':
+    // Determine if fully checked (Mounted+Cabled both done — main rigging milestone)
+    var ck=(dev && dev.checks)||{};
+    var isMounted=!!ck.Mounted;
+    var isCabled=!!ck.Cabled;
+    var isPointed=!!ck.Pointed;
+    var isPowered=!!ck.Powered;
+    var fullyReady=isMounted && isCabled;
+    // Background tint: bright green if fully ready, warning if in progress
+    var bgTint=fullyReady?'rgba(61,220,132,.22)':
+               st==='GoAndCheck'||st==='Swap'?'rgba(245,166,35,.13)':
                st==='Online'||st==='Mounted'?'rgba(61,220,132,.09)':'rgba(10,12,15,.82)';
-    var nH=(sub1&&sub2)?NH+10:NH;
+    // Compute node height: base + sub1 + sub2 + serial + status row
+    var lines = 0;
+    if(sub1) lines++;
+    if(sub2) lines++;
+    if(serial) lines++;
+    var statusRow = !isFoh && dev ? 12 : 0;
+    var nH = NH + lines*8 + statusRow;
     var gi=dev?devices.indexOf(dev):-1;
 
     nHtml+='<g data-id="'+id+'" transform="translate('+x+','+y+')" style="cursor:pointer">';
+    var _sp2=SPECS?SPECS[m]:null;
     var _isAdp = _sp2 && _sp2.category === 'adapter';
     var _mRx = _isAdp ? '10' : '6';
     var _mDash = _isAdp ? ' stroke-dasharray="5,3"' : '';
+    // Outer box — bolder green border if fully ready
+    var strokeCol = fullyReady ? '#3ddc84' : col;
+    var strokeW = fullyReady ? '2.5' : '1.5';
     nHtml+='<rect x="0" y="0" width="'+NW+'" height="'+nH+'" rx="'+_mRx+'"'
-      +' fill="'+bgTint+'" stroke="'+col+'" stroke-width="1.5"'+_mDash+' style="pointer-events:all"/>';
+      +' fill="'+bgTint+'" stroke="'+strokeCol+'" stroke-width="'+strokeW+'"'+_mDash+' style="pointer-events:all"/>';
     nHtml+='<rect x="0" y="0" width="5" height="'+nH+'" rx="3" fill="'+col+'" style="pointer-events:none"/>';
     var stCol=isFoh?'#00d4ff':st==='Online'||st==='Mounted'?'#3ddc84':st==='GoAndCheck'||st==='Swap'?'#f5a623':st==='Offline'||st==='Swapped'?'#ff4d4d':'#55606e';
     nHtml+='<circle cx="'+(NW-10)+'" cy="10" r="5" fill="'+stCol+'" style="pointer-events:none"/>';
     if(!isFoh&&st) nHtml+='<text x="'+(NW-10)+'" y="22" text-anchor="middle" fill="'+stCol+'" font-size="7" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+st.slice(0,7)+'</text>';
+    // Title
     nHtml+='<text x="10" y="20" fill="'+col+'" font-size="15" font-weight="700"'
       +' font-family="Barlow Condensed,sans-serif" letter-spacing="0.5" style="pointer-events:none">'+id+'</text>';
-    if(sub1) nHtml+='<text x="10" y="36" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
-      +' font-family="Barlow Condensed,sans-serif" style="pointer-events:none">'+sub1+'</text>';
-    if(sub2){
-      var sub2Y=sub1?48:36;
-      nHtml+='<text x="10" y="'+sub2Y+'" fill="#7a8694" font-size="11"'
-        +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,14)+'</text>';
+    var yPos = 36;
+    if(sub1){
+      nHtml+='<text x="10" y="'+yPos+'" fill="'+col+'" font-size="11" font-weight="600" opacity="0.75"'
+        +' font-family="Barlow Condensed,sans-serif" style="pointer-events:none">'+sub1+'</text>';
+      yPos += 12;
     }
-    // Port indicator squares + connector labels (matching desktop)
-    var _sp2=SPECS?SPECS[m]:null;
+    if(sub2){
+      nHtml+='<text x="10" y="'+yPos+'" fill="#7a8694" font-size="11"'
+        +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,14)+'</text>';
+      yPos += 12;
+    }
+    // SERIAL (prominent — riggers need this)
+    if(serial){
+      nHtml+='<text x="10" y="'+yPos+'" fill="#ffd700" font-size="11" font-weight="700"'
+        +' font-family="Share Tech Mono,monospace" style="pointer-events:none">SN '+serial.slice(0,12)+'</text>';
+      yPos += 12;
+    }
+    // STATUS ROW — quick-glance check completion badges
+    if(!isFoh && dev){
+      var bx = 10, by = nH - 4;
+      function badge(label, on, bcol){
+        var fillBg = on ? bcol : 'transparent';
+        var borderCol = bcol;
+        var textColor = on ? '#000' : bcol;
+        var b = '<rect x="'+bx+'" y="'+(by-9)+'" width="14" height="11" rx="2.5" fill="'+fillBg+'" stroke="'+borderCol+'" stroke-width="1" style="pointer-events:none"/>';
+        b += '<text x="'+(bx+7)+'" y="'+(by-1)+'" text-anchor="middle" fill="'+textColor+'" font-size="9" font-weight="700" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+label+'</text>';
+        bx += 17;
+        return b;
+      }
+      nHtml += badge('M', isMounted, '#3ddc84');
+      nHtml += badge('C', isCabled,  '#5b8fff');
+      if('Pointed' in ck) nHtml += badge('P', isPointed, '#c77dff');
+      if('Powered' in ck) nHtml += badge('⚡', isPowered, '#f5a623');
+    }
         if(_sp2&&_sp2.pwr_in){
       nHtml+='<rect x="'+(NW*0.35-PW/2)+'" y="'+nH+'" width="'+PW+'" height="'+PH+'" rx="2" fill="#f5a623" style="pointer-events:none"/>';
       nHtml+='<text x="'+(NW*0.35)+'" y="'+(nH+PH+9)+'" text-anchor="middle" fill="#f5a623" font-size="5" font-family="Share Tech Mono,monospace" style="pointer-events:none">'+_mShortConn(_sp2.pwr_in)+'</text>';
@@ -5200,6 +5355,45 @@ function wForceClear(){
 
 
 
+// ── Stage view + Sun mode (visibility for riggers on stage / in sunlight) ───
+function mToggleStageView(){
+  document.body.classList.toggle('stage-view');
+  var on = document.body.classList.contains('stage-view');
+  localStorage.setItem('buildert_stage_view', on?'1':'0');
+  var label = document.getElementById('stage-view-label');
+  if(label) label.textContent = on ? 'From STAGE ✓' : 'From FOH';
+  // Re-render so node touch handlers continue working with the flipped coords
+  if(typeof _mNodeRender === 'function') _mNodeRender();
+  showToast(on ? 'Stage view — mirrored' : 'Audience view (FOH)', on?'warn':'ok');
+}
+function mToggleSunMode(){
+  document.body.classList.toggle('sun-mode');
+  var on = document.body.classList.contains('sun-mode');
+  localStorage.setItem('buildert_sun_mode', on?'1':'0');
+  var btn = document.getElementById('btn-sun-mode');
+  if(btn) btn.textContent = on ? '🌙' : '☀️';
+  showToast(on ? 'Sun mode — light theme for outdoor use' : 'Dark mode', 'ok');
+}
+// Apply saved preferences on load
+(function _mApplySavedView(){
+  try {
+    if(localStorage.getItem('buildert_stage_view') === '1'){
+      document.body.classList.add('stage-view');
+      setTimeout(function(){
+        var label = document.getElementById('stage-view-label');
+        if(label) label.textContent = 'From STAGE ✓';
+      }, 50);
+    }
+    if(localStorage.getItem('buildert_sun_mode') === '1'){
+      document.body.classList.add('sun-mode');
+      setTimeout(function(){
+        var btn = document.getElementById('btn-sun-mode');
+        if(btn) btn.textContent = '🌙';
+      }, 50);
+    }
+  } catch(e) {}
+})();
+
 function _mobDiag() {
   var url = getUrl() || '';
   var wurl = _workerUrl || '';
@@ -5387,7 +5581,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.966m',
+    version: 'v3.968m',
     message: msg,
   };
   showToast('Sending feedback…','info');
