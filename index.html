@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.968m</title>
+<title>WTU · Buildert v3.969m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -521,7 +521,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.968m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.969m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -577,6 +577,7 @@ body.sun-mode .pack-table td {
           <marker id="mn-arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
           <marker id="mn-arrow-foh"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
         </defs>
+        <image id="mob-node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
         <g id="mob-node-edges"></g>
         <g id="mob-node-guide"></g>
         <g id="mob-node-nodes"></g>
@@ -4438,6 +4439,33 @@ function _mNodeRender() {
   var nodesG = document.getElementById('mob-node-nodes');
   var labG   = document.getElementById('mob-node-labels');
   if (!svg || !edgesG || !nodesG) return;
+  // Apply background image from current stage if set
+  var bgImg = document.getElementById('mob-node-bg-image');
+  if(bgImg){
+    var curStage = _mStages[_mCurrentStageIdx];
+    var bg = curStage && curStage.nodeBackgroundImage;
+    if(bg && bg.data){
+      var rot = bg.rotation||0, scl = bg.scale||1.5;
+      var ox = bg.offsetX||0, oy = bg.offsetY||0;
+      var baseW = 1200, baseH = 800;
+      var ratio = bg.width / bg.height;
+      var w, h;
+      if(ratio > baseW/baseH){ w = baseW; h = baseW / ratio; }
+      else { h = baseH; w = baseH * ratio; }
+      w *= scl; h *= scl;
+      bgImg.setAttribute('href', bg.data);
+      bgImg.setAttribute('x', ox - w/2);
+      bgImg.setAttribute('y', oy - h/2);
+      bgImg.setAttribute('width', w);
+      bgImg.setAttribute('height', h);
+      bgImg.setAttribute('opacity', bg.opacity);
+      bgImg.setAttribute('transform', 'rotate('+rot+' '+ox+' '+oy+')');
+    } else {
+      bgImg.setAttribute('href','');
+      bgImg.setAttribute('width','0');
+      bgImg.setAttribute('height','0');
+    }
+  }
   // Always use window.innerWidth — outer.clientWidth is 0 when parent was display:none
   var svgW = window.innerWidth || 375;
   if (!_mNPos || !Object.keys(_mNPos).length) _mNodeAutoLayout(svgW);
@@ -5581,7 +5609,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.968m',
+    version: 'v3.969m',
     message: msg,
   };
   showToast('Sending feedback…','info');
