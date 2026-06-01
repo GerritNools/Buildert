@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.023</title>
+<title>WTUniverse · Buildert Editor v4.025</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.023</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.025</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -716,6 +716,14 @@
       <button class="btn btn-ghost" onclick="addNodeMemo()" style="padding:5px 11px;font-size:12px" title="Add sticky note memo">📝 Add memo</button>
       <button class="btn btn-ghost" onclick="_toggleGuideLine()" style="padding:5px 11px;font-size:12px" title="Toggle a draggable vertical center/orientation line">⫯ Center line</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom · drag ↦ to connect · click edge label for cable</span>
+      <button class="btn btn-ghost" onclick="document.getElementById('node-load-bg').click()" style="padding:5px 11px;font-size:12px" title="Load a JPEG/PNG/PDF stage drawing as background reference">🖼️ Background</button>
+      <input type="file" id="node-load-bg" accept=".jpg,.jpeg,.png,.pdf,image/*,application/pdf" style="display:none" onchange="nodeLoadBackground(this.files[0])">
+      <span id="node-bg-opacity-wrap" style="display:none;align-items:center;gap:5px">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">opacity</span>
+        <input id="node-bg-opacity" type="range" min="0" max="100" value="40" onchange="nodeBgOpacity(this.value)" style="width:80px;vertical-align:middle">
+        <span id="node-bg-opacity-val" style="font-family:var(--mono);font-size:10px;color:var(--muted);min-width:24px">40%</span>
+        <button class="icon-btn" onclick="nodeBgRemove()" title="Remove background" style="font-size:11px;padding:2px 6px">✕</button>
+      </span>
       <button class="btn" onclick="wPushLayout()" style="padding:5px 12px;font-size:12px;background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent);margin-left:6px">&#8593; Push layout to phones</button>
       <div style="margin-left:auto;display:flex;gap:5px">
         <button class="btn btn-ghost" onclick="nodeSaveAsSvg()" style="padding:5px 10px;font-size:11px">&#128190; Save SVG</button>
@@ -726,6 +734,7 @@
     </div>
     <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="background:#0a0c0f;">
       <rect id="node-bg" x="-9999" y="-9999" width="99999" height="99999" fill="#0a0c0f"/>
+      <image id="node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
       <defs>
         <filter id="led-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <marker id="arrow-ok"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
@@ -5708,6 +5717,8 @@ function _svgCoords(svg, clientX, clientY) {
 
 // ── Render ────────────────────────────────────────────────────────────
 function renderNodeView() {
+  // Apply background image if set on current stage
+  if(typeof nodeApplyBackground === 'function') nodeApplyBackground();
   // DEBUG: force ncw visible
   var _ncwDbg = document.getElementById('node-canvas-wrap');
   if(_ncwDbg) { _ncwDbg.style.display='block'; _ncwDbg.style.visibility='visible'; }
@@ -6802,6 +6813,109 @@ function nodeFitView() {
   if (svg) svg.setAttribute('height', maxY);
 }
 
+// ── Background reference image (JPG/PNG/PDF) for nodes view ─────────
+async function nodeLoadBackground(file){
+  if(!file) return;
+  var dataUrl = null;
+  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+    // Convert first page of PDF to image using pdf.js
+    try {
+      if(!window.pdfjsLib){
+        await new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      var arrayBuf = await file.arrayBuffer();
+      var pdf = await window.pdfjsLib.getDocument({data: arrayBuf}).promise;
+      var page = await pdf.getPage(1);
+      var viewport = page.getViewport({scale: 2.0});
+      var canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      var ctx = canvas.getContext('2d');
+      await page.render({canvasContext: ctx, viewport: viewport}).promise;
+      dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    } catch(e) {
+      showToast('PDF load failed: '+e.message, 'danger');
+      return;
+    }
+  } else {
+    // Image file
+    dataUrl = await new Promise(function(res){
+      var r = new FileReader();
+      r.onload = function(e){ res(e.target.result); };
+      r.readAsDataURL(file);
+    });
+  }
+  // Get natural dimensions to set SVG image size
+  var probe = new Image();
+  probe.onload = function(){
+    var stage = _stages[_currentStageIdx];
+    if(!stage) return;
+    stage.nodeBackgroundImage = {
+      data: dataUrl,
+      width: probe.naturalWidth,
+      height: probe.naturalHeight,
+      opacity: stage.nodeBackgroundImage ? stage.nodeBackgroundImage.opacity : 0.4
+    };
+    _markDirty && _markDirty();
+    nodeApplyBackground();
+    document.getElementById('node-bg-opacity-wrap').style.display = 'inline-flex';
+    showToast('Background loaded — drag/zoom to position', 'ok');
+  };
+  probe.src = dataUrl;
+}
+function nodeApplyBackground(){
+  var img = document.getElementById('node-bg-image');
+  if(!img) return;
+  var stage = _stages[_currentStageIdx];
+  var bg = stage && stage.nodeBackgroundImage;
+  if(!bg || !bg.data){
+    img.setAttribute('href', '');
+    img.setAttribute('width', '0');
+    img.setAttribute('height', '0');
+    document.getElementById('node-bg-opacity-wrap').style.display = 'none';
+    return;
+  }
+  // Fit image into a 1200×800 region around center of node canvas
+  var targetW = 1200, targetH = 800;
+  var ratio = bg.width / bg.height;
+  var w = targetW, h = targetH;
+  if(ratio > targetW/targetH){ h = targetW / ratio; } else { w = targetH * ratio; }
+  img.setAttribute('href', bg.data);
+  img.setAttribute('x', -w/2);
+  img.setAttribute('y', -h/2);
+  img.setAttribute('width', w);
+  img.setAttribute('height', h);
+  img.setAttribute('opacity', bg.opacity);
+  // Sync slider
+  var slider = document.getElementById('node-bg-opacity');
+  var val = document.getElementById('node-bg-opacity-val');
+  if(slider) slider.value = Math.round(bg.opacity * 100);
+  if(val) val.textContent = Math.round(bg.opacity * 100) + '%';
+  document.getElementById('node-bg-opacity-wrap').style.display = 'inline-flex';
+}
+function nodeBgOpacity(pct){
+  var stage = _stages[_currentStageIdx];
+  if(!stage || !stage.nodeBackgroundImage) return;
+  var opacity = parseInt(pct) / 100;
+  stage.nodeBackgroundImage.opacity = opacity;
+  document.getElementById('node-bg-image').setAttribute('opacity', opacity);
+  document.getElementById('node-bg-opacity-val').textContent = pct + '%';
+  _markDirty && _markDirty();
+}
+function nodeBgRemove(){
+  var stage = _stages[_currentStageIdx];
+  if(!stage || !stage.nodeBackgroundImage) return;
+  if(!confirm('Remove background image?')) return;
+  delete stage.nodeBackgroundImage;
+  _markDirty && _markDirty();
+  nodeApplyBackground();
+  showToast('Background removed', 'ok');
+}
+
 function nodeSaveAsSvg() {
   var svg = document.getElementById('node-svg');
   if (!svg) return;
@@ -7027,25 +7141,22 @@ function _packStageHtml(stageDevices) {
   });
   devHtml += '</tbody></table></div>';
 
-  // Cable summary — aggregate by cable type+length, covering ALL cable fields
+  // Cable summary — count only IN-cables (the cable plugging INTO each device).
+  // We do NOT count cable_out — that IS the next device's cable_in (would double).
+  // Use combined cable_in if set, otherwise fall back to separate power+data.
   var cableCounts = {};
   stageDevices.forEach(function(d){
-    // All possible cable fields on a device:
-    // - cable_in / cable (legacy combined IN cable, used when one cable carries both pwr+data)
-    // - cable_out (output cable)
-    // - cable_power_in (separate power IN)
-    // - cable_data_in (separate data IN)
-    // - cable_power_ext (extension power cable)
-    // - data_cable (legacy data field)
-    [
-      d.cable_in || d.cable || '',
-      d.cable_out || '',
-      d.cable_power_in || '',
-      d.cable_data_in || '',
-      d.cable_power_ext || '',
-      d.data_cable || ''
-    ].filter(Boolean).forEach(function(c){
-      cableCounts[c] = (cableCounts[c]||0) + 1;
+    var cabs = [];
+    if (d.cable_in || d.cable) {
+      cabs.push(d.cable_in || d.cable);
+    } else {
+      if (d.cable_power_in) cabs.push(d.cable_power_in);
+      if (d.cable_data_in) cabs.push(d.cable_data_in);
+    }
+    // Power extensions are always extra cables
+    if (d.cable_power_ext) cabs.push(d.cable_power_ext);
+    cabs.filter(Boolean).forEach(function(cv){
+      cableCounts[cv] = (cableCounts[cv]||0) + 1;
     });
   });
   var cableEntries = Object.keys(cableCounts).sort();
@@ -7173,7 +7284,7 @@ function packPrint(printAll) {
     out+='</tbody></table></div>';
     // Cables summary
     var cc={};
-    devs.forEach(function(d){[d.cable_in||d.cable||'',d.cable_out||'',d.cable_power_in||'',d.cable_data_in||'',d.cable_power_ext||''].filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
+    devs.forEach(function(d){var cabs=[];if(d.cable_in||d.cable){cabs.push(d.cable_in||d.cable);}else{if(d.cable_power_in)cabs.push(d.cable_power_in);if(d.cable_data_in)cabs.push(d.cable_data_in);}if(d.cable_power_ext)cabs.push(d.cable_power_ext);cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
     var ckeys=Object.keys(cc).sort();
     if(ckeys.length){
       out+='<div class="section"><div class="sec-title">Cables</div>';
@@ -8913,7 +9024,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.023',
+    version: 'v4.025',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10652,7 +10763,7 @@ function renderPackList() {
     // Aggregate cable totals across all stages
     var totalCableCounts = {};
     allDevs.forEach(function(d){
-      [d.cable_in||d.cable||'', d.cable_out||'', d.cable_power_in||'', d.cable_data_in||'', d.cable_power_ext||''].filter(Boolean).forEach(function(c){
+      (function(){var cabs=[];if(d.cable_in||d.cable){cabs.push(d.cable_in||d.cable);}else{if(d.cable_power_in)cabs.push(d.cable_power_in);if(d.cable_data_in)cabs.push(d.cable_data_in);}if(d.cable_power_ext)cabs.push(d.cable_power_ext);return cabs;})().filter(Boolean).forEach(function(c){
         totalCableCounts[c] = (totalCableCounts[c]||0) + 1;
       });
     });
