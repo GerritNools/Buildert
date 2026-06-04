@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.026</title>
+<title>WTUniverse · Buildert Editor v4.027</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.026</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.027</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -748,7 +748,9 @@
     </div>
     <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="background:#0a0c0f;">
       <rect id="node-bg" x="-9999" y="-9999" width="99999" height="99999" fill="#0a0c0f"/>
-      <image id="node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
+      <g id="node-bg-image-group">
+        <image id="node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
+      </g>
       <defs>
         <filter id="led-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <marker id="arrow-ok"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3ddc84"/></marker>
@@ -6805,7 +6807,7 @@ function nodeZoom(factor) {
 
 function _applyNodeTransform() {
   var tr = 'translate('+_nodePanX+','+_nodePanY+') scale('+_nodeScale+')';
-  ['node-edges','node-guide','node-nodes','node-labels'].forEach(function(id){
+  ['node-bg-image-group','node-edges','node-guide','node-nodes','node-labels'].forEach(function(id){
     var g = document.getElementById(id);
     if(g) g.setAttribute('transform', tr);
   });
@@ -9087,7 +9089,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.026',
+    version: 'v4.027',
     message: msg,
   };
   showToast('Sending feedback…','info');
