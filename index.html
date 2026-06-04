@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.969m</title>
+<title>WTU · Buildert v3.970m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -521,7 +521,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.969m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.970m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -577,7 +577,9 @@ body.sun-mode .pack-table td {
           <marker id="mn-arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#55606e"/></marker>
           <marker id="mn-arrow-foh"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker>
         </defs>
-        <image id="mob-node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
+        <g id="mob-node-bg-image-group">
+          <image id="mob-node-bg-image" x="0" y="0" width="0" height="0" preserveAspectRatio="xMidYMid meet" opacity="0.4" style="pointer-events:none"></image>
+        </g>
         <g id="mob-node-edges"></g>
         <g id="mob-node-guide"></g>
         <g id="mob-node-nodes"></g>
@@ -4373,7 +4375,7 @@ var _mNScale = 1, _mNPanX = 0, _mNPanY = 0;
 
 function _mNodeApplyTransform() {
   var tr = 'translate('+_mNPanX+','+_mNPanY+') scale('+_mNScale+')';
-  ['mob-node-edges','mob-node-guide','mob-node-nodes','mob-node-labels'].forEach(function(id){
+  ['mob-node-bg-image-group','mob-node-edges','mob-node-guide','mob-node-nodes','mob-node-labels'].forEach(function(id){
     var g = document.getElementById(id);
     if(g) g.setAttribute('transform', tr);
   });
@@ -5609,7 +5611,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.969m',
+    version: 'v3.970m',
     message: msg,
   };
   showToast('Sending feedback…','info');
