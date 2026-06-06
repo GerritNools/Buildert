@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.027</title>
+<title>WTUniverse · Buildert Editor v4.028</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.027</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.028</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -7189,17 +7189,40 @@ function _packStageHtml(stageDevices) {
       });
       var locations = [...new Set(items.map(function(d){return d.location||'';}).filter(Boolean))].join(', ');
       var cableRows = Object.keys(cableCombos);
+      var parentKey = 'model:'+m;
+      var safeKey = parentKey.replace(/[^a-z0-9]/gi,'_');
       cableRows.forEach(function(ck, ci2){
         var parts = ck.split('||'), cin=parts[0], cout=parts[1], cqty=cableCombos[ck];
-        devHtml += '<tr>'
+        devHtml += '<tr data-pack-parent="'+parentKey+'">'
           +(ci2===0 ? '<td rowspan="'+cableRows.length+'"><input type="checkbox" class="pack-check"></td>'
                     +'<td rowspan="'+cableRows.length+'" class="pack-qty">'+items.length+'&times;</td>'
-                    +'<td rowspan="'+cableRows.length+'" style="font-family:var(--cond);font-weight:700;color:'+TYPE_COLS[type]+'">'+m+'</td>' : '')
+                    +'<td rowspan="'+cableRows.length+'" style="font-family:var(--cond);font-weight:700;color:'+TYPE_COLS[type]+'">'+m
+                    +'<button title="Add a spare for '+_escHtml(m)+'" onclick="packAddSpareFor(\''+_escHtml(parentKey).replace(/\'/g,"\\'")+'\',\''+_escHtml(m).replace(/\'/g,"\\'")+'\')" '
+                    +'style="margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer;font-family:var(--mono)" '
+                    +'>+ spare</button></td>' : '')
           +'<td style="font-size:11px;font-family:var(--mono);color:'+(cin?'var(--ok)':'var(--muted)')+'">'+
             (cableRows.length>1?'<span style="color:var(--muted);font-size:10px">'+cqty+'× </span>':'')+(cin||'—')+'</td>'
           +'<td style="font-size:11px;font-family:var(--mono);color:'+(cout?'var(--ok)':'var(--muted)')+'">'+
             (cout||'—')+'</td>'
           +(ci2===0?'<td rowspan="'+cableRows.length+'" style="font-size:11px;color:var(--muted)">'+locations+'</td>':'')
+          +'</tr>';
+      });
+      // Render any existing spares for this parent
+      (_packSpares||[]).forEach(function(s, si){
+        if(!s || s.parent !== parentKey) return;
+        var sDesc = (s.desc||('spare '+m)).replace(/"/g,'&quot;');
+        devHtml += '<tr data-pack-spare-of="'+parentKey+'" style="background:rgba(255,215,0,.04)">'
+          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="packSpareSetChecked(\''+s.id+'\',this.checked)"></td>'
+          +'<td class="pack-qty" style="color:var(--warn)">'
+          +'<input type="number" min="1" value="'+(s.qty||1)+'" onchange="packSpareSetQty(\''+s.id+'\',this.value)" '
+          +'style="width:38px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 3px;border-radius:3px;font-family:var(--mono);font-size:11px;font-weight:700">&times;</td>'
+          +'<td colspan="3" style="padding-left:30px;font-style:italic;color:var(--warn);font-size:11px">'
+          +  '<span style="color:var(--border2)">↳ spare</span> '
+          +  '<input type="text" value="'+sDesc+'" placeholder="spare '+_escHtml(m)+'" onchange="packSpareSetDesc(\''+s.id+'\',this.value)" '
+          +  'style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;min-width:200px">'
+          +'</td>'
+          +'<td style="text-align:right"><button onclick="packSpareRemove(\''+s.id+'\')" title="Remove this spare" '
+          +'style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button></td>'
           +'</tr>';
       });
     });
@@ -7240,12 +7263,34 @@ function _packStageHtml(stageDevices) {
       var conn  = cdef ? ((cdef.pwr_a||'')+' \u2194 '+(cdef.pwr_b||'')) : '';
       totalCables += qty;
       var _ck='cab-'+key;
-      cableHtmlStr += '<tr>'
+      var cableParentKey = 'cable:'+key;
+      cableHtmlStr += '<tr data-pack-parent="'+cableParentKey+'">'
         +'<td><input type="checkbox" class="pack-check" '+((_packChecked[_ck])?'checked':'')+' onchange="_packSaveChecked(\'' + _ck + '\',this.checked)"></td>'
         +'<td class="pack-qty">'+qty+'\u00d7</td>'
-        +'<td style="font-family:var(--mono);font-size:12px">'+lbl+'</td>'
+        +'<td style="font-family:var(--mono);font-size:12px">'+lbl
+        +'  <button title="Add spare for '+_escHtml(lbl)+'" onclick="packAddSpareFor(\''+_escHtml(cableParentKey).replace(/\'/g,"\\'")+'\',\''+_escHtml(lbl).replace(/\'/g,"\\'")+'\')" '
+        +  'style="margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer;font-family:var(--mono)">+ spare</button>'
+        +'</td>'
         +'<td style="font-size:11px;color:var(--muted)">'+conn+'</td>'
         +'</tr>';
+      // Render spares under this cable row
+      (_packSpares||[]).forEach(function(s){
+        if(!s || s.parent !== cableParentKey) return;
+        var sDesc = (s.desc||('spare '+lbl)).replace(/"/g,'&quot;');
+        cableHtmlStr += '<tr data-pack-spare-of="'+cableParentKey+'" style="background:rgba(255,215,0,.04)">'
+          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="packSpareSetChecked(\''+s.id+'\',this.checked)"></td>'
+          +'<td class="pack-qty" style="color:var(--warn)">'
+          +'<input type="number" min="1" value="'+(s.qty||1)+'" onchange="packSpareSetQty(\''+s.id+'\',this.value)" '
+          +'style="width:38px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 3px;border-radius:3px;font-family:var(--mono);font-size:11px;font-weight:700">&times;</td>'
+          +'<td style="padding-left:30px;font-style:italic;color:var(--warn);font-size:11px">'
+          +  '<span style="color:var(--border2)">↳ spare</span> '
+          +  '<input type="text" value="'+sDesc+'" placeholder="spare '+_escHtml(lbl)+'" onchange="packSpareSetDesc(\''+s.id+'\',this.value)" '
+          +  'style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;min-width:200px">'
+          +'</td>'
+          +'<td style="text-align:right"><button onclick="packSpareRemove(\''+s.id+'\')" title="Remove this spare" '
+          +'style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button></td>'
+          +'</tr>';
+      });
     });
     cableHtmlStr += '</tbody></table>';
   } else {
@@ -7295,6 +7340,49 @@ function packAddSpare() {
     var inp = rows[rows.length-1].querySelector('input[type="text"]');
     if (inp) inp.focus();
   }
+}
+
+// ── Per-item spares (linked to a parent device model or cable spec) ─────
+function packAddSpareFor(parentKey, label){
+  if(!parentKey) return;
+  _packSpares = _packSpares || [];
+  _packSpares.push({
+    id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+    qty:1, desc:'spare '+(label||''), checked:false, parent:parentKey
+  });
+  window._lastPackEdit = Date.now();
+  renderPackList();
+  autoSave();
+  showToast('Spare added under '+(label||parentKey),'ok');
+}
+function packSpareSetChecked(id, on){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.checked = !!on;
+  window._lastPackEdit = Date.now();
+  autoSave();
+}
+function packSpareSetQty(id, v){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.qty = parseInt(v) || 1;
+  window._lastPackEdit = Date.now();
+  autoSave();
+}
+function packSpareSetDesc(id, v){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.desc = v;
+  window._lastPackEdit = Date.now();
+  autoSave();
+}
+function packSpareRemove(id){
+  var i = (_packSpares||[]).findIndex(function(x){return x.id===id;});
+  if(i < 0) return;
+  _packSpares.splice(i,1);
+  window._lastPackEdit = Date.now();
+  renderPackList();
+  autoSave();
 }
 
 function packPrint(printAll) {
@@ -9089,7 +9177,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.027',
+    version: 'v4.028',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10937,14 +11025,17 @@ function _renderManualPackItems() {
   _packSpares.forEach(function(s,i){
     if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
   });
-  var done = _packSpares.filter(function(x){return x.checked;}).length;
+  // Only show standalone extras here — parent-linked spares appear under their item
+  var standalone = _packSpares.filter(function(x){return !x.parent;});
+  var done = standalone.filter(function(x){return x.checked;}).length;
   var html = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
     +  '<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;color:var(--muted)">📦 EXTRA ITEMS</div>'
-    +  (_packSpares.length?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+done+'/'+_packSpares.length+'</span>':'')
+    +  (standalone.length?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+done+'/'+standalone.length+'</span>':'')
     +'</div>';
-  if(_packSpares.length){
-    _packSpares.forEach(function(it, i) {
+  if(standalone.length){
+    standalone.forEach(function(it) {
+      var i = _packSpares.indexOf(it);
       var safeDesc = (it.desc||'').replace(/"/g,'&quot;');
       html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border2)">'
         +'<input type="checkbox" '+(it.checked?'checked':'')+' data-i="'+i+'" data-f="checked" onclick="_miUpdate2(this)">'
