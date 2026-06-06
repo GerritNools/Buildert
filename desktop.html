@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.028</title>
+<title>WTUniverse · Buildert Editor v4.029</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.028</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.029</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -7397,20 +7397,25 @@ function packPrint(printAll) {
   function stageHtml(devs){
     var TYPE_ORDER=[TYPE_LASER,TYPE_SMOKE,TYPE_DISTRO,TYPE_PSU,TYPE_ADAPTER];
     var out='';
-    // Devices table
+    // Devices table — fixed column widths so spares line up under their parents
     out+='<div class="section"><div class="sec-title">Devices</div>';
-    out+='<table><thead><tr><th></th><th>Qty</th><th>Model</th><th>Cable IN</th></tr></thead><tbody>';
+    out+='<table class="pack-print"><colgroup>'
+      +'<col style="width:28px">'      // checkbox
+      +'<col style="width:42px">'      // qty
+      +'<col style="width:38%">'       // model
+      +'<col>'                         // cable IN
+      +'</colgroup>'
+      +'<thead><tr><th></th><th>Qty</th><th>Model</th><th>Cable IN</th></tr></thead><tbody>';
     TYPE_ORDER.forEach(function(type){
       var grp=devs.filter(function(d){return d.type===type;});
       if(!grp.length) return;
-      var typeLabel={};typeLabel[TYPE_LASER]='Lasers';typeLabel[TYPE_SMOKE]='Smoke';typeLabel[TYPE_DISTRO]='Distros';typeLabel[TYPE_PSU]='PSU';
-      out+='<tr><td colspan="6" style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;padding:6px 4px 2px;border-top:1px solid #ddd">'+typeLabel[type]+'</td></tr>';
-      // Group by model
+      var typeLabel={};typeLabel[TYPE_LASER]='Lasers';typeLabel[TYPE_SMOKE]='Smoke';typeLabel[TYPE_DISTRO]='Distros';typeLabel[TYPE_PSU]='PSU';typeLabel[TYPE_ADAPTER]='Adapters';
+      out+='<tr class="type-row"><td colspan="4">'+(typeLabel[type]||type)+'</td></tr>';
       var byM={},mOrd=[];
       grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
       mOrd.forEach(function(m){
         var items=byM[m];
-        // Bulk: group by cable combo — show qty per cable variant, no individual IDs
+        // Group by cable combo
         var cableCombos={};
         items.forEach(function(d){
           var cIn=d.cable_in||d.cable||'';
@@ -7427,27 +7432,55 @@ function packPrint(printAll) {
           var cQty=cableCombos[cLabel];
           out+='<tr>'
             +(ci===0?'<td rowspan="'+cKeys.length+'"><input type="checkbox"></td>'
-                    +'<td rowspan="'+cKeys.length+'" style="font-weight:bold;font-size:15px">'+items.length+'&times;</td>'
-                    +'<td rowspan="'+cKeys.length+'">'+m+'</td>':'<td></td><td></td><td></td>')
-            +'<td style="font-size:11px">'+(cKeys.length>1?'<span style="color:#999;font-size:10px">'+cQty+'&times; </span>':'')+cLabel+'</td>'
+                    +'<td rowspan="'+cKeys.length+'" class="qty">'+items.length+'&times;</td>'
+                    +'<td rowspan="'+cKeys.length+'" class="model">'+m+'</td>':'')
+            +'<td class="cable">'+(cKeys.length>1?'<span class="cabqty">'+cQty+'&times; </span>':'')+cLabel+'</td>'
+            +'</tr>';
+        });
+        // Spares belonging to this model — render under the parent row
+        var parentKey='model:'+m;
+        (_packSpares||[]).forEach(function(sp){
+          if(!sp || sp.parent !== parentKey) return;
+          var desc=(sp.desc||('spare '+m)).replace(/</g,'&lt;');
+          out+='<tr class="spare-row">'
+            +'<td><input type="checkbox" '+(sp.checked?'checked':'')+'></td>'
+            +'<td class="qty spare-qty">'+(sp.qty||1)+'&times;</td>'
+            +'<td class="model spare-desc" colspan="2"><span class="spare-arrow">↳</span> '+desc+'</td>'
             +'</tr>';
         });
       });
     });
     out+='</tbody></table></div>';
-    // Cables summary
+
+    // Cables summary — same column structure, with spares
     var cc={};
     devs.forEach(function(d){var cabs=[];if(d.cable_in||d.cable){cabs.push(d.cable_in||d.cable);}else{if(d.cable_power_in)cabs.push(d.cable_power_in);if(d.cable_data_in)cabs.push(d.cable_data_in);}if(d.cable_power_ext)cabs.push(d.cable_power_ext);cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
     var ckeys=Object.keys(cc).sort();
     if(ckeys.length){
       out+='<div class="section"><div class="sec-title">Cables</div>';
-      out+='<table><thead><tr><th></th><th>Qty</th><th>Type</th></tr></thead><tbody>';
+      out+='<table class="pack-print"><colgroup>'
+        +'<col style="width:28px">'
+        +'<col style="width:42px">'
+        +'<col>'
+        +'</colgroup>'
+        +'<thead><tr><th></th><th>Qty</th><th>Type</th></tr></thead><tbody>';
       ckeys.forEach(function(k){
         var ct=CABLE_TYPES.find(function(c){return k.indexOf(c.key+'-')===0;});
         var lv=parseFloat(k.split('-').slice(1).join('-'));
         var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
         var lbl=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
-        out+='<tr><td><input type="checkbox"></td><td style="font-weight:bold">'+cc[k]+'×</td><td>'+lbl+'</td></tr>';
+        out+='<tr><td><input type="checkbox"></td><td class="qty">'+cc[k]+'&times;</td><td class="model">'+lbl+'</td></tr>';
+        // Spares for this cable
+        var cableParentKey='cable:'+k;
+        (_packSpares||[]).forEach(function(sp){
+          if(!sp || sp.parent !== cableParentKey) return;
+          var desc=(sp.desc||('spare '+lbl)).replace(/</g,'&lt;');
+          out+='<tr class="spare-row">'
+            +'<td><input type="checkbox" '+(sp.checked?'checked':'')+'></td>'
+            +'<td class="qty spare-qty">'+(sp.qty||1)+'&times;</td>'
+            +'<td class="model spare-desc"><span class="spare-arrow">↳</span> '+desc+'</td>'
+            +'</tr>';
+        });
       });
       out+='</tbody></table></div>';
     }
@@ -7469,14 +7502,16 @@ function packPrint(printAll) {
   }
 
   // Shared items
-  // Manual extra items (the user-typed spares list at the bottom of the pack tab)
-  if(Array.isArray(_packSpares) && _packSpares.length){
+  // Manual extra items — only standalone (parent-linked appear under their parent rows above)
+  var standaloneSpares = (_packSpares||[]).filter(function(s){return s && !s.parent && (s.desc || s.qty);});
+  if(standaloneSpares.length){
     bodyHtml+='<div class="section"><div class="sec-title">Extra Items</div>';
-    bodyHtml+='<table><thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
-    _packSpares.forEach(function(s){
-      // Skip empty rows
-      if(!s.desc && !s.qty) return;
-      bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td style="font-weight:bold">'+(s.qty||1)+'×</td><td>'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
+    bodyHtml+='<table class="pack-print"><colgroup>'
+      +'<col style="width:28px"><col style="width:42px"><col>'
+      +'</colgroup>'
+      +'<thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
+    standaloneSpares.forEach(function(s){
+      bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td class="qty">'+(s.qty||1)+'&times;</td><td class="model">'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
     });
     bodyHtml+='</tbody></table></div>';
   }
@@ -7513,11 +7548,24 @@ function packPrint(printAll) {
     +'.section{margin-bottom:18px}'
     +'.sec-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#666;'
     +'font-weight:bold;border-bottom:1px solid #ddd;padding-bottom:3px;margin-bottom:6px}'
-    +'table{width:100%;border-collapse:collapse;font-size:11px}'
-    +'th{font-size:9px;letter-spacing:1px;color:#888;padding:3px 6px;text-align:left;border-bottom:1px solid #ccc}'
-    +'td{padding:3px 6px;border-bottom:1px solid #eee}'
+    +'table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}'
+    +'th{font-size:9px;letter-spacing:1px;color:#888;padding:3px 6px;text-align:left;border-bottom:1px solid #ccc;font-weight:600}'
+    +'td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}'
     +'tr:last-child td{border-bottom:none}'
     +'input[type=checkbox]{width:13px;height:13px}'
+    /* Pack-print table styles for consistent column alignment */
+    +'table.pack-print td.qty{font-weight:bold;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}'
+    +'table.pack-print td.model{font-weight:600}'
+    +'table.pack-print td.cable{font-size:11px;color:#333;font-family:Consolas,monospace}'
+    +'table.pack-print td.cabqty,table.pack-print .cabqty{color:#999;font-size:10px}'
+    +'table.pack-print tr.type-row td{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;'
+    +'padding:8px 4px 2px;border-top:2px solid #ddd;font-weight:bold;background:#fafafa}'
+    /* Spare rows — indented, lighter, italic, with a small left border */
+    +'table.pack-print tr.spare-row{background:#fffbf0}'
+    +'table.pack-print tr.spare-row td{border-bottom:1px dashed #e6dbb8;padding-top:2px;padding-bottom:2px}'
+    +'table.pack-print tr.spare-row td.qty.spare-qty{color:#a67700;font-size:12px;font-weight:600}'
+    +'table.pack-print tr.spare-row td.model.spare-desc{padding-left:24px;font-style:italic;color:#6b5a20;font-weight:400;font-size:11px}'
+    +'table.pack-print .spare-arrow{color:#bca06a;margin-right:4px;font-style:normal}'
     +'@media print{button,div.fn{display:none}}'
     +'</style></head><body>'
     +'<div class="hdr"><h2>'+projName.toUpperCase()+'</h2></div>'
@@ -9177,7 +9225,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.028',
+    version: 'v4.029',
     message: msg,
   };
   showToast('Sending feedback…','info');
