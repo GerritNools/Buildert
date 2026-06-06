@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.970m</title>
+<title>WTU · Buildert v3.971m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -521,7 +521,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.970m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.971m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1553,9 +1553,26 @@ function renderPack(){
       var ccs={};
       items.forEach(function(d){var ci=_cableLabel(d.cable_in||d.cable||''),co=_cableLabel(d.cable_out||'');var k=ci+'||'+co;ccs[k]=(ccs[k]||0)+1;});
       var cks=Object.keys(ccs);
+      var parentKey='model:'+m;
+      var safeM=m.replace(/'/g,"\\'");
       cks.forEach(function(ck,ci2){
         var pts=ck.split('||'),cin=pts[0],cout=pts[1],cq=ccs[ck];
-        devHtml+='<tr>'+(ci2===0?'<td rowspan="'+cks.length+'"><input type="checkbox" class="pack-check"></td><td rowspan="'+cks.length+'" class="pack-qty">'+items.length+'x</td><td rowspan="'+cks.length+'" style="font-family:var(--cond);font-weight:700;color:'+col+'">'+m+'</td>':'')+'<td style="font-size:11px;color:'+(cin?'var(--ok)':'var(--muted)')+'">'+cin+'</td><td style="font-size:11px;color:'+(cout?'var(--smoke)':'var(--muted)')+'">'+cout+'</td></tr>';
+        devHtml+='<tr>'+(ci2===0?'<td rowspan="'+cks.length+'"><input type="checkbox" class="pack-check"></td><td rowspan="'+cks.length+'" class="pack-qty">'+items.length+'x</td><td rowspan="'+cks.length+'" style="font-family:var(--cond);font-weight:700;color:'+col+'">'+m
+          +' <button onclick="mPackAddSpareFor(\''+parentKey+'\',\''+safeM+'\')" style="background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;cursor:pointer;font-family:var(--mono);margin-left:4px">+sp</button>'
+          +'</td>':'')+'<td style="font-size:11px;color:'+(cin?'var(--ok)':'var(--muted)')+'">'+cin+'</td><td style="font-size:11px;color:'+(cout?'var(--smoke)':'var(--muted)')+'">'+cout+'</td></tr>';
+      });
+      // Spare rows under this device model
+      (_packSpares||[]).forEach(function(s){
+        if(!s || s.parent !== parentKey) return;
+        var sDesc=(s.desc||('spare '+m)).replace(/"/g,'&quot;');
+        devHtml+='<tr style="background:rgba(255,215,0,.04)">'
+          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="mPackSpareCheck2(\''+s.id+'\',this.checked)"></td>'
+          +'<td class="pack-qty" style="color:var(--warn)"><input type="number" min="1" value="'+(s.qty||1)+'" onchange="mPackSpareQty2(\''+s.id+'\',this.value)" style="width:34px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 2px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:700"></td>'
+          +'<td colspan="3" style="font-size:11px;color:var(--warn);font-style:italic;padding-left:18px">'
+          +  '<span style="color:var(--border2)">↳</span> '
+          +  '<input type="text" value="'+sDesc+'" onchange="mPackSpareDesc2(\''+s.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;width:60%">'
+          +  ' <button onclick="mPackSpareDel2(\''+s.id+'\')" style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;margin-left:6px">✕</button>'
+          +'</td></tr>';
       });
     });
   });
@@ -1573,7 +1590,24 @@ function renderPack(){
       var lv=parseFloat(k.split('-').slice(1).join('-'));
       var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
       var lbl=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
-      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+cc[k]+'x</td><td style="font-family:var(--mono);font-size:12px">'+lbl+'</td></tr>';
+      var cableParentKey='cable:'+k;
+      var safeLbl=lbl.replace(/'/g,"\\'");
+      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+cc[k]+'x</td><td style="font-family:var(--mono);font-size:12px">'+lbl
+        +' <button onclick="mPackAddSpareFor(\''+cableParentKey+'\',\''+safeLbl+'\')" style="background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;cursor:pointer;font-family:var(--mono);margin-left:4px">+sp</button>'
+        +'</td></tr>';
+      // Spare rows under this cable
+      (_packSpares||[]).forEach(function(s){
+        if(!s || s.parent !== cableParentKey) return;
+        var sDesc=(s.desc||('spare '+lbl)).replace(/"/g,'&quot;');
+        devHtml+='<tr style="background:rgba(255,215,0,.04)">'
+          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="mPackSpareCheck2(\''+s.id+'\',this.checked)"></td>'
+          +'<td class="pack-qty" style="color:var(--warn)"><input type="number" min="1" value="'+(s.qty||1)+'" onchange="mPackSpareQty2(\''+s.id+'\',this.value)" style="width:34px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 2px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:700"></td>'
+          +'<td style="font-size:11px;color:var(--warn);font-style:italic;padding-left:18px">'
+          +  '<span style="color:var(--border2)">↳</span> '
+          +  '<input type="text" value="'+sDesc+'" onchange="mPackSpareDesc2(\''+s.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;width:60%">'
+          +  ' <button onclick="mPackSpareDel2(\''+s.id+'\')" style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;margin-left:6px">✕</button>'
+          +'</td></tr>';
+      });
     });
     devHtml+='</tbody></table>';
   } else { devHtml+='<p style="color:var(--muted);font-size:13px;padding:6px 0">No cables yet.</p>'; }
@@ -1582,9 +1616,10 @@ function renderPack(){
   // Shared section — disabled (user doesn't use this)
   var sharedHtml='';
 
-  // Extra items section (manual list — single flat list, not categorised)
-  var extraDone = (_packSpares||[]).filter(function(x){return x.checked;}).length;
-  var extraTotal = (_packSpares||[]).length;
+  // Extra items section — only show spares WITHOUT a parent (parent-linked appear under their item)
+  var standaloneSpares = (_packSpares||[]).filter(function(x){return !x.parent;});
+  var extraDone = standaloneSpares.filter(function(x){return x.checked;}).length;
+  var extraTotal = standaloneSpares.length;
   var extraHtml = '<div class="pack-section" style="padding:0 12px 16px;margin-top:6px">'
     + '<div class="pack-section-title" style="display:flex;align-items:center;gap:6px;color:var(--accent)">'
     +   '🧰 Extra items'
@@ -1593,13 +1628,14 @@ function renderPack(){
     + '</div>';
   if(extraTotal){
     extraHtml += '<table class="pack-table"><thead><tr><th></th><th style="width:44px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
-    _packSpares.forEach(function(s,i){
+    standaloneSpares.forEach(function(s){
+      var realIdx = _packSpares.indexOf(s);
       var safeDesc = (s.desc||'').replace(/"/g,'&quot;');
       extraHtml += '<tr>'
-        + '<td><input type="checkbox" '+(s.checked?'checked':'')+' data-pidx="'+i+'" onclick="mPackSpareCheck(+this.dataset.pidx,this.checked)"></td>'
-        + '<td><input type="number" min="1" value="'+(s.qty||1)+'" data-pidx="'+i+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSpareQty(+this.dataset.pidx,this.value)"></td>'
-        + '<td><input type="text" value="'+safeDesc+'" data-pidx="'+i+'" placeholder="Item…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSpareDesc(+this.dataset.pidx,this.value)"></td>'
-        + '<td><button data-pidx="'+i+'" onclick="mPackSpareDel(+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td>'
+        + '<td><input type="checkbox" '+(s.checked?'checked':'')+' data-pidx="'+realIdx+'" onclick="mPackSpareCheck(+this.dataset.pidx,this.checked)"></td>'
+        + '<td><input type="number" min="1" value="'+(s.qty||1)+'" data-pidx="'+realIdx+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSpareQty(+this.dataset.pidx,this.value)"></td>'
+        + '<td><input type="text" value="'+safeDesc+'" data-pidx="'+realIdx+'" placeholder="Item…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSpareDesc(+this.dataset.pidx,this.value)"></td>'
+        + '<td><button data-pidx="'+realIdx+'" onclick="mPackSpareDel(+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td>'
         + '</tr>';
     });
     extraHtml += '</tbody></table>';
@@ -1760,6 +1796,44 @@ function packAddSpare(){
       if(inp) inp.focus();
     }
   }, 60);
+}
+
+// ── Per-item spares on mobile (linked to a parent device model or cable spec) ─
+function mPackAddSpareFor(parentKey, label){
+  if(!parentKey) return;
+  if(!_packSpares) _packSpares = [];
+  _packSpares.push({
+    id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+    qty:1, desc:'spare '+(label||''), checked:false, parent:parentKey
+  });
+  _sparePersist();
+  renderPack();
+  showToast('Spare added under '+(label||parentKey),'ok');
+}
+function mPackSpareCheck2(id, on){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.checked = !!on;
+  _sparePersist();
+}
+function mPackSpareQty2(id, v){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.qty = parseInt(v)||1;
+  _sparePersist();
+}
+function mPackSpareDesc2(id, v){
+  var s = (_packSpares||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  s.desc = v;
+  _sparePersist();
+}
+function mPackSpareDel2(id){
+  var i = (_packSpares||[]).findIndex(function(x){return x.id===id;});
+  if(i < 0) return;
+  _packSpares.splice(i,1);
+  _sparePersist();
+  renderPack();
 }
 function _spareSet(i, key, val){
   if(!_packSpares || !_packSpares[i]) return;
@@ -5611,7 +5685,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.970m',
+    version: 'v3.971m',
     message: msg,
   };
   showToast('Sending feedback…','info');
