@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.029</title>
+<title>WTUniverse · Buildert Editor v4.032</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.029</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.032</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -548,16 +548,14 @@
   </div>
 </header>
 
-<div id="version-warn" style="display:none;background:rgba(255,77,77,.12);
 <div id="https-warn" style="display:none;background:rgba(255,140,0,.15);border-bottom:1px solid rgba(255,140,0,.4);padding:8px 16px;font-size:13px;font-family:var(--mono);color:#ffaa44;align-items:center;gap:12px;">
   ⚠ <b>Loaded over HTTPS</b> — Push to controller is blocked by the browser (mixed content).
   <b>Save this file to your desktop and open it as a local file instead.</b>
   <button style="margin-left:12px;padding:2px 10px;font-size:12px;cursor:pointer;border-radius:4px;border:1px solid #ffaa44;background:transparent;color:#ffaa44"
     onclick="document.getElementById('https-warn').style.display='none'">Dismiss</button>
 </div>
-  border-bottom:1px solid var(--danger);padding:7px 24px;
-  font-family:var(--mono);font-size:12px;color:var(--danger);
-  align-items:center;gap:10px;position:sticky;top:60px;z-index:98;">
+
+<div id="version-warn" style="display:none;background:rgba(255,77,77,.12);border-bottom:1px solid var(--danger);padding:7px 24px;font-family:var(--mono);font-size:12px;color:var(--danger);align-items:center;gap:10px;position:sticky;top:60px;z-index:98;">
   <span>&#9888;</span>
   <span id="version-warn-msg"></span>
   <button class="btn" style="padding:3px 10px;font-size:11px;margin-left:auto;
@@ -717,7 +715,7 @@
       <button class="btn btn-ghost" onclick="_toggleGuideLine()" style="padding:5px 11px;font-size:12px" title="Toggle a draggable vertical center/orientation line">⫯ Center line</button>
       <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">Scroll to zoom · drag ↦ to connect · click edge label for cable</span>
       <button class="btn btn-ghost" onclick="document.getElementById('node-load-bg').click()" style="padding:5px 11px;font-size:12px" title="Load a JPEG/PNG/PDF stage drawing as background reference">🖼️ Background</button>
-      <input type="file" id="node-load-bg" accept=".jpg,.jpeg,.png,.pdf,image/*,application/pdf" style="display:none" onchange="nodeLoadBackground(this.files[0])">
+      <input type="file" id="node-load-bg" accept="image/*,.pdf,.svg,application/pdf,image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display:none" onchange="nodeLoadBackground(this.files[0])">
       <span id="node-bg-opacity-wrap" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.04);padding:2px 8px;border-radius:4px">
         <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">opacity</span>
         <input id="node-bg-opacity" type="range" min="0" max="100" value="40" onchange="nodeBgOpacity(this.value)" style="width:60px;vertical-align:middle">
@@ -734,7 +732,7 @@
         <button class="icon-btn" onclick="nodeBgNudge(0,-20)" title="Move up" style="font-size:12px;padding:1px 4px;line-height:1">▲</button>
         <button class="icon-btn" onclick="nodeBgNudge(0,20)"  title="Move down" style="font-size:12px;padding:1px 4px;line-height:1">▼</button>
         <button class="icon-btn" onclick="nodeBgNudge(20,0)"  title="Move right" style="font-size:12px;padding:1px 4px;line-height:1">▶</button>
-        <button class="icon-btn" onclick="nodeBgRecenter()" title="Re-center" style="font-size:11px;padding:2px 6px">⊕</button>
+        <button class="icon-btn" onclick="nodeBgRecenter()" title="Snap top-left to world origin (0,0)" style="font-size:11px;padding:2px 6px">⊕</button>
         <span style="color:var(--border2);margin:0 2px">·</span>
         <button class="icon-btn" onclick="nodeBgRemove()" title="Remove background" style="font-size:11px;padding:2px 6px;color:var(--danger)">✕</button>
       </span>
@@ -6829,25 +6827,34 @@ function nodeFitView() {
   if (svg) svg.setAttribute('height', maxY);
 }
 
-// ── Background reference image (JPG/PNG/PDF) for nodes view ─────────
+// ── Background reference image (JPG/PNG/WebP/SVG/PDF) for nodes view ─
 async function nodeLoadBackground(file){
-  if(!file) return;
+  if(!file) {
+    showToast('No file selected','warn');
+    return;
+  }
+  var name = (file.name||'').toLowerCase();
+  var type = file.type || '';
+  console.log('[BG] Loading file:', file.name, 'type:', type, 'size:', file.size);
   var dataUrl = null;
-  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
-    // Convert first page of PDF to image using pdf.js (force rotation=0 so we get the natural page)
+
+  // PDF — convert page 1 to an image via pdf.js
+  if(type === 'application/pdf' || name.endsWith('.pdf')){
     try {
       if(!window.pdfjsLib){
+        showToast('Loading PDF library…','ok');
         await new Promise(function(res, rej){
           var s = document.createElement('script');
           s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+          s.onload = res;
+          s.onerror = function(){ rej(new Error('Could not load pdf.js from CDN')); };
+          document.head.appendChild(s);
         });
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
       var arrayBuf = await file.arrayBuffer();
       var pdf = await window.pdfjsLib.getDocument({data: arrayBuf}).promise;
       var page = await pdf.getPage(1);
-      // Explicit rotation=0 so user can rotate manually via the toolbar button
       var viewport = page.getViewport({scale: 2.0, rotation: 0});
       var canvas = document.createElement('canvas');
       canvas.width = viewport.width; canvas.height = viewport.height;
@@ -6855,36 +6862,73 @@ async function nodeLoadBackground(file){
       await page.render({canvasContext: ctx, viewport: viewport}).promise;
       dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     } catch(e) {
-      showToast('PDF load failed: '+e.message, 'danger');
+      console.error('[BG] PDF load failed:', e);
+      showToast('PDF load failed: '+(e.message||'unknown'), 'danger');
       return;
     }
-  } else {
-    // Image file — use createImageBitmap which respects EXIF orientation if browser supports
-    dataUrl = await new Promise(function(res){
-      var r = new FileReader();
-      r.onload = function(e){ res(e.target.result); };
-      r.readAsDataURL(file);
-    });
   }
-  // Get natural dimensions
+  // Any image format (PNG, JPG, WebP, GIF, SVG, etc.) — read directly as data URL
+  else if(type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg|bmp)$/.test(name)){
+    try {
+      dataUrl = await new Promise(function(res, rej){
+        var r = new FileReader();
+        r.onload = function(e){ res(e.target.result); };
+        r.onerror = function(){ rej(new Error('Could not read file')); };
+        r.readAsDataURL(file);
+      });
+    } catch(e) {
+      console.error('[BG] Image read failed:', e);
+      showToast('Could not read image file', 'danger');
+      return;
+    }
+  }
+  else {
+    showToast('Unsupported file format. Use JPG, PNG, WebP, GIF, SVG, or PDF.','warn');
+    return;
+  }
+
+  if(!dataUrl){
+    showToast('Could not load file','danger');
+    return;
+  }
+
+  // Probe natural dimensions
   var probe = new Image();
   probe.onload = function(){
     var stage = _stages[_currentStageIdx];
-    if(!stage) return;
+    if(!stage){
+      showToast('No stage selected','warn');
+      return;
+    }
+    // Compute the rendered size at default scale so we can position the image
+    // with its TOP-LEFT at world origin (0,0) — same start as node positions.
+    var natW = probe.naturalWidth || 1200;
+    var natH = probe.naturalHeight || 800;
+    var ratio = natW / natH;
+    var baseW = 1200, baseH = 800;
+    var w, h;
+    if(ratio > baseW/baseH){ w = baseW; h = baseW / ratio; }
+    else { h = baseH; w = baseH * ratio; }
+    var initialScale = 1.5;
+    w *= initialScale; h *= initialScale;
     stage.nodeBackgroundImage = {
       data: dataUrl,
-      width: probe.naturalWidth,
-      height: probe.naturalHeight,
+      width: natW,
+      height: natH,
       opacity: 0.4,
       rotation: 0,
-      scale: 1.5,   // default scale — covers more of the node canvas
-      offsetX: 0,
-      offsetY: 0
+      scale: initialScale,
+      offsetX: w/2,   // center coords — placing center here puts top-left at (0,0)
+      offsetY: h/2
     };
     _markDirty && _markDirty();
     nodeApplyBackground();
     document.getElementById('node-bg-opacity-wrap').style.display = 'inline-flex';
-    showToast('Background loaded — use rotate/scale buttons to adjust', 'ok');
+    showToast('Background loaded ('+file.name+') — top-left at origin', 'ok');
+  };
+  probe.onerror = function(){
+    console.error('[BG] Image probe failed for', file.name);
+    showToast('Could not decode image (file may be corrupt or unsupported)', 'danger');
   };
   probe.src = dataUrl;
 }
@@ -6934,6 +6978,15 @@ function nodeApplyBackground(){
   var scv = document.getElementById('node-bg-scale-val'); if(scv) scv.textContent = Math.round(bg.scale*100)+'%';
   var rl = document.getElementById('node-bg-rot-label');  if(rl) rl.textContent = bg.rotation+'°';
 }
+function _bgRenderedSize(bg){
+  var natW = bg.width || 1200, natH = bg.height || 800;
+  var ratio = natW / natH;
+  var baseW = 1200, baseH = 800;
+  var w, h;
+  if(ratio > baseW/baseH){ w = baseW; h = baseW / ratio; }
+  else { h = baseH; w = baseH * ratio; }
+  return {w: w * (bg.scale||1), h: h * (bg.scale||1)};
+}
 function nodeBgOpacity(pct){
   var stage = _stages[_currentStageIdx];
   if(!stage || !stage.nodeBackgroundImage) return;
@@ -6944,7 +6997,15 @@ function nodeBgOpacity(pct){
 function nodeBgScale(pct){
   var stage = _stages[_currentStageIdx];
   if(!stage || !stage.nodeBackgroundImage) return;
-  stage.nodeBackgroundImage.scale = parseInt(pct) / 100;
+  var bg = stage.nodeBackgroundImage;
+  // Anchor scale around top-left so reference point doesn't drift away
+  var oldSize = _bgRenderedSize(bg);
+  var topLeftX = bg.offsetX - oldSize.w/2;
+  var topLeftY = bg.offsetY - oldSize.h/2;
+  bg.scale = parseInt(pct) / 100;
+  var newSize = _bgRenderedSize(bg);
+  bg.offsetX = topLeftX + newSize.w/2;
+  bg.offsetY = topLeftY + newSize.h/2;
   nodeApplyBackground();
   _markDirty && _markDirty();
 }
@@ -6966,8 +7027,10 @@ function nodeBgNudge(dx, dy){
 function nodeBgRecenter(){
   var stage = _stages[_currentStageIdx];
   if(!stage || !stage.nodeBackgroundImage) return;
-  stage.nodeBackgroundImage.offsetX = 0;
-  stage.nodeBackgroundImage.offsetY = 0;
+  // Re-anchor so the image's top-left is at world origin (0,0)
+  var size = _bgRenderedSize(stage.nodeBackgroundImage);
+  stage.nodeBackgroundImage.offsetX = size.w / 2;
+  stage.nodeBackgroundImage.offsetY = size.h / 2;
   nodeApplyBackground();
   _markDirty && _markDirty();
 }
@@ -9225,7 +9288,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.029',
+    version: 'v4.032',
     message: msg,
   };
   showToast('Sending feedback…','info');
