@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.032</title>
+<title>WTUniverse · Buildert Editor v4.034</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.032</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.034</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -741,7 +741,8 @@
         <button class="btn btn-ghost" onclick="nodeSaveAsSvg()" style="padding:5px 10px;font-size:11px">&#128190; Save SVG</button>
         <button class="btn btn-ghost" onclick="document.getElementById('node-load-svg').click()" style="padding:5px 10px;font-size:11px">&#128194; Load SVG</button>
         <input type="file" id="node-load-svg" accept=".svg" style="display:none" onchange="nodeLoadSvg(this.files[0])">
-        <button class="btn btn-ghost" onclick="nodePrint()" style="padding:5px 10px;font-size:11px">&#128438; Print</button>
+        <button class="btn btn-ghost" onclick="nodePrint(true)" style="padding:5px 10px;font-size:11px">&#128438; Print + bg</button>
+        <button class="btn btn-ghost" onclick="nodePrint(false)" style="padding:5px 10px;font-size:11px">&#128438; Print plain</button>
       </div>
     </div>
     <svg id="node-svg" height="540" xmlns="http://www.w3.org/2000/svg" style="background:#0a0c0f;">
@@ -6921,7 +6922,7 @@ async function nodeLoadBackground(file){
       offsetX: w/2,   // center coords — placing center here puts top-left at (0,0)
       offsetY: h/2
     };
-    _markDirty && _markDirty();
+    if(typeof _markDirty === 'function') _markDirty();
     nodeApplyBackground();
     document.getElementById('node-bg-opacity-wrap').style.display = 'inline-flex';
     showToast('Background loaded ('+file.name+') — top-left at origin', 'ok');
@@ -6992,7 +6993,7 @@ function nodeBgOpacity(pct){
   if(!stage || !stage.nodeBackgroundImage) return;
   stage.nodeBackgroundImage.opacity = parseInt(pct) / 100;
   nodeApplyBackground();
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
 }
 function nodeBgScale(pct){
   var stage = _stages[_currentStageIdx];
@@ -7007,14 +7008,14 @@ function nodeBgScale(pct){
   bg.offsetX = topLeftX + newSize.w/2;
   bg.offsetY = topLeftY + newSize.h/2;
   nodeApplyBackground();
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
 }
 function nodeBgRotate(){
   var stage = _stages[_currentStageIdx];
   if(!stage || !stage.nodeBackgroundImage) return;
   stage.nodeBackgroundImage.rotation = (stage.nodeBackgroundImage.rotation + 90) % 360;
   nodeApplyBackground();
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
 }
 function nodeBgNudge(dx, dy){
   var stage = _stages[_currentStageIdx];
@@ -7022,7 +7023,7 @@ function nodeBgNudge(dx, dy){
   stage.nodeBackgroundImage.offsetX += dx;
   stage.nodeBackgroundImage.offsetY += dy;
   nodeApplyBackground();
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
 }
 function nodeBgRecenter(){
   var stage = _stages[_currentStageIdx];
@@ -7032,14 +7033,14 @@ function nodeBgRecenter(){
   stage.nodeBackgroundImage.offsetX = size.w / 2;
   stage.nodeBackgroundImage.offsetY = size.h / 2;
   nodeApplyBackground();
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
 }
 function nodeBgRemove(){
   var stage = _stages[_currentStageIdx];
   if(!stage || !stage.nodeBackgroundImage) return;
   if(!confirm('Remove background image?')) return;
   delete stage.nodeBackgroundImage;
-  _markDirty && _markDirty();
+  if(typeof _markDirty === 'function') _markDirty();
   nodeApplyBackground();
   showToast('Background removed', 'ok');
 }
@@ -7099,26 +7100,47 @@ function nodeLoadSvg(file) {
   r.readAsText(file);
 }
 
-function nodePrint() {
+function nodePrint(includeBackground) {
+  if(includeBackground === undefined) includeBackground = true;
   var svg = document.getElementById('node-svg');
   if (!svg) { window.print(); return; }
 
-  // Bounding box
+  // Bounding box — start from node positions
   var pad=30, NWP=130, NHP=70, minX=1e9,minY=1e9,maxX=0,maxY=0;
   Object.keys(_nodePositions).forEach(function(id){
     var p=_nodePositions[id];
     if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
     if(p.x+NWP>maxX)maxX=p.x+NWP; if(p.y+NHP+60>maxY)maxY=p.y+NHP+60;
   });
+  // Extend bounding box to include background image if it's part of the print
+  var stage = _stages[_currentStageIdx];
+  var bg = stage && stage.nodeBackgroundImage;
+  if (includeBackground && bg && bg.data) {
+    var size = (typeof _bgRenderedSize === 'function') ? _bgRenderedSize(bg) : {w:1200*1.5, h:800*1.5};
+    var bgX1 = (bg.offsetX||0) - size.w/2;
+    var bgY1 = (bg.offsetY||0) - size.h/2;
+    var bgX2 = bgX1 + size.w;
+    var bgY2 = bgY1 + size.h;
+    if(bgX1 < minX) minX = bgX1;
+    if(bgY1 < minY) minY = bgY1;
+    if(bgX2 > maxX) maxX = bgX2;
+    if(bgY2 > maxY) maxY = bgY2;
+  }
   if(minX===1e9){minX=0;minY=0;maxX=800;maxY=500;}
-  var vbX=Math.max(0,minX-pad), vbY=Math.max(0,minY-pad);
-  var vbW=maxX-vbX+pad, vbH=maxY-vbY+pad;
+  var vbX = minX - pad, vbY = minY - pad;
+  var vbW = maxX - vbX + pad, vbH = maxY - vbY + pad;
 
   // Clone and clean SVG
   var clone = svg.cloneNode(true);
-  ['node-edges','node-nodes','node-labels'].forEach(function(id){
+  // Strip pan/zoom transforms from ALL transformed groups so they're in world coords
+  ['node-bg-image-group','node-edges','node-nodes','node-labels','node-guide'].forEach(function(id){
     var g=clone.getElementById(id); if(g) g.removeAttribute('transform');
   });
+  // Remove background entirely if user chose plain print
+  if (!includeBackground) {
+    var bgEl = clone.getElementById('node-bg-image-group');
+    if (bgEl && bgEl.parentNode) bgEl.parentNode.removeChild(bgEl);
+  }
   clone.setAttribute('viewBox', vbX+' '+vbY+' '+vbW+' '+vbH);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
   clone.removeAttribute('style');
@@ -9288,7 +9310,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.032',
+    version: 'v4.034',
     message: msg,
   };
   showToast('Sending feedback…','info');
