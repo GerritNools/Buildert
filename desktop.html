@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.035</title>
+<title>WTUniverse · Buildert Editor v4.036</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.035</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.036</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -1736,6 +1736,33 @@ function openStageManager(){
   _smRender();
 }
 
+// Normalize any color string to #rrggbb for use with <input type="color">
+function _toHexColor(c){
+  if(!c) return '#888888';
+  c = String(c).trim();
+  if(/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+  if(/^#[0-9a-f]{3}$/i.test(c)){
+    return ('#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3]).toLowerCase();
+  }
+  // For rgb() or named colors, ask the DOM to resolve
+  try {
+    var probe = document.createElement('div');
+    probe.style.color = c;
+    document.body.appendChild(probe);
+    var rgb = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    var m = rgb.match(/\d+/g);
+    if(m && m.length>=3){
+      var h = '#'+m.slice(0,3).map(function(n){
+        var v = parseInt(n,10).toString(16);
+        return v.length<2?'0'+v:v;
+      }).join('');
+      return h.toLowerCase();
+    }
+  } catch(_) {}
+  return '#888888';
+}
+
 function _smRender(){
   var box = document.getElementById('sm-list');
   if(!box) return;
@@ -1752,10 +1779,31 @@ function _smRender(){
     handle.style.cssText = 'cursor:grab;color:var(--muted);font-size:16px;user-select:none;padding:0 6px';
     row.appendChild(handle);
 
-    // Color dot
+    // Color picker (was a static dot — now a clickable color input)
+    var colorWrap = document.createElement('label');
+    colorWrap.style.cssText = 'position:relative;display:inline-block;cursor:pointer;flex-shrink:0';
+    colorWrap.title = 'Click to change stage color';
     var dot = document.createElement('div');
-    dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:'+s.color+';flex-shrink:0';
-    row.appendChild(dot);
+    dot.style.cssText = 'width:18px;height:18px;border-radius:50%;background:'+(s.color||'#888')+';border:2px solid var(--border);box-shadow:0 0 0 1px rgba(0,0,0,0.2) inset;cursor:pointer';
+    var colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = _toHexColor(s.color||'#888888');
+    colorInput.style.cssText = 'position:absolute;left:0;top:0;width:18px;height:18px;opacity:0;cursor:pointer';
+    colorInput.dataset.idx = i;
+    colorInput.oninput = function(e){
+      var newCol = e.target.value;
+      _stages[i].color = newCol;
+      dot.style.background = newCol;
+      info.style.color = newCol;
+      // Live re-render of any view that depends on stage color
+      try { if(typeof renderTabs === 'function') renderTabs(); } catch(_) {}
+      try { if(typeof renderNodeView === 'function') renderNodeView(); } catch(_) {}
+      try { if(typeof renderPackList === 'function') renderPackList(); } catch(_) {}
+      autoSave && autoSave();
+    };
+    colorWrap.appendChild(dot);
+    colorWrap.appendChild(colorInput);
+    row.appendChild(colorWrap);
 
     // Name + count
     var info = document.createElement('div');
@@ -9415,7 +9463,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.035',
+    version: 'v4.036',
     message: msg,
   };
   showToast('Sending feedback…','info');
