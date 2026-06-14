@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.036</title>
+<title>WTUniverse · Buildert Editor v4.037</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.036</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.037</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -7534,7 +7534,11 @@ function _cableLabel(key) {
 }
 
 function packAddSpare() {
-  _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5), qty:1, desc:'', checked:false});
+  _packSpares.push({
+    id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+    qty:1, desc:'', checked:false,
+    stage: (typeof _currentStageName === 'function') ? _currentStageName() : ''
+  });
   window._lastPackEdit = Date.now();
   renderPackList();
   autoSave();
@@ -7705,19 +7709,41 @@ function packPrint(printAll) {
     bodyHtml=stageHtml((_stages[si]||{}).devices||devices);
   }
 
-  // Shared items
-  // Manual extra items — only standalone (parent-linked appear under their parent rows above)
-  var standaloneSpares = (_packSpares||[]).filter(function(s){return s && !s.parent && (s.desc || s.qty);});
-  if(standaloneSpares.length){
-    bodyHtml+='<div class="section"><div class="sec-title">Extra Items</div>';
-    bodyHtml+='<table class="pack-print"><colgroup>'
-      +'<col style="width:28px"><col style="width:42px"><col>'
-      +'</colgroup>'
-      +'<thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
-    standaloneSpares.forEach(function(s){
-      bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td class="qty">'+(s.qty||1)+'&times;</td><td class="model">'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
-    });
-    bodyHtml+='</tbody></table></div>';
+  // Manual extra items — per-stage (parent-linked appear under their parent rows above)
+  var allStandalone = (_packSpares||[]).filter(function(s){return s && !s.parent && (s.desc || s.qty);});
+  if(allStandalone.length){
+    if(isAll){
+      // Group by stage when printing all
+      _stages.forEach(function(stg){
+        var sName = stg.name || '';
+        var items = allStandalone.filter(function(s){return (s.stage||'') === sName;});
+        if(!items.length) return;
+        bodyHtml+='<div class="section"><div class="sec-title">Extra Items — '+sName.replace(/</g,'&lt;')+'</div>';
+        bodyHtml+='<table class="pack-print"><colgroup>'
+          +'<col style="width:28px"><col style="width:42px"><col>'
+          +'</colgroup>'
+          +'<thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
+        items.forEach(function(s){
+          bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td class="qty">'+(s.qty||1)+'&times;</td><td class="model">'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
+        });
+        bodyHtml+='</tbody></table></div>';
+      });
+    } else {
+      // Single stage — show only this stage's extras
+      var curName = (stageName||'');
+      var items = allStandalone.filter(function(s){return (s.stage||'') === curName;});
+      if(items.length){
+        bodyHtml+='<div class="section"><div class="sec-title">Extra Items</div>';
+        bodyHtml+='<table class="pack-print"><colgroup>'
+          +'<col style="width:28px"><col style="width:42px"><col>'
+          +'</colgroup>'
+          +'<thead><tr><th></th><th>Qty</th><th>Description</th></tr></thead><tbody>';
+        items.forEach(function(s){
+          bodyHtml+='<tr><td><input type="checkbox" '+(s.checked?'checked':'')+' ></td><td class="qty">'+(s.qty||1)+'&times;</td><td class="model">'+(s.desc||'').replace(/</g,'&lt;')+'</td></tr>';
+        });
+        bodyHtml+='</tbody></table></div>';
+      }
+    }
   }
 
   // Pack list sign-offs (from mobile riggers)
@@ -9463,7 +9489,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.036',
+    version: 'v4.037',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -11311,12 +11337,18 @@ function _renderManualPackItems() {
   _packSpares.forEach(function(s,i){
     if(s && !s.id) s.id = 'spare_legacy_'+i+'_'+Math.random().toString(36).slice(2,7);
   });
-  // Only show standalone extras here — parent-linked spares appear under their item
-  var standalone = _packSpares.filter(function(x){return !x.parent;});
+  // Migrate legacy extras (no stage field) once to the first stage
+  _migrateExtrasToStage();
+  var curStageName = _currentStageName();
+  // Only show standalone extras for THIS stage — parent-linked appear under their item
+  var standalone = _packSpares.filter(function(x){
+    return !x.parent && (x.stage||'') === curStageName;
+  });
   var done = standalone.filter(function(x){return x.checked;}).length;
   var html = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
     +  '<div style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:2px;color:var(--muted)">📦 EXTRA ITEMS</div>'
+    +  '<span style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+(curStageName||'—')+'</span>'
     +  (standalone.length?'<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+done+'/'+standalone.length+'</span>':'')
     +'</div>';
   if(standalone.length){
@@ -11335,9 +11367,31 @@ function _renderManualPackItems() {
   html += '</div>';
   el.innerHTML = html;
 }
+
+// Helpers for per-stage extras
+function _currentStageName(){
+  var s = _stages && _stages[_currentStageIdx];
+  return s ? (s.name||'') : '';
+}
+function _migrateExtrasToStage(){
+  if(!_packSpares || !_packSpares.length || !_stages || !_stages.length) return;
+  var fallback = _stages[0].name || '';
+  var migrated = 0;
+  _packSpares.forEach(function(s){
+    if(s && !s.parent && (s.stage === undefined || s.stage === null || s.stage === '')){
+      s.stage = fallback;
+      migrated++;
+    }
+  });
+  if(migrated) console.log('[PACK] Migrated', migrated, 'extras to stage:', fallback);
+}
 function _miAdd2(){
   if(!_packSpares) _packSpares = [];
-  _packSpares.push({id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5), qty:1, desc:'', checked:false});
+  _packSpares.push({
+    id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+    qty:1, desc:'', checked:false,
+    stage: _currentStageName()    // pin to current stage
+  });
   window._lastPackEdit = Date.now();
   _renderManualPackItems();
   autoSave();
