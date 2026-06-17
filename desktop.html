@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.040</title>
+<title>WTUniverse · Buildert Editor v4.041</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.040</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.041</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -6255,9 +6255,13 @@ function _lbCol(sigType, cable) {
 
       // ── SEPARATE data line ──────────────────────────────────────────────
       if (datSrcId) {
-        var sp = _ports(datSrcId); if(!sp) {}
+        var sp = _ports(datSrcId);
+        if(!sp) {
+          if(datSrcId==='FOH') console.warn('[NODES] ✗ Skipped FOH→'+d.device_id+' data line: _ports(FOH) returned null (no FOH position)');
+        }
         else {
           var isFoh2 = (datSrcId==='FOH');
+          if(isFoh2) console.log('[NODES] ✓ Drawing FOH→'+d.device_id+' data line, cable='+datCable+', from('+sp.mid.x+','+sp.mid.y+') to('+dp.dataIn.x+','+dp.dataIn.y+')');
           var noCable2 = !datCable;
           var col2 = _lbCol('data', datCable);
           var spSpec2 = _devSpec(datSrcId)||{};
@@ -7320,8 +7324,9 @@ function nodePrint(includeBackground) {
     '<!DOCTYPE html><html><head><title>'+fileTitle+'</title>'
     +'<style>'
     +'@page{size:A4 landscape;margin:0}'
-    +'*{box-sizing:border-box}'
-    +'html,body{margin:0;padding:0;background:#fff;width:100%;height:100%;font-family:Arial,sans-serif;color:#000}'
+    +'*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}'
+    +'html,body{margin:0;padding:0;background:#fff;width:100%;height:100%;font-family:Arial,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'svg, svg *{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
     +_buildPrintHeaderCss()
     +'#hdrwrap{padding:18px 22px 0}'
     +'#svgwrap{width:100%;height:calc(100% - 200px);overflow:hidden;padding:0 22px 22px}'
@@ -9503,7 +9508,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.040',
+    version: 'v4.041',
     message: msg,
   };
   showToast('Sending feedback…','info');
