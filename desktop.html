@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.039</title>
+<title>WTUniverse · Buildert Editor v4.040</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -465,7 +465,7 @@
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.039</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.040</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -5797,22 +5797,25 @@ function renderNodeView() {
   var nodeIds = devices.filter(function(d){return d.device_id;}).map(function(d){return d.device_id;});
   var allIds  = (needFoh ? ['FOH'] : []).concat(nodeIds);
 
-  // FOH placement: if FOH is needed but missing a position, place it at bottom-center
-  // of existing nodes (not random — random meant it could end up anywhere off-screen)
-  if (needFoh && !_nodePositions['FOH']) {
+  // FOH placement: if FOH is needed but missing OR has invalid coords, give it a sensible spot
+  var _fohPos = _nodePositions['FOH'];
+  var _fohValid = _fohPos && isFinite(_fohPos.x) && isFinite(_fohPos.y);
+  if (needFoh && !_fohValid) {
     var maxY = 0, sumX = 0, count = 0;
     Object.keys(_nodePositions).forEach(function(k){
+      if(k==='FOH') return;
       var p = _nodePositions[k];
-      if(p && typeof p.y === 'number'){
+      if(p && isFinite(p.x) && isFinite(p.y)){
         if(p.y > maxY) maxY = p.y;
         sumX += p.x; count++;
       }
     });
     _nodePositions['FOH'] = {
       x: count ? (sumX/count) : 400,
-      y: maxY + 160
+      y: count ? (maxY + 160) : 500
     };
     _saveNodePositions();
+    console.log('[NODES] Placed FOH at', _nodePositions['FOH']);
   }
 
   allIds.forEach(function(id){
@@ -6107,10 +6110,11 @@ function _lbCol(sigType, cable) {
     if (datSrcId && datSrcId !== 'FOH' && _devType(datSrcId) === TYPE_PSU) {
       datSrcId = ''; datCable = '';
     }
-    // Also skip data line if the device's spec has no data_in port
-    if (!dSpec.data_in) { datSrcId = ''; datCable = ''; }
-    // Skip power line if device's spec has no pwr_in port
-    if (!dSpec.pwr_in) { pwrSrcId = ''; pwrCable = ''; }
+    // Skip data/power line only if spec says no port AND the user did NOT explicitly assign that line.
+    // Explicit source_data / source_power are user intent and must always be respected (otherwise
+    // legit FOH-ethercon links silently disappear when a device's spec doesn't list data_in).
+    if (!dSpec.data_in && !d.source_data) { datSrcId = ''; datCable = ''; }
+    if (!dSpec.pwr_in  && !d.source_power) { pwrSrcId = ''; pwrCable = ''; }
 
     // ── Determine if combo ────────────────────────────────────────────────
     var pwrSig = cableSignalType(pwrCable+(pwrCable&&pwrCable.indexOf('-')<0?'-0':''));
@@ -6348,15 +6352,16 @@ function _lbCol(sigType, cable) {
       var sub2Y = sub1 ? 48 : 36;
       nodeHtml += '<text x="10" y="'+sub2Y+'" fill="#7a8694" font-size="11"'
         +' font-family="Share Tech Mono,monospace" style="pointer-events:none">'+sub2.slice(0,16)+'</text>';
-      if (dev && dev.notes) {
-        var _notesY = (sub1?60:48);
-        var _notesStr = (dev.notes||'').slice(0,26)+((dev.notes||'').length>26?'…':'');
-        // Sticky-note style: light yellow background with dark text.
-        // Works on dark UI (pops out) AND on white print (stays light yellow + black).
-        nodeHtml += '<rect x="6" y="'+(_notesY-9)+'" width="'+(NODE_W-12)+'" height="13" rx="2" fill="#fff3b0" opacity="0.96" style="pointer-events:none"/>';
-        nodeHtml += '<text x="10" y="'+_notesY+'" fill="#1a1a1a" font-size="9" font-style="italic"'
-          +' font-family="Share Tech Mono,monospace" style="pointer-events:none">📝 '+_notesStr+'</text>';
-      }
+    }
+    // Notes — always rendered if present, regardless of sub2 (was hidden when no location/status)
+    if (dev && dev.notes) {
+      // Place note line just under whatever was last drawn (title + sub1 + sub2)
+      var _notesY = sub2 ? (sub1?60:48) : (sub1?48:36);
+      var _notesStr = (dev.notes||'').slice(0,26)+((dev.notes||'').length>26?'…':'');
+      // Sticky-note style: light yellow background with dark text.
+      nodeHtml += '<rect x="6" y="'+(_notesY-9)+'" width="'+(NODE_W-12)+'" height="13" rx="2" fill="#fff3b0" opacity="0.96" style="pointer-events:none"/>';
+      nodeHtml += '<text x="10" y="'+_notesY+'" fill="#1a1a1a" font-size="9" font-style="italic"'
+        +' font-family="Share Tech Mono,monospace" style="pointer-events:none">📝 '+_notesStr+'</text>';
     }
     // Status text under LED
     if(!isFoh && st){
@@ -9498,7 +9503,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.039',
+    version: 'v4.040',
     message: msg,
   };
   showToast('Sending feedback…','info');
