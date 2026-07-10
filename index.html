@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.973m</title>
+<title>WTU · Buildert v3.974m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -521,7 +521,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.973m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.974m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -685,31 +685,61 @@ body.sun-mode .pack-table td {
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Feedback</div>
   <div class="sheet-body">
-    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.5">
-      Found a bug? Have an idea? Just want to vent? Send it here — it'll reach Wintavel without bothering anyone in chat.
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px;line-height:1.5;font-style:italic">
+      "We love to act like we want to improve, and we know you want to be heard."
     </p>
-    <label>What kind?</label>
-    <div id="fb-type-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
-      <button class="fb-type-btn" data-type="bug" onclick="_setFbType('bug')"
-        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
-        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">🐞 Bug</button>
-      <button class="fb-type-btn" data-type="idea" onclick="_setFbType('idea')"
-        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
-        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">💡 Idea</button>
-      <button class="fb-type-btn" data-type="comment" onclick="_setFbType('comment')"
-        style="padding:10px 8px;border-radius:8px;border:2px solid var(--border);background:var(--panel);
-        color:var(--muted);font-family:var(--cond);font-weight:700;font-size:12px;cursor:pointer">💬 Comment</button>
+
+    <!-- Breadcrumb of choices (tappable to jump back) -->
+    <div id="fb-crumbs" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+
+    <!-- STEP 1: About -->
+    <div id="fb-step-1">
+      <label style="font-size:13px">Your feedback is about:</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+        <button class="fb-about-btn" onclick="_fbPickAbout('Buildert')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">📱 Buildert</button>
+        <button class="fb-about-btn" onclick="_fbPickAbout('Equipment')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">🔧 Equipment</button>
+        <button class="fb-about-btn" onclick="_fbPickAbout('Colleagues')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">👥 Colleagues</button>
+        <button class="fb-about-btn" onclick="_fbPickAbout('Project')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">🎪 Project</button>
+      </div>
     </div>
 
-    <label>Your name <span style="color:var(--muted);font-size:9px">(optional)</span></label>
-    <input id="fb-from" type="text" placeholder="Your name" style="margin-bottom:10px">
+    <!-- STEP 2: Kind -->
+    <div id="fb-step-2" style="display:none">
+      <label style="font-size:13px">What kind?</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+        <button onclick="_fbPickKind('idea')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">💡 Idea</button>
+        <button onclick="_fbPickKind('bug')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">🐞 Failure / bug</button>
+        <button onclick="_fbPickKind('feedback')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">💬 Feedback</button>
+        <button onclick="_fbPickKind('evaluatiepuntje')"
+          style="padding:16px 10px;border-radius:10px;border:2px solid var(--border);background:var(--panel);
+          color:var(--text);font-family:var(--cond);font-weight:700;font-size:15px;cursor:pointer">📝 Evaluatiepuntje</button>
+      </div>
+    </div>
 
-    <label>Message</label>
-    <textarea id="fb-message" rows="6" placeholder="Describe the bug, idea or comment…&#10;What were you trying to do? What happened? What did you expect?" style="margin-bottom:14px"></textarea>
-
-    <div style="display:flex;gap:8px">
-      <button class="sb sb-ghost" onclick="closeSheet('feedback')" style="flex:1">Cancel</button>
-      <button class="sb" onclick="submitFeedback()" style="flex:2;background:var(--accent);color:#000;font-weight:700">Send</button>
+    <!-- STEP 3: Message + send -->
+    <div id="fb-step-3" style="display:none">
+      <label style="font-size:13px">Your name <span style="color:var(--muted);font-size:10px">(optional)</span></label>
+      <input id="fb-from" type="text" placeholder="Your name" style="margin-bottom:10px">
+      <label style="font-size:13px">Message</label>
+      <textarea id="fb-message" rows="5" placeholder="Tell us…&#10;What happened? What did you expect? What would make it better?" style="margin-bottom:14px;font-size:15px"></textarea>
+      <div style="display:flex;gap:8px">
+        <button class="sb sb-ghost" onclick="closeSheet('feedback')" style="flex:1">Cancel</button>
+        <button class="sb" onclick="submitFeedback()" style="flex:2;background:var(--accent);color:#000;font-weight:700;font-size:15px">Send</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1198,13 +1228,33 @@ function updateLocDl(){
   dl.innerHTML=locs.map(function(l){return '<option value="'+l.replace(/"/g,'&quot;')+'">';}).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// ── DEV BACKLOG — hidden features & future todos ──────────────────
+// This is THE place to track what's parked. Searchable: "DEV BACKLOG".
+//
+// HIDDEN (code intact, just removed from TABS below — uncomment to restore):
+//   • Diagram tab (k:'map')   — hidden v3.973m, not used yet
+//   • Power tab   (k:'power') — hidden v3.973m, not used yet
+//   • Scan tab    (k:'scan')  — hidden v3.974m, not used yet
+//
+// FUTURE TODOS:
+//   • Auto-pull merge bug: checks sometimes uncheck after sync.
+//     Workaround: auto-pull OFF by default (v3.964m). Root cause unknown.
+//   • Stage rename breaks per-stage extras link (stage stored by name).
+//     Consider stable stage IDs.
+//   • Desktop: FOH ethercon data line not always drawn (diagnostics
+//     added in desktop v4.041, awaiting console output).
+//   • Desktop: note sticky-note prints black on some printers —
+//     print-color-adjust added v4.041, verify.
+// ═══════════════════════════════════════════════════════════════════
+
 // ── Nav ──────────────────────────────────────────────────────────
 var TABS=[
   {k:'nodes',   icon:'🕸', label:'Nodes'},
   {k:'list',    icon:'☰',  label:'List'},
-  {k:'scan',    icon:'📡', label:'Scan'},
-  // {k:'map',     icon:'🗺',  label:'Diagram'},  // hidden for now — not used yet
-  // {k:'power',   icon:'⚡', label:'Power'},     // hidden for now — not used yet
+  // {k:'scan',    icon:'📡', label:'Scan'},      // hidden v3.974m — see DEV BACKLOG
+  // {k:'map',     icon:'🗺',  label:'Diagram'},  // hidden v3.973m — see DEV BACKLOG
+  // {k:'power',   icon:'⚡', label:'Power'},     // hidden v3.973m — see DEV BACKLOG
   {k:'pack',    icon:'📦', label:'Pack'},
   {k:'specs',   icon:'📋', label:'Specs'},
   {k:'todos',   icon:'✅', label:'Todos'},
@@ -5404,8 +5454,42 @@ function mTodoToggle(id){
   var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
   if(t.auto){showToast('Auto todo — tick in device card','warn');return;}
   t.done=!t.done; t._localEdit=true; _mTodosSave();
+  if(t.done) _playLaserPew();   // 🔫 pew! — completing a todo deserves a laser
   _mSyncAutoTodos(); _renderTodosList();
   autoSave();
+}
+
+// ── Laser beam sound (Web Audio synth — no file needed) ─────────────
+var _laserCtx = null;
+function _playLaserPew(){
+  try {
+    if(!_laserCtx) _laserCtx = new (window.AudioContext||window.webkitAudioContext)();
+    var ctx = _laserCtx;
+    if(ctx.state === 'suspended') ctx.resume();
+    var now = ctx.currentTime;
+    // Classic "pew": sawtooth sweeping down fast, with a snappy envelope
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1400, now);
+    osc.frequency.exponentialRampToValueAtTime(120, now + 0.22);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+    // A touch of shimmer: second osc an octave up, quieter
+    var osc2 = ctx.createOscillator();
+    var gain2 = ctx.createGain();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(2800, now);
+    osc2.frequency.exponentialRampToValueAtTime(240, now + 0.18);
+    gain2.gain.setValueAtTime(0.0001, now);
+    gain2.gain.exponentialRampToValueAtTime(0.07, now + 0.008);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc2.connect(gain2).connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.3);
+    osc2.start(now); osc2.stop(now + 0.25);
+  } catch(e) { /* audio blocked or unsupported — silently skip */ }
 }
 function mTodoDelete(id){
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
@@ -5688,16 +5772,52 @@ function submitPackSignoff(){
   renderPack();
 }
 
+// ── Feedback wizard: step 1 (about) → step 2 (kind) → step 3 (message) ──
+var _fbAbout = '';
+var _FB_KIND_LABELS = {idea:'💡 Idea', bug:'🐞 Failure / bug', feedback:'💬 Feedback', evaluatiepuntje:'📝 Evaluatiepuntje'};
+var _FB_ABOUT_ICONS = {Buildert:'📱', Equipment:'🔧', Colleagues:'👥', Project:'🎪'};
+
 function openFeedbackSheet(){
-  // Prefill name from rigger if known
+  _fbAbout = ''; _fbType = '';
+  _fbShowStep(1);
   var nameInp = document.getElementById('fb-from');
   if(nameInp && !nameInp.value && window._riggerName) nameInp.value = window._riggerName;
-  // Default type
-  _setFbType('bug');
-  // Clear message
   var msg = document.getElementById('fb-message');
   if(msg) msg.value = '';
   openSheet('feedback');
+}
+function _fbShowStep(n){
+  [1,2,3].forEach(function(i){
+    var el = document.getElementById('fb-step-'+i);
+    if(el) el.style.display = (i===n) ? 'block' : 'none';
+  });
+  _fbRenderCrumbs();
+}
+function _fbRenderCrumbs(){
+  var el = document.getElementById('fb-crumbs');
+  if(!el) return;
+  var crumbs = [];
+  if(_fbAbout) crumbs.push({label:(_FB_ABOUT_ICONS[_fbAbout]||'')+' '+_fbAbout, step:1});
+  if(_fbType)  crumbs.push({label:_FB_KIND_LABELS[_fbType]||_fbType, step:2});
+  if(!crumbs.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='flex';
+  el.innerHTML = crumbs.map(function(c){
+    return '<button onclick="_fbShowStep('+c.step+')" style="padding:6px 12px;border-radius:16px;'
+      +'border:1px solid var(--accent);background:rgba(0,212,255,.1);color:var(--accent);'
+      +'font-family:var(--cond);font-weight:700;font-size:13px;cursor:pointer">'+c.label+' ✎</button>';
+  }).join('');
+}
+function _fbPickAbout(a){
+  _fbAbout = a;
+  _fbShowStep(2);
+}
+function _fbPickKind(k){
+  _fbType = k;
+  _fbShowStep(3);
+  setTimeout(function(){
+    var msg = document.getElementById('fb-message');
+    if(msg) msg.focus();
+  }, 150);
 }
 async function submitFeedback(){
   var msg = (document.getElementById('fb-message').value||'').trim();
@@ -5705,12 +5825,13 @@ async function submitFeedback(){
   if(!_workerUrl){ showToast('No worker configured — cannot send','warn'); return; }
   var from = (document.getElementById('fb-from').value||'').trim() || (window._riggerName||'');
   var payload = {
-    type: _fbType,
+    type: _fbType || 'feedback',
+    about: _fbAbout || '',
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.973m',
-    message: msg,
+    version: 'v3.974m',
+    message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
   try {
