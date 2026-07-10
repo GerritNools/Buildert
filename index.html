@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.977m</title>
+<title>WTU · Buildert v3.978m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -504,6 +504,17 @@ body.sun-mode #mob-node-svg rect[fill="#c77dff"] + text,
 body.sun-mode #mob-node-svg rect[fill="#f5a623"] + text {
   fill: #1a1a1a !important;
 }
+/* GENERAL sun-mode: catch inline styles that hardcode dark-theme tints */
+body.sun-mode [style*="background:rgba(255,255,255"]{background:rgba(0,0,0,.05)!important;}
+body.sun-mode [style*="background:rgba(10,12,15"]{background:#ffffff!important;}
+body.sun-mode [style*="background:var(--bg)"]{background:#f7f4ee!important;}
+body.sun-mode [style*="background:var(--panel)"]{background:#ffffff!important;}
+body.sun-mode [style*="color:#7a8694"]{color:#444!important;}
+body.sun-mode [style*="color:#dde"]{color:#222!important;}
+body.sun-mode [style*="color:#fff"]:not([style*="background"]){color:#1a1a1a!important;}
+body.sun-mode .sheet{background:#ffffff!important;color:#1a1a1a!important;}
+body.sun-mode .sheet-title{color:#1a1a1a!important;}
+body.sun-mode .card{background:#ffffff!important;}
 body.sun-mode .pack-section,
 body.sun-mode .pack-table {
   color: #1a1a1a !important;
@@ -521,7 +532,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.977m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.978m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1246,6 +1257,10 @@ function updateLocDl(){
 //   • Power tab   (k:'power') — hidden v3.973m, not used yet
 //   • Scan tab    (k:'scan')  — hidden v3.974m, not used yet
 //
+// FEATURES ADDED v3.978m: career XP (localStorage buildert_career_xp),
+//   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
+//   general sun-mode inline-style overrides, Motivator™ tier popups.
+//
 // FUTURE TODOS:
 //   • Auto-pull merge bug: checks sometimes uncheck after sync.
 //     Workaround: auto-pull OFF by default (v3.964m). Root cause unknown.
@@ -1459,6 +1474,7 @@ function tapCheck(gi,check){
   if(!devices[gi].checks) devices[gi].checks={};
   devices[gi].checks[check]=!devices[gi].checks[check];
   if(typeof _buzz==='function') _buzz(devices[gi].checks[check]?35:15);
+  if(devices[gi].checks[check] && typeof _careerXpAdd==='function') _careerXpAdd(1);
   if(check==='Mounted'){
     if(devices[gi].checks[check]){var n=new Date(),p=function(v){return v<10?'0'+v:''+v;};devices[gi].mounted_at=p(n.getHours())+':'+p(n.getMinutes());}
     else devices[gi].mounted_at='';
@@ -2907,6 +2923,7 @@ function saveProject(){
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    xp_bonus: _xpBonusMap(),
   };
   var json=JSON.stringify(payload,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -3035,6 +3052,7 @@ function _mergeProjectNoConflict(data){
     });
   }
   if((Date.now()-(_lastLocalEdit||0))>10000)_packSpares=data.pack_spares||[];
+  if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
   if(data.project){
     project=Object.assign(project,data.project);
     var ip=data.project.anbernic_ip||'';
@@ -3258,6 +3276,7 @@ function _mergeSmartFromFile(data){
     });
   }
   if((Date.now()-(_lastLocalEdit||0))>10000) _packSpares = data.pack_spares || [];
+  if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
   if(data.project){
     project = Object.assign(project, data.project);
     var pn=document.getElementById('proj-name'); var pv=document.getElementById('proj-venue');
@@ -3998,6 +4017,7 @@ async function wPush(silent){
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    xp_bonus: _xpBonusMap(),
     pack_shared:_packShared,
     pack_signoffs:window._packSignoffs||[],
     pack_signoffs_deleted:window._packSignoffsDeleted||[],
@@ -4253,6 +4273,7 @@ async function _dbxPush(silent){
     devices:devices,
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
+    xp_bonus: _xpBonusMap(),
     todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
@@ -5535,6 +5556,7 @@ function mTodoToggle(id){
     // XP only ONCE per todo — untick+retick farms nothing
     if(!_xpAlreadyAwarded(t.id)){
       _xpMarkAwarded(t.id);
+      _careerXpAdd(5);
       _showXpBeam(5);                    // laser beam across the screen
       if(typeof _logActivity==='function') _logActivity('todo','Todo done: '+(t.label||'').slice(0,40));
     }
@@ -5542,6 +5564,18 @@ function mTodoToggle(id){
   _mSyncAutoTodos(); _renderTodosList();
   updateBanner();
   autoSave();
+}
+
+// ── Career XP: persists on this phone ACROSS projects ───────────────
+function _careerXpGet(){ try{ return parseInt(localStorage.getItem('buildert_career_xp')||'0',10)||0; }catch(e){ return 0; } }
+function _careerXpAdd(n){
+  try{ localStorage.setItem('buildert_career_xp', String(_careerXpGet()+(n|0))); }catch(e){}
+}
+// Planner-granted bonus XP (synced from desktop via xp_bonus)
+function _xpBonusMap(){
+  if(window._xpBonus) return window._xpBonus;
+  try{ window._xpBonus = JSON.parse(localStorage.getItem('buildert_xp_bonus')||'{}'); }catch(e){ window._xpBonus={}; }
+  return window._xpBonus;
 }
 
 // ── XP award dedupe (persisted) — no farming by untick/retick ────────
@@ -5592,8 +5626,66 @@ function _showXpBeam(xp){
     });
     setTimeout(function(){ txt.style.opacity='0'; beam.style.opacity='0'; }, 700);
     setTimeout(function(){ wrap.remove(); }, 1100);
+    if(Math.random()<0.2) setTimeout(_motivShow, 1400);   // occasional pep talk
   }catch(e){}
 }
+
+// ── Motivator™: random tier-aware encouragement, with love and sarcasm ──
+var _MOTIV = {
+  low: [   // tiers 0-1: Cable Coiler / Bronze
+    "Every legend started by coiling one cable. Badly.",
+    "You're {pts} XP in. The catering line respects effort. Sort of.",
+    "Tick a todo. The laser sound alone is worth it. 🔫",
+    "Bronze isn't given. It's earned. Mostly by showing up.",
+    "Pro tip: checking boxes = XP. Doing the work first = optional*. (*not optional)",
+    "Somewhere, a crew chief just nodded approvingly. Probably not at you. Yet."
+  ],
+  mid: [   // tiers 2-4: Silver / Gold / Platinum
+    "Silver looks good on you. Gold would look better. Just saying.",
+    "{pts} XP. The Good Radio (Channel 1) is within reach.",
+    "You're carrying this crew. Don't tell them, they'll get comfortable.",
+    "Halfway to greatness. Also halfway to the lukewarm coffee perk.",
+    "Your leaderboard position is being watched. No pressure. (Pressure.)",
+    "Gold tier riggers get addressed by first name. Almost there. Keep ticking."
+  ],
+  high: [  // tiers 5-6: Titanium / GOAT
+    "The hat is basically yours. The hat was always yours.",
+    "{pts} XP. At this point the app is learning from YOU.",
+    "Statue commission pending. Marble or bronze? Reply via feedback. 🥸",
+    "You could stop now. But legends don't stop. Also there's an after party. 🎉",
+    "Crew chief is about to ask YOU what the plan is. Act natural.",
+    "Beyond Diamond Bonvoy Lifetime Royal Elite Ambassador GOAT status: loading…"
+  ]
+};
+function _motivShow(){
+  try{
+    var me = window._riggerName||'';
+    var stats = (typeof _calcRiggerStats==='function') ? _calcRiggerStats(me) : {points:0};
+    var total = stats.points + (typeof _careerXpGet==='function'?_careerXpGet():0) + ((_xpBonusMap()[me]|0));
+    var tier = _tierFromPoints(total);
+    var idx = _TIERS.indexOf(tier);
+    var pool = idx<=1?_MOTIV.low : idx<=4?_MOTIV.mid : _MOTIV.high;
+    var msg = pool[Math.floor(Math.random()*pool.length)].replace('{pts}', total);
+    var el=document.createElement('div');
+    el.style.cssText='position:fixed;left:12px;right:12px;bottom:92px;z-index:9998;'
+      +'background:linear-gradient(135deg,'+tier.color+'ee,'+tier.color+'bb);color:#000;'
+      +'font-family:var(--cond);font-weight:700;font-size:14px;line-height:1.4;'
+      +'padding:12px 16px;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.35);'
+      +'display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(16px);'
+      +'transition:all .3s ease-out;cursor:pointer';
+    el.innerHTML='<span style="font-size:22px">'+tier.emoji+'</span><span style="flex:1">'+msg+'</span>';
+    el.onclick=function(){ el.remove(); };
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.style.opacity='1'; el.style.transform='translateY(0)'; });
+    setTimeout(function(){ el.style.opacity='0'; el.style.transform='translateY(16px)'; }, 5200);
+    setTimeout(function(){ el.remove(); }, 5600);
+  }catch(e){}
+}
+// Random timer: every 5-10 min while the app is open
+(function _motivLoop(){
+  var wait = (5 + Math.random()*5) * 60000;
+  setTimeout(function(){ _motivShow(); _motivLoop(); }, wait);
+})();
 
 // ── Laser beam sounds (Web Audio synth — random variant each time) ──
 var _laserCtx = null;
@@ -6054,7 +6146,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.977m',
+    version: 'v3.978m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -6066,6 +6158,7 @@ async function submitFeedback(){
     });
     if(resp.ok){
       showToast('✓ Thanks — feedback sent','ok');
+      _careerXpAdd(10);
       _showXpBeam(10);
       _playLaserPew();
       if(typeof _logActivity==='function') _logActivity('feedback','Feedback sent ('+(_fbType||'feedback')+')');
@@ -6216,7 +6309,9 @@ function openRankSheet(){
 
   var me = window._riggerName||'';
   var myStats = _calcRiggerStats(me);
-  var tier = _tierFromPoints(myStats.points);
+  var careerTotal = _careerXpGet() + ((_xpBonusMap()[me]|0));
+  var combined = myStats.points + careerTotal;
+  var tier = _tierFromPoints(combined);
   var nextTier = _nextTier(tier);
   var board = _getLeaderboard();
 
@@ -6227,15 +6322,16 @@ function openRankSheet(){
     +'border:1px solid '+tier.color+';border-radius:14px;padding:18px 14px;margin-bottom:16px;text-align:center">'
     +  '<div style="font-size:48px;line-height:1">'+tier.emoji+'</div>'
     +  '<div style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:2px;color:'+tier.color+';margin-top:6px;text-transform:uppercase;line-height:1.3">'+tier.name+'</div>'
-    +  '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px">'+(me||'you')+' · '+myStats.points+' pts · '+myStats.actions+' actions</div>';
+    +  '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px">'+(me||'you')+' · '+myStats.points+' project pts · '+myStats.actions+' actions</div>'
+    +  '<div style="font-family:var(--mono);font-size:12px;color:#ffd700;margin-top:4px;font-weight:700">🌍 CAREER XP: '+careerTotal+((_xpBonusMap()[me]|0)?' <span style="font-size:10px;color:var(--muted)">(incl. '+(_xpBonusMap()[me]|0)+' planner bonus)</span>':'')+'</div>';
 
   if(nextTier){
-    var pct = Math.round((myStats.points - tier.min) / (nextTier.min - tier.min) * 100);
+    var pct = Math.round((combined - tier.min) / (nextTier.min - tier.min) * 100);
     html += '<div style="background:rgba(255,255,255,.08);border-radius:6px;height:10px;overflow:hidden;margin-top:12px">'
       +'<div style="width:'+Math.min(100,pct)+'%;height:100%;background:linear-gradient(90deg,'+tier.color+','+nextTier.color+');transition:width .4s"></div>'
       +'</div>'
       +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">'
-      +'<b style="color:var(--text)">'+(nextTier.min - myStats.points)+'</b> pts away from <span style="color:'+nextTier.color+'">'+nextTier.name+' '+nextTier.emoji+'</span>'
+      +'<b style="color:var(--text)">'+(nextTier.min - combined)+'</b> pts away from <span style="color:'+nextTier.color+'">'+nextTier.name+' '+nextTier.emoji+'</span>'
       +'</div>';
   } else {
     html += '<div style="font-family:var(--mono);font-size:11px;color:'+tier.color+';margin-top:10px;font-weight:700">⭐ MAX TIER UNLOCKED ⭐<br>You are a legend among riggers</div>';
@@ -6321,10 +6417,12 @@ function openProjectSheet(){
 
     // ── Rank card ─────────────────────────────────────────────────
     var myStats = _calcRiggerStats(window._riggerName);
-    var tier = _tierFromPoints(myStats.points);
+    var _cTot = _careerXpGet() + ((_xpBonusMap()[window._riggerName]|0));
+    var _comb = myStats.points + _cTot;
+    var tier = _tierFromPoints(_comb);
     var nextTier = _nextTier(tier);
     var progressPct = nextTier
-      ? Math.min(100, Math.round((myStats.points - tier.min) / (nextTier.min - tier.min) * 100))
+      ? Math.min(100, Math.round((_comb - tier.min) / (nextTier.min - tier.min) * 100))
       : 100;
     html += '<div style="background:linear-gradient(135deg,'+tier.color+'22,'+tier.color+'08);'
       +'border:1px solid '+tier.color+';border-radius:10px;padding:12px;margin-bottom:14px;cursor:pointer"'
@@ -6333,14 +6431,14 @@ function openProjectSheet(){
       +    '<span style="font-size:28px">'+tier.emoji+'</span>'
       +    '<div style="flex:1">'
       +      '<div style="font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:1.5px;color:'+tier.color+';line-height:1.2">'+tier.name.toUpperCase()+'</div>'
-      +      '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">'+myStats.points+' pts · tap for leaderboard 🏆</div>'
+      +      '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">'+_comb+' pts (incl. career) · tap for leaderboard 🏆</div>'
       +    '</div>'
       +  '</div>'
       +  (nextTier
         ? '<div style="background:rgba(255,255,255,.05);border-radius:4px;height:6px;overflow:hidden;margin-top:4px">'
           +'<div style="width:'+progressPct+'%;height:100%;background:'+tier.color+';transition:width .3s"></div>'
           +'</div>'
-          +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px">'+(nextTier.min - myStats.points)+' pts to '+nextTier.name+' '+nextTier.emoji+'</div>'
+          +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px">'+(nextTier.min - _comb)+' pts to '+nextTier.name+' '+nextTier.emoji+'</div>'
         : '<div style="font-family:var(--mono);font-size:9px;color:'+tier.color+';margin-top:3px">MAX TIER UNLOCKED — you legend</div>')
       +'</div>';
   }
