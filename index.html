@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.974m</title>
+<title>WTU · Buildert v3.975m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -521,7 +521,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.974m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.975m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -733,7 +733,15 @@ body.sun-mode .pack-table td {
     <!-- STEP 3: Message + send -->
     <div id="fb-step-3" style="display:none">
       <label style="font-size:13px">Your name <span style="color:var(--muted);font-size:10px">(optional)</span></label>
-      <input id="fb-from" type="text" placeholder="Your name" style="margin-bottom:10px">
+      <input id="fb-from" type="text" placeholder="Your name" style="margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);
+        text-transform:none;letter-spacing:0;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" id="fb-anon" onchange="_fbToggleAnon(this.checked)" style="width:18px;height:18px;accent-color:var(--accent)">
+        🥸 I want to report anonymously
+      </label>
+      <div style="font-size:11px;color:var(--muted);font-style:italic;margin:0 0 12px 26px">
+        (privacy is an illusion, but we'll happily pretend together)
+      </div>
       <label style="font-size:13px">Message</label>
       <textarea id="fb-message" rows="5" placeholder="Tell us…&#10;What happened? What did you expect? What would make it better?" style="margin-bottom:14px;font-size:15px"></textarea>
       <div style="display:flex;gap:8px">
@@ -2007,11 +2015,18 @@ function editSpecMobile(k,f,v){
 // ── Banner & chips ────────────────────────────────────────────────
 function updateBanner(){
   var tot=devices.length;
-  var p=tot>0?Math.round(devices.reduce(function(s,d){return s+pct(d);},0)/tot):0;
+  // Manual todos count toward project completion as one unit each.
+  // A project with ONLY todos (no equipment) reaches 100% when all todos are done.
+  var manualTodos=(_mTodos||[]).filter(function(t){return t && !t.auto;});
+  var todoUnits=manualTodos.length;
+  var todoSum=manualTodos.filter(function(t){return t.done;}).length*100;
+  var devSum=devices.reduce(function(s,d){return s+pct(d);},0);
+  var units=tot+todoUnits;
+  var p=units>0?Math.round((devSum+todoSum)/units):0;
   var fill=document.getElementById('ban-fill');
   var pctEl=document.getElementById('ban-pct');
   if(fill){fill.style.width=p+'%';fill.style.background=p===100?'linear-gradient(90deg,var(--ok),#5dff9e)':p>60?'linear-gradient(90deg,var(--laser),var(--ok))':'linear-gradient(90deg,var(--danger),var(--warn))';}
-  if(pctEl){pctEl.textContent=tot?p+'%':'—';pctEl.style.color=p===100?'var(--ok)':p>60?'var(--laser)':'var(--warn)';}
+  if(pctEl){pctEl.textContent=units?p+'%':'—';pctEl.style.color=p===100?'var(--ok)':p>60?'var(--laser)':'var(--warn)';}
   var nl=devices.filter(function(d){return d.type===TL;}).length;
   var ns=devices.filter(function(d){return d.type===TS;}).length;
   var nd=devices.filter(function(d){return d.type===TD;}).length;
@@ -5364,8 +5379,12 @@ var _mTodosShowAuto = true;
 
 function _renderTodosList(){
   var cont=document.getElementById('card-list'); if(!cont)return;
+  var _sun=document.body.classList.contains('sun-mode');
   var urgCols={1:'var(--text)',2:'var(--warn)',3:'var(--danger)'};
-  var urgBg={1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.07)',3:'rgba(255,77,77,.07)'};
+  // Sun mode: white-tint rows are invisible on a light page — use dark tints instead
+  var urgBg=_sun
+    ? {1:'rgba(0,0,0,.05)',2:'rgba(184,106,0,.10)',3:'rgba(179,32,32,.10)'}
+    : {1:'rgba(255,255,255,.03)',2:'rgba(245,166,35,.07)',3:'rgba(255,77,77,.07)'};
 
   var curStageId=(_mStages[_mCurrentStageIdx]||{}).id||'';
   var allManual=_mTodos.filter(function(t){return !t.auto;});
@@ -5454,12 +5473,40 @@ function mTodoToggle(id){
   var t=_mTodos.find(function(x){return x.id===id;}); if(!t)return;
   if(t.auto){showToast('Auto todo — tick in device card','warn');return;}
   t.done=!t.done; t._localEdit=true; _mTodosSave();
-  if(t.done) _playLaserPew();   // 🔫 pew! — completing a todo deserves a laser
+  if(t.done){
+    _playLaserPew();                     // 🔫 pew! (random variant)
+    _showXpPopup(5, t.label);            // +5 XP floating popup
+    if(typeof _logActivity==='function') _logActivity('todo','Todo done: '+(t.label||'').slice(0,40));
+  }
   _mSyncAutoTodos(); _renderTodosList();
+  updateBanner();
   autoSave();
 }
 
-// ── Laser beam sound (Web Audio synth — no file needed) ─────────────
+// ── XP popup — floats up from bottom, feeds the Rewards™ hunger ─────
+function _showXpPopup(xp, label){
+  try{
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:50%;bottom:130px;transform:translateX(-50%);'
+      +'z-index:9999;background:linear-gradient(135deg,#ffd700,#ff9500);color:#000;'
+      +'font-family:var(--cond);font-weight:900;font-size:22px;letter-spacing:1px;'
+      +'padding:10px 22px;border-radius:24px;box-shadow:0 4px 20px rgba(255,180,0,.4);'
+      +'pointer-events:none;opacity:0;transition:all .3s ease-out';
+    el.textContent = '+'+xp+' XP ⚡';
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){
+      el.style.opacity = '1';
+      el.style.bottom = '170px';
+    });
+    setTimeout(function(){
+      el.style.opacity = '0';
+      el.style.bottom = '210px';
+    }, 900);
+    setTimeout(function(){ el.remove(); }, 1300);
+  }catch(e){}
+}
+
+// ── Laser beam sounds (Web Audio synth — random variant each time) ──
 var _laserCtx = null;
 function _playLaserPew(){
   try {
@@ -5467,34 +5514,66 @@ function _playLaserPew(){
     var ctx = _laserCtx;
     if(ctx.state === 'suspended') ctx.resume();
     var now = ctx.currentTime;
-    // Classic "pew": sawtooth sweeping down fast, with a snappy envelope
-    var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(1400, now);
-    osc.frequency.exponentialRampToValueAtTime(120, now + 0.22);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-    // A touch of shimmer: second osc an octave up, quieter
-    var osc2 = ctx.createOscillator();
-    var gain2 = ctx.createGain();
-    osc2.type = 'square';
-    osc2.frequency.setValueAtTime(2800, now);
-    osc2.frequency.exponentialRampToValueAtTime(240, now + 0.18);
-    gain2.gain.setValueAtTime(0.0001, now);
-    gain2.gain.exponentialRampToValueAtTime(0.07, now + 0.008);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-    osc.connect(gain).connect(ctx.destination);
-    osc2.connect(gain2).connect(ctx.destination);
-    osc.start(now); osc.stop(now + 0.3);
-    osc2.start(now); osc2.stop(now + 0.25);
+    var variant = Math.floor(Math.random()*5);
+    function tone(type, f0, f1, dur, vol, delay){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      var t0 = now + (delay||0);
+      o.type = type;
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.exponentialRampToValueAtTime(Math.max(30,f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.03);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    }
+    switch(variant){
+      case 0: // classic pew
+        tone('sawtooth', 1400, 120, 0.22, 0.25);
+        tone('square',   2800, 240, 0.18, 0.07);
+        break;
+      case 1: // double tap pew-pew
+        tone('sawtooth', 1600, 200, 0.12, 0.22);
+        tone('sawtooth', 1600, 200, 0.12, 0.22, 0.14);
+        break;
+      case 2: // high zap
+        tone('square',   3200, 500, 0.10, 0.15);
+        tone('sawtooth', 2200, 180, 0.16, 0.18, 0.02);
+        break;
+      case 3: // heavy blaster
+        tone('sawtooth',  900,  60, 0.35, 0.28);
+        tone('triangle', 1800, 100, 0.28, 0.10);
+        break;
+      case 4: // charge-up then fire
+        (function(){
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type='sine';
+          o.frequency.setValueAtTime(200, now);
+          o.frequency.exponentialRampToValueAtTime(1200, now+0.15);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(0.12, now+0.14);
+          g.gain.exponentialRampToValueAtTime(0.0001, now+0.16);
+          o.connect(g).connect(ctx.destination);
+          o.start(now); o.stop(now+0.18);
+        })();
+        tone('sawtooth', 1500, 100, 0.25, 0.26, 0.16);
+        break;
+    }
   } catch(e) { /* audio blocked or unsupported — silently skip */ }
 }
 function mTodoDelete(id){
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile();
 }
 var _mTodoEditId = null; // null = new, string = editing existing
+
+// Quick-start template: prefill description and focus at end
+function _taTemplate(prefix){
+  var lbl = document.getElementById('ta-lbl');
+  if(!lbl) return;
+  lbl.value = prefix;
+  lbl.focus();
+  try{ lbl.setSelectionRange(lbl.value.length, lbl.value.length); }catch(e){}
+}
 
 function _mTodoOpenSheet(editId){
   _mTodoEditId = editId||null;
@@ -5819,18 +5898,33 @@ function _fbPickKind(k){
     if(msg) msg.focus();
   }, 150);
 }
+function _fbToggleAnon(on){
+  var inp = document.getElementById('fb-from');
+  if(!inp) return;
+  if(on){
+    inp.dataset.prev = inp.value;
+    inp.value = '';
+    inp.placeholder = 'anonymous 🥸';
+    inp.disabled = true;
+  } else {
+    inp.disabled = false;
+    inp.placeholder = 'Your name';
+    inp.value = inp.dataset.prev || '';
+  }
+}
 async function submitFeedback(){
   var msg = (document.getElementById('fb-message').value||'').trim();
   if(!msg){ showToast('Please write something first','warn'); return; }
   if(!_workerUrl){ showToast('No worker configured — cannot send','warn'); return; }
-  var from = (document.getElementById('fb-from').value||'').trim() || (window._riggerName||'');
+  var isAnon = !!(document.getElementById('fb-anon')||{}).checked;
+  var from = isAnon ? 'anonymous' : ((document.getElementById('fb-from').value||'').trim() || (window._riggerName||''));
   var payload = {
     type: _fbType || 'feedback',
     about: _fbAbout || '',
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.974m',
+    version: 'v3.975m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -5931,6 +6025,8 @@ function _calcRiggerStats(name){
     var act = (e.action||'').toLowerCase();
     if(act.indexOf('signed') >= 0 || act.indexOf('signoff') >= 0){
       points += _POINTS.signoff; signoffs++;
+    } else if(act.indexOf('todo done') >= 0){
+      points += 5;   // todo completion — matches the +5 XP popup
     } else if(act.indexOf('mounted') >= 0 || act.indexOf('cabled') >= 0
             || act.indexOf('pointed') >= 0 || act.indexOf('powered') >= 0
             || act.indexOf('output tested') >= 0 || act.indexOf('tested') >= 0){
@@ -6504,6 +6600,16 @@ function _snScanTick() {
   <div class="sheet-handle"></div>
   <div class="sheet-title" id="todo-sheet-title">Add Todo</div>
   <div class="sheet-body">
+    <label style="font-size:12px;color:var(--muted);letter-spacing:1px">QUICK START</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px">
+      <button onclick="_taTemplate('🎨 Design: ')" class="popt">🎨 Design</button>
+      <button onclick="_taTemplate('📦 Material: ')" class="popt">📦 Material</button>
+      <button onclick="_taTemplate('🤔 Figure out: ')" class="popt">🤔 Figure out</button>
+      <button onclick="_taTemplate('💬 Discuss with ')" class="popt">💬 Discuss with…</button>
+      <button onclick="_taTemplate('🐞 Solve error: ')" class="popt">🐞 Error to solve</button>
+      <button onclick="_taTemplate('👀 Double check: ')" class="popt">👀 Double check</button>
+      <button onclick="_taTemplate('🔨 Production: ')" class="popt">🔨 Production task</button>
+    </div>
     <input id="ta-lbl" type="text" placeholder="Description..." autocomplete="off"
            style="font-size:16px;font-family:var(--cond);font-weight:700;letter-spacing:.5px;margin-bottom:10px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
