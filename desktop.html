@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.042</title>
+<title>WTUniverse · Buildert Editor v4.045</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -464,10 +464,16 @@
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
   <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
+    <div onclick="openImportWizard()" title="Import wizard — paste a pack list from Numbers/Excel (or CSV) and turn it into devices + pack items"
+      style="color:#3ddc84;font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">📥</div>
+    <div onclick="openChatModal()" title="Project chat" 
+      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;margin-right:10px;position:relative">💬<span id="chat-unread-d" style="display:none;position:absolute;top:-3px;right:-6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
+    <div onclick="newEdition()" title="New edition — clone this project for next year: structure stays, runtime data wiped"
+      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">🗓</div>
     <div onclick="openRewardsModal()" title="Rigger Rewards™ — view points, grant bonus XP"
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">🏆</div>
     <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.042</div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.045</div>
     <div id="hdr-version" style="color:var(--text)"></div>
   </div>
 
@@ -3923,6 +3929,7 @@ function _injectProjectIntoMobile(html) {
     spec_overrides: _specsOverrides,
     pack_spares: _packSpares,
     xp_bonus: window._xpBonus || {},
+    rigger_aliases: window._riggerAliases || {},
   };
 
   // Strip any old preload block
@@ -3975,6 +3982,7 @@ function _buildProjectPayload() {
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     xp_bonus: window._xpBonus || {},
+    rigger_aliases: window._riggerAliases || {},
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     _log:           window._projectLog || [],
@@ -4239,6 +4247,7 @@ function _mergeProjectNoConflict(data) {
     }
     // Adopt xp_bonus from remote if we have none locally (planner edits win otherwise)
     if(data.xp_bonus && !window._xpBonus){ window._xpBonus = data.xp_bonus; }
+    if(data.rigger_aliases && !window._riggerAliases){ window._riggerAliases = data.rigger_aliases; }
     // Merge activity log from mobile
     if(Array.isArray(data._log) && data._log.length){
       var existing = window._projectLog || [];
@@ -4527,6 +4536,7 @@ function resolveProjectConflict(mode) {
   } else if (mode === 'file') {
     if (Array.isArray(fileData._log)) window._projectLog = fileData._log;
     if (fileData.xp_bonus) window._xpBonus = fileData.xp_bonus;
+    if (fileData.rigger_aliases) window._riggerAliases = fileData.rigger_aliases;
     _mergeProjectNoConflict(fileData);
     document.getElementById('modal-conflict-proj').classList.remove('open');
     _pendingFileData = null;
@@ -9505,10 +9515,16 @@ function _setDfbType(t){
 // ── Rigger Rewards™ admin — planner control over the points economy ──
 // Bonus XP is stored in window._xpBonus {name: pts}, synced via xp_bonus
 // payload key. Mobile adds bonus[me] to the rigger's career total.
+// Rigger name aliases: {"wrong spelling":"Canonical"} — applied at read time,
+// never rewrites history (rewriting would duplicate log entries via sync).
+function _aliasName(n){
+  var a = window._riggerAliases||{};
+  return a[n] || n;
+}
 function _rwCalcPoints(name){
   var seen={}, pts=0;
   (window._projectLog||[]).forEach(function(e){
-    if(!e || e.by!==name) return;
+    if(!e || _aliasName(e.by)!==name) return;
     var k=(e.at||'')+'|'+(e.action||'');
     if(seen[k]) return; seen[k]=1;
     var a=(e.action||'').toLowerCase();
@@ -9522,11 +9538,269 @@ function _rwCalcPoints(name){
   });
   return pts;
 }
+// ── Project chat (desktop) — same /chat/<pid> endpoints as mobile ──
+var _dChatMsgs=[], _dChatTimer=null;
+async function _dChatFetch(){
+  if(!_workerUrl||!_projectKey) return null;
+  try{
+    var r=await fetch(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey));
+    if(!r.ok) return null;
+    var d=await r.json();
+    return Array.isArray(d.messages)?d.messages:[];
+  }catch(e){ return null; }
+}
+function _dChatRender(){
+  var box=document.getElementById('d-chat-msgs'); if(!box) return;
+  if(!_dChatMsgs.length){ box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No messages yet.</div>'; return; }
+  box.innerHTML=_dChatMsgs.map(function(m){
+    var mine=(m.by==='desktop'||m.by==='planner');
+    var t=(m.at||'').replace('T',' ').slice(5,16);
+    return '<div style="max-width:80%;align-self:'+(mine?'flex-end':'flex-start')+';background:'+(mine?'rgba(0,212,255,.14)':'var(--panel)')+';border:1px solid '+(mine?'var(--accent)':'var(--border)')+';border-radius:10px;padding:7px 11px;margin:'+(mine?'0 0 6px auto':'0 auto 6px 0')+'">'
+      +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+' <span style="color:var(--muted);font-family:var(--mono);font-size:9px;font-weight:400">'+t+'</span></div>'
+      +'<div style="font-size:13px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>'
+      +'</div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function openChatModal(){
+  if(!_workerUrl||!_projectKey){ showToast('Connect to worker first','warn'); return; }
+  var html='<div class="modal-overlay open" id="modal-chat" style="z-index:1000">'
+    +'<div class="modal" style="max-width:520px;display:flex;flex-direction:column;height:70vh">'
+    +'<h2 style="margin-bottom:8px">💬 Project chat</h2>'
+    +'<div id="d-chat-msgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:6px 2px"></div>'
+    +'<div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">'
+    +'<input id="d-chat-input" type="text" placeholder="Message the crew…" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')_dChatSend()">'
+    +'<button class="btn" onclick="_dChatSend()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">➤</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'
+    +'<button class="btn btn-ghost" onclick="_dChatClose()" style="flex:1">Close</button>'
+    +'<button class="btn btn-ghost" onclick="_dChatWipe()" style="color:var(--danger);border-color:var(--danger)" title="Planner control: wipe the whole chat history for this project">🗑 Wipe chat</button>'
+    +'</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  var m=await _dChatFetch(); if(m){ _dChatMsgs=m; _dChatRender(); }
+  try{ localStorage.setItem('buildert_chat_seen_d__'+_projectKey, _dChatMsgs.length?_dChatMsgs[_dChatMsgs.length-1].at:''); }catch(e){}
+  var dot=document.getElementById('chat-unread-d'); if(dot) dot.style.display='none';
+  if(_dChatTimer) clearInterval(_dChatTimer);
+  _dChatTimer=setInterval(async function(){
+    if(!document.getElementById('modal-chat')){ clearInterval(_dChatTimer); _dChatTimer=null; return; }
+    var mm=await _dChatFetch();
+    if(mm && mm.length!==_dChatMsgs.length){ _dChatMsgs=mm; _dChatRender(); }
+  },10000);
+}
+function _dChatClose(){ var m=document.getElementById('modal-chat'); if(m) m.remove(); if(_dChatTimer){clearInterval(_dChatTimer);_dChatTimer=null;} }
+async function _dChatSend(){
+  var inp=document.getElementById('d-chat-input');
+  var text=(inp.value||'').trim(); if(!text) return;
+  inp.value='';
+  try{
+    var r=await fetch(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({by:'planner',text:text})
+    });
+    var d=await r.json();
+    if(d.ok){ _dChatMsgs=d.messages; _dChatRender(); }
+  }catch(e){ showToast('Send failed','danger'); }
+}
+async function _dChatWipe(){
+  if(!confirm('Wipe the ENTIRE chat history for this project? Cannot be undone.')) return;
+  try{
+    await fetch(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey),{method:'DELETE'});
+    _dChatMsgs=[]; _dChatRender();
+    showToast('Chat wiped','ok');
+  }catch(e){ showToast('Wipe failed','danger'); }
+}
+// Unread dot: cheap poll every 60s
+setInterval(async function(){
+  if(document.getElementById('modal-chat')||!_workerUrl||!_projectKey) return;
+  var m=await _dChatFetch(); if(!m||!m.length) return;
+  var seen=''; try{ seen=localStorage.getItem('buildert_chat_seen_d__'+_projectKey)||''; }catch(e){}
+  var dot=document.getElementById('chat-unread-d');
+  if(dot) dot.style.display=(m[m.length-1].at>seen)?'block':'none';
+},60000);
+
+// ═══════════════════════════════════════════════════════════════════
+// IMPORT WIZARD — paste from Numbers/Excel (TSV on clipboard) or CSV.
+// Parses → guesses columns → you confirm per row (device vs pack item,
+// which model, qty) → creates devices + pack extras in a chosen stage.
+// ═══════════════════════════════════════════════════════════════════
+var _iwRows=[];
+function openImportWizard(){
+  var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000">'
+    +'<div class="modal" style="max-width:760px;max-height:88vh;overflow-y:auto">'
+    +'<h2>📥 Import wizard</h2>'
+    +'<p style="font-size:12px;color:var(--muted);margin:4px 0 10px">Fastest: open your pack list in <b>Numbers/Excel</b>, select the table, <b>copy</b>, and <b>paste below</b> (Ctrl/Cmd-V). CSV files work too. Count-tables from plots ("4 | RGB 30") paste fine as well.</p>'
+    +'<div id="iw-step1">'
+    +  '<textarea id="iw-paste" rows="8" placeholder="Paste your table here…" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:10px;font-family:var(--mono);font-size:12px" oninput="_iwParse()"></textarea>'
+    +  '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'
+    +    '<span style="font-size:11px;color:var(--muted)">or</span>'
+    +    '<button class="btn btn-ghost" onclick="document.getElementById(\'iw-file\').click()" style="font-size:12px">Choose CSV file</button>'
+    +    '<input type="file" id="iw-file" accept=".csv,.tsv,.txt" style="display:none" onchange="_iwFile(this.files[0])">'
+    +  '</div>'
+    +'</div>'
+    +'<div id="iw-step2" style="margin-top:14px"></div>'
+    +'<div id="iw-step3" style="margin-top:14px"></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  setTimeout(function(){ var t=document.getElementById('iw-paste'); if(t) t.focus(); },100);
+}
+function _iwFile(f){
+  if(!f) return;
+  var r=new FileReader();
+  r.onload=function(e){ document.getElementById('iw-paste').value=e.target.result; _iwParse(); };
+  r.readAsText(f);
+}
+function _iwNorm(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function _iwGuessModel(name){
+  var n=_iwNorm(name);
+  if(!n) return '';
+  var best='', bestLen=0;
+  Object.keys(DEVICE_SPECS).forEach(function(k){
+    var nk=_iwNorm(k), alt=_iwNorm((DEVICE_SPECS[k]||{}).alt||'');
+    var hit=(nk && (n.indexOf(nk)>=0||nk.indexOf(n)>=0)) || (alt && (n.indexOf(alt)>=0||alt.indexOf(n)>=0));
+    if(hit && nk.length>bestLen){ best=k; bestLen=nk.length; }
+  });
+  return best;
+}
+function _iwParse(){
+  var raw=document.getElementById('iw-paste').value||'';
+  if(!raw.trim()){ document.getElementById('iw-step2').innerHTML=''; document.getElementById('iw-step3').innerHTML=''; return; }
+  var lines=raw.split(/\r?\n/).filter(function(l){return l.trim();});
+  // Delimiter: tab wins (Numbers/Excel paste), else ; else ,
+  var delim=raw.indexOf('\t')>=0?'\t':(raw.indexOf(';')>=0?';':',');
+  var grid=lines.map(function(l){ return l.split(delim).map(function(c){return c.trim().replace(/^"|"$/g,'');}); });
+  // Find qty + name columns: qty = column with most pure numbers; name = column with longest text
+  var cols=Math.max.apply(null,grid.map(function(r){return r.length;}));
+  var numScore=[],txtScore=[];
+  for(var c=0;c<cols;c++){ numScore[c]=0; txtScore[c]=0; }
+  grid.forEach(function(r){
+    for(var c=0;c<cols;c++){
+      var v=r[c]||'';
+      if(/^\d+([.,]\d+)?$/.test(v)) numScore[c]++;
+      else if(v && !/^(true|false|yes|no|x|✓)$/i.test(v)) txtScore[c]+=v.length;
+    }
+  });
+  var qtyCol=numScore.indexOf(Math.max.apply(null,numScore));
+  var nameCol=txtScore.indexOf(Math.max.apply(null,txtScore));
+  if(nameCol===qtyCol) nameCol=(qtyCol+1)%cols;
+  // Build rows, skip header-ish lines (no number in qty col)
+  _iwRows=[];
+  grid.forEach(function(r){
+    var q=parseFloat(String(r[qtyCol]||'').replace(',','.'));
+    var name=r[nameCol]||'';
+    if(!name) return;
+    if(isNaN(q)){
+      if(/qty|count|aantal|gear|type|item|symbol|name/i.test(name+(r[qtyCol]||''))) return; // header
+      q=1;
+    }
+    var model=_iwGuessModel(name);
+    // Laser-ish names without a model match still default to Device (amber pick)
+    var looksDevice=model||/rgb|laser|\b\d+\s*w\b|distro|fog|smoke/i.test(name);
+    _iwRows.push({qty:Math.max(1,Math.round(q)), name:name, model:model,
+      target:looksDevice?'device':'pack', include:true});
+  });
+  _iwRenderRows();
+}
+function _iwRenderRows(){
+  var el=document.getElementById('iw-step2');
+  if(!_iwRows.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px">Nothing recognized — check the paste.</p>'; return; }
+  var modelOpts=Object.keys(DEVICE_SPECS).sort().map(function(k){return '<option value="'+k+'">'+k+'</option>';}).join('');
+  var rows=_iwRows.map(function(r,i){
+    return '<tr style="border-bottom:1px solid var(--border2)">'
+      +'<td style="padding:4px"><input type="checkbox" '+(r.include?'checked':'')+' onchange="_iwRows['+i+'].include=this.checked"></td>'
+      +'<td style="padding:4px"><input type="number" min="1" value="'+r.qty+'" style="width:52px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px;border-radius:4px" onchange="_iwRows['+i+'].qty=parseInt(this.value)||1"></td>'
+      +'<td style="padding:4px;font-size:12px">'+r.name.replace(/</g,'&lt;')+'</td>'
+      +'<td style="padding:4px"><select onchange="_iwRows['+i+'].target=this.value;_iwRenderRows()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px;border-radius:4px;font-size:11px">'
+      +  '<option value="device"'+(r.target==='device'?' selected':'')+'>🔧 Device</option>'
+      +  '<option value="pack"'+(r.target==='pack'?' selected':'')+'>📦 Pack item</option>'
+      +  '<option value="skip"'+(r.target==='skip'?' selected':'')+'>— Skip</option>'
+      +'</select></td>'
+      +'<td style="padding:4px">'+(r.target==='device'
+        ? '<select onchange="_iwRows['+i+'].model=this.value" style="background:var(--panel);border:1px solid var(--border);color:'+(r.model?'var(--ok)':'var(--warn)')+';padding:3px;border-radius:4px;font-size:11px">'
+          +'<option value="">— pick model —</option>'
+          +modelOpts.replace('value="'+r.model+'"','value="'+r.model+'" selected')
+          +'</select>'
+        : '<span style="font-size:10px;color:var(--muted)">→ Extra items list</span>')
+      +'</td></tr>';
+  }).join('');
+  el.innerHTML='<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">CONFIRM ROWS</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th></th><th style="text-align:left">Qty</th><th style="text-align:left">From your list</th><th style="text-align:left">Import as</th><th style="text-align:left">Model</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table>';
+  // Step 3: target stage + go
+  var stageOpts=_stages.map(function(st,i){return '<option value="'+i+'">'+(st.name||('Stage '+(i+1)))+'</option>';}).join('');
+  document.getElementById('iw-step3').innerHTML=
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">'
+    +'<label style="font-size:11px;color:var(--muted)">INTO STAGE</label>'
+    +'<select id="iw-stage" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px">'+stageOpts+'<option value="new">➕ New stage…</option></select>'
+    +'<input id="iw-newstage" type="text" placeholder="New stage name" style="display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px">'
+    +'<span style="flex:1"></span>'
+    +'<button class="btn btn-ghost" onclick="document.getElementById(\'modal-import\').remove()">Cancel</button>'
+    +'<button class="btn" onclick="_iwImport()" style="background:#3ddc84;color:#000;font-weight:700;border-color:#3ddc84">Import →</button>'
+    +'</div>';
+  document.getElementById('iw-stage').onchange=function(){
+    document.getElementById('iw-newstage').style.display=this.value==='new'?'inline-block':'none';
+  };
+}
+function _iwImport(){
+  var sel=document.getElementById('iw-stage').value;
+  var stage;
+  if(sel==='new'){
+    var nm=(document.getElementById('iw-newstage').value||'').trim()||('Stage '+(_stages.length+1));
+    stage={id:'stage_'+Date.now(),name:nm,color:'#5b8fff',devices:[]};
+    _stages.push(stage);
+  } else stage=_stages[parseInt(sel,10)]||_stages[0];
+
+  var devsAdded=0, packAdded=0, skipped=0;
+  // Existing numbering per model across ALL stages
+  function nextNum(model){
+    var taken={};
+    _stages.forEach(function(st){(st.devices||[]).forEach(function(d){
+      var dm=modelFromId(d.device_id||'');
+      if(dm && dm.toUpperCase()===model.toUpperCase()){
+        var n=parseInt((d.device_id||'').slice(dm.length),10);
+        if(!isNaN(n)) taken[n]=true;
+      }
+    });});
+    var n=1; while(taken[n])n++; return n;
+  }
+  _iwRows.forEach(function(r){
+    if(!r.include||r.target==='skip'){ skipped++; return; }
+    if(r.target==='device'){
+      if(!r.model){ skipped++; return; }
+      var spec=DEVICE_SPECS[r.model]||{};
+      var type=spec.type||TYPE_LASER;
+      var n=nextNum(r.model);
+      for(var i=0;i<r.qty;i++){
+        var ch={}; (checksFor(type)||[]).forEach(function(c){ch[c]=false;});
+        stage.devices.push({
+          device_id:r.model.toUpperCase()+' '+(n+i), model:r.model, serial:'',
+          type:type, location:'', source:'', status:'Concept', date:today(),
+          checks:ch, note_opts:[], pointed:'', notes:'',
+          connector_in:'', connector_out:'', cable_in:'', cable_out:''
+        });
+        devsAdded++;
+      }
+    } else {
+      _packSpares=_packSpares||[];
+      _packSpares.push({
+        id:'spare_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+        qty:r.qty, desc:r.name, checked:false, stage:stage.name||''
+      });
+      packAdded++;
+    }
+  });
+  if(_stages[_currentStageIdx]===stage) devices=stage.devices;
+  document.getElementById('modal-import').remove();
+  if(typeof renderAll==='function') renderAll(); else { try{renderMain();}catch(e){} }
+  autoSave();
+  showToast('Imported: '+devsAdded+' devices, '+packAdded+' pack items'+(skipped?', '+skipped+' skipped':''),'ok');
+}
+
 function openRewardsModal(){
   if(!window._xpBonus) window._xpBonus = {};
   var names={};
-  (window._projectLog||[]).forEach(function(e){ if(e&&e.by) names[e.by]=1; });
-  Object.keys(window._xpBonus).forEach(function(n){ names[n]=1; });
+  (window._projectLog||[]).forEach(function(e){ if(e&&e.by) names[_aliasName(e.by)]=1; });
+  Object.keys(window._xpBonus).forEach(function(n){ names[_aliasName(n)]=1; });
   var rows=Object.keys(names).sort().map(function(n){
     var p=_rwCalcPoints(n), b=window._xpBonus[n]|0;
     return '<tr>'
@@ -9551,11 +9825,121 @@ function openRewardsModal(){
         +'<th style="text-align:right;padding:4px 10px">Bonus XP</th><th style="text-align:right;padding:4px 10px">Total</th></tr></thead>'
         +'<tbody>'+rows+'</tbody></table>'
       :'<p style="color:var(--muted);font-size:13px;padding:12px;border:1px dashed var(--border);border-radius:8px">No rigger activity yet in this project.</p>')
+    +'<div style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">'
+    +  '<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">🔀 MERGE NAMES</div>'
+    +  '<p style="font-size:11px;color:var(--muted);margin:0 0 8px">Same rigger, different spellings? Tick the wrong ones, type the correct name, merge. Applied everywhere (points, leaderboard, assignments) without touching history.</p>'
+    +  '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
+    +    Object.keys(names).sort().map(function(n){
+           return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">'
+             +'<input type="checkbox" class="rw-merge-src" value="'+n.replace(/"/g,'&quot;')+'">'+n+'</label>';
+         }).join('')
+    +  '</div>'
+    +  '<div style="display:flex;gap:8px">'
+    +    '<input id="rw-merge-target" type="text" placeholder="Correct name" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px">'
+    +    '<button class="btn btn-ghost" onclick="_rwMergeNames()" style="font-size:12px">Merge →</button>'
+    +  '</div>'
+    +  (Object.keys(window._riggerAliases||{}).length
+        ? '<div style="font-size:11px;color:var(--muted);margin-top:8px">Active: '
+          +Object.keys(window._riggerAliases).map(function(k){return k+' → '+window._riggerAliases[k];}).join(' · ')
+          +' <button onclick="window._riggerAliases={};autoSave();document.getElementById(\'modal-rewards\').remove();openRewardsModal();" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">reset</button></div>'
+        : '')
+    +'</div>'
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +'<button class="btn btn-ghost" onclick="document.getElementById(\'modal-rewards\').remove()" style="flex:1">Close</button>'
-    +'<button class="btn" onclick="_rwSave()" style="flex:2;background:#ffd700;color:#000;font-weight:700;border-color:#ffd700">Save & sync bonus XP</button>'
+    +'<button class="btn btn-ghost" onclick="_rwExportCsv()" style="flex:1" title="Download the full activity log as CSV for analysis">⬇ Log CSV</button>'
+    +'<button class="btn" onclick="_rwSave()" style="flex:2;background:#ffd700;color:#000;font-weight:700;border-color:#ffd700">Save & sync</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+}
+// ── New Edition: clone project for a repeating event ────────────────
+// KEEPS: stages, devices (models, cables, sources, locations, positions),
+//        backgrounds, spec overrides, pack spares, manual todos (un-done),
+//        aliases. WIPES: checks, statuses, pointed, mount times, notes,
+//        activity log, sign-offs, bonus XP, version. Detaches from worker
+//        so it becomes a NEW project (old phones stay on the old one).
+function newEdition(){
+  if(!_stages || !_stages.length){ showToast('No project loaded','warn'); return; }
+  var oldName=_projectMeta.name||'Project';
+  var suggested=oldName.replace(/(19|20)\d\d/, function(y){ return String(parseInt(y,10)+1); });
+  if(suggested===oldName) suggested=oldName+' — new edition';
+  var newName=prompt('Name for the new edition:', suggested);
+  if(!newName) return;
+  if(!confirm('Create "'+newName+'"?\n\nStructure (devices, layout, backgrounds, pack) stays.\nAll runtime data (checks, statuses, log, sign-offs) is wiped.\nThe new edition is DISCONNECTED from the current worker project.')) return;
+
+  // Wipe runtime data on every device in every stage
+  _stages.forEach(function(st){
+    (st.devices||[]).forEach(function(d){
+      d.checks={}; d.status=''; d.pointed=''; d.mounted_at=''; d.notes='';
+    });
+  });
+  devices=_stages[_currentStageIdx>=0?_currentStageIdx:0].devices||[];
+  // Reset runtime collections
+  window._projectLog=[];
+  window._packSignoffs=[]; window._packSignoffsDeleted=[];
+  window._xpBonus={};
+  _packChecked={}; try{ localStorage.removeItem('brt_packsigns_desktop'); localStorage.removeItem('brt_packsigns_del_desktop'); }catch(e){}
+  // Manual todos survive but start fresh
+  if(Array.isArray(_todos)) _todos.forEach(function(t){ if(t && !t.auto) t.done=false; });
+  // Un-check pack spares
+  (_packSpares||[]).forEach(function(sp){ if(sp) sp.checked=false; });
+  // New identity
+  _projectMeta.name=newName;
+  if(_projectMeta.date){
+    _projectMeta.date=_projectMeta.date.replace(/(19|20)\d\d/, function(y){ return String(parseInt(y,10)+1); });
+  }
+  _projectVersion=0; _projectBaseVersion=0;
+  // Detach from worker so this is a brand-new project
+  _projectKey='';
+  try{ localStorage.removeItem('buildert_project_key'); }catch(e){}
+  _persistProjectMeta();
+  if(typeof renderAll==='function') renderAll(); else { try{renderMain();}catch(e){} }
+  // Straight to file save — the file IS the system of record
+  saveProject();
+  showToast('New edition "'+newName+'" created — file saved. Connect to worker to sync as a new project.','ok');
+}
+
+function _rwMergeNames(){
+  var target=(document.getElementById('rw-merge-target').value||'').trim();
+  if(!target){ showToast('Type the correct name first','warn'); return; }
+  var srcs=[];
+  document.querySelectorAll('#modal-rewards .rw-merge-src:checked').forEach(function(c){
+    if(c.value!==target) srcs.push(c.value);
+  });
+  if(!srcs.length){ showToast('Tick at least one name to merge','warn'); return; }
+  if(!window._riggerAliases) window._riggerAliases={};
+  srcs.forEach(function(n){
+    window._riggerAliases[n]=target;
+    // Re-point aliases that targeted the merged name
+    Object.keys(window._riggerAliases).forEach(function(k){
+      if(window._riggerAliases[k]===n) window._riggerAliases[k]=target;
+    });
+    // Move any bonus XP to the canonical name
+    if(window._xpBonus && window._xpBonus[n]){
+      window._xpBonus[target]=(window._xpBonus[target]|0)+(window._xpBonus[n]|0);
+      delete window._xpBonus[n];
+    }
+  });
+  autoSave();
+  if(typeof wPush==='function') try{ wPush(); }catch(e){}
+  showToast('Merged '+srcs.join(', ')+' → '+target+' ✓','ok');
+  document.getElementById('modal-rewards').remove();
+  openRewardsModal();
+}
+function _rwExportCsv(){
+  var rows=[['at','by','device','device_type','device_model','action','stage']];
+  (window._projectLog||[]).forEach(function(e){
+    if(!e) return;
+    rows.push([e.at||'', _aliasName(e.by||''), e.device||'', e.device_type||'', e.device_model||'', e.action||'', e.stage_name||'']);
+  });
+  var csv=rows.map(function(r){
+    return r.map(function(c){ c=String(c).replace(/"/g,'""'); return /[",\n;]/.test(c)?'"'+c+'"':c; }).join(',');
+  }).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=((_projectMeta.name||'project')+'_activity_log.csv').replace(/[^a-zA-Z0-9_. -]/g,'');
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('Activity log exported — '+(rows.length-1)+' entries','ok');
 }
 function _rwSave(){
   document.querySelectorAll('#modal-rewards .rw-bonus').forEach(function(inp){
@@ -9584,7 +9968,7 @@ async function submitDesktopFeedback(){
     from: from,
     project: (_projectMeta && _projectMeta.name) || _projectKey || '',
     client: 'desktop',
-    version: 'v4.042',
+    version: 'v4.045',
     message: msg,
   };
   showToast('Sending feedback…','info');
@@ -10293,6 +10677,8 @@ async function _wPushImpl(silent){
     spec_overrides:_specsOverrides,
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
+    xp_bonus: window._xpBonus || {},
+    rigger_aliases: window._riggerAliases || {},
     pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     shares:_spShares,
@@ -10301,6 +10687,21 @@ async function _wPushImpl(silent){
     _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
   };
+  // ── KV size guard: Cloudflare caps a value at ~25MB. Background images
+  // (base64) are the usual culprit. Above 9MB we strip them from the PUSH
+  // only — they stay in the local project & saved .buildert files.
+  try{
+    var _plSize = JSON.stringify(payload).length;
+    if(_plSize > 9*1024*1024){
+      var stripped=0;
+      (payload.stages||[]).forEach(function(st){
+        if(st && st.nodeBackgroundImage){ delete st.nodeBackgroundImage; stripped++; }
+      });
+      if(stripped){
+        showToast('⚠ Push is '+Math.round(_plSize/1048576)+'MB — '+stripped+' background image(s) excluded from sync (kept locally & in files)','warn');
+      }
+    }
+  }catch(e){}
 
   var deviceCount = 0;
   _stages.forEach(function(s){ deviceCount += (s.devices||[]).length; });
