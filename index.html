@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.979m</title>
+<title>WTU · Buildert v3.981m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -532,7 +532,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.979m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.981m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -541,7 +541,7 @@ body.sun-mode .pack-table td {
       <span id="m-net-status" style="color:#3ddc84">🟢 Online</span>
     </div>
   </div>
-  <button onclick="openFeedbackSheet()" title="Quick feedback" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">💬</button>
+  <button onclick="openChatSheet()" title="Project chat" style="flex-shrink:0;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">💬<span id="chat-unread" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--danger)"></span></button>
   <button onclick="setTab('specs')" title="Specs (not project dependent)" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">📋</button>
   <div class="conn-dot" id="conn-dot"></div>
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0;max-width:130px;overflow:hidden" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
@@ -693,6 +693,21 @@ body.sun-mode .pack-table td {
 
 <!-- Feedback overlay + sheet -->
 <div class="ovl" id="ovl-feedback" onclick="closeSheet('feedback')"></div>
+<div class="sheet" id="sheet-chat">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">💬 Project chat</div>
+  <div class="sheet-body" style="display:flex;flex-direction:column;height:70vh">
+    <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
+      <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+      <input id="chat-input" type="text" placeholder="Message the crew…" autocomplete="off"
+        style="flex:1;font-size:15px" onkeydown="if(event.key==='Enter')chatSend()">
+      <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet" id="sheet-feedback">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Feedback</div>
@@ -3053,6 +3068,7 @@ function _mergeProjectNoConflict(data){
   }
   if((Date.now()-(_lastLocalEdit||0))>10000)_packSpares=data.pack_spares||[];
   if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
+  if(data.rigger_aliases){ window._riggerAliases=data.rigger_aliases; try{localStorage.setItem('buildert_rigger_aliases',JSON.stringify(data.rigger_aliases));}catch(e){} }
   if(data.project){
     project=Object.assign(project,data.project);
     var ip=data.project.anbernic_ip||'';
@@ -3285,6 +3301,7 @@ function _mergeSmartFromFile(data){
   }
   if((Date.now()-(_lastLocalEdit||0))>10000) _packSpares = data.pack_spares || [];
   if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
+  if(data.rigger_aliases){ window._riggerAliases=data.rigger_aliases; try{localStorage.setItem('buildert_rigger_aliases',JSON.stringify(data.rigger_aliases));}catch(e){} }
   if(data.project){
     project = Object.assign(project, data.project);
     var pn=document.getElementById('proj-name'); var pv=document.getElementById('proj-venue');
@@ -5601,6 +5618,13 @@ function _careerXpGet(){ try{ return parseInt(localStorage.getItem('buildert_car
 function _careerXpAdd(n){
   try{ localStorage.setItem('buildert_career_xp', String(_careerXpGet()+(n|0))); }catch(e){}
 }
+// Rigger name aliases (synced from desktop) — applied at read time
+function _aliasNameM(n){
+  if(!window._riggerAliases){
+    try{ window._riggerAliases=JSON.parse(localStorage.getItem('buildert_rigger_aliases')||'{}'); }catch(e){ window._riggerAliases={}; }
+  }
+  return window._riggerAliases[n]||n;
+}
 // Planner-granted bonus XP (synced from desktop via xp_bonus)
 function _xpBonusMap(){
   if(window._xpBonus) return window._xpBonus;
@@ -5798,7 +5822,7 @@ function _taFillWho(sel){
   var names = {};
   if(window._riggerName) names[window._riggerName]=1;
   ((window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[])).forEach(function(e){
-    if(e && e.by) names[e.by]=1;
+    if(e && e.by) names[_aliasNameM(e.by)]=1;
   });
   var cur = sel.value;
   sel.innerHTML = '<option value="">Nobody / whole crew</option>' +
@@ -6103,6 +6127,88 @@ function submitPackSignoff(){
   renderPack();
 }
 
+// ── Project chat — rides the worker (/chat/<pid>), no extra services ──
+var _chatMsgs=[], _chatPollTimer=null, _chatOpen=false;
+function _chatSeenKey(){ return 'buildert_chat_seen__'+(_projectKey||''); }
+async function _chatFetch(){
+  if(!_workerUrl || !_projectKey) return null;
+  try{
+    var r=await fetch(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey));
+    if(!r.ok) return null;
+    var d=await r.json();
+    return Array.isArray(d.messages)?d.messages:[];
+  }catch(e){ return null; }
+}
+function _chatRender(){
+  var box=document.getElementById('chat-msgs'); if(!box) return;
+  var me=_aliasNameM(window._riggerName||'');
+  if(!_chatMsgs.length){
+    box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No messages yet. Say hi. 👋</div>';
+    return;
+  }
+  box.innerHTML=_chatMsgs.map(function(m){
+    var mine=_aliasNameM(m.by||'')===me && me;
+    var t=(m.at||'').slice(11,16);
+    return '<div style="max-width:82%;align-self:'+(mine?'flex-end':'flex-start')+';'
+      +'background:'+(mine?'rgba(0,212,255,.16)':'var(--panel)')+';'
+      +'border:1px solid '+(mine?'var(--accent)':'var(--border)')+';'
+      +'border-radius:12px;padding:8px 12px">'
+      +(mine?'':'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+'</div>')
+      +'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>'
+      +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px">'+t+'</div>'
+      +'</div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function openChatSheet(){
+  if(!_workerUrl || !_projectKey){ showToast('Connect to a project first','warn'); return; }
+  _chatOpen=true;
+  openSheet('chat');
+  var msgs=await _chatFetch();
+  if(msgs){ _chatMsgs=msgs; _chatRender(); _chatMarkSeen(); }
+  // Poll faster while sheet is open
+  if(_chatPollTimer) clearInterval(_chatPollTimer);
+  _chatPollTimer=setInterval(async function(){
+    if(!_chatOpen){ clearInterval(_chatPollTimer); _chatPollTimer=null; return; }
+    var m=await _chatFetch();
+    if(m && m.length!==_chatMsgs.length){ _chatMsgs=m; _chatRender(); _chatMarkSeen(); }
+  }, 10000);
+}
+async function chatSend(){
+  var inp=document.getElementById('chat-input');
+  var text=(inp.value||'').trim();
+  if(!text) return;
+  inp.value='';
+  try{
+    var r=await fetch(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({by:_aliasNameM(window._riggerName||'rigger'),text:text})
+    });
+    var d=await r.json();
+    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
+    else showToast('Send failed','danger');
+  }catch(e){ showToast('Send failed — offline?','danger'); }
+}
+function _chatMarkSeen(){
+  var last=_chatMsgs.length?_chatMsgs[_chatMsgs.length-1].at:'';
+  try{ localStorage.setItem(_chatSeenKey(), last); }catch(e){}
+  var dot=document.getElementById('chat-unread'); if(dot) dot.style.display='none';
+}
+// Background unread check every 45s (cheap GET)
+setInterval(async function(){
+  if(_chatOpen || !_workerUrl || !_projectKey) return;
+  var m=await _chatFetch();
+  if(!m || !m.length) return;
+  _chatMsgs=m;
+  var seen=''; try{ seen=localStorage.getItem(_chatSeenKey())||''; }catch(e){}
+  var dot=document.getElementById('chat-unread');
+  if(dot) dot.style.display=(m[m.length-1].at>seen)?'block':'none';
+}, 45000);
+// Track sheet close
+document.addEventListener('click',function(e){
+  if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
+});
+
 // ── Feedback wizard: step 1 (about) → step 2 (kind) → step 3 (message) ──
 var _fbAbout = '';
 var _FB_KIND_LABELS = {idea:'💡 Idea', bug:'🐞 Failure / bug', feedback:'💬 Feedback', evaluatiepuntje:'📝 Evaluatiepuntje'};
@@ -6176,7 +6282,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.979m',
+    version: 'v3.981m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -6273,7 +6379,7 @@ function _calcRiggerStats(name){
   var pool = (window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[]);
   var actions = 0, points = 0, checks = 0, signoffs = 0;
   pool.forEach(function(e){
-    if(!e || !e.by || e.by !== name) return;
+    if(!e || !e.by || _aliasNameM(e.by) !== name) return;
     var key = (e.at||'')+'|'+e.by+'|'+(e.action||'');
     if(seen[key]) return;
     seen[key] = 1;
@@ -6321,7 +6427,7 @@ function _getLeaderboard(){
   var pool = (window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[]);
   pool.forEach(function(e){
     if(!e || !e.by) return;
-    names[e.by] = true;
+    names[_aliasNameM(e.by)] = true;
   });
   var board = Object.keys(names).map(function(n){
     var s = _calcRiggerStats(n);
@@ -6337,7 +6443,7 @@ function openRankSheet(){
   if(!body) return;
   if(title) title.textContent = '🏆 Rigger Rewards';
 
-  var me = window._riggerName||'';
+  var me = _aliasNameM(window._riggerName||'');
   var myStats = _calcRiggerStats(me);
   var careerTotal = _careerXpGet() + ((_xpBonusMap()[me]|0));
   var combined = myStats.points + careerTotal;
@@ -6446,8 +6552,9 @@ function openProjectSheet(){
       +'</div>';
 
     // ── Rank card ─────────────────────────────────────────────────
-    var myStats = _calcRiggerStats(window._riggerName);
-    var _cTot = _careerXpGet() + ((_xpBonusMap()[window._riggerName]|0));
+    var _cName = _aliasNameM(window._riggerName);
+    var myStats = _calcRiggerStats(_cName);
+    var _cTot = _careerXpGet() + ((_xpBonusMap()[_cName]|0));
     var _comb = myStats.points + _cTot;
     var tier = _tierFromPoints(_comb);
     var nextTier = _nextTier(tier);
