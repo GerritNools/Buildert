@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.978m</title>
+<title>WTU · Buildert v3.979m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -532,7 +532,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.978m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.979m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3083,9 +3083,17 @@ function _mergeProjectNoConflict(data){
     data.todos.forEach(function(t){
       if(!t.auto&&!existIds[t.id]){_mTodos.push(t);existIds[t.id]=true;}
       else if(!t.auto&&existIds[t.id]){
-        // Update label/urgency from desktop if local not changed
         var local=_mTodos.find(function(x){return x.id===t.id;});
-        if(local&&!local._localEdit){local.label=t.label;local.urgency=t.urgency;}
+        if(!local) return;
+        // DONE is TRUE-WINS across riggers: remote done always lands.
+        // (Same semantics as device checks — never lose completed work.)
+        if(t.done && !local.done){ local.done=true; }
+        // Text fields follow remote only if not locally edited
+        if(!local._localEdit){
+          local.label=t.label; local.urgency=t.urgency;
+          if(t.day!==undefined) local.day=t.day;
+          if(t.assignee!==undefined) local.assignee=t.assignee;
+        }
       }
     });
     _mTodosSave();
@@ -3305,12 +3313,34 @@ function _mergeSmartFromFile(data){
     data.todos.forEach(function(t){
       if(!t.auto&&!existIds[t.id]){_mTodos.push(t);existIds[t.id]=true;}
       else if(!t.auto&&existIds[t.id]){
-        // Update label/urgency from desktop if local not changed
         var local=_mTodos.find(function(x){return x.id===t.id;});
-        if(local&&!local._localEdit){local.label=t.label;local.urgency=t.urgency;}
+        if(!local) return;
+        // DONE is TRUE-WINS across riggers: remote done always lands.
+        // (Same semantics as device checks — never lose completed work.)
+        if(t.done && !local.done){ local.done=true; }
+        // Text fields follow remote only if not locally edited
+        if(!local._localEdit){
+          local.label=t.label; local.urgency=t.urgency;
+          if(t.day!==undefined) local.day=t.day;
+          if(t.assignee!==undefined) local.assignee=t.assignee;
+        }
       }
     });
     _mTodosSave();
+  }
+  // Ingest remote activity log (other riggers!) — merge, dedupe, never replace
+  if(Array.isArray(data._log) && data._log.length){
+    var _seenL={};
+    var _existL=(window._remoteLog||[]).concat(window._activityLog||[]);
+    _existL.forEach(function(e){_seenL[(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'')]=true;});
+    var _newL=data._log.filter(function(e){
+      var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.device||'')+'|'+(e.action||'');
+      if(_seenL[k])return false;_seenL[k]=true;return true;
+    });
+    if(_newL.length){
+      window._remoteLog=(window._remoteLog||[]).concat(_newL);
+      console.log('[SYNC] Ingested',_newL.length,'remote log entries (other riggers now visible)');
+    }
   }
   _projectVersion = data._version || 0;
   _projectBaseVersion = _projectVersion;
@@ -5767,7 +5797,7 @@ function _taFillWho(sel){
   if(!sel) return;
   var names = {};
   if(window._riggerName) names[window._riggerName]=1;
-  ((window._activityLog||[]).concat(window._projectLog||[])).forEach(function(e){
+  ((window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[])).forEach(function(e){
     if(e && e.by) names[e.by]=1;
   });
   var cur = sel.value;
@@ -6146,7 +6176,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.978m',
+    version: 'v3.979m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -6240,7 +6270,7 @@ var _POINTS = {
 function _calcRiggerStats(name){
   if(!name) return {points:0, actions:0, checks:0, signoffs:0};
   var seen = {};
-  var pool = (window._activityLog||[]).concat(window._projectLog||[]);
+  var pool = (window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[]);
   var actions = 0, points = 0, checks = 0, signoffs = 0;
   pool.forEach(function(e){
     if(!e || !e.by || e.by !== name) return;
@@ -6288,7 +6318,7 @@ function _nextTier(currentTier){
 }
 function _getLeaderboard(){
   var names = {};
-  var pool = (window._activityLog||[]).concat(window._projectLog||[]);
+  var pool = (window._activityLog||[]).concat(window._remoteLog||[]).concat(window._projectLog||[]);
   pool.forEach(function(e){
     if(!e || !e.by) return;
     names[e.by] = true;
