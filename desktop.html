@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.045</title>
+<title>WTUniverse · Buildert Editor v4.046</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -463,18 +463,20 @@
 
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0">Buildert</div>
-  <div style="font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:4px;line-height:1.2">
+  <div style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;margin-left:8px">
     <div onclick="openImportWizard()" title="Import wizard — paste a pack list from Numbers/Excel (or CSV) and turn it into devices + pack items"
-      style="color:#3ddc84;font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">📥</div>
-    <div onclick="openChatModal()" title="Project chat" 
-      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;margin-right:10px;position:relative">💬<span id="chat-unread-d" style="display:none;position:absolute;top:-3px;right:-6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
+      style="color:#3ddc84;font-weight:900;font-size:14px;cursor:pointer">📥</div>
+    <div onclick="openChatModal()" title="Project chat"
+      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;position:relative">💬<span id="chat-unread-d" style="display:none;position:absolute;top:-3px;right:-6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
     <div onclick="newEdition()" title="New edition — clone this project for next year: structure stays, runtime data wiped"
-      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">🗓</div>
+      style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer">🗓</div>
     <div onclick="openRewardsModal()" title="Rigger Rewards™ — view points, grant bonus XP"
-      style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer;margin-right:10px">🏆</div>
-    <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-      style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.045</div>
-    <div id="hdr-version" style="color:var(--text)"></div>
+      style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
+    <div style="line-height:1.1">
+      <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.046</div>
+      <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
+    </div>
   </div>
 
   <!-- File menu -->
@@ -511,18 +513,19 @@
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
-    <!-- Anbernic controller section -->
-    <label style="font-size:11px;color:var(--muted);font-family:var(--mono)">IP</label>
-    <input type="text" id="device-ip" placeholder="192.168.x.x"
-           onkeydown="if(event.key==='Enter'){stopPolling();startPolling();}">
-    <div class="conn-dot" id="conn-dot"></div>
-    <span id="conn-label">not connected</span>
-    <button class="btn btn-ghost" id="poll-btn" onclick="togglePolling()">&#9654; Live sync</button>
-    <button class="btn btn-ok" onclick="pushToDevice()" title="Push to Anbernic controller">&#8593; Anbernic</button>
-    <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
-
-    <!-- Divider -->
-    <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
+    <!-- Anbernic controller section — hidden for now (not in use). Elements kept in DOM so device-ip lookups stay safe. -->
+    <div id="anbernic-section" style="display:none;align-items:center;gap:8px">
+      <label style="font-size:11px;color:var(--muted);font-family:var(--mono)">IP</label>
+      <input type="text" id="device-ip" placeholder="192.168.x.x"
+             onkeydown="if(event.key==='Enter'){stopPolling();startPolling();}">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">not connected</span>
+      <button class="btn btn-ghost" id="poll-btn" onclick="togglePolling()">&#9654; Live sync</button>
+      <button class="btn btn-ok" onclick="pushToDevice()" title="Push to Anbernic controller">&#8593; Anbernic</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
+      <!-- Divider -->
+      <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
+    </div>
 
     <!-- Cloudflare worker section -->
     <button class="btn btn-ghost" onclick="wPush(false)" title="Push to Cloudflare worker" style="font-size:12px">&#9729; Cloud push</button>
@@ -2885,7 +2888,7 @@ function updateStats() {
   var pct = total>0 ? Math.round(devices.reduce(function(s,d){return s+completionPct(d);},0)/total) : 0;
   var fill=document.getElementById('big-bar-fill'), lbl=document.getElementById('big-pct');
   if (fill) { fill.style.width=pct+'%'; fill.style.background=pct===100?'linear-gradient(90deg,var(--ok),#5dff9e)':pct>60?'linear-gradient(90deg,var(--laser),var(--ok))':'linear-gradient(90deg,var(--danger),var(--warn))'; }
-  if (lbl) { lbl.textContent=total?pct+'%':'&#8212;'; lbl.style.color=pct===100?'var(--ok)':pct>60?'var(--laser)':'var(--warn)'; }
+  if (lbl) { lbl.textContent=total?pct+'%':'\u2014'; lbl.style.color=pct===100?'var(--ok)':pct>60?'var(--laser)':'var(--warn)'; }
   var seg=document.getElementById('seg-bar');
   if (seg && total>0) {
     var ld=devices.filter(function(d){return d.type===TYPE_LASER&&completionPct(d)===100;}).length;
@@ -4362,8 +4365,15 @@ function _mergeProjectNoConflict(data) {
     data.todos.forEach(function(t){
       if(t.auto) return;
       if(existingMap[t.id]){
-        // Update done state from rigger
-        existingMap[t.id].done=t.done;
+        // Carry over edits from the other device. done is TRUE-wins so a stale
+        // push can't un-complete a todo someone else finished.
+        var ex=existingMap[t.id];
+        ex.done = ex.done || t.done;
+        if(t.label!==undefined) ex.label=t.label;
+        if(t.urgency!==undefined) ex.urgency=t.urgency;
+        if(t.day!==undefined) ex.day=t.day;
+        if(t.assignee!==undefined) ex.assignee=t.assignee;
+        if(t.stage_id!==undefined) ex.stage_id=t.stage_id;
       } else {
         _todos.push(t); existingMap[t.id]=t;
       }
@@ -8296,11 +8306,8 @@ if(params.get('ip')){
   var ipEl=document.getElementById('device-ip');
   if(ipEl) {ipEl.value=params.get('ip');startPolling();}
 }
-// Show HTTPS warning immediately if opened over https (push will be blocked by browser)
-if(location.protocol==='https:'){
-  var httpsWarn=document.getElementById('https-warn');
-  if(httpsWarn) httpsWarn.style.display='flex';
-}
+// HTTPS warning banner suppressed — it only concerns Anbernic controller push,
+// which is hidden for now. (Re-enable alongside the Anbernic section if it returns.)
 _loadManualPackItems();
 loadSpecsFromStorage();
 _rebuildModelLists();
@@ -10879,9 +10886,13 @@ function renderTodosPanel(){
 
   function _card(t){
     var done=t.done; var urg=t.urgency||1;
+    var chips='';
+    if(t.day) chips+='<span style="font-size:10px;font-family:var(--mono);color:var(--warn);border:1px solid var(--warn);border-radius:3px;padding:1px 5px;white-space:nowrap">'+t.day+'</span>';
+    if(t.assignee) chips+='<span style="font-size:10px;font-family:var(--mono);color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:1px 5px;white-space:nowrap">&#128100; '+t.assignee+'</span>';
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+(done?'transparent':urgBg[urg])+';border:1px solid '+(done?'var(--border2)':urgBdr[urg])+';border-radius:8px;margin-bottom:5px">'
       +'<input type="checkbox" '+(done?'checked':'')+' onclick="todoToggle(this.dataset.id)" data-id="'+t.id+'" style="width:17px;height:17px;flex-shrink:0;cursor:pointer;accent-color:'+urgCols[urg]+'">'
       +'<span style="flex:1;font-family:var(--cond);font-size:15px;color:'+(done?'var(--muted)':urgCols[urg])+';text-decoration:'+(done?'line-through':'none')+'">'+t.label+'</span>'
+      +chips
       +(t.stage_id==='overall'&&!_todosAllStages?'<span style="font-size:9px;color:var(--muted);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">ALL</span>':'')
       +'<button onclick="todoEdit(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;opacity:.6">&#9998;</button>'
       +'<button onclick="todoDelete(this.dataset.id)" data-id="'+t.id+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;opacity:.6">&times;</button>'
@@ -10945,6 +10956,36 @@ function renderTodosPanel(){
   el.innerHTML=html;
 }
 
+// ── Todo day/assignee shortcuts (parity with mobile) ──────────────
+function _tdDayRow(){
+  return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">'
+    +'<button type="button" class="btn btn-ghost" onclick="_tdDay(\'today\')" style="font-size:11px;padding:3px 9px">Today</button>'
+    +'<button type="button" class="btn btn-ghost" onclick="_tdDay(\'tomorrow\')" style="font-size:11px;padding:3px 9px">Tomorrow</button>'
+    +'<button type="button" class="btn btn-ghost" onclick="_tdDay(\'day2\')" style="font-size:11px;padding:3px 9px">+2 days</button>'
+    +'<button type="button" class="btn btn-ghost" onclick="_tdDay(\'loadout\')" style="font-size:11px;padding:3px 9px">Load out</button>'
+    +'<button type="button" class="btn btn-ghost" onclick="_tdDay(\'\')" style="font-size:11px;padding:3px 9px">Clear</button>'
+    +'</div>';
+}
+function _tdDay(which){
+  var inp=document.getElementById('td-day'); if(!inp) return;
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function fmt(dt){return days[dt.getDay()]+' '+dt.getDate()+'/'+(dt.getMonth()+1);}
+  var d=new Date();
+  if(which==='today') inp.value=fmt(d);
+  else if(which==='tomorrow'){d.setDate(d.getDate()+1);inp.value=fmt(d);}
+  else if(which==='day2'){d.setDate(d.getDate()+2);inp.value=fmt(d);}
+  else if(which==='loadout') inp.value='Load out';
+  else inp.value='';
+}
+function _tdWhoOpts(cur){
+  var names={};
+  if(window._riggerName) names[window._riggerName]=1;
+  (_activityLog||[]).forEach(function(e){ if(e&&e.by) names[_aliasName(e.by)]=1; });
+  (window._projectLog||[]).forEach(function(e){ if(e&&e.by) names[_aliasName(e.by)]=1; });
+  return '<option value="">Nobody / whole crew</option>'
+    +Object.keys(names).sort().map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'"'+(n===cur?' selected':'')+'>'+n+'</option>';}).join('');
+}
+
 function todoEdit(id){
   var t=(_todos||[]).find(function(x){return x.id===id;}); if(!t) return;
   var tOpts='<option value="">No time</option>';
@@ -10960,6 +11001,11 @@ function todoEdit(id){
     +'<div style="display:flex;gap:8px;margin-bottom:12px">'
     +'<select id="td-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px"><option value="1"'+(t.urgency===1?' selected':'')+'>Normal</option><option value="2"'+(t.urgency===2?' selected':'')+'>High</option><option value="3"'+(t.urgency===3?' selected':'')+'>Urgent</option></select>'
     +'<select id="td-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+tOpts+'</select>'
+    +'</div>'
+    +_tdDayRow()
+    +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+    +'<input id="td-day" type="text" value="'+(t.day||'').replace(/"/g,'&quot;')+'" placeholder="Day (optional)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px;box-sizing:border-box">'
+    +'<select id="td-who" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+_tdWhoOpts(t.assignee||'')+'</select>'
     +'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-primary" id="todo-edit-save" style="flex:1">Save</button>'
@@ -10979,19 +11025,21 @@ function todoSaveEdit(id){
   var time=document.getElementById('td-time').value||'';
   t.label=time?time+' — '+lbl:lbl;
   t.urgency=urg;
+  t.day=(document.getElementById('td-day')||{}).value||'';
+  t.assignee=(document.getElementById('td-who')||{}).value||'';
   var modal=document.getElementById('todo-modal'); if(modal) modal.remove();
-  _todosSave(); renderTodosPanel();
+  _todosSave(); renderTodosPanel(); autoSave();
 }
 function todoToggle(id){
   var t=(_todos||[]).find(function(x){return x.id===id;}); if(!t)return;
   if(t.auto){showToast('Auto todo - driven by device state','warn');return;}
-  t.done=!t.done; _todosSave(); renderTodosPanel();
+  t.done=!t.done; _todosSave(); renderTodosPanel(); autoSave();
 }
 function todoDelete(id){
-  _todos=(_todos||[]).filter(function(x){return x.id!==id;}); _todosSave(); renderTodosPanel();
+  _todos=(_todos||[]).filter(function(x){return x.id!==id;}); _todosSave(); renderTodosPanel(); autoSave();
 }
 function todoClearDone(){
-  _todos=(_todos||[]).filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel();
+  _todos=(_todos||[]).filter(function(t){return !t.done||t.auto;}); _todosSave(); renderTodosPanel(); autoSave();
 }
 function todoAdd(){
   var tOpts='<option value="">No time</option>';
@@ -11010,6 +11058,11 @@ function todoAdd(){
     +'<select id="td-urg" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select>'
     +'<select id="td-time" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+tOpts+'</select>'
     +'</div>'
+    +_tdDayRow()
+    +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+    +'<input id="td-day" type="text" placeholder="Day (optional)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px;box-sizing:border-box">'
+    +'<select id="td-who" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px;font-size:13px">'+_tdWhoOpts('')+'</select>'
+    +'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-primary" onclick="todoSave()" style="flex:1">Save</button>'
     +'<button class="btn btn-ghost" onclick="todoCancel()" style="flex:1">Cancel</button>'
@@ -11026,9 +11079,11 @@ function todoSave(){
   var modal=document.getElementById('todo-modal');if(modal)modal.remove();
   var stgSel=document.getElementById('td-stage');
   var stgId=stgSel?stgSel.value:((_stages[_currentStageIdx]||{}).id||'');
+  var day=(document.getElementById('td-day')||{}).value||'';
+  var who=(document.getElementById('td-who')||{}).value||'';
   if(!_todos) _todos=[];
-  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,done:false,auto:false,stage_id:stgId,created:new Date().toISOString()});
-  _todosSave();renderTodosPanel();
+  _todos.unshift({id:'todo_'+Date.now(),type:'manual',label:full,urgency:urg,day:day,assignee:who,done:false,auto:false,stage_id:stgId,created:new Date().toISOString()});
+  _todosSave();renderTodosPanel();autoSave();
 }
 _todosLoad(); _autoTodos(); _todosSave();
 
