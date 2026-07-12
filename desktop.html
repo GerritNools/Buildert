@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.047</title>
+<title>WTUniverse · Buildert Editor v4.048</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -474,7 +474,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.047</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.048</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -9492,13 +9492,35 @@ function wSyncInit(){
   if(cbPull) cbPull.checked = _autoPullOn;
   if(cbPush) cbPush.checked = _autoPushOn;
   if(_autoPullOn) _wStartAutoPull();
+  _wRefreshModeButtons();
 }
 
 var _autoPullOn = false;
 var _autoPushOn = false;
 var _wPollInterval = null;
-// Backward-compat alias — _syncMode is no longer used but some code paths may check it
+// Backward-compat alias — _syncMode mirrors the auto-pull state
 var _syncMode = 'live';
+
+// Edit/Live mode buttons drive auto-pull: Live = auto-pull ON (receive rigger
+// updates every 10s), Edit = auto-pull OFF (desktop is source of truth).
+function _wRefreshModeButtons(){
+  var live = !!_autoPullOn;
+  _syncMode = live ? 'live' : 'edit';
+  var be=document.getElementById('btn-mode-edit');
+  var bl=document.getElementById('btn-mode-live');
+  var md=document.getElementById('mode-desc');
+  if(be){ be.style.background = live?'var(--panel)':'var(--accent)'; be.style.color = live?'var(--muted)':'#000'; }
+  if(bl){ bl.style.background = live?'var(--ok)':'var(--panel)';    bl.style.color = live?'#000':'var(--muted)'; }
+  if(md){ md.innerHTML = live
+    ? '📡 <b>Live mode</b>: Auto-pull is on — rigger updates arrive every 10s.'
+    : '✏️ <b>Edit mode</b>: Desktop is source of truth. Auto-pull is paused. Push when ready.'; }
+}
+function wSetMode(mode){
+  var live = (mode==='live');
+  wSetAutoPull(live);   // updates _autoPullOn, polling + toast
+  var cb=document.getElementById('cb-auto-pull'); if(cb) cb.checked = live;
+  _wRefreshModeButtons();
+}
 
 function _wStartAutoPull(){
   if(_wPollInterval) clearInterval(_wPollInterval);
@@ -10275,6 +10297,7 @@ function wSetAutoPull(on){
     showToast('↓ Auto-pull OFF','muted');
     addSyncLog('Auto-pull disabled','info');
   }
+  _wRefreshModeButtons();
 }
 
 function wSetAutoPush(on){
