@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.046</title>
+<title>WTUniverse · Buildert Editor v4.047</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -474,7 +474,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.046</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.047</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -9632,9 +9632,12 @@ setInterval(async function(){
 // ═══════════════════════════════════════════════════════════════════
 var _iwRows=[];
 function openImportWizard(){
-  var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000">'
+  var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000" onclick="if(event.target===this)closeImportWizard()">'
     +'<div class="modal" style="max-width:760px;max-height:88vh;overflow-y:auto">'
-    +'<h2>📥 Import wizard</h2>'
+    +'<div style="display:flex;align-items:flex-start;gap:10px">'
+    +  '<h2 style="margin:0;flex:1">📥 Import wizard</h2>'
+    +  '<button class="btn btn-ghost" onclick="closeImportWizard()" title="Close (Esc)" style="font-size:20px;line-height:1;padding:2px 11px;flex-shrink:0">&times;</button>'
+    +'</div>'
     +'<p style="font-size:12px;color:var(--muted);margin:4px 0 10px">Fastest: open your pack list in <b>Numbers/Excel</b>, select the table, <b>copy</b>, and <b>paste below</b> (Ctrl/Cmd-V). CSV files work too. Count-tables from plots ("4 | RGB 30") paste fine as well.</p>'
     +'<div id="iw-step1">'
     +  '<textarea id="iw-paste" rows="8" placeholder="Paste your table here…" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:10px;font-family:var(--mono);font-size:12px" oninput="_iwParse()"></textarea>'
@@ -9648,7 +9651,14 @@ function openImportWizard(){
     +'<div id="iw-step3" style="margin-top:14px"></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
+  document.addEventListener('keydown', _iwEsc);
   setTimeout(function(){ var t=document.getElementById('iw-paste'); if(t) t.focus(); },100);
+}
+function _iwEsc(e){ if(e.key==='Escape') closeImportWizard(); }
+function closeImportWizard(){
+  var m=document.getElementById('modal-import');
+  if(m) m.remove();
+  document.removeEventListener('keydown', _iwEsc);
 }
 function _iwFile(f){
   if(!f) return;
@@ -9741,7 +9751,7 @@ function _iwRenderRows(){
     +'<select id="iw-stage" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px">'+stageOpts+'<option value="new">➕ New stage…</option></select>'
     +'<input id="iw-newstage" type="text" placeholder="New stage name" style="display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px">'
     +'<span style="flex:1"></span>'
-    +'<button class="btn btn-ghost" onclick="document.getElementById(\'modal-import\').remove()">Cancel</button>'
+    +'<button class="btn btn-ghost" onclick="closeImportWizard()">Cancel</button>'
     +'<button class="btn" onclick="_iwImport()" style="background:#3ddc84;color:#000;font-weight:700;border-color:#3ddc84">Import →</button>'
     +'</div>';
   document.getElementById('iw-stage').onchange=function(){
@@ -9797,7 +9807,7 @@ function _iwImport(){
     }
   });
   if(_stages[_currentStageIdx]===stage) devices=stage.devices;
-  document.getElementById('modal-import').remove();
+  closeImportWizard();
   if(typeof renderAll==='function') renderAll(); else { try{renderMain();}catch(e){} }
   autoSave();
   showToast('Imported: '+devsAdded+' devices, '+packAdded+' pack items'+(skipped?', '+skipped+' skipped':''),'ok');
