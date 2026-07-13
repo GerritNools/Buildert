@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.984m</title>
+<title>WTU · Buildert v3.987m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -532,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.984m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.987m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -541,6 +542,7 @@ body.sun-mode .pack-table td {
       <span id="m-net-status" style="color:#3ddc84">🟢 Online</span>
     </div>
   </div>
+  <button onclick="openSchedSheet()" title="Day schedule — times" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">📅</button>
   <button onclick="openChatSheet()" title="Project chat" style="flex-shrink:0;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">💬<span id="chat-unread" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--danger)"></span></button>
   <button onclick="setTab('specs')" title="Specs (not project dependent)" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">📋</button>
   <div class="conn-dot" id="conn-dot"></div>
@@ -562,6 +564,13 @@ body.sun-mode .pack-table td {
 </div>
 
 <div id="scroll">
+<div id="next-up" onclick="openSchedSheet()" style="display:none;position:sticky;top:0;z-index:60;align-items:center;gap:10px;padding:7px 12px;background:linear-gradient(180deg,rgba(255,170,68,.14),rgba(255,170,68,.06));border-bottom:1px solid rgba(255,170,68,.35);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">
+  <span style="font-size:15px">📅</span>
+  <span id="next-up-label" style="flex:1;font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:.5px;color:#ffaa44"></span>
+  <span id="next-up-when" style="font-family:var(--mono);font-size:12px;color:var(--text)"></span>
+  <button id="wake-btn" onclick="event.stopPropagation();toggleWakeLock()" title="Keep screen on"
+    style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;padding:2px 8px;-webkit-tap-highlight-color:rgba(0,0,0,0)">☀</button>
+</div>
   <div id="cat-filter-bar" style="display:flex;gap:6px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch">
     <button class="cat-chip active" data-cat="all" onclick="_setCatFilter('all',this)">All</button>
     <button class="cat-chip" data-cat="laser" onclick="_setCatFilter('laser',this)">💡 Lasers</button>
@@ -694,6 +703,12 @@ body.sun-mode .pack-table td {
 <!-- Feedback overlay + sheet -->
 <div class="ovl" id="ovl-feedback" onclick="closeSheet('feedback')"></div>
 <div class="ovl" id="ovl-chat" onclick="closeChatSheet()"></div>
+<div class="ovl" id="ovl-sched" onclick="closeSheet('sched')"></div>
+<div class="sheet" id="sheet-sched">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">📅 Day schedule</div>
+  <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
+</div>
 <div class="sheet" id="sheet-chat">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Project chat</div>
@@ -1932,6 +1947,7 @@ function mPackSpareCheck2(id, on){
   var s = (_packSpares||[]).find(function(x){return x.id===id;});
   if(!s) return;
   s.checked = !!on;
+  _buzz(on?30:12);
   _sparePersist();
 }
 function mPackSpareQty2(id, v){
@@ -3207,6 +3223,7 @@ function _mergeProjectNoConflict(data){
     if(data._diag_positions && Object.keys(data._diag_positions).length) window._mDiagPos=data._diag_positions;
   }
   // Apply stage permissions from server shares list (no URL needed after first load)
+  if(Array.isArray(data.schedule)){ window._mSchedule = data.schedule; if(typeof _nextUpTick==='function') setTimeout(_nextUpTick,200); }
   if(Array.isArray(data.shares) && data.shares.length && window._riggerName){
     window._mShares = data.shares;  // full crew share list — used for assignee dropdown
     var myShare=data.shares.find(function(sh){return sh.name===window._riggerName;});
@@ -4013,17 +4030,15 @@ function _mUpdateNetStatus(){
 }
 
 async function _mObFlush(){
-  if(navigator.onLine === false) return;
+  if(_mObFlushing) return;
   var q = (window._mObQueue||[]).slice();
   if(q.length === 0) return;
   if(!_workerUrl) return;
-  showToast('Syncing '+q.length+' queued change'+(q.length===1?'':'s')+'…','ok');
+  _mObFlushing=true;
+  // Push ONLY the queued projects — the worker merges per-project, so there
+  // is no need to fetch the envelope first. (The old pre-GET doubled the
+  // failure chance on flaky signal and pushed every project back wholesale.)
   var envelope = {_schema:'v2', _projects:{}};
-  try{
-    var gResp = await fetch(_wT(_workerUrl+'/?_='+Date.now()),{cache:'no-store'});
-    if(gResp.ok){ var gRaw = await gResp.json(); if(gRaw && gRaw._schema==='v2') envelope = gRaw; }
-  }catch(e){ return; }
-  if(!envelope._projects) envelope._projects = {};
   q.forEach(function(entry){ envelope._projects[entry.pid] = entry.payload; });
   try{
     var resp = await fetch(_wT(_workerUrl+'/'), {
@@ -4035,10 +4050,22 @@ async function _mObFlush(){
       window._mObQueue = [];
       _mObPersist();
       _mUpdateNetStatus();
-      showToast('✓ '+q.length+' synced','ok');
+      _buzz(25);
+      showToast('📡 Back in sync — '+q.length+' change'+(q.length===1?'':'s')+' sent','ok');
+    } else if(resp.status===401){
+      showToast('🔒 Queued changes refused — access revoked or link expired','danger');
     }
-  }catch(e){}
+  }catch(e){ /* still unreachable — periodic retry will try again */ }
+  _mObFlushing=false;
 }
+var _mObFlushing=false;
+// Retry beyond the unreliable 'online' event: mobile data recovering from a
+// dead zone does NOT fire it. Try every 25s while queued, and when the app
+// comes back to the foreground.
+setInterval(function(){ if((window._mObQueue||[]).length) _mObFlush(); }, 25000);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible' && (window._mObQueue||[]).length) setTimeout(_mObFlush, 800);
+});
 
 window.addEventListener('online', function(){
   showToast('🟢 Back online','ok');
@@ -4096,6 +4123,12 @@ async function wPush(silent){
     });
     if(resp.ok){
       window._remoteLog=combinedLog;window._activityLog=[];
+      // A fresh push supersedes anything queued for this project — drop it,
+      // or the later flush would overwrite this newer state with stale data.
+      if((window._mObQueue||[]).some(function(e){return e.pid===pid;})){
+        window._mObQueue=window._mObQueue.filter(function(e){return e.pid!==pid;});
+        _mObPersist();
+      }
       if(!silent)_dbxSetStatus('✓ pushed · '+_hhmm(),'var(--ok)');
       _mUpdateNetStatus();
     } else {
@@ -5654,6 +5687,68 @@ function _xpMarkAwarded(id){
 // ── Haptic feedback (phones that support it) ────────────────────────
 function _buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms||25); }catch(e){} }
 
+// ── Next-up schedule banner ─────────────────────────────────────────
+// "🍔 Lunch in 40 min" without opening the sheet. Shows the next entry
+// within the coming 18h; today's entries get the green treatment.
+function _nextUpTick(){
+  var bar=document.getElementById('next-up'); if(!bar) return;
+  var list=window._mSchedule||[];
+  if(!list.length){ bar.style.display='none'; return; }
+  var now=new Date();
+  var best=null,bestT=Infinity;
+  list.forEach(function(e){
+    if(!e.day||!e.time) return;
+    var t=new Date(e.day+'T'+e.time).getTime();
+    if(isNaN(t)) return;
+    if(t>=now.getTime()-5*60000 && t<bestT){ best=e; bestT=t; }   // grace: still show 5 min past
+  });
+  if(!best || bestT-now.getTime()>18*3600000){ bar.style.display='none'; return; }
+  var ms=bestT-now.getTime();
+  var when;
+  if(ms<=0) when='now';
+  else if(ms<60*60000) when='in '+Math.max(1,Math.round(ms/60000))+' min';
+  else if(ms<10*3600000){ var h=Math.floor(ms/3600000), m=Math.round((ms%3600000)/60000); when='in '+h+'h'+(m?' '+m+'m':''); }
+  else when='at '+best.time;
+  var isToday=(best.day===now.toISOString().slice(0,10));
+  document.getElementById('next-up-label').textContent=best.label||'';
+  document.getElementById('next-up-label').style.color=isToday?'var(--ok)':'#ffaa44';
+  document.getElementById('next-up-when').textContent=(best.time?best.time+' \u00b7 ':'')+when;
+  bar.style.display='flex';
+}
+setInterval(_nextUpTick, 30000);
+setTimeout(_nextUpTick, 1500);
+
+// ── Keep screen on (Wake Lock) ──────────────────────────────────────
+// On a lift or behind FOH you don't want the phone locking every minute.
+var _wakeLock=null;
+async function toggleWakeLock(){
+  var btn=document.getElementById('wake-btn');
+  if(_wakeLock){
+    try{ await _wakeLock.release(); }catch(e){}
+    _wakeLock=null;
+    if(btn){ btn.style.color='var(--muted)'; btn.style.borderColor='var(--border)'; btn.style.background='none'; }
+    showToast('Screen can sleep again','muted');
+    return;
+  }
+  if(!('wakeLock' in navigator)){ showToast('Not supported in this browser','warn'); return; }
+  try{
+    _wakeLock=await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release',function(){ _wakeLock=null; var b=document.getElementById('wake-btn'); if(b){ b.style.color='var(--muted)'; b.style.borderColor='var(--border)'; b.style.background='none'; } });
+    if(btn){ btn.style.color='#ffd700'; btn.style.borderColor='#ffd700'; btn.style.background='rgba(255,215,0,.12)'; }
+    _buzz(20);
+    showToast('\u2600 Screen stays on','ok');
+  }catch(e){ showToast('Could not keep screen on','warn'); }
+}
+// Re-acquire after tab switch (the OS releases wake locks on hide)
+document.addEventListener('visibilitychange', async function(){
+  if(document.visibilityState==='visible' && _wakeLock===null){
+    var btn=document.getElementById('wake-btn');
+    if(btn && btn.style.color==='rgb(255, 215, 0)'){
+      try{ _wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
+    }
+  }
+});
+
 // ── XP laser beam — a beam sweeps across the screen from a random angle ─
 function _showXpBeam(xp){
   try{
@@ -6192,6 +6287,34 @@ function _chatRender(){
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
+function openSchedSheet(){
+  var el=document.getElementById('sched-body');
+  var list=window._mSchedule||[];
+  if(!list.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">No schedule yet.<br><span style="font-size:11px">Times appear here after the next sync.</span></div>';
+  } else {
+    var byDay={};
+    list.forEach(function(e){ var d=e.day||''; (byDay[d]=byDay[d]||[]).push(e); });
+    var days=Object.keys(byDay).sort();
+    var today=new Date().toISOString().slice(0,10);
+    el.innerHTML=days.map(function(d){
+      var lbl=d; try{ lbl=new Date(d+'T12:00').toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'}); }catch(e){}
+      var isToday=(d===today);
+      var rows=byDay[d].slice().sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
+      return '<div style="margin-bottom:14px">'
+        +'<div style="font-weight:700;font-size:13px;letter-spacing:1px;color:'+(isToday?'var(--ok)':'#ffaa44')+';border-bottom:1px solid var(--border);padding-bottom:3px;margin-bottom:4px">'+lbl+(isToday?' · TODAY':'')+'</div>'
+        +rows.map(function(e){
+          return '<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border2)">'
+            +'<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);min-width:50px">'+(e.time||'—')+'</span>'
+            +'<span style="flex:1;font-size:14px">'+(e.label||'')+'</span>'
+            +(e.note?'<span style="font-size:10px;color:var(--muted)">'+e.note+'</span>':'')
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }).join('');
+  }
+  openSheet('sched');
+}
 function closeChatSheet(){
   _chatOpen=false;
   if(_chatPollTimer){ clearInterval(_chatPollTimer); _chatPollTimer=null; }
@@ -6318,7 +6441,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.984m',
+    version: 'v3.987m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
