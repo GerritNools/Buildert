@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.057</title>
+<title>WTUniverse · Buildert Editor v4.058</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -488,7 +488,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.057</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.058</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -8298,15 +8298,10 @@ function renderNodeView() {
   // Node view must render the CURRENT STAGE's devices, same as every other
   // view. Without this re-sync, a stale `devices` global (e.g. restored from
   // localStorage on boot) draws phantom nodes that exist in no stage.
+  // NOTE: deliberately NO pruning of _nodePositions here — a render can fire
+  // before the pull fills the stages, and deleting "orphan" positions at that
+  // moment wipes the whole layout. Rendering is read-only on stored state.
   if(_stages[_currentStageIdx]) devices=_stages[_currentStageIdx].devices;
-  // Prune positions for devices that no longer exist (keeps FOH)
-  var _liveIds={FOH:1};
-  devices.forEach(function(d){ if(d.device_id) _liveIds[d.device_id]=1; });
-  var _pruned=false;
-  Object.keys(_nodePositions).forEach(function(k){
-    if(!_liveIds[k]){ delete _nodePositions[k]; _pruned=true; }
-  });
-  if(_pruned){ try{ _saveNodePositions(); }catch(e){} }
   // Apply background image if set on current stage
   if(typeof nodeApplyBackground === 'function') nodeApplyBackground();
   // DEBUG: force ncw visible
@@ -12319,7 +12314,7 @@ setInterval(async function(){
 var _iwRows=[];
 function openImportWizard(){
   var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000" onclick="if(event.target===this)closeImportWizard()">'
-    +'<div class="modal" style="max-width:760px;max-height:88vh;overflow-y:auto">'
+    +'<div class="modal" style="max-width:min(760px,calc(100vw - 24px));width:100%;box-sizing:border-box;max-height:88vh;overflow-y:auto;overflow-x:hidden">'
     +'<div style="display:flex;align-items:flex-start;gap:10px">'
     +  '<h2 style="margin:0;flex:1">📥 Import wizard</h2>'
     +  '<button class="btn btn-ghost" onclick="closeImportWizard()" title="Close (Esc)" style="font-size:20px;line-height:1;padding:2px 11px;flex-shrink:0">&times;</button>'
@@ -12408,27 +12403,36 @@ function _iwRenderRows(){
   var el=document.getElementById('iw-step2');
   if(!_iwRows.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px">Nothing recognized — check the paste.</p>'; return; }
   var modelOpts=Object.keys(DEVICE_SPECS).sort().map(function(k){return '<option value="'+k+'">'+k+'</option>';}).join('');
+  function pill(on,txt,handler){
+    return '<label style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;'
+      +'border:1px solid '+(on?'var(--ok)':'var(--border)')+';border-radius:14px;padding:3px 10px;font-size:11px;'
+      +'color:'+(on?'var(--ok)':'var(--muted)')+';background:'+(on?'rgba(61,220,132,.1)':'transparent')+'">'
+      +'<input type="checkbox" '+(on?'checked':'')+' onchange="'+handler+'" style="margin:0;accent-color:var(--ok)">'+txt+'</label>';
+  }
   var rows=_iwRows.map(function(r,i){
-    return '<tr style="border-bottom:1px solid var(--border2)">'
-      +'<td style="padding:4px"><input type="checkbox" '+(r.include?'checked':'')+' onchange="_iwRows['+i+'].include=this.checked"></td>'
-      +'<td style="padding:4px"><input type="number" min="1" value="'+r.qty+'" style="width:52px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px;border-radius:4px" onchange="_iwRows['+i+'].qty=parseInt(this.value)||1"></td>'
-      +'<td style="padding:4px;font-size:12px">'+r.name.replace(/</g,'&lt;')+'</td>'
-      +'<td style="padding:4px;white-space:nowrap">'
-      +  '<label style="font-size:11px;cursor:pointer;margin-right:8px"><input type="checkbox" '+(r.asDevice?'checked':'')+' onchange="_iwRows['+i+'].asDevice=this.checked;_iwRenderRows()"> 🔧 Device</label>'
-      +  '<label style="font-size:11px;cursor:pointer"><input type="checkbox" '+(r.asPack?'checked':'')+' onchange="_iwRows['+i+'].asPack=this.checked"> 📦 Pack</label>'
-      +'</td>'
-      +'<td style="padding:4px">'+(r.asDevice
-        ? '<select onchange="_iwRows['+i+'].model=this.value" style="background:var(--panel);border:1px solid var(--border);color:'+(r.model?'var(--ok)':'var(--warn)')+';padding:3px;border-radius:4px;font-size:11px">'
-          +'<option value="">— pick model —</option>'
-          +modelOpts.replace('value="'+r.model+'"','value="'+r.model+'" selected')
-          +'</select>'
-        : '<span style="font-size:10px;color:var(--muted)">'+(r.asPack?'→ Extra items list':'— skipped —')+'</span>')
-      +'</td></tr>';
+    return '<div style="border-bottom:1px solid var(--border2);padding:8px 0'+(r.include?'':';opacity:.45')+'">'
+      // line 1: include · qty · name
+      +'<div style="display:grid;grid-template-columns:22px 58px 1fr;gap:8px;align-items:center">'
+      +  '<input type="checkbox" '+(r.include?'checked':'')+' onchange="_iwRows['+i+'].include=this.checked;_iwRenderRows()" style="margin:0">'
+      +  '<input type="number" min="1" value="'+r.qty+'" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:4px;font-size:12px" onchange="_iwRows['+i+'].qty=parseInt(this.value)||1">'
+      +  '<span style="font-size:13px;font-family:var(--cond);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r.name.replace(/"/g,'&quot;')+'">'+r.name.replace(/</g,'&lt;')+'</span>'
+      +'</div>'
+      // line 2: pills + model, indented under the name
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 0 88px">'
+      +  pill(r.asDevice,'🔧 Device','_iwRows['+i+'].asDevice=this.checked;_iwRenderRows()')
+      +  pill(r.asPack,'📦 Pack','_iwRows['+i+'].asPack=this.checked;_iwRenderRows()')
+      +  (r.asDevice
+          ? '<select onchange="_iwRows['+i+'].model=this.value" style="flex:1;min-width:130px;max-width:240px;background:var(--panel);border:1px solid '+(r.model?'var(--border)':'var(--warn)')+';color:'+(r.model?'var(--ok)':'var(--warn)')+';padding:3px 6px;border-radius:4px;font-size:11px">'
+            +'<option value="">— pick model —</option>'
+            +modelOpts.replace('value="'+r.model+'"','value="'+r.model+'" selected')
+            +'</select>'
+          : '<span style="font-size:10px;color:var(--muted)">'+(r.asPack?'→ Extra items list':'— skipped —')+'</span>')
+      +'</div>'
+      +'</div>';
   }).join('');
-  el.innerHTML='<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">CONFIRM ROWS</div>'
-    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
-    +'<thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th></th><th style="text-align:left">Qty</th><th style="text-align:left">From your list</th><th style="text-align:left">Import as (tick one or both)</th><th style="text-align:left">Model</th></tr></thead>'
-    +'<tbody>'+rows+'</tbody></table>';
+  el.innerHTML='<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:2px">CONFIRM ROWS</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-bottom:6px">Tick 🔧 and/or 📦 per row — both is fine. Untick both to skip.</div>'
+    +rows;
   // Step 3: target stage + go
   var stageOpts=_stages.map(function(st,i){return '<option value="'+i+'">'+(st.name||('Stage '+(i+1)))+'</option>';}).join('');
   document.getElementById('iw-step3').innerHTML=
