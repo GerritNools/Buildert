@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.058</title>
+<title>WTUniverse · Buildert Editor v4.059</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -488,7 +488,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.058</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.059</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -5931,11 +5931,10 @@ function qaUpdatePreview() {
   var model = document.getElementById('qa-model').value || '';
   var prev  = document.getElementById('qa-id-preview');
   if (!model) { prev.textContent = '—'; return; }
-  // Search all stages for taken numbers (not just current stage)
+  // Count only in current stage so numbering restarts at 1 per stage
   var taken = {};
-  var allDevs = [];
-  _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
-  if(!allDevs.length) allDevs = devices;
+  var _qaStg = (_currentStageIdx>=0 && _stages[_currentStageIdx]) ? _stages[_currentStageIdx] : null;
+  var allDevs = _qaStg ? (_qaStg.devices||[]) : devices;
   allDevs.forEach(function(d) {
     var dm = modelFromId(d.device_id||'');
     if (dm.toUpperCase() === model.toUpperCase()) {
@@ -5979,11 +5978,10 @@ function quickAdd() {
     locations = null; // plain location, repeated for all
   }
 
-  // Find starting unit number — use modelFromId so multi-word models work correctly
+  // Find starting unit number — count only current stage so numbering restarts at 1 per stage
   var taken = {};
-  var _allDevsQA = [];
-  _stages.forEach(function(s){ _allDevsQA = _allDevsQA.concat(s.devices||[]); });
-  if(!_allDevsQA.length) _allDevsQA = devices;
+  var _qaStg2 = (_currentStageIdx>=0 && _stages[_currentStageIdx]) ? _stages[_currentStageIdx] : null;
+  var _allDevsQA = _qaStg2 ? (_qaStg2.devices||[]) : devices;
   if (model) {
     _allDevsQA.forEach(function(d) {
       var dm = modelFromId(d.device_id||'');
@@ -12458,16 +12456,16 @@ function _iwImport(){
   } else stage=_stages[parseInt(sel,10)]||_stages[0];
 
   var devsAdded=0, packAdded=0, skipped=0;
-  // Existing numbering per model across ALL stages
+  // Existing numbering per model within the TARGET stage only (restarts at 1 per stage)
   function nextNum(model){
     var taken={};
-    _stages.forEach(function(st){(st.devices||[]).forEach(function(d){
+    (stage.devices||[]).forEach(function(d){
       var dm=modelFromId(d.device_id||'');
       if(dm && dm.toUpperCase()===model.toUpperCase()){
         var n=parseInt((d.device_id||'').slice(dm.length),10);
         if(!isNaN(n)) taken[n]=true;
       }
-    });});
+    });
     var n=1; while(taken[n])n++; return n;
   }
   _iwRows.forEach(function(r){
