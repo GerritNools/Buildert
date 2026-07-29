@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.061</title>
+<title>WTUniverse · Buildert Editor v4.063</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -488,7 +488,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.061</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.063</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -613,6 +613,7 @@
       <button class="tab-btn"            id="tab-shares"  onclick="setTab('shares')">🔗 Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn"            id="tab-docs"      onclick="setTab('docs')">📄 Docs</button>
       <button class="tab-btn" id="tab-activity" onclick="setTab('activity')">📈 Activity</button>
+      <button class="tab-btn" id="tab-manager" onclick="setTab('manager')">🎛️ Manager</button>
       <button class="tab-btn" onclick="openLabelModal()" style="margin-left:auto">🏷️ Labels</button>
     </div>
     <!-- Device category chips — shown only when Devices tab is active -->
@@ -1018,6 +1019,7 @@
 
 
 <!-- Shares & Activity Panel -->
+<div id="manager-panel" style="display:none;padding:16px;height:calc(100vh - 130px);overflow:auto"></div>
 <div id="activity-panel" style="display:none;padding:16px;height:calc(100vh - 140px);overflow:auto">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
     <h2 style="font-family:var(--cond);font-size:18px;margin:0">📈 Activity Log</h2>
@@ -4420,7 +4422,7 @@ function setTab(tab) {
     tab = 'devices';
   }
   currentTab = tab;
-  ['devices','power','node','diagram','pack','specs','todos','schedule','overview','shares','docs','activity'].forEach(function(t) {
+  ['devices','power','node','diagram','pack','specs','todos','schedule','overview','shares','docs','activity','manager'].forEach(function(t) {
     var btn = document.getElementById('tab-'+t);
     if (btn) btn.className = 'tab-btn' + (t === tab ? ' active-all' : '');
   });
@@ -4436,6 +4438,7 @@ function setTab(tab) {
   var ovv = document.getElementById('overview-panel');
   var docp = document.getElementById('docs-panel');
   var actp = document.getElementById('activity-panel');
+  var mgrp = document.getElementById('manager-panel');
   if (tw)  tw.style.display  = 'none';
   if (ncw) ncw.style.display = 'none';
   if (pcw) pcw.style.display = 'none';
@@ -4448,6 +4451,7 @@ function setTab(tab) {
   if (ovv) ovv.style.display = 'none';
   if (docp) docp.style.display = 'none';
   if (actp) actp.style.display = 'none';
+  if (mgrp) mgrp.style.display = 'none';
   var catBar = document.getElementById('device-cat-bar');
   if(catBar) catBar.style.display = 'none';
 
@@ -4467,6 +4471,7 @@ function setTab(tab) {
   else if (tab === 'overview'){ if (ovv) ovv.style.display='block'; renderOverview(); }
   else if (tab === 'docs')     { if (docp) docp.style.display='block'; renderDocsPanel(); }
   else if (tab === 'activity') { if (actp) actp.style.display='block'; renderActivityLog(); }
+  else if (tab === 'manager')  { if (mgrp) mgrp.style.display='block'; renderManagerPanel(); }
   else if (tab === 'power')   { if (pwv) pwv.style.display='block'; renderPowerView(); }
   else if (tab === 'diagram') { if (dgw) dgw.style.display=''; renderDiagView(); }
   else { if (tw) tw.style.display=''; renderTable(); }
@@ -5280,8 +5285,13 @@ function syncDeviceId() {
   // Auto-suggest lowest available number — only when adding a new device
   if (model && editIndex === -1) {
     var takenNums = {};
-    // Count only in current stage so number resets to 1 if model not yet in this stage
-    var _stg = _stages[_currentStageIdx]; var allDevs = _stg ? (_stg.devices||[]) : [];
+    // Count across ALL stages — device_id MUST stay globally unique. The sync layer
+    // (worker + mobile merge) keys devices by device_id in a flat map with no stage
+    // component, so per-stage numbering creates duplicate ids across stages, which
+    // silently cross-writes serials/checks onto the wrong device. (Matches quickAdd.)
+    var allDevs = [];
+    _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+    if(!allDevs.length) allDevs = devices;
     allDevs.forEach(function(d) {
       var dm = modelFromId(d.device_id||'');
       if (dm.toUpperCase() === model.toUpperCase()) { var rest=(d.device_id||'').slice(dm.length).trim(); var n=parseInt(rest,10); if(!isNaN(n)) takenNums[n]=true; }
@@ -5565,11 +5575,16 @@ function saveDevice() {
     ? (_idEditEl.value.trim().toUpperCase() || document.getElementById('m-device-id').value.trim().toUpperCase())
     : document.getElementById('m-device-id').value.trim().toUpperCase();
   if (!deviceId) { showToast('Device ID is required','warn'); document.getElementById('m-device-id').focus(); return; }
-  // Check for duplicate ID within the CURRENT STAGE only
-  // (same ID is allowed in different stages)
-  var _editingId = editIndex >= 0 ? (devices[editIndex]||{}).device_id||'' : '';
-  var idConflict = devices.some(function(x){ return x.device_id === deviceId && x.device_id !== _editingId; });
-  if (idConflict) { showToast('ID "'+deviceId+'" already exists in this stage — pick a different number','warn'); return; }
+  // Check for duplicate ID across ALL stages — device_id must be globally unique or
+  // the sync layer's flat device_id map cross-writes serials/checks onto the wrong
+  // device (silent data loss). Skip the exact device being edited by identity so an
+  // in-place edit of a device that shares an id with a pre-existing collision still saves.
+  var _editingDev = editIndex >= 0 ? devices[editIndex] : null;
+  var _allDevs = [];
+  _stages.forEach(function(s){ (s.devices||[]).forEach(function(x){ _allDevs.push(x); }); });
+  if(!_allDevs.length) _allDevs = devices;
+  var idConflict = _allDevs.some(function(x){ return x !== _editingDev && x.device_id === deviceId; });
+  if (idConflict) { showToast('ID "'+deviceId+'" already exists in another stage — pick a different number','warn'); return; }
 
   var chList   = checksFor(type);
   var secId    = TYPE_KEY[type] || 'laser';
@@ -12728,6 +12743,372 @@ function openRewardsModal(){
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// ══════════════════════════════════════════════════════════════════════
+// MANAGER COCKPIT (v4.063) — owner/admin control panel
+//   • Owner login (client-side PBKDF2 → auth_key → worker session token)
+//   • People: list users, invite (→ copyable redeem link), assign role, disable
+//   • Projects: list + fast-switch + who's assigned
+//   • XP: full cheat — set any number, per-project (in project data) or GLOBAL
+// Talks to the accounts API on the SAME worker the app already syncs with.
+// Degrades gracefully: if the worker predates v4.9, global-XP controls hide.
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Canonical client key-derivation (MUST match every client & the redeem flow)
+//   auth_key = hex( PBKDF2-SHA256(password, salt = SHA-256(lowercased-email),
+//                                 600000 iterations, 256 bits) )
+// The worker never sees the password; it stores sha256(auth_key + PEPPER).
+// If mobile later implements login/redeem it MUST use this exact derivation.
+async function mgrDeriveAuthKey(email, password){
+  var enc = new TextEncoder();
+  var saltBuf = await crypto.subtle.digest('SHA-256', enc.encode(String(email||'').toLowerCase()));
+  var keyMat = await crypto.subtle.importKey('raw', enc.encode(String(password||'')), 'PBKDF2', false, ['deriveBits']);
+  var bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt:saltBuf, iterations:600000, hash:'SHA-256' }, keyMat, 256);
+  var arr = new Uint8Array(bits), hex = '';
+  for (var i=0;i<arr.length;i++) hex += arr[i].toString(16).padStart(2,'0');
+  return hex;
+}
+
+// ── Session state (persisted so the admin isn't re-logging-in constantly)
+var _mgrSession = localStorage.getItem('buildert_admin_session') || '';
+var _mgrMe = null;                 // { user:{...}, memberships:{pid:role} }
+var _mgrXpSupported = true;        // set false if worker 404s /accounts/xp
+
+function _mgrSetSession(tok){
+  _mgrSession = tok || '';
+  try { if (tok) localStorage.setItem('buildert_admin_session', tok);
+        else localStorage.removeItem('buildert_admin_session'); } catch(e){}
+}
+
+// ── Thin fetch wrapper for accounts calls: attaches the session as ?t= ────
+async function _mgrApi(method, path, body){
+  if(!_workerUrl) throw new Error('No worker URL configured — set it in the Connect/Shares area first.');
+  var url = _workerUrl + path + (path.indexOf('?')>=0?'&':'?') + '_=' + Date.now();
+  if(_mgrSession) url += '&t=' + encodeURIComponent(_mgrSession);
+  var opts = { method:method, headers:{'Content-Type':'application/json'}, cache:'no-store' };
+  if(body !== undefined) opts.body = JSON.stringify(body);
+  var resp = await fetch(url, opts);
+  var data = {};
+  try { data = await resp.json(); } catch(e){ data = { error:'bad response ('+resp.status+')' }; }
+  return { status: resp.status, data: data };
+}
+
+// ── Entry point (called by setTab('manager')) ─────────────────────────
+async function renderManagerPanel(){
+  var box = document.getElementById('manager-panel');
+  if(!box) return;
+  if(!_workerUrl){
+    box.innerHTML = _mgrCard('⚠ No worker connected',
+      '<p style="color:var(--muted);font-size:13px">The Manager needs the sync worker. Open the Shares tab and connect a worker URL first.</p>');
+    return;
+  }
+  // Resolve the current session (if any) before deciding what to show.
+  box.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Loading Manager…</div>';
+  if(_mgrSession){
+    var me = await _mgrApi('GET','/accounts/me');
+    if(me.status===200 && me.data && me.data.ok){ _mgrMe = me.data; return _mgrRenderAuthed(); }
+    _mgrSetSession('');   // stale/expired → fall through to login
+  }
+  // No valid session — is the system even bootstrapped yet?
+  var st = await _mgrApi('GET','/accounts/status');
+  _mgrRenderAuth(st.data && st.data.bootstrapped);
+}
+
+function _mgrCard(title, inner){
+  return '<div style="max-width:920px;margin:0 auto">'
+    + '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0 0 14px">'+title+'</h2>'
+    + inner + '</div>';
+}
+
+// ── Login / bootstrap screen ──────────────────────────────────────────
+function _mgrRenderAuth(bootstrapped){
+  var box = document.getElementById('manager-panel');
+  var isLogin = !!bootstrapped;
+  box.innerHTML = _mgrCard(isLogin ? '🔐 Manager login' : '🚀 Create owner account',
+    '<div style="max-width:380px">'
+    + (isLogin ? '' : '<p style="color:var(--muted);font-size:12px;margin:0 0 12px">No accounts exist yet. This first account is the <b>owner</b> — full control over people, projects and XP.</p>')
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Email</label>'
+    + '<input id="mgr-email" type="email" autocomplete="username" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">'
+    + (isLogin ? '' : '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Name</label><input id="mgr-name" type="text" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">')
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Password</label>'
+    + '<input id="mgr-pass" type="password" autocomplete="current-password" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:14px" onkeydown="if(event.key===\'Enter\')_mgrDoAuth('+(isLogin?'true':'false')+')">'
+    + '<button class="btn" onclick="_mgrDoAuth('+(isLogin?'true':'false')+')" style="width:100%;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">'+(isLogin?'Log in':'Create owner')+'</button>'
+    + '<div id="mgr-auth-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>'
+    + '<p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5">Your password never leaves this browser — it is stretched locally (600k iterations) into a key before anything is sent. The worker only ever stores a salted hash of that key.</p>'
+    + '</div>');
+}
+
+async function _mgrDoAuth(isLogin){
+  var msg = document.getElementById('mgr-auth-msg');
+  var email = (document.getElementById('mgr-email').value||'').trim();
+  var pass = document.getElementById('mgr-pass').value||'';
+  if(!email || !pass){ msg.style.color='var(--warn)'; msg.textContent='Email and password required.'; return; }
+  msg.style.color='var(--muted)'; msg.textContent='Deriving key (600k iterations, ~1s)…';
+  try {
+    var authKey = await mgrDeriveAuthKey(email, pass);
+    var path = isLogin ? '/accounts/login' : '/accounts/bootstrap';
+    var body = { email: email, auth_key: authKey };
+    if(!isLogin) body.name = (document.getElementById('mgr-name').value||'').trim();
+    var r = await _mgrApi('POST', path, body);
+    if(r.status===200 && r.data && (r.data.ok || r.data.token)){
+      _mgrSetSession(r.data.token);
+      var me = await _mgrApi('GET','/accounts/me');
+      _mgrMe = (me.data && me.data.ok) ? me.data : { user:r.data.user, memberships:r.data.memberships||{} };
+      showToast(isLogin?'Logged in ✓':'Owner account created ✓','ok');
+      _mgrRenderAuthed();
+    } else {
+      msg.style.color='var(--danger)';
+      msg.textContent = (r.data && r.data.error) ? r.data.error : ('Failed ('+r.status+')');
+    }
+  } catch(e){
+    msg.style.color='var(--danger)'; msg.textContent = 'Error: '+(e.message||e);
+  }
+}
+
+function _mgrLogout(){
+  if(_mgrSession) _mgrApi('POST','/accounts/logout').catch(function(){});
+  _mgrSetSession(''); _mgrMe=null;
+  renderManagerPanel();
+}
+
+// ── Authed dashboard shell (sub-tabs) ─────────────────────────────────
+var _mgrSubtab = 'projects';
+function _mgrRenderAuthed(){
+  var box = document.getElementById('manager-panel');
+  var u = (_mgrMe && _mgrMe.user) || {};
+  var isOwner = !!u.is_owner;
+  var sub = function(id,label){
+    return '<button onclick="_mgrSetSubtab(\''+id+'\')" class="btn btn-ghost" style="font-size:12px;'
+      + (_mgrSubtab===id?'background:rgba(0,212,255,.14);color:var(--accent);border-color:var(--accent)':'')+'">'+label+'</button>';
+  };
+  box.innerHTML =
+    '<div style="max-width:960px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+    +   '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0">🎛️ Manager</h2>'
+    +   '<span style="font-size:12px;color:var(--muted)">'+_escHtml(u.email||'')+(isOwner?' · <b style="color:#ffd700">owner</b>':' · admin')+'</span>'
+    +   '<span style="flex:1"></span>'
+    +   sub('projects','📂 Projects') + sub('people','👥 People') + (isOwner?sub('xp','🏆 XP'):'')
+    +   '<button class="btn btn-ghost" onclick="_mgrLogout()" style="font-size:12px;color:var(--danger)">Log out</button>'
+    + '</div>'
+    + '<div id="mgr-sub"></div></div>';
+  _mgrRenderSubtab();
+}
+function _mgrSetSubtab(id){ _mgrSubtab=id; _mgrRenderSubtab(); }
+function _mgrRenderSubtab(){
+  if(_mgrSubtab==='people') return _mgrRenderPeople();
+  if(_mgrSubtab==='xp') return _mgrRenderXp();
+  return _mgrRenderProjects();
+}
+
+// ══ PROJECTS ══════════════════════════════════════════════════════════
+async function _mgrRenderProjects(){
+  var host = document.getElementById('mgr-sub');
+  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading projects…</div>';
+  var r = await _mgrApi('GET','/projects');
+  var list = (r.data && r.data.projects) || [];
+  // Pull memberships so we can show who's on each project (owner/admin only).
+  var usersResp = await _mgrApi('GET','/accounts/users');
+  var users = (usersResp.data && usersResp.data.users) || [];
+  var byProject = {};
+  // /accounts/users returns global list; per-project we query lazily on expand.
+  var rows = list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); }).map(function(p){
+    var isCurrent = (p.key === _projectKey);
+    return '<tr style="border-top:1px solid var(--border)">'
+      + '<td style="padding:8px 10px">'
+      +   '<div style="font-weight:700">'+_escHtml(p.name||p.key)+(isCurrent?' <span style="font-size:10px;color:var(--accent);font-family:var(--mono)">● OPEN</span>':'')+'</div>'
+      +   '<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(p.key)+'</div>'
+      + '</td>'
+      + '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?p.devices:'?')+'</td>'
+      + '<td style="padding:8px 10px;font-size:11px;color:var(--muted)">'+_escHtml((p.saved||'').slice(0,10))+'</td>'
+      + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
+      +   (isCurrent?'<span style="font-size:11px;color:var(--muted)">current</span>'
+                   :'<button class="btn btn-ghost" style="font-size:12px;padding:4px 12px" onclick="_mgrSwitchProject(\''+encodeURIComponent(p.key).replace(/'/g,"%27")+'\')">Open →</button>')
+      + '</td></tr>';
+  }).join('');
+  host.innerHTML =
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project your account can reach. Click <b>Open</b> to switch fast — the current project is flushed first so nothing is lost.</p>'
+    + '<input id="mgr-proj-filter" placeholder="Filter…" oninput="_mgrFilterProjects()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Saved</th><th></th></tr></thead>'
+    + '<tbody id="mgr-proj-rows">'+(rows||'<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">No projects.</td></tr>')+'</tbody></table>';
+}
+function _mgrFilterProjects(){
+  var q=((document.getElementById('mgr-proj-filter')||{}).value||'').toLowerCase();
+  var rows=document.querySelectorAll('#mgr-proj-rows tr');
+  rows.forEach(function(tr){ tr.style.display = tr.textContent.toLowerCase().indexOf(q)>=0?'':'none'; });
+}
+async function _mgrSwitchProject(pidEnc){
+  var pid = decodeURIComponent(pidEnc);
+  // Reuse the existing, tested project-switch path (flush → swap key → pull).
+  if(typeof pmOpenProject==='function'){ await pmOpenProject(pid); }
+  else {
+    if(_unsaved && _workerUrl && _projectKey){ try{ await _wPushImpl(true); }catch(e){} }
+    _projectKey=pid; try{localStorage.setItem('buildert_project_key',pid);}catch(e){}
+    if(typeof wPull==='function') await wPull(true);
+  }
+  setTab('manager');   // stay in Manager, refresh to show new current project
+}
+
+// ══ PEOPLE ════════════════════════════════════════════════════════════
+async function _mgrRenderPeople(){
+  var host = document.getElementById('mgr-sub');
+  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading people…</div>';
+  var r = await _mgrApi('GET','/accounts/users');
+  if(r.status!==200){ host.innerHTML='<div style="padding:20px;color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</div>'; return; }
+  var users = (r.data && r.data.users) || [];
+  var projResp = await _mgrApi('GET','/projects');
+  var projects = (projResp.data && projResp.data.projects) || [];
+  window._mgrProjects = projects;   // cache for the invite/assign selectors
+  var rows = users.map(function(u){
+    var disabled = u.status==='disabled';
+    return '<tr style="border-top:1px solid var(--border);'+(disabled?'opacity:.5':'')+'">'
+      + '<td style="padding:8px 10px"><div style="font-weight:700">'+_escHtml(u.name||'—')+(u.is_owner?' <span style="font-size:10px;color:#ffd700">★ owner</span>':'')+'</div>'
+      +   '<div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
+      + '<td style="padding:8px 10px;font-size:11px;color:var(--muted)">'+(u.last_login?_escHtml(u.last_login.slice(0,10)):'never')+'</td>'
+      + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
+      +   '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px" onclick="_mgrAssignDialog(\''+u.id+'\',\''+_escHtml(u.email).replace(/'/g,"\\'")+'\')">Assign…</button> '
+      +   (u.is_owner?'':'<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:'+(disabled?'var(--accent)':'var(--danger)')+'" onclick="_mgrToggleUser(\''+u.id+'\','+(disabled?'true':'false')+')">'+(disabled?'Enable':'Disable')+'</button>')
+      + '</td></tr>';
+  }).join('');
+  host.innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">'
+    + '<button class="btn" onclick="_mgrInviteDialog()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:13px">+ Invite person</button>'
+    + '<span style="font-size:12px;color:var(--muted)">'+users.length+' account'+(users.length===1?'':'s')+'</span>'
+    + '</div>'
+    + '<div id="mgr-invite-slot"></div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:left;padding:4px 10px">Last login</th><th></th></tr></thead>'
+    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">No accounts yet — invite someone.</td></tr>')+'</tbody></table>';
+}
+
+function _mgrProjectOptions(sel){
+  var projects = window._mgrProjects || [];
+  return projects.map(function(p){
+    return '<option value="'+_escHtml(p.key)+'"'+(p.key===sel?' selected':'')+'>'+_escHtml(p.name||p.key)+'</option>';
+  }).join('');
+}
+
+function _mgrInviteDialog(){
+  var slot = document.getElementById('mgr-invite-slot');
+  slot.innerHTML =
+    '<div style="border:1px solid var(--accent);border-radius:8px;padding:14px;margin-bottom:14px;background:rgba(0,212,255,.05)">'
+    + '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin-bottom:10px">INVITE A PERSON</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Email</label><input id="mgr-inv-email" type="email" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Name</label><input id="mgr-inv-name" type="text" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Project</label><select id="mgr-inv-pid" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px">'+_mgrProjectOptions(_projectKey)+'</select></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Role</label><select id="mgr-inv-role" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"><option value="rigger">Rigger (edit their stage)</option><option value="admin">Admin (manage project)</option></select></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px"><button class="btn" onclick="_mgrDoInvite()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:13px">Create invite link</button>'
+    + '<button class="btn btn-ghost" onclick="document.getElementById(\'mgr-invite-slot\').innerHTML=\'\'" style="font-size:13px">Cancel</button></div>'
+    + '<div id="mgr-inv-result" style="margin-top:10px"></div>'
+    + '</div>';
+}
+
+async function _mgrDoInvite(){
+  var email=(document.getElementById('mgr-inv-email').value||'').trim();
+  var name=(document.getElementById('mgr-inv-name').value||'').trim();
+  var pid=document.getElementById('mgr-inv-pid').value;
+  var role=document.getElementById('mgr-inv-role').value;
+  var res=document.getElementById('mgr-inv-result');
+  if(!email){ res.innerHTML='<span style="color:var(--warn);font-size:12px">Email required.</span>'; return; }
+  res.innerHTML='<span style="color:var(--muted);font-size:12px">Creating…</span>';
+  var r=await _mgrApi('POST','/accounts/invite',{email:email,name:name,pid:pid,role:role});
+  if(r.status!==200 || !r.data || !r.data.code){
+    res.innerHTML='<span style="color:var(--danger);font-size:12px">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</span>'; return;
+  }
+  // Build the redeem link the admin sends. Points at the mobile app with the
+  // worker URL + redeem code. (Mobile must implement /redeem consumption.)
+  var base = (localStorage.getItem('buildert_mobile_url')||'').trim();
+  var link = (base||'[MOBILE_APP_URL]') + '?worker=' + encodeURIComponent(_workerUrl) + '&redeem=' + encodeURIComponent(r.data.code);
+  res.innerHTML =
+    '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Send this link to '+_escHtml(email)+':</div>'
+    + '<div style="display:flex;gap:6px"><input id="mgr-inv-link" readonly value="'+_escHtml(link)+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:11px">'
+    + '<button class="btn btn-ghost" style="font-size:12px" onclick="_mgrCopy(\'mgr-inv-link\')">Copy</button></div>'
+    + (base?'':'<div style="font-size:11px;color:var(--warn);margin-top:6px">⚠ Set your mobile app URL to replace [MOBILE_APP_URL] — run <code>localStorage.setItem(\'buildert_mobile_url\',\'https://…\')</code> once, or paste the code manually. Also: riggers can only redeem once the mobile login screen is built.</div>')
+    + '</div>';
+  showToast('Invite created ✓','ok');
+  if(_mgrSubtab==='people') { /* leave dialog open so link stays visible */ }
+}
+
+function _mgrCopy(id){
+  var el=document.getElementById(id); if(!el) return;
+  el.select(); try{ document.execCommand('copy'); showToast('Copied ✓','ok'); }catch(e){ try{navigator.clipboard.writeText(el.value);showToast('Copied ✓','ok');}catch(e2){} }
+}
+
+async function _mgrToggleUser(uid, enable){
+  var r=await _mgrApi('POST','/accounts/user/'+encodeURIComponent(uid)+'/status',{status:enable?'active':'disabled'});
+  if(r.status===200 && r.data && r.data.ok){ showToast(enable?'Enabled ✓':'Disabled ✓','ok'); _mgrRenderPeople(); }
+  else showToast((r.data&&r.data.error)||'Failed','danger');
+}
+
+async function _mgrAssignDialog(uid, email){
+  // Pull this user's current memberships by scanning each project's member list
+  var projects = window._mgrProjects || [];
+  var host = document.getElementById('mgr-sub');
+  var opts = projects.map(function(p){ return '<option value="'+_escHtml(p.key)+'">'+_escHtml(p.name||p.key)+'</option>'; }).join('');
+  var box = document.createElement('div');
+  box.className='modal-overlay open'; box.style.zIndex='1000';
+  box.innerHTML =
+    '<div class="modal" style="max-width:460px"><h2>Assign '+_escHtml(email)+'</h2>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Project</label><select id="mgr-as-pid" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px">'+opts+'</select></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Role</label><select id="mgr-as-role" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px"><option value="rigger">Rigger</option><option value="admin">Admin</option><option value="none">Remove from project</option></select></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1">Cancel</button>'
+    + '<button class="btn" onclick="_mgrDoAssign(\''+uid+'\',this)" style="flex:2;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">Apply</button></div></div>';
+  document.body.appendChild(box);
+}
+async function _mgrDoAssign(uid, btn){
+  var overlay = btn.closest('.modal-overlay');
+  var pid=overlay.querySelector('#mgr-as-pid').value;
+  var role=overlay.querySelector('#mgr-as-role').value;
+  var r=await _mgrApi('POST','/accounts/membership',{user_id:uid,pid:pid,role:role});
+  if(r.status===200 && r.data && r.data.ok){ showToast(role==='none'?'Removed ✓':'Assigned '+role+' ✓','ok'); overlay.remove(); }
+  else showToast((r.data&&r.data.error)||'Failed','danger');
+}
+
+// ══ XP (owner-only) ═══════════════════════════════════════════════════
+async function _mgrRenderXp(){
+  var host = document.getElementById('mgr-sub');
+  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading XP…</div>';
+  var r = await _mgrApi('GET','/accounts/xp');
+  if(r.status===404){ _mgrXpSupported=false;
+    host.innerHTML='<div style="padding:20px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:13px">Global XP needs worker v4.9+. Your worker is older, so global XP is unavailable. Per-project bonus XP still works in the 🏆 Rigger Rewards button.</div>'; return; }
+  if(r.status!==200){ host.innerHTML='<div style="padding:20px;color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</div>'; return; }
+  var xps = (r.data && r.data.xp) || [];
+  var rows = xps.sort(function(a,b){ return (b.xp|0)-(a.xp|0); }).map(function(u){
+    return '<tr style="border-top:1px solid var(--border)">'
+      + '<td style="padding:8px 10px"><div style="font-weight:700">'+_escHtml(u.name||'—')+'</div><div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
+      + '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:#ffd700;font-weight:700;font-size:15px" id="mgr-xp-val-'+u.user_id+'">'+(u.xp|0)+'</td>'
+      + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
+      +   '<input type="number" id="mgr-xp-set-'+u.user_id+'" placeholder="set" style="width:90px;background:var(--panel);border:1px solid var(--border);color:#ffd700;padding:5px 7px;border-radius:5px;font-family:var(--mono);text-align:right;font-size:13px">'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" onclick="_mgrSetXp(\''+u.user_id+'\')">Set</button>'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" title="+100" onclick="_mgrDeltaXp(\''+u.user_id+'\',100)">+100</button>'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" title="-100" onclick="_mgrDeltaXp(\''+u.user_id+'\',-100)">−100</button>'
+      + '</td></tr>';
+  }).join('');
+  host.innerHTML =
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">🏆 <b style="color:#ffd700">Global XP</b> — one career total per person across every project. Set any number (negative works). This is the cheat box. Per-project bonus XP is separate and lives in the 🏆 Rigger Rewards button on the top bar.</p>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:right;padding:4px 10px">Global XP</th><th style="text-align:right;padding:4px 10px">Cheat</th></tr></thead>'
+    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">No accounts yet.</td></tr>')+'</tbody></table>';
+}
+async function _mgrSetXp(uid){
+  var inp=document.getElementById('mgr-xp-set-'+uid);
+  var v=parseInt(inp.value,10);
+  if(isNaN(v)){ showToast('Type a number first','warn'); return; }
+  var r=await _mgrApi('POST','/accounts/xp',{user_id:uid,xp:v});
+  if(r.status===200 && r.data && r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; inp.value=''; showToast('XP set to '+r.data.xp+' ✓','ok'); }
+  else showToast((r.data&&r.data.error)||'Failed','danger');
+}
+async function _mgrDeltaXp(uid, delta){
+  var r=await _mgrApi('POST','/accounts/xp',{user_id:uid,delta:delta});
+  if(r.status===200 && r.data && r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; showToast((delta>0?'+':'')+delta+' → '+r.data.xp,'ok'); }
+  else showToast((r.data&&r.data.error)||'Failed','danger');
+}
+
+
 // ── New Edition: clone project for a repeating event ────────────────
 // KEEPS: stages, devices (models, cables, sources, locations, positions),
 //        backgrounds, spec overrides, pack spares, manual todos (un-done),
