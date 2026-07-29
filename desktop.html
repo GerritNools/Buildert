@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.066</title>
+<title>WTUniverse · Buildert Editor v4.067</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.066</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.067</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3785,7 +3785,7 @@ var qrcode = function() {
     <h2>&#128190; Project</h2>
     <label>Show / project name</label>
     <input id="proj-name" type="text" placeholder="Festival Main Stage"
-           oninput="_projectMeta.name=this.value.trim();_updateProjectBadge();_persistProjectMeta()">
+           oninput="_brtLocalRename(this.value);_updateProjectBadge();_persistProjectMeta()">
     <label>Venue</label>
     <input id="proj-venue" type="text" placeholder="AFAS Live"
            oninput="_projectMeta.venue=this.value.trim();_persistProjectMeta()">
@@ -12808,7 +12808,48 @@ async function _brtLoadProjectList(force){
     p._dupName = (n!=='(unnamed)') && counts[n.toLowerCase()]>1;
   });
   _brtProjCache={ list:list, at:Date.now() };
+  try{ _brtSyncLabels(); }catch(e){}
   return list;
+}
+
+// ── Authoritative name of the OPEN project ───────────────────────────
+// _projectMeta.name comes from a SINGLE localStorage key ('wtu_project_meta')
+// shared by every project, so after switching it can still hold the previous
+// project's name. That is why the switcher once said "L700" while a different
+// project was actually open. The worker's project list is the only source
+// that is reliably about _projectKey, so it wins; local meta is a fallback
+// for projects that were never pushed.
+function _brtCurrentName(){
+  var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
+  var e=(_brtProjCache.list||[]).filter(function(p){ return String(p.key)===key; })[0];
+  if(e) return e._display;
+  try{ if(_projectMeta && _projectMeta.name) return String(_projectMeta.name); }catch(err){}
+  return key || 'no project';
+}
+// Keeps every place that shows the project name in agreement.
+function _brtSyncLabels(){
+  var nm=_brtCurrentName();
+  var btn=document.getElementById('hdr-proj-name');
+  if(btn) btn.textContent=nm;
+  // The filename strip sits right next to the switcher and reads like a
+  // project name, so it must show the same thing. The ● dot already signals
+  // unsaved changes, so no "(unsaved)" text is needed here.
+  var fn=document.getElementById('file-name');
+  if(fn) fn.textContent=nm;
+  try{ _fileName=nm; }catch(e){}
+  var dot=document.getElementById('file-unsaved');
+  try{ if(dot) dot.style.display=_unsaved?'inline':'none'; }catch(e){}
+}
+// When the name field is edited, update the cached list too so the switcher
+// reflects the edit immediately instead of waiting for a push.
+function _brtLocalRename(v){
+  v=String(v||'').trim();
+  try{ _projectMeta.name=v; }catch(e){}
+  var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
+  (_brtProjCache.list||[]).forEach(function(p){
+    if(String(p.key)===key){ p.name=v; p._display=v||'(unnamed)'; }
+  });
+  _brtSyncLabels();
 }
 
 function _brtShortDate(iso){
@@ -12888,6 +12929,14 @@ async function _brtRenameProject(pid, newName){
 async function _brtPromptRename(pid, currentName){
   var n=prompt('Rename project "'+(currentName||pid)+'"\n\nThis updates the name everywhere. Devices and serials are not touched.', currentName==='(unnamed)'?'':currentName);
   if(n===null) return;
+  n=String(n).trim();
+  // Don't let a rename silently create a NEW duplicate.
+  var clash=(_brtProjCache.list||[]).filter(function(p){
+    return String(p.key)!==String(pid) && p._display.toLowerCase()===n.toLowerCase() && n!=='';
+  });
+  if(clash.length){
+    if(!confirm('"'+n+'" is already used by '+clash.length+' other project'+(clash.length===1?'':'s')+' ('+clash.map(function(c){return c.key;}).join(', ')+').\n\nYou will not be able to tell them apart in the switcher.\n\nUse this name anyway?')) return;
+  }
   var r=await _brtRenameProject(pid, n);
   if(r.ok){
     showToast('Renamed to "'+r.name+'" ✓ ('+r.devices+' devices intact)','ok');
@@ -12910,13 +12959,7 @@ function _hdrTokens(){
   try{ if(typeof _mgrSession!=='undefined' && _mgrSession) t.push(_mgrSession); }catch(e){}
   return t.join(',');
 }
-function _hdrUpdateProjName(){
-  var el=document.getElementById('hdr-proj-name');
-  if(!el) return;
-  var nm='';
-  try{ nm=(_projectMeta && _projectMeta.name) ? _projectMeta.name : ''; }catch(e){}
-  el.textContent = nm || _projectKey || 'no project';
-}
+function _hdrUpdateProjName(){ _brtSyncLabels(); }
 function _hdrToggleProjects(){
   var m=document.getElementById('hdr-proj-menu');
   if(!m) return;
@@ -12967,9 +13010,10 @@ function _hdrFilterProjects(){
 }
 async function _hdrPickProject(pid){
   document.getElementById('hdr-proj-menu').style.display='none';
-  if(pid===_projectKey){ return; }
+  if(String(pid)===String(_projectKey)){ return; }
   if(typeof pmOpenProject==='function'){ await pmOpenProject(pid); }
-  _hdrUpdateProjName();
+  await _brtLoadProjectList(true);   // refresh authoritative names, then relabel
+  _brtSyncLabels();
 }
 // Close the menu when clicking elsewhere.
 document.addEventListener('click', function(e){
@@ -13170,8 +13214,10 @@ function _mgrFilterProjects(){
   });
 }
 async function _mgrSwitchProject(pid){
-  if(pid===_projectKey) return;
+  if(String(pid)===String(_projectKey)) return;
   if(typeof pmOpenProject==='function'){ await pmOpenProject(pid); }
+  await _brtLoadProjectList(true);
+  _brtSyncLabels();
   setTab('manager');
 }
 async function _mgrDeleteProject(pid){
