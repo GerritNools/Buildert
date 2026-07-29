@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.063</title>
+<title>WTUniverse · Buildert Editor v4.064</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -488,7 +488,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.063</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.064</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -13018,14 +13018,14 @@ async function _mgrDoInvite(){
   }
   // Build the redeem link the admin sends. Points at the mobile app with the
   // worker URL + redeem code. (Mobile must implement /redeem consumption.)
-  var base = (localStorage.getItem('buildert_mobile_url')||'').trim();
+  var base = (localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
   var link = (base||'[MOBILE_APP_URL]') + '?worker=' + encodeURIComponent(_workerUrl) + '&redeem=' + encodeURIComponent(r.data.code);
   res.innerHTML =
     '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">'
     + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Send this link to '+_escHtml(email)+':</div>'
     + '<div style="display:flex;gap:6px"><input id="mgr-inv-link" readonly value="'+_escHtml(link)+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:11px">'
     + '<button class="btn btn-ghost" style="font-size:12px" onclick="_mgrCopy(\'mgr-inv-link\')">Copy</button></div>'
-    + (base?'':'<div style="font-size:11px;color:var(--warn);margin-top:6px">⚠ Set your mobile app URL to replace [MOBILE_APP_URL] — run <code>localStorage.setItem(\'buildert_mobile_url\',\'https://…\')</code> once, or paste the code manually. Also: riggers can only redeem once the mobile login screen is built.</div>')
+    + '<div style="font-size:11px;color:var(--muted);margin-top:6px">The rigger opens this on their phone, sets a password, and sees the projects you assigned them. Needs mobile app v3.993m+.</div>'
     + '</div>';
   showToast('Invite created ✓','ok');
   if(_mgrSubtab==='people') { /* leave dialog open so link stays visible */ }
