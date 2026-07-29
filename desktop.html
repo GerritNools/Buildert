@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.065</title>
+<title>WTUniverse · Buildert Editor v4.066</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.065</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.066</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -12754,6 +12754,151 @@ function openRewardsModal(){
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// ── Shared project list ──────────────────────────────────────────────
+// ONE loader feeding BOTH the header switcher and Manager → Projects.
+// Having two builders is what let the same project show up under two
+// different names ("sfvnvuvb" in one list, "(unnamed)" in the other) and
+// let the two lists disagree about which project was open.
+var _brtProjCache = { list:[], at:0 };
+
+function _brtAllTokens(){
+  var t=[];
+  try{ var all=_wAllTokens(); if(all) t.push(all); }catch(e){}
+  try{ if(typeof _mgrSession!=='undefined' && _mgrSession) t.push(_mgrSession); }catch(e){}
+  return t.join(',');
+}
+
+// Canonical display name — used EVERYWHERE. Never diverge from this.
+function _brtProjName(p){
+  return (p && p.name && String(p.name).trim()) ? String(p.name).trim() : '(unnamed)';
+}
+
+async function _brtLoadProjectList(force){
+  if(!force && _brtProjCache.at && (Date.now()-_brtProjCache.at)<4000) return _brtProjCache.list;
+  var list=[];
+  try{
+    if(_workerUrl){
+      var tk=_brtAllTokens();
+      var r=await fetch(_workerUrl+'/projects?_='+Date.now()+(tk?'&t='+encodeURIComponent(tk):''),{cache:'no-store'});
+      if(r.ok){ var d=await r.json(); list=(d&&d.projects)||[]; }
+    }
+  }catch(e){}
+  // Merge locally-known projects the worker didn't return (never pushed yet).
+  try{
+    var seen={}; list.forEach(function(p){ seen[p.key]=1; });
+    var reg=_kpAll();
+    Object.keys(reg).forEach(function(pid){
+      if(!seen[pid]) list.push({ key:pid, name:(reg[pid]||{}).name||'', saved:(reg[pid]||{}).last||'',
+                                 by:'(local only)', devices:-1, protected:!!_wAdminSecretFor(pid) });
+    });
+  }catch(e){}
+  // Stable sort: newest first, then by key so equal timestamps never shuffle
+  // between renders (that shuffling made the two lists look out of sync).
+  list.sort(function(a,b){
+    var c=(b.saved||'').localeCompare(a.saved||'');
+    return c!==0 ? c : String(a.key).localeCompare(String(b.key));
+  });
+  // Flag duplicate display names so the UI can warn instead of silently
+  // showing three identical-looking rows.
+  var counts={};
+  list.forEach(function(p){ var n=_brtProjName(p).toLowerCase(); counts[n]=(counts[n]||0)+1; });
+  list.forEach(function(p){
+    var n=_brtProjName(p);
+    p._display=n;
+    p._dupName = (n!=='(unnamed)') && counts[n.toLowerCase()]>1;
+  });
+  _brtProjCache={ list:list, at:Date.now() };
+  return list;
+}
+
+function _brtShortDate(iso){
+  if(!iso) return '—';
+  try{
+    var d=new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString(undefined,{day:'2-digit',month:'2-digit',year:'2-digit'})
+         + ' ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return '—'; }
+}
+
+// ── SAFE rename ──────────────────────────────────────────────────────
+// A minimal "just the name" push DESTROYS the project: the merge treats the
+// absent stages array as empty and every device and serial is lost. So we
+// always read-modify-write the whole project, and refuse to push if the
+// pulled copy doesn't look like a real project.
+async function _brtRenameProject(pid, newName){
+  newName=String(newName||'').trim();
+  if(!newName) return { ok:false, error:'Name cannot be empty' };
+  if(!_workerUrl) return { ok:false, error:'No worker URL' };
+  var tk=_brtAllTokens();
+  var q=(tk?'&t='+encodeURIComponent(tk):'');
+  var proj=null;
+  try{
+    var r=await fetch(_workerUrl+'/project/'+encodeURIComponent(pid)+'?_='+Date.now()+q,{cache:'no-store'});
+    if(!r.ok) return { ok:false, error:'Could not read project ('+r.status+')' };
+    var d=await r.json();
+    proj=(d && d._projects && d._projects[pid]) || null;
+  }catch(e){ return { ok:false, error:e.message||'Network error' }; }
+  if(!proj) return { ok:false, error:'Project not found on worker' };
+
+  // Guard: count devices before, and refuse to write back something emptier.
+  function devCount(p){
+    var n=0;
+    if(Array.isArray(p.stages)) p.stages.forEach(function(s){ n+=((s&&s.devices)||[]).length; });
+    if(!n) n=((p.devices)||[]).length;
+    return n;
+  }
+  var before=devCount(proj);
+  if(!Array.isArray(proj.stages) && !Array.isArray(proj.devices)){
+    return { ok:false, error:'Refusing to rename: project data looks incomplete' };
+  }
+  proj._project_name=newName;
+  if(proj.project && typeof proj.project==='object') proj.project.name=newName;
+  proj._saved_by='desktop';
+  if(devCount(proj)!==before) return { ok:false, error:'Internal guard tripped — nothing written' };
+
+  try{
+    var resp=await fetch(_workerUrl+'/?_='+Date.now()+q,{
+      method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store',
+      body: JSON.stringify({ _schema:'v2', _projects:(function(){ var o={}; o[pid]=proj; return o; })() })
+    });
+    if(!resp.ok) return { ok:false, error:'Rename push failed ('+resp.status+')' };
+    var out=await resp.json();
+    var back=(out && out._projects && out._projects[pid]) || null;
+    if(back && devCount(back)<before){
+      return { ok:false, error:'Rename aborted: server returned fewer devices ('+devCount(back)+' < '+before+'). Nothing else changed.' };
+    }
+  }catch(e){ return { ok:false, error:e.message||'Network error' }; }
+
+  // Keep the open project's local name in sync.
+  try{
+    if(pid===_projectKey){
+      _projectMeta.name=newName;
+      if(typeof _persistProjectMeta==='function') _persistProjectMeta();
+      if(typeof _updateProjectBadge==='function') _updateProjectBadge();
+      var inp=document.getElementById('proj-name');
+      if(inp) inp.value=newName;
+    }
+    _kpTouch(pid, newName);
+  }catch(e){}
+  _brtProjCache.at=0;
+  return { ok:true, name:newName, devices:before };
+}
+
+async function _brtPromptRename(pid, currentName){
+  var n=prompt('Rename project "'+(currentName||pid)+'"\n\nThis updates the name everywhere. Devices and serials are not touched.', currentName==='(unnamed)'?'':currentName);
+  if(n===null) return;
+  var r=await _brtRenameProject(pid, n);
+  if(r.ok){
+    showToast('Renamed to "'+r.name+'" ✓ ('+r.devices+' devices intact)','ok');
+    try{ if(typeof _mgrRenderProjects==='function' && _mgrSubtab==='projects') _mgrRenderProjects(); }catch(e){}
+    try{ _hdrUpdateProjName(); }catch(e){}
+  } else {
+    showToast(r.error||'Rename failed','danger');
+  }
+}
+
+
 // ── Header project switcher ──────────────────────────────────────────
 // Works with BOTH auth styles: the Manager account session if you're logged
 // in, and the legacy per-project admin tokens held in this browser. That
@@ -12783,23 +12928,7 @@ function _hdrToggleProjects(){
 async function _hdrLoadProjects(){
   var m=document.getElementById('hdr-proj-menu');
   if(!m) return;
-  var list=[];
-  try{
-    if(_workerUrl){
-      var tk=_hdrTokens();
-      var r=await fetch(_workerUrl+'/projects?_='+Date.now()+(tk?'&t='+encodeURIComponent(tk):''),{cache:'no-store'});
-      if(r.ok){ var d=await r.json(); list=(d&&d.projects)||[]; }
-    }
-  }catch(e){}
-  // Merge locally-known projects so nothing you've touched disappears.
-  try{
-    var seen={}; list.forEach(function(p){ seen[p.key]=1; });
-    var reg=_kpAll();
-    Object.keys(reg).forEach(function(pid){
-      if(!seen[pid]) list.push({key:pid,name:(reg[pid]||{}).name||'',saved:(reg[pid]||{}).last||'',devices:-1});
-    });
-  }catch(e){}
-  list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); });
+  var list=await _brtLoadProjectList(true);
   if(!list.length){
     m.innerHTML='<div style="padding:14px;color:var(--muted);font-size:12px">No projects found.</div>';
     return;
@@ -12810,12 +12939,17 @@ async function _hdrLoadProjects(){
     + ' style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:12px"></div>'
     + '<div id="hdr-proj-list">'
     + list.map(function(p){
-        var cur=(p.key===_projectKey);
+        var cur=(String(p.key)===String(_projectKey));
         return '<div class="fm-item" onclick="_hdrPickProject(\''+String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')"'
           + ' style="display:flex;align-items:center;gap:8px;'+(cur?'background:rgba(0,212,255,.10)':'')+'">'
           + '<span style="flex:1;min-width:0">'
-          +   '<span style="display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_escHtml(p.name||p.key)+'</span>'
-          +   '<span style="display:block;font-family:var(--mono);font-size:10px;color:var(--muted)">'+_escHtml(p.key)+(p.devices>=0?(' · '+p.devices+'d'):'')+'</span>'
+          +   '<span style="display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+          +     _escHtml(p._display)
+          +     (p._dupName?' <span title="Another project has this same name" style="color:var(--warn);font-size:10px">⚠ dup</span>':'')
+          +   '</span>'
+          +   '<span style="display:block;font-family:var(--mono);font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+          +     _escHtml(p.key)+' · '+_brtShortDate(p.saved)+(p.devices>=0?(' · '+p.devices+' dev'):' · not on worker')
+          +   '</span>'
           + '</span>'
           + (cur?'<span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-weight:700">OPEN</span>':'')
           + '</div>';
@@ -12991,43 +13125,39 @@ function _mgrBusy(msg){ var h=document.getElementById('mgr-sub'); if(h) h.innerH
 
 // ══ PROJECTS ══════════════════════════════════════════════════════════
 async function _mgrLoadProjects(){
-  var r = await _mgrApi('GET','/projects');
-  var list = (r.data && r.data.projects) || [];
-  // Merge locally-known projects the worker didn't return (never pushed yet).
-  var seen={}; list.forEach(function(p){ seen[p.key]=1; });
-  try{
-    var reg=_kpAll();
-    Object.keys(reg).forEach(function(pid){
-      if(!seen[pid]) list.push({key:pid, name:(reg[pid]||{}).name||'', saved:(reg[pid]||{}).last||'', by:'(local only)', devices:-1, protected:!!_wAdminSecretFor(pid)});
-    });
-  }catch(e){}
-  list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); });
+  var list = await _brtLoadProjectList(true);
   _mgrCache.projects = list;
   return list;
 }
 async function _mgrRenderProjects(){
   _mgrBusy('Loading projects…');
   var list = await _mgrLoadProjects();
+  var dupCount = list.filter(function(p){ return p._dupName; }).length;
   var rows = list.map(function(p){
-    var cur = (p.key===_projectKey);
-    var dt = p.saved ? new Date(p.saved).toLocaleString() : '—';
+    var cur = (String(p.key)===String(_projectKey));
+    var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return '<tr style="border-top:1px solid var(--border);'+(cur?'background:rgba(0,212,255,.07)':'')+'">'
       + '<td style="padding:9px 10px">'
-      +   '<div style="font-family:var(--cond);font-weight:700;font-size:14px">'+_escHtml(p.name||'(unnamed)')
+      +   '<div style="font-family:var(--cond);font-weight:700;font-size:14px">'+_escHtml(p._display)
       +     (cur?' <span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-weight:700">CURRENT</span>':'')
-      +     (p.protected?' <span title="protected" style="color:var(--ok)">🔒</span>':'')+'</div>'
+      +     (p.protected?' <span title="protected" style="color:var(--ok)">🔒</span>':'')
+      +     (p._dupName?' <span title="Another project shares this name — rename to tell them apart" style="color:var(--warn);font-size:10px">⚠ duplicate name</span>':'')
+      +   '</div>'
       +   '<div style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+_escHtml(p.key)+'</div>'
       + '</td>'
-      + '<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?p.devices:'<span style="color:var(--warn)">not on worker</span>')+'</td>'
-      + '<td style="padding:9px 10px;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(dt)+'<br>'+_escHtml(p.by||'?')+'</td>'
+      + '<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?(p.devices+' <span style="color:var(--muted);font-size:10px">dev</span>'):'<span style="color:var(--warn);font-size:10px">not on worker</span>')+'</td>'
+      + '<td style="padding:9px 10px;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(_brtShortDate(p.saved))+'<br>'+_escHtml(p.by||'?')+'</td>'
       + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
+      +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Rename this project" onclick="_brtPromptRename(\''+jsKey+'\',\''+jsName+'\')">✎</button> '
       +   (cur?'<span style="font-size:11px;color:var(--muted)">open</span>'
-             :'<button class="btn btn-ghost" style="font-size:11px;padding:4px 12px" onclick="_mgrSwitchProject(\''+_mgrJs(p.key)+'\')">Open →</button>')
-      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+_mgrJs(p.key)+'\')">🗑</button>'
+             :'<button class="btn btn-ghost" style="font-size:11px;padding:4px 12px" onclick="_mgrSwitchProject(\''+jsKey+'\')">Open →</button>')
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+jsKey+'\')">🗑</button>'
       + '</td></tr>';
   }).join('');
   document.getElementById('mgr-sub').innerHTML =
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost.</p>'
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
+    + (dupCount?'<div style="border:1px solid var(--warn);background:rgba(255,180,84,.08);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--warn)">⚠ '+dupCount+' project'+(dupCount===1?'':'s')+' share a name with another. Rename them (✎) so you can tell them apart in the switcher.</div>':'')
     + '<input id="mgr-pf" placeholder="Filter projects…" oninput="_mgrFilterProjects()" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
@@ -13104,8 +13234,8 @@ async function _mgrRenderPeople(){
     + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--muted)">No accounts yet — invite someone.</td></tr>')+'</tbody></table>';
 }
 function _mgrProjName(pid){
-  var p=(_mgrCache.projects||[]).filter(function(x){return x.key===pid;})[0];
-  return (p && p.name) ? p.name : pid;
+  var p=(_mgrCache.projects||[]).filter(function(x){return String(x.key)===String(pid);})[0];
+  return p ? p._display : pid;
 }
 
 // ── The matrix: one person, every project, a role each ───────────────
