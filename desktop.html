@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.064</title>
+<title>WTUniverse · Buildert Editor v4.065</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -482,13 +482,18 @@
       style="color:#3ddc84;font-weight:900;font-size:14px;cursor:pointer">📥</div>
     <div onclick="openChatModal()" title="Project chat"
       style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer;position:relative">💬<span id="chat-unread-d" style="display:none;position:absolute;top:-3px;right:-6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
+    <div id="hdr-proj-wrap" style="position:relative;flex-shrink:0;margin-right:6px">
+      <button id="hdr-proj-btn" class="btn btn-ghost" onclick="_hdrToggleProjects()" title="Switch project"
+        style="padding:5px 10px;font-size:12px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📂 <span id="hdr-proj-name">—</span> &#9662;</button>
+      <div id="hdr-proj-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:280px;max-height:60vh;overflow:auto;z-index:600;box-shadow:0 4px 16px rgba(0,0,0,.4);margin-top:2px"></div>
+    </div>
     <div onclick="newEdition()" title="New edition — clone this project for next year: structure stays, runtime data wiped"
       style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer">🗓</div>
     <div onclick="openRewardsModal()" title="Rigger Rewards™ — view points, grant bonus XP"
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.064</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.065</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -504,7 +509,7 @@
           <div id="fm-recent-list"></div>
         </div>
       </div>
-      <div class="fm-item" onclick="document.getElementById('file-menu').style.display='none';openProjectManager()">&#128193; Projects on worker&#8230;</div>
+      <div class="fm-item" onclick="document.getElementById('file-menu').style.display='none';_mgrSubtab='projects';setTab('manager')">&#128193; Projects &amp; people&#8230;</div>
       <div class="fm-sep"></div>
       <div class="fm-item" onclick="fileSave()" id="fm-save">&#128190; Save <span style="color:var(--muted);font-size:10px">Cmd+S</span></div>
       <div class="fm-item" onclick="fileDownload()">&#8681; Download .buildert…</div>
@@ -600,21 +605,26 @@
 <main>
   <div class="toolbar">
     <div class="tabs">
+      <span style="align-self:center;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;font-family:var(--cond);font-weight:700;padding:0 4px">Build</span>
       <button class="tab-btn active-all" id="tab-devices" onclick="setTab('devices')">📸 Devices</button>
-      <button class="tab-btn"            id="tab-node"    onclick="setTab('node')">🗺️ Node</button>
-      <button class="tab-btn"            id="tab-diagram" onclick="setTab('diagram')">📐 Diagram</button>
-      <button class="tab-btn"            id="tab-power"   onclick="setTab('power')">⚡ Power</button>
-      <button class="tab-btn"            id="tab-pack"    onclick="setTab('pack')">📦 Pack</button>
-      <span style="display:inline-block;width:1px;background:var(--border);align-self:stretch;margin:4px 2px"></span>
-      <button class="tab-btn"            id="tab-specs"   onclick="setTab('specs')">📋 Specs</button>
-      <button class="tab-btn"            id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
-      <button class="tab-btn"            id="tab-todos"   onclick="setTab('todos')">✅ Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
+      <button class="tab-btn" id="tab-power"   onclick="setTab('power')">⚡ Power</button>
+      <button class="tab-btn" id="tab-node"    onclick="setTab('node')">🗺️ Node</button>
+      <button class="tab-btn" id="tab-diagram" onclick="setTab('diagram')">📐 Diagram</button>
+      <span style="display:inline-block;width:1px;background:var(--border);align-self:stretch;margin:4px 6px"></span>
+      <span style="align-self:center;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;font-family:var(--cond);font-weight:700;padding:0 4px">Plan</span>
+      <button class="tab-btn" id="tab-pack"    onclick="setTab('pack')">📦 Pack</button>
+      <button class="tab-btn" id="tab-specs"   onclick="setTab('specs')">📋 Specs</button>
+      <button class="tab-btn" id="tab-todos"   onclick="setTab('todos')">✅ Todos <span id="todos-badge" style="display:none;background:var(--warn);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
       <button class="tab-btn" id="tab-schedule" onclick="setTab('schedule')">📅 Schedule</button>
-      <button class="tab-btn"            id="tab-shares"  onclick="setTab('shares')">🔗 Shares <span id="sp-badge" style="display:none;background:var(--accent);color:#000;border-radius:8px;font-size:9px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-left:2px"></span></button>
-      <button class="tab-btn"            id="tab-docs"      onclick="setTab('docs')">📄 Docs</button>
+      <span style="display:inline-block;width:1px;background:var(--border);align-self:stretch;margin:4px 6px"></span>
+      <span style="align-self:center;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;font-family:var(--cond);font-weight:700;padding:0 4px">Review</span>
+      <button class="tab-btn" id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
+      <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">📄 Docs</button>
       <button class="tab-btn" id="tab-activity" onclick="setTab('activity')">📈 Activity</button>
-      <button class="tab-btn" id="tab-manager" onclick="setTab('manager')">🎛️ Manager</button>
-      <button class="tab-btn" onclick="openLabelModal()" style="margin-left:auto">🏷️ Labels</button>
+      <span style="flex:1"></span>
+      <button class="tab-btn" onclick="openLabelModal()">🏷️ Labels</button>
+      <span style="display:inline-block;width:1px;background:var(--border);align-self:stretch;margin:4px 6px"></span>
+      <button class="tab-btn" id="tab-manager" onclick="setTab('manager')" style="font-weight:700">🎛️ Manager</button>
     </div>
     <!-- Device category chips — shown only when Devices tab is active -->
     <div id="device-cat-bar" style="display:flex;gap:4px;padding:4px 0;flex-wrap:wrap;overflow-x:auto"></div>
@@ -3803,7 +3813,7 @@ var qrcode = function() {
     </div>
 
     <div style="margin-bottom:12px">
-      <button class="btn btn-ghost" onclick="openProjectManager()" style="font-size:11px;padding:6px 10px;width:100%;color:var(--muted)">📁 Manage projects on worker…</button>
+      <button class="btn btn-ghost" onclick="_mgrSubtab='projects';setTab('manager')" style="font-size:11px;padding:6px 10px;width:100%;color:var(--muted)">📁 Manage projects &amp; people…</button>
     </div>
 
     <!-- Edit / Live mode toggle -->
@@ -4415,6 +4425,7 @@ function sourceOptions(type, excludeId) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(tab) {
+  try{ _hdrUpdateProjName(); }catch(e){}
   // Translate old device-type tabs to 'devices' with a filter
   var legacyMap = {laser:'laser',smoke:'smoke',distro:'distro',psu:'psu',all:'all'};
   if(legacyMap[tab] !== undefined){
@@ -12743,21 +12754,110 @@ function openRewardsModal(){
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// ── Header project switcher ──────────────────────────────────────────
+// Works with BOTH auth styles: the Manager account session if you're logged
+// in, and the legacy per-project admin tokens held in this browser. That
+// matters because switching projects must keep working before anyone has
+// created an account.
+function _hdrTokens(){
+  var t=[];
+  try{ var all=_wAllTokens(); if(all) t.push(all); }catch(e){}
+  try{ if(typeof _mgrSession!=='undefined' && _mgrSession) t.push(_mgrSession); }catch(e){}
+  return t.join(',');
+}
+function _hdrUpdateProjName(){
+  var el=document.getElementById('hdr-proj-name');
+  if(!el) return;
+  var nm='';
+  try{ nm=(_projectMeta && _projectMeta.name) ? _projectMeta.name : ''; }catch(e){}
+  el.textContent = nm || _projectKey || 'no project';
+}
+function _hdrToggleProjects(){
+  var m=document.getElementById('hdr-proj-menu');
+  if(!m) return;
+  if(m.style.display==='block'){ m.style.display='none'; return; }
+  m.style.display='block';
+  m.innerHTML='<div style="padding:14px;color:var(--muted);font-size:12px">Loading…</div>';
+  _hdrLoadProjects();
+}
+async function _hdrLoadProjects(){
+  var m=document.getElementById('hdr-proj-menu');
+  if(!m) return;
+  var list=[];
+  try{
+    if(_workerUrl){
+      var tk=_hdrTokens();
+      var r=await fetch(_workerUrl+'/projects?_='+Date.now()+(tk?'&t='+encodeURIComponent(tk):''),{cache:'no-store'});
+      if(r.ok){ var d=await r.json(); list=(d&&d.projects)||[]; }
+    }
+  }catch(e){}
+  // Merge locally-known projects so nothing you've touched disappears.
+  try{
+    var seen={}; list.forEach(function(p){ seen[p.key]=1; });
+    var reg=_kpAll();
+    Object.keys(reg).forEach(function(pid){
+      if(!seen[pid]) list.push({key:pid,name:(reg[pid]||{}).name||'',saved:(reg[pid]||{}).last||'',devices:-1});
+    });
+  }catch(e){}
+  list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); });
+  if(!list.length){
+    m.innerHTML='<div style="padding:14px;color:var(--muted);font-size:12px">No projects found.</div>';
+    return;
+  }
+  m.innerHTML =
+    '<div style="padding:6px 10px;border-bottom:1px solid var(--border)">'
+    + '<input id="hdr-proj-filter" placeholder="Filter…" oninput="_hdrFilterProjects()" autocomplete="off"'
+    + ' style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:12px"></div>'
+    + '<div id="hdr-proj-list">'
+    + list.map(function(p){
+        var cur=(p.key===_projectKey);
+        return '<div class="fm-item" onclick="_hdrPickProject(\''+String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')"'
+          + ' style="display:flex;align-items:center;gap:8px;'+(cur?'background:rgba(0,212,255,.10)':'')+'">'
+          + '<span style="flex:1;min-width:0">'
+          +   '<span style="display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_escHtml(p.name||p.key)+'</span>'
+          +   '<span style="display:block;font-family:var(--mono);font-size:10px;color:var(--muted)">'+_escHtml(p.key)+(p.devices>=0?(' · '+p.devices+'d'):'')+'</span>'
+          + '</span>'
+          + (cur?'<span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-weight:700">OPEN</span>':'')
+          + '</div>';
+      }).join('')
+    + '</div>'
+    + '<div class="fm-item" onclick="document.getElementById(\'hdr-proj-menu\').style.display=\'none\';_mgrSubtab=\'projects\';setTab(\'manager\')"'
+    + ' style="border-top:1px solid var(--border);color:var(--muted);font-size:12px">🎛️ Manage projects &amp; people…</div>';
+  var f=document.getElementById('hdr-proj-filter'); if(f) f.focus();
+}
+function _hdrFilterProjects(){
+  var q=((document.getElementById('hdr-proj-filter')||{}).value||'').toLowerCase();
+  Array.prototype.forEach.call(document.querySelectorAll('#hdr-proj-list .fm-item'), function(el){
+    el.style.display = el.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
+}
+async function _hdrPickProject(pid){
+  document.getElementById('hdr-proj-menu').style.display='none';
+  if(pid===_projectKey){ return; }
+  if(typeof pmOpenProject==='function'){ await pmOpenProject(pid); }
+  _hdrUpdateProjName();
+}
+// Close the menu when clicking elsewhere.
+document.addEventListener('click', function(e){
+  var wrap=document.getElementById('hdr-proj-wrap');
+  var menu=document.getElementById('hdr-proj-menu');
+  if(!wrap||!menu||menu.style.display!=='block') return;
+  if(!wrap.contains(e.target)) menu.style.display='none';
+}, true);
+
+
 // ══════════════════════════════════════════════════════════════════════
-// MANAGER COCKPIT (v4.063) — owner/admin control panel
-//   • Owner login (client-side PBKDF2 → auth_key → worker session token)
-//   • People: list users, invite (→ copyable redeem link), assign role, disable
-//   • Projects: list + fast-switch + who's assigned
-//   • XP: full cheat — set any number, per-project (in project data) or GLOBAL
-// Talks to the accounts API on the SAME worker the app already syncs with.
-// Degrades gracefully: if the worker predates v4.9, global-XP controls hide.
+// MANAGER COCKPIT v2 (desktop v4.065) — one home for cross-project admin
+//   Projects  · list, switch, protection, delete   (absorbs the old
+//               "Projects on worker" modal and its two entry points)
+//   People    · roster + an editable people x projects ROLE MATRIX, so one
+//               person can hold different roles on different projects and
+//               you can SEE the whole picture (worker v4.11+)
+//   Access    · hosts the share-link panel next to account access, so
+//               "who can get in, and how" is answered in one place
+//   XP        · global career XP (accounts) + per-project bonus XP
 // ══════════════════════════════════════════════════════════════════════
 
-// ── Canonical client key-derivation (MUST match every client & the redeem flow)
-//   auth_key = hex( PBKDF2-SHA256(password, salt = SHA-256(lowercased-email),
-//                                 600000 iterations, 256 bits) )
-// The worker never sees the password; it stores sha256(auth_key + PEPPER).
-// If mobile later implements login/redeem it MUST use this exact derivation.
 async function mgrDeriveAuthKey(email, password){
   var enc = new TextEncoder();
   var saltBuf = await crypto.subtle.digest('SHA-256', enc.encode(String(email||'').toLowerCase()));
@@ -12768,10 +12868,10 @@ async function mgrDeriveAuthKey(email, password){
   return hex;
 }
 
-// ── Session state (persisted so the admin isn't re-logging-in constantly)
 var _mgrSession = localStorage.getItem('buildert_admin_session') || '';
-var _mgrMe = null;                 // { user:{...}, memberships:{pid:role} }
-var _mgrXpSupported = true;        // set false if worker 404s /accounts/xp
+var _mgrMe = null;
+var _mgrSubtab = 'projects';
+var _mgrCache = { projects:[], users:[], memberships:[], xp:[] };
 
 function _mgrSetSession(tok){
   _mgrSession = tok || '';
@@ -12779,9 +12879,8 @@ function _mgrSetSession(tok){
         else localStorage.removeItem('buildert_admin_session'); } catch(e){}
 }
 
-// ── Thin fetch wrapper for accounts calls: attaches the session as ?t= ────
 async function _mgrApi(method, path, body){
-  if(!_workerUrl) throw new Error('No worker URL configured — set it in the Connect/Shares area first.');
+  if(!_workerUrl) throw new Error('No worker URL configured.');
   var url = _workerUrl + path + (path.indexOf('?')>=0?'&':'?') + '_=' + Date.now();
   if(_mgrSession) url += '&t=' + encodeURIComponent(_mgrSession);
   var opts = { method:method, headers:{'Content-Type':'application/json'}, cache:'no-store' };
@@ -12792,49 +12891,43 @@ async function _mgrApi(method, path, body){
   return { status: resp.status, data: data };
 }
 
-// ── Entry point (called by setTab('manager')) ─────────────────────────
+// ── Entry point ──────────────────────────────────────────────────────
 async function renderManagerPanel(){
   var box = document.getElementById('manager-panel');
   if(!box) return;
   if(!_workerUrl){
-    box.innerHTML = _mgrCard('⚠ No worker connected',
-      '<p style="color:var(--muted);font-size:13px">The Manager needs the sync worker. Open the Shares tab and connect a worker URL first.</p>');
+    box.innerHTML = '<div style="max-width:900px;margin:0 auto;padding:40px 0;text-align:center;color:var(--muted)">'
+      + '<div style="font-size:32px;margin-bottom:10px">🎛️</div>'
+      + 'The Manager needs your sync worker.<br>Set the worker URL first, then come back.</div>';
     return;
   }
-  // Resolve the current session (if any) before deciding what to show.
   box.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Loading Manager…</div>';
   if(_mgrSession){
     var me = await _mgrApi('GET','/accounts/me');
-    if(me.status===200 && me.data && me.data.ok){ _mgrMe = me.data; return _mgrRenderAuthed(); }
-    _mgrSetSession('');   // stale/expired → fall through to login
+    if(me.status===200 && me.data && me.data.ok){ _mgrMe = me.data; return _mgrRenderShell(); }
+    _mgrSetSession('');
   }
-  // No valid session — is the system even bootstrapped yet?
   var st = await _mgrApi('GET','/accounts/status');
   _mgrRenderAuth(st.data && st.data.bootstrapped);
 }
 
-function _mgrCard(title, inner){
-  return '<div style="max-width:920px;margin:0 auto">'
-    + '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0 0 14px">'+title+'</h2>'
-    + inner + '</div>';
-}
-
-// ── Login / bootstrap screen ──────────────────────────────────────────
+// ── Login / first-owner ──────────────────────────────────────────────
 function _mgrRenderAuth(bootstrapped){
-  var box = document.getElementById('manager-panel');
   var isLogin = !!bootstrapped;
-  box.innerHTML = _mgrCard(isLogin ? '🔐 Manager login' : '🚀 Create owner account',
-    '<div style="max-width:380px">'
-    + (isLogin ? '' : '<p style="color:var(--muted);font-size:12px;margin:0 0 12px">No accounts exist yet. This first account is the <b>owner</b> — full control over people, projects and XP.</p>')
+  document.getElementById('manager-panel').innerHTML =
+    '<div style="max-width:380px;margin:0 auto;padding-top:30px">'
+    + '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0 0 6px">'+(isLogin?'🔐 Manager login':'🚀 Create owner account')+'</h2>'
+    + (isLogin ? '<p style="color:var(--muted);font-size:12px;margin:0 0 16px">Sign in to manage projects, people and XP.</p>'
+               : '<p style="color:var(--muted);font-size:12px;margin:0 0 16px">No accounts exist yet. This first account is the <b>owner</b> — full control over everything.</p>')
     + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Email</label>'
-    + '<input id="mgr-email" type="email" autocomplete="username" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">'
-    + (isLogin ? '' : '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Name</label><input id="mgr-name" type="text" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">')
+    + '<input id="mgr-email" type="email" autocomplete="username" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">'
+    + (isLogin ? '' : '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Your name</label><input id="mgr-name" type="text" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">')
     + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Password</label>'
-    + '<input id="mgr-pass" type="password" autocomplete="current-password" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:14px" onkeydown="if(event.key===\'Enter\')_mgrDoAuth('+(isLogin?'true':'false')+')">'
+    + '<input id="mgr-pass" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:14px" onkeydown="if(event.key===\'Enter\')_mgrDoAuth('+(isLogin?'true':'false')+')">'
     + '<button class="btn" onclick="_mgrDoAuth('+(isLogin?'true':'false')+')" style="width:100%;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">'+(isLogin?'Log in':'Create owner')+'</button>'
     + '<div id="mgr-auth-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>'
-    + '<p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5">Your password never leaves this browser — it is stretched locally (600k iterations) into a key before anything is sent. The worker only ever stores a salted hash of that key.</p>'
-    + '</div>');
+    + '<p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5">Your password never leaves this browser — it is stretched locally (600k iterations) before anything is sent.</p>'
+    + '</div>';
 }
 
 async function _mgrDoAuth(isLogin){
@@ -12842,26 +12935,22 @@ async function _mgrDoAuth(isLogin){
   var email = (document.getElementById('mgr-email').value||'').trim();
   var pass = document.getElementById('mgr-pass').value||'';
   if(!email || !pass){ msg.style.color='var(--warn)'; msg.textContent='Email and password required.'; return; }
-  msg.style.color='var(--muted)'; msg.textContent='Deriving key (600k iterations, ~1s)…';
+  msg.style.color='var(--muted)'; msg.textContent='Deriving key (~1s)…';
   try {
     var authKey = await mgrDeriveAuthKey(email, pass);
-    var path = isLogin ? '/accounts/login' : '/accounts/bootstrap';
     var body = { email: email, auth_key: authKey };
-    if(!isLogin) body.name = (document.getElementById('mgr-name').value||'').trim();
-    var r = await _mgrApi('POST', path, body);
+    if(!isLogin){ var n=document.getElementById('mgr-name'); body.name = n?(n.value||'').trim():''; }
+    var r = await _mgrApi('POST', isLogin?'/accounts/login':'/accounts/bootstrap', body);
     if(r.status===200 && r.data && (r.data.ok || r.data.token)){
       _mgrSetSession(r.data.token);
       var me = await _mgrApi('GET','/accounts/me');
       _mgrMe = (me.data && me.data.ok) ? me.data : { user:r.data.user, memberships:r.data.memberships||{} };
       showToast(isLogin?'Logged in ✓':'Owner account created ✓','ok');
-      _mgrRenderAuthed();
+      _mgrRenderShell();
     } else {
-      msg.style.color='var(--danger)';
-      msg.textContent = (r.data && r.data.error) ? r.data.error : ('Failed ('+r.status+')');
+      msg.style.color='var(--danger)'; msg.textContent=(r.data && r.data.error) || ('Failed ('+r.status+')');
     }
-  } catch(e){
-    msg.style.color='var(--danger)'; msg.textContent = 'Error: '+(e.message||e);
-  }
+  } catch(e){ msg.style.color='var(--danger)'; msg.textContent='Error: '+(e.message||e); }
 }
 
 function _mgrLogout(){
@@ -12870,24 +12959,23 @@ function _mgrLogout(){
   renderManagerPanel();
 }
 
-// ── Authed dashboard shell (sub-tabs) ─────────────────────────────────
-var _mgrSubtab = 'projects';
-function _mgrRenderAuthed(){
-  var box = document.getElementById('manager-panel');
+// ── Shell ────────────────────────────────────────────────────────────
+function _mgrRenderShell(){
   var u = (_mgrMe && _mgrMe.user) || {};
   var isOwner = !!u.is_owner;
-  var sub = function(id,label){
-    return '<button onclick="_mgrSetSubtab(\''+id+'\')" class="btn btn-ghost" style="font-size:12px;'
-      + (_mgrSubtab===id?'background:rgba(0,212,255,.14);color:var(--accent);border-color:var(--accent)':'')+'">'+label+'</button>';
-  };
-  box.innerHTML =
-    '<div style="max-width:960px;margin:0 auto">'
-    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
-    +   '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0">🎛️ Manager</h2>'
-    +   '<span style="font-size:12px;color:var(--muted)">'+_escHtml(u.email||'')+(isOwner?' · <b style="color:#ffd700">owner</b>':' · admin')+'</span>'
+  function tab(id,label){
+    var on = _mgrSubtab===id;
+    return '<button onclick="_mgrSetSubtab(\''+id+'\')" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;'
+      + (on?'background:rgba(0,212,255,.14);color:var(--accent);border-color:var(--accent);font-weight:700':'')+'">'+label+'</button>';
+  }
+  document.getElementById('manager-panel').innerHTML =
+    '<div style="max-width:1000px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border)">'
+    +   '<h2 style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin:0;font-size:20px">🎛️ Manager</h2>'
+    +   '<span style="font-size:11px;color:var(--muted)">'+_escHtml(u.email||'')+(isOwner?' · <b style="color:#ffd700">owner</b>':' · admin')+'</span>'
     +   '<span style="flex:1"></span>'
-    +   sub('projects','📂 Projects') + sub('people','👥 People') + (isOwner?sub('xp','🏆 XP'):'')
-    +   '<button class="btn btn-ghost" onclick="_mgrLogout()" style="font-size:12px;color:var(--danger)">Log out</button>'
+    +   tab('projects','📂 Projects') + tab('people','👥 People') + tab('access','🔗 Access') + tab('xp','🏆 XP')
+    +   '<button class="btn btn-ghost" onclick="_mgrLogout()" style="font-size:11px;color:var(--danger)">Log out</button>'
     + '</div>'
     + '<div id="mgr-sub"></div></div>';
   _mgrRenderSubtab();
@@ -12895,115 +12983,241 @@ function _mgrRenderAuthed(){
 function _mgrSetSubtab(id){ _mgrSubtab=id; _mgrRenderSubtab(); }
 function _mgrRenderSubtab(){
   if(_mgrSubtab==='people') return _mgrRenderPeople();
-  if(_mgrSubtab==='xp') return _mgrRenderXp();
+  if(_mgrSubtab==='access') return _mgrRenderAccess();
+  if(_mgrSubtab==='xp')     return _mgrRenderXp();
   return _mgrRenderProjects();
 }
+function _mgrBusy(msg){ var h=document.getElementById('mgr-sub'); if(h) h.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">'+(msg||'Loading…')+'</div>'; }
 
 // ══ PROJECTS ══════════════════════════════════════════════════════════
-async function _mgrRenderProjects(){
-  var host = document.getElementById('mgr-sub');
-  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading projects…</div>';
+async function _mgrLoadProjects(){
   var r = await _mgrApi('GET','/projects');
   var list = (r.data && r.data.projects) || [];
-  // Pull memberships so we can show who's on each project (owner/admin only).
-  var usersResp = await _mgrApi('GET','/accounts/users');
-  var users = (usersResp.data && usersResp.data.users) || [];
-  var byProject = {};
-  // /accounts/users returns global list; per-project we query lazily on expand.
-  var rows = list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); }).map(function(p){
-    var isCurrent = (p.key === _projectKey);
-    return '<tr style="border-top:1px solid var(--border)">'
-      + '<td style="padding:8px 10px">'
-      +   '<div style="font-weight:700">'+_escHtml(p.name||p.key)+(isCurrent?' <span style="font-size:10px;color:var(--accent);font-family:var(--mono)">● OPEN</span>':'')+'</div>'
-      +   '<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(p.key)+'</div>'
+  // Merge locally-known projects the worker didn't return (never pushed yet).
+  var seen={}; list.forEach(function(p){ seen[p.key]=1; });
+  try{
+    var reg=_kpAll();
+    Object.keys(reg).forEach(function(pid){
+      if(!seen[pid]) list.push({key:pid, name:(reg[pid]||{}).name||'', saved:(reg[pid]||{}).last||'', by:'(local only)', devices:-1, protected:!!_wAdminSecretFor(pid)});
+    });
+  }catch(e){}
+  list.sort(function(a,b){ return (b.saved||'').localeCompare(a.saved||''); });
+  _mgrCache.projects = list;
+  return list;
+}
+async function _mgrRenderProjects(){
+  _mgrBusy('Loading projects…');
+  var list = await _mgrLoadProjects();
+  var rows = list.map(function(p){
+    var cur = (p.key===_projectKey);
+    var dt = p.saved ? new Date(p.saved).toLocaleString() : '—';
+    return '<tr style="border-top:1px solid var(--border);'+(cur?'background:rgba(0,212,255,.07)':'')+'">'
+      + '<td style="padding:9px 10px">'
+      +   '<div style="font-family:var(--cond);font-weight:700;font-size:14px">'+_escHtml(p.name||'(unnamed)')
+      +     (cur?' <span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-weight:700">CURRENT</span>':'')
+      +     (p.protected?' <span title="protected" style="color:var(--ok)">🔒</span>':'')+'</div>'
+      +   '<div style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+_escHtml(p.key)+'</div>'
       + '</td>'
-      + '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?p.devices:'?')+'</td>'
-      + '<td style="padding:8px 10px;font-size:11px;color:var(--muted)">'+_escHtml((p.saved||'').slice(0,10))+'</td>'
-      + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
-      +   (isCurrent?'<span style="font-size:11px;color:var(--muted)">current</span>'
-                   :'<button class="btn btn-ghost" style="font-size:12px;padding:4px 12px" onclick="_mgrSwitchProject(\''+encodeURIComponent(p.key).replace(/'/g,"%27")+'\')">Open →</button>')
+      + '<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?p.devices:'<span style="color:var(--warn)">not on worker</span>')+'</td>'
+      + '<td style="padding:9px 10px;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(dt)+'<br>'+_escHtml(p.by||'?')+'</td>'
+      + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
+      +   (cur?'<span style="font-size:11px;color:var(--muted)">open</span>'
+             :'<button class="btn btn-ghost" style="font-size:11px;padding:4px 12px" onclick="_mgrSwitchProject(\''+_mgrJs(p.key)+'\')">Open →</button>')
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+_mgrJs(p.key)+'\')">🗑</button>'
       + '</td></tr>';
   }).join('');
-  host.innerHTML =
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project your account can reach. Click <b>Open</b> to switch fast — the current project is flushed first so nothing is lost.</p>'
-    + '<input id="mgr-proj-filter" placeholder="Filter…" oninput="_mgrFilterProjects()" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
+  document.getElementById('mgr-sub').innerHTML =
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost.</p>'
+    + '<input id="mgr-pf" placeholder="Filter projects…" oninput="_mgrFilterProjects()" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
-    + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Saved</th><th></th></tr></thead>'
-    + '<tbody id="mgr-proj-rows">'+(rows||'<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">No projects.</td></tr>')+'</tbody></table>';
+    + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
+    + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')+'</tbody></table>';
 }
 function _mgrFilterProjects(){
-  var q=((document.getElementById('mgr-proj-filter')||{}).value||'').toLowerCase();
-  var rows=document.querySelectorAll('#mgr-proj-rows tr');
-  rows.forEach(function(tr){ tr.style.display = tr.textContent.toLowerCase().indexOf(q)>=0?'':'none'; });
+  var q=((document.getElementById('mgr-pf')||{}).value||'').toLowerCase();
+  Array.prototype.forEach.call(document.querySelectorAll('#mgr-prows tr'), function(tr){
+    tr.style.display = tr.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
 }
-async function _mgrSwitchProject(pidEnc){
-  var pid = decodeURIComponent(pidEnc);
-  // Reuse the existing, tested project-switch path (flush → swap key → pull).
+async function _mgrSwitchProject(pid){
+  if(pid===_projectKey) return;
   if(typeof pmOpenProject==='function'){ await pmOpenProject(pid); }
-  else {
-    if(_unsaved && _workerUrl && _projectKey){ try{ await _wPushImpl(true); }catch(e){} }
-    _projectKey=pid; try{localStorage.setItem('buildert_project_key',pid);}catch(e){}
-    if(typeof wPull==='function') await wPull(true);
-  }
-  setTab('manager');   // stay in Manager, refresh to show new current project
+  setTab('manager');
+}
+async function _mgrDeleteProject(pid){
+  if(pid===_projectKey){ showToast('Switch away before deleting this project','warn'); return; }
+  if(!confirm('Delete project "'+pid+'" from the worker?\n\nThis cannot be undone.')) return;
+  var r = await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
+  if(r.status===200 && r.data && r.data.ok){ showToast('Deleted ✓','ok'); _mgrRenderProjects(); }
+  else showToast((r.data&&r.data.error)||'Delete failed','danger');
 }
 
-// ══ PEOPLE ════════════════════════════════════════════════════════════
+// ══ PEOPLE — roster + role matrix ═════════════════════════════════════
+async function _mgrLoadPeople(){
+  var u = await _mgrApi('GET','/accounts/users');
+  _mgrCache.users = (u.data && u.data.users) || [];
+  var m = await _mgrApi('GET','/accounts/memberships');
+  _mgrCache.memberships = (m.data && m.data.memberships) || [];
+  _mgrCache.matrixSupported = (m.status===200);
+  await _mgrLoadProjects();
+}
+function _mgrRolesFor(uid){
+  var out={}; (_mgrCache.memberships||[]).forEach(function(x){ if(x.user_id===uid) out[x.pid]=x.role; });
+  return out;
+}
 async function _mgrRenderPeople(){
-  var host = document.getElementById('mgr-sub');
-  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading people…</div>';
-  var r = await _mgrApi('GET','/accounts/users');
-  if(r.status!==200){ host.innerHTML='<div style="padding:20px;color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</div>'; return; }
-  var users = (r.data && r.data.users) || [];
-  var projResp = await _mgrApi('GET','/projects');
-  var projects = (projResp.data && projResp.data.projects) || [];
-  window._mgrProjects = projects;   // cache for the invite/assign selectors
+  _mgrBusy('Loading people…');
+  await _mgrLoadPeople();
+  if(!_mgrCache.matrixSupported){
+    document.getElementById('mgr-sub').innerHTML =
+      '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
+      + 'The role matrix needs worker v4.11+. Update the worker to assign several projects at once.</div>';
+    return;
+  }
+  var users = _mgrCache.users || [];
   var rows = users.map(function(u){
-    var disabled = u.status==='disabled';
-    return '<tr style="border-top:1px solid var(--border);'+(disabled?'opacity:.5':'')+'">'
-      + '<td style="padding:8px 10px"><div style="font-weight:700">'+_escHtml(u.name||'—')+(u.is_owner?' <span style="font-size:10px;color:#ffd700">★ owner</span>':'')+'</div>'
+    var roles = _mgrRolesFor(u.id);
+    var pids = Object.keys(roles);
+    var chips = pids.length ? pids.map(function(pid){
+      var isAdm = roles[pid]==='admin';
+      return '<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin:2px 3px 0 0;'
+        + 'background:'+(isAdm?'rgba(255,215,0,.14)':'rgba(0,212,255,.12)')+';color:'+(isAdm?'#ffd700':'var(--accent)')+'">'
+        + _escHtml(_mgrProjName(pid))+' · '+roles[pid]+'</span>';
+    }).join('') : '<span style="font-size:11px;color:var(--muted)">no projects</span>';
+    var dis = u.status==='disabled';
+    return '<tr style="border-top:1px solid var(--border);'+(dis?'opacity:.45':'')+'">'
+      + '<td style="padding:9px 10px">'
+      +   '<div style="font-weight:700;font-size:14px">'+_escHtml(u.name||'—')+(u.is_owner?' <span style="font-size:10px;color:#ffd700">★ owner</span>':'')+'</div>'
       +   '<div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
-      + '<td style="padding:8px 10px;font-size:11px;color:var(--muted)">'+(u.last_login?_escHtml(u.last_login.slice(0,10)):'never')+'</td>'
-      + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
-      +   '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px" onclick="_mgrAssignDialog(\''+u.id+'\',\''+_escHtml(u.email).replace(/'/g,"\\'")+'\')">Assign…</button> '
-      +   (u.is_owner?'':'<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:'+(disabled?'var(--accent)':'var(--danger)')+'" onclick="_mgrToggleUser(\''+u.id+'\','+(disabled?'true':'false')+')">'+(disabled?'Enable':'Disable')+'</button>')
+      + '<td style="padding:9px 10px">'+chips+'</td>'
+      + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
+      +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')">Edit roles…</button>'
       + '</td></tr>';
   }).join('');
-  host.innerHTML =
+  document.getElementById('mgr-sub').innerHTML =
     '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">'
     + '<button class="btn" onclick="_mgrInviteDialog()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:13px">+ Invite person</button>'
-    + '<span style="font-size:12px;color:var(--muted)">'+users.length+' account'+(users.length===1?'':'s')+'</span>'
-    + '</div>'
+    + '<span style="font-size:12px;color:var(--muted)">'+users.length+' account'+(users.length===1?'':'s')+'</span></div>'
     + '<div id="mgr-invite-slot"></div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
-    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:left;padding:4px 10px">Last login</th><th></th></tr></thead>'
-    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">No accounts yet — invite someone.</td></tr>')+'</tbody></table>';
+    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:left;padding:4px 10px">Projects &amp; roles</th><th></th></tr></thead>'
+    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--muted)">No accounts yet — invite someone.</td></tr>')+'</tbody></table>';
+}
+function _mgrProjName(pid){
+  var p=(_mgrCache.projects||[]).filter(function(x){return x.key===pid;})[0];
+  return (p && p.name) ? p.name : pid;
 }
 
-function _mgrProjectOptions(sel){
-  var projects = window._mgrProjects || [];
-  return projects.map(function(p){
-    return '<option value="'+_escHtml(p.key)+'"'+(p.key===sel?' selected':'')+'>'+_escHtml(p.name||p.key)+'</option>';
+// ── The matrix: one person, every project, a role each ───────────────
+function _mgrOpenPerson(uid){
+  var u = (_mgrCache.users||[]).filter(function(x){return x.id===uid;})[0];
+  if(!u) return;
+  var roles = _mgrRolesFor(uid);
+  var projects = _mgrCache.projects || [];
+  var isOwnerTarget = !!u.is_owner;
+  var rows = projects.map(function(p){
+    var cur = roles[p.key] || 'none';
+    function opt(v,label,col){
+      var on = (cur===v);
+      return '<button type="button" data-pid="'+_escHtml(p.key)+'" data-role="'+v+'" onclick="_mgrPickRole(this)" '
+        + 'style="padding:4px 11px;border-radius:5px;font-size:11px;cursor:pointer;border:1.5px solid '+(on?col:'var(--border)')+';'
+        + 'background:'+(on?col.replace('var(--','rgba(').replace(')',',.15)'):'var(--panel)')+';color:'+(on?col:'var(--muted)')+'">'+label+'</button>';
+    }
+    return '<tr style="border-top:1px solid var(--border)">'
+      + '<td style="padding:7px 10px"><div style="font-size:13px;font-weight:600">'+_escHtml(p.name||p.key)+'</div>'
+      +   '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+_escHtml(p.key)+'</div></td>'
+      + '<td style="padding:7px 10px;text-align:right;white-space:nowrap" data-rowpid="'+_escHtml(p.key)+'">'
+      +   opt('none','none','var(--muted)') + ' ' + opt('rigger','rigger','var(--accent)') + ' ' + opt('admin','admin','#ffd700')
+      + '</td></tr>';
   }).join('');
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='mgr-person-modal'; box.style.zIndex='1000';
+  box.innerHTML =
+    '<div class="modal" style="max-width:620px">'
+    + '<h2 style="margin-top:0">'+_escHtml(u.name||u.email)+'</h2>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+_escHtml(u.email)
+    +   (u.last_login?' · last login '+_escHtml(String(u.last_login).slice(0,10)):' · never logged in')+'</div>'
+    + (isOwnerTarget?'<div style="font-size:11px;color:#ffd700;margin-bottom:10px">★ Owner — has admin on every project regardless of the rows below.</div>':'')
+    + '<div style="max-height:46vh;overflow:auto;border:1px solid var(--border);border-radius:8px;margin:12px 0">'
+    +   '<table style="width:100%;border-collapse:collapse"><tbody id="mgr-matrix">'
+    +     (rows||'<tr><td style="padding:20px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')
+    +   '</tbody></table></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +   (u.is_owner?'':'<button class="btn btn-ghost" style="font-size:11px;color:'+(u.status==='disabled'?'var(--accent)':'var(--danger)')+'" onclick="_mgrToggleUser(\''+_mgrJs(u.id)+'\','+(u.status==='disabled'?'true':'false')+')">'+(u.status==='disabled'?'Enable account':'Disable account')+'</button>')
+    +   '<span style="flex:1"></span>'
+    +   '<button class="btn btn-ghost" onclick="document.getElementById(\'mgr-person-modal\').remove()">Cancel</button>'
+    +   '<button class="btn" onclick="_mgrSaveMatrix(\''+_mgrJs(u.id)+'\')" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">Save roles</button>'
+    + '</div>'
+    + '<div id="mgr-matrix-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div></div>';
+  document.body.appendChild(box);
+  box._original = roles;
+}
+function _mgrPickRole(btn){
+  var cell = btn.parentNode;
+  Array.prototype.forEach.call(cell.querySelectorAll('button'), function(b){
+    var on = (b===btn);
+    var role = b.getAttribute('data-role');
+    var col = role==='admin' ? '#ffd700' : role==='rigger' ? 'var(--accent)' : 'var(--muted)';
+    b.style.borderColor = on?col:'var(--border)';
+    b.style.color = on?col:'var(--muted)';
+    b.style.background = on ? (role==='admin'?'rgba(255,215,0,.15)':role==='rigger'?'rgba(0,212,255,.15)':'rgba(120,120,120,.15)') : 'var(--panel)';
+    b.setAttribute('data-on', on?'1':'0');
+  });
+}
+async function _mgrSaveMatrix(uid){
+  var modal=document.getElementById('mgr-person-modal');
+  var msg=document.getElementById('mgr-matrix-msg');
+  var original = modal._original || {};
+  var changes = {};
+  Array.prototype.forEach.call(document.querySelectorAll('#mgr-matrix td[data-rowpid]'), function(cell){
+    var pid = cell.getAttribute('data-rowpid');
+    var on = cell.querySelector('button[data-on="1"]');
+    // If nothing was clicked in this row, keep whatever was already selected.
+    var chosen = on ? on.getAttribute('data-role') : (original[pid] || 'none');
+    var before = original[pid] || 'none';
+    if(chosen !== before) changes[pid] = chosen;
+  });
+  if(!Object.keys(changes).length){ msg.style.color='var(--muted)'; msg.textContent='No changes.'; return; }
+  msg.style.color='var(--muted)'; msg.textContent='Saving '+Object.keys(changes).length+' change(s)…';
+  var r = await _mgrApi('POST','/accounts/memberships/bulk',{ user_id:uid, changes:changes });
+  if(r.status===200 && r.data && r.data.ok){
+    var d=(r.data.denied||[]);
+    showToast('Roles saved ✓'+(d.length?' ('+d.length+' denied)':''), d.length?'warn':'ok');
+    modal.remove();
+    _mgrRenderPeople();
+  } else {
+    msg.style.color='var(--danger)'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+  }
+}
+async function _mgrToggleUser(uid, enable){
+  var r=await _mgrApi('POST','/accounts/user/'+encodeURIComponent(uid)+'/status',{status:enable?'active':'disabled'});
+  if(r.status===200 && r.data && r.data.ok){
+    showToast(enable?'Enabled ✓':'Disabled ✓','ok');
+    var m=document.getElementById('mgr-person-modal'); if(m) m.remove();
+    _mgrRenderPeople();
+  } else showToast((r.data&&r.data.error)||'Failed','danger');
 }
 
+// ── Invite ───────────────────────────────────────────────────────────
 function _mgrInviteDialog(){
-  var slot = document.getElementById('mgr-invite-slot');
-  slot.innerHTML =
+  var projects=_mgrCache.projects||[];
+  var opts = projects.map(function(p){
+    return '<option value="'+_escHtml(p.key)+'"'+(p.key===_projectKey?' selected':'')+'>'+_escHtml(p.name||p.key)+'</option>';
+  }).join('');
+  document.getElementById('mgr-invite-slot').innerHTML =
     '<div style="border:1px solid var(--accent);border-radius:8px;padding:14px;margin-bottom:14px;background:rgba(0,212,255,.05)">'
     + '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;margin-bottom:10px">INVITE A PERSON</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Email</label><input id="mgr-inv-email" type="email" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Name</label><input id="mgr-inv-name" type="text" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Project</label><select id="mgr-inv-pid" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px">'+_mgrProjectOptions(_projectKey)+'</select></div>'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Role</label><select id="mgr-inv-role" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"><option value="rigger">Rigger (edit their stage)</option><option value="admin">Admin (manage project)</option></select></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Email</label><input id="mgr-inv-email" type="email" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Name</label><input id="mgr-inv-name" type="text" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">First project</label><select id="mgr-inv-pid" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px">'+opts+'</select></div>'
+    +   '<div><label style="font-size:10px;color:var(--muted)">Role</label><select id="mgr-inv-role" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:13px"><option value="rigger">Rigger</option><option value="admin">Admin</option></select></div>'
     + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">You can add more projects and roles right after, with “Edit roles…”.</div>'
     + '<div style="display:flex;gap:8px"><button class="btn" onclick="_mgrDoInvite()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:13px">Create invite link</button>'
     + '<button class="btn btn-ghost" onclick="document.getElementById(\'mgr-invite-slot\').innerHTML=\'\'" style="font-size:13px">Cancel</button></div>'
-    + '<div id="mgr-inv-result" style="margin-top:10px"></div>'
-    + '</div>';
+    + '<div id="mgr-inv-result" style="margin-top:10px"></div></div>';
 }
-
 async function _mgrDoInvite(){
   var email=(document.getElementById('mgr-inv-email').value||'').trim();
   var name=(document.getElementById('mgr-inv-name').value||'').trim();
@@ -13016,97 +13230,89 @@ async function _mgrDoInvite(){
   if(r.status!==200 || !r.data || !r.data.code){
     res.innerHTML='<span style="color:var(--danger);font-size:12px">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</span>'; return;
   }
-  // Build the redeem link the admin sends. Points at the mobile app with the
-  // worker URL + redeem code. (Mobile must implement /redeem consumption.)
-  var base = (localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
-  var link = (base||'[MOBILE_APP_URL]') + '?worker=' + encodeURIComponent(_workerUrl) + '&redeem=' + encodeURIComponent(r.data.code);
+  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
   res.innerHTML =
     '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">'
-    + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Send this link to '+_escHtml(email)+':</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Send this to '+_escHtml(email)+':</div>'
     + '<div style="display:flex;gap:6px"><input id="mgr-inv-link" readonly value="'+_escHtml(link)+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:11px">'
     + '<button class="btn btn-ghost" style="font-size:12px" onclick="_mgrCopy(\'mgr-inv-link\')">Copy</button></div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:6px">The rigger opens this on their phone, sets a password, and sees the projects you assigned them. Needs mobile app v3.993m+.</div>'
-    + '</div>';
+    + '<div style="font-size:11px;color:var(--muted);margin-top:6px">They set a password on their phone and see the projects you assigned. Needs mobile v3.993m+.</div></div>';
   showToast('Invite created ✓','ok');
-  if(_mgrSubtab==='people') { /* leave dialog open so link stays visible */ }
+  _mgrLoadPeople();
 }
-
 function _mgrCopy(id){
   var el=document.getElementById(id); if(!el) return;
-  el.select(); try{ document.execCommand('copy'); showToast('Copied ✓','ok'); }catch(e){ try{navigator.clipboard.writeText(el.value);showToast('Copied ✓','ok');}catch(e2){} }
+  el.select(); try{ document.execCommand('copy'); showToast('Copied ✓','ok'); }
+  catch(e){ try{ navigator.clipboard.writeText(el.value); showToast('Copied ✓','ok'); }catch(e2){} }
 }
 
-async function _mgrToggleUser(uid, enable){
-  var r=await _mgrApi('POST','/accounts/user/'+encodeURIComponent(uid)+'/status',{status:enable?'active':'disabled'});
-  if(r.status===200 && r.data && r.data.ok){ showToast(enable?'Enabled ✓':'Disabled ✓','ok'); _mgrRenderPeople(); }
-  else showToast((r.data&&r.data.error)||'Failed','danger');
+// ══ ACCESS — accounts + legacy share links, side by side ══════════════
+function _mgrRenderAccess(){
+  var host=document.getElementById('mgr-sub');
+  host.innerHTML =
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">Everything about who can get into <b>'+_escHtml(_projectMeta&&_projectMeta.name?_projectMeta.name:_projectKey||'this project')+'</b>. '
+    + 'Accounts are the modern way (people log in, you control roles in People). Share links are the legacy way — anyone with the link gets in, no login.</p>'
+    + '<div id="mgr-access-host"></div>';
+  // Re-home the existing (already working) share panel under Manager → Access.
+  var sp=document.getElementById('shares-panel');
+  if(sp){
+    document.getElementById('mgr-access-host').appendChild(sp);
+    sp.style.display='block';
+    sp.style.height='auto';
+    sp.style.padding='0';
+    try{ renderSharesPanel(); }catch(e){}
+  } else {
+    document.getElementById('mgr-access-host').innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px">Share panel unavailable.</div>';
+  }
 }
 
-async function _mgrAssignDialog(uid, email){
-  // Pull this user's current memberships by scanning each project's member list
-  var projects = window._mgrProjects || [];
-  var host = document.getElementById('mgr-sub');
-  var opts = projects.map(function(p){ return '<option value="'+_escHtml(p.key)+'">'+_escHtml(p.name||p.key)+'</option>'; }).join('');
-  var box = document.createElement('div');
-  box.className='modal-overlay open'; box.style.zIndex='1000';
-  box.innerHTML =
-    '<div class="modal" style="max-width:460px"><h2>Assign '+_escHtml(email)+'</h2>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Project</label><select id="mgr-as-pid" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px">'+opts+'</select></div>'
-    +   '<div><label style="font-size:10px;color:var(--muted)">Role</label><select id="mgr-as-role" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px"><option value="rigger">Rigger</option><option value="admin">Admin</option><option value="none">Remove from project</option></select></div>'
-    + '</div>'
-    + '<div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1">Cancel</button>'
-    + '<button class="btn" onclick="_mgrDoAssign(\''+uid+'\',this)" style="flex:2;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">Apply</button></div></div>';
-  document.body.appendChild(box);
-}
-async function _mgrDoAssign(uid, btn){
-  var overlay = btn.closest('.modal-overlay');
-  var pid=overlay.querySelector('#mgr-as-pid').value;
-  var role=overlay.querySelector('#mgr-as-role').value;
-  var r=await _mgrApi('POST','/accounts/membership',{user_id:uid,pid:pid,role:role});
-  if(r.status===200 && r.data && r.data.ok){ showToast(role==='none'?'Removed ✓':'Assigned '+role+' ✓','ok'); overlay.remove(); }
-  else showToast((r.data&&r.data.error)||'Failed','danger');
-}
-
-// ══ XP (owner-only) ═══════════════════════════════════════════════════
+// ══ XP — global (accounts) + per-project bonus ════════════════════════
 async function _mgrRenderXp(){
-  var host = document.getElementById('mgr-sub');
-  host.innerHTML = '<div style="padding:24px;color:var(--muted)">Loading XP…</div>';
+  _mgrBusy('Loading XP…');
   var r = await _mgrApi('GET','/accounts/xp');
-  if(r.status===404){ _mgrXpSupported=false;
-    host.innerHTML='<div style="padding:20px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:13px">Global XP needs worker v4.9+. Your worker is older, so global XP is unavailable. Per-project bonus XP still works in the 🏆 Rigger Rewards button.</div>'; return; }
-  if(r.status!==200){ host.innerHTML='<div style="padding:20px;color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</div>'; return; }
-  var xps = (r.data && r.data.xp) || [];
+  var host=document.getElementById('mgr-sub');
+  var head = '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">'
+    + '<b style="color:#ffd700">Global XP</b> is a career total per account, across every project. '
+    + '<b>Per-project bonus XP</b> is scored inside the current project by rigger name. Both are editable — set any number you like.</p>'
+    + '<div style="margin-bottom:14px"><button class="btn btn-ghost" onclick="openRewardsModal()" style="font-size:12px">🏆 Per-project bonus XP for '+_escHtml(_projectKey||'current project')+'…</button></div>';
+  if(r.status===404){
+    host.innerHTML = head + '<div style="padding:16px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:13px">Global XP needs worker v4.9+.</div>';
+    return;
+  }
+  if(r.status!==200){ host.innerHTML=head+'<div style="padding:16px;color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</div>'; return; }
+  var xps=(r.data&&r.data.xp)||[];
   var rows = xps.sort(function(a,b){ return (b.xp|0)-(a.xp|0); }).map(function(u){
     return '<tr style="border-top:1px solid var(--border)">'
       + '<td style="padding:8px 10px"><div style="font-weight:700">'+_escHtml(u.name||'—')+'</div><div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
-      + '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:#ffd700;font-weight:700;font-size:15px" id="mgr-xp-val-'+u.user_id+'">'+(u.xp|0)+'</td>'
+      + '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:#ffd700;font-weight:700;font-size:16px" id="mgr-xp-val-'+u.user_id+'">'+(u.xp|0)+'</td>'
       + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
-      +   '<input type="number" id="mgr-xp-set-'+u.user_id+'" placeholder="set" style="width:90px;background:var(--panel);border:1px solid var(--border);color:#ffd700;padding:5px 7px;border-radius:5px;font-family:var(--mono);text-align:right;font-size:13px">'
-      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" onclick="_mgrSetXp(\''+u.user_id+'\')">Set</button>'
-      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" title="+100" onclick="_mgrDeltaXp(\''+u.user_id+'\',100)">+100</button>'
-      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" title="-100" onclick="_mgrDeltaXp(\''+u.user_id+'\',-100)">−100</button>'
+      +   '<input type="number" id="mgr-xp-set-'+u.user_id+'" placeholder="set" style="width:88px;background:var(--panel);border:1px solid var(--border);color:#ffd700;padding:5px 7px;border-radius:5px;font-family:var(--mono);text-align:right;font-size:13px">'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" onclick="_mgrSetXp(\''+_mgrJs(u.user_id)+'\')">Set</button>'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" onclick="_mgrDeltaXp(\''+_mgrJs(u.user_id)+'\',100)">+100</button>'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 7px" onclick="_mgrDeltaXp(\''+_mgrJs(u.user_id)+'\',-100)">−100</button>'
       + '</td></tr>';
   }).join('');
-  host.innerHTML =
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">🏆 <b style="color:#ffd700">Global XP</b> — one career total per person across every project. Set any number (negative works). This is the cheat box. Per-project bonus XP is separate and lives in the 🏆 Rigger Rewards button on the top bar.</p>'
+  host.innerHTML = head
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
-    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:right;padding:4px 10px">Global XP</th><th style="text-align:right;padding:4px 10px">Cheat</th></tr></thead>'
-    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">No accounts yet.</td></tr>')+'</tbody></table>';
+    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:right;padding:4px 10px">Global XP</th><th style="text-align:right;padding:4px 10px">Set / adjust</th></tr></thead>'
+    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--muted)">No accounts yet.</td></tr>')+'</tbody></table>';
 }
 async function _mgrSetXp(uid){
   var inp=document.getElementById('mgr-xp-set-'+uid);
   var v=parseInt(inp.value,10);
   if(isNaN(v)){ showToast('Type a number first','warn'); return; }
   var r=await _mgrApi('POST','/accounts/xp',{user_id:uid,xp:v});
-  if(r.status===200 && r.data && r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; inp.value=''; showToast('XP set to '+r.data.xp+' ✓','ok'); }
+  if(r.status===200&&r.data&&r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; inp.value=''; showToast('XP set to '+r.data.xp+' ✓','ok'); }
   else showToast((r.data&&r.data.error)||'Failed','danger');
 }
 async function _mgrDeltaXp(uid, delta){
   var r=await _mgrApi('POST','/accounts/xp',{user_id:uid,delta:delta});
-  if(r.status===200 && r.data && r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; showToast((delta>0?'+':'')+delta+' → '+r.data.xp,'ok'); }
+  if(r.status===200&&r.data&&r.data.ok){ document.getElementById('mgr-xp-val-'+uid).textContent=r.data.xp; showToast((delta>0?'+':'')+delta+' → '+r.data.xp,'ok'); }
   else showToast((r.data&&r.data.error)||'Failed','danger');
 }
+
+function _mgrJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 
 // ── New Edition: clone project for a repeating event ────────────────
