@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.059</title>
+<title>WTUniverse · Buildert Editor v4.061</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -488,7 +488,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.059</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.061</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -5931,10 +5931,15 @@ function qaUpdatePreview() {
   var model = document.getElementById('qa-model').value || '';
   var prev  = document.getElementById('qa-id-preview');
   if (!model) { prev.textContent = '—'; return; }
-  // Count only in current stage so numbering restarts at 1 per stage
+  // Count across ALL stages — device_id MUST stay globally unique.
+  // The sync layer (worker + mobile merge) keys devices by device_id in a flat
+  // map with no stage component. Per-stage numbering creates duplicate ids
+  // across stages, which silently cross-writes serials/checks onto the wrong
+  // device. Do not make this per-stage without re-keying the whole sync stack.
   var taken = {};
-  var _qaStg = (_currentStageIdx>=0 && _stages[_currentStageIdx]) ? _stages[_currentStageIdx] : null;
-  var allDevs = _qaStg ? (_qaStg.devices||[]) : devices;
+  var allDevs = [];
+  _stages.forEach(function(s){ allDevs = allDevs.concat(s.devices||[]); });
+  if(!allDevs.length) allDevs = devices;
   allDevs.forEach(function(d) {
     var dm = modelFromId(d.device_id||'');
     if (dm.toUpperCase() === model.toUpperCase()) {
@@ -5978,10 +5983,11 @@ function quickAdd() {
     locations = null; // plain location, repeated for all
   }
 
-  // Find starting unit number — count only current stage so numbering restarts at 1 per stage
+  // Count across ALL stages — device_id must stay globally unique (see note above).
   var taken = {};
-  var _qaStg2 = (_currentStageIdx>=0 && _stages[_currentStageIdx]) ? _stages[_currentStageIdx] : null;
-  var _allDevsQA = _qaStg2 ? (_qaStg2.devices||[]) : devices;
+  var _allDevsQA = [];
+  _stages.forEach(function(s){ _allDevsQA = _allDevsQA.concat(s.devices||[]); });
+  if(!_allDevsQA.length) _allDevsQA = devices;
   if (model) {
     _allDevsQA.forEach(function(d) {
       var dm = modelFromId(d.device_id||'');
@@ -7424,6 +7430,52 @@ function _autoPush(){
 }
 
 var _toastTimer;
+// ── Duplicate device_id guard ────────────────────────────────────────
+// device_id is the join key for the entire sync stack (worker merge + mobile
+// merge both use a flat map keyed by it, with no stage component). Duplicates
+// across stages cause serials/checks to cross-write onto the wrong device.
+// v4.059 briefly numbered per-stage and could create these — this finds them.
+function _dupIdScan(){
+  var seen={}, dups={};
+  (_stages||[]).forEach(function(st,si){
+    (st.devices||[]).forEach(function(d){
+      if(!d||!d.device_id) return;
+      var id=d.device_id;
+      if(seen[id]!==undefined && seen[id]!==si){
+        if(!dups[id]) dups[id]=[seen[id]];
+        if(dups[id].indexOf(si)<0) dups[id].push(si);
+      } else seen[id]=si;
+    });
+  });
+  return dups;
+}
+function _dupIdReport(){
+  var dups=_dupIdScan(), ids=Object.keys(dups);
+  if(!ids.length){ showToast('No duplicate device IDs — sync keys are clean','ok'); return; }
+  var lines=ids.map(function(id){
+    var names=dups[id].map(function(si){ return (_stages[si]&&_stages[si].name)||('Stage '+(si+1)); });
+    return '  • '+id+'  →  '+names.join('  +  ');
+  });
+  alert('⚠ DUPLICATE DEVICE IDS FOUND ('+ids.length+')\n\n'
+    +'These IDs exist on more than one stage. Because sync joins devices by\n'
+    +'device_id alone, their serials and checks WILL cross-write between\n'
+    +'stages and get lost.\n\n'
+    +lines.join('\n')
+    +'\n\nFix: rename one side of each pair to a unique number, then push.');
+}
+// Auto-warn once per session on load and after any pull — silent when clean.
+var _dupWarned=false;
+function _dupIdAutoCheck(){
+  try{
+    if(_dupWarned) return;
+    var n=Object.keys(_dupIdScan()).length;
+    if(!n) return;
+    _dupWarned=true;
+    showToast('⚠ '+n+' duplicate device ID(s) across stages — serials can cross-write. Click the version number ▸ or run _dupIdReport() in console.','danger');
+    setTimeout(_dupIdReport, 600);
+  }catch(e){}
+}
+window.addEventListener('load', function(){ setTimeout(_dupIdAutoCheck, 2500); });
 function showToast(msg,type){
   type=type||'ok';
   var t=document.getElementById('toast');
@@ -12242,7 +12294,9 @@ function _dChatRender(){
     var t=(m.at||'').replace('T',' ').slice(5,16);
     return '<div style="max-width:80%;align-self:'+(mine?'flex-end':'flex-start')+';background:'+(mine?'rgba(0,212,255,.14)':'var(--panel)')+';border:1px solid '+(mine?'var(--accent)':'var(--border)')+';border-radius:10px;padding:7px 11px;margin:'+(mine?'0 0 6px auto':'0 auto 6px 0')+'">'
       +'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+' <span style="color:var(--muted);font-family:var(--mono);font-size:9px;font-weight:400">'+t+'</span></div>'
-      +'<div style="font-size:13px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>'
+      +(m.sticker
+        ?'<img src="'+_dStkUrl(m.sticker)+'" alt="sticker" style="max-width:120px;max-height:120px;display:block;margin:2px 0" loading="lazy">'
+        :'<div style="font-size:13px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>')
       +'</div>';
   }).join('');
   box.scrollTop=box.scrollHeight;
@@ -12253,7 +12307,17 @@ async function openChatModal(){
     +'<div class="modal" style="max-width:520px;display:flex;flex-direction:column;height:70vh">'
     +'<h2 style="margin-bottom:8px">💬 Project chat</h2>'
     +'<div id="d-chat-msgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:6px 2px"></div>'
+    +'<div id="d-stk-panel" style="display:none;border-top:1px solid var(--border);padding-top:8px;max-height:200px;overflow-y:auto">'
+    +'<div id="d-stk-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn btn-ghost" onclick="_dStkUploadPick()" style="flex:1;font-size:11px">＋ Upload</button>'
+    +'<button class="btn btn-ghost" onclick="_dStkImport()" style="flex:1;font-size:11px">📥 Telegram pack</button>'
+    +'<button class="btn btn-ghost" id="d-stk-manage-btn" onclick="_dStkToggleManage()" style="flex:1;font-size:11px">🗑 Manage</button>'
+    +'</div>'
+    +'<input id="d-stk-file" type="file" accept="image/*" style="display:none" onchange="_dStkUpload(this.files[0]);this.value=\'\'">'
+    +'</div>'
     +'<div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">'
+    +'<button class="btn btn-ghost" onclick="_dStkTogglePanel()" style="padding:8px 10px" title="Stickers">😀</button>'
     +'<input id="d-chat-input" type="text" placeholder="Message the crew…" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')_dChatSend()">'
     +'<button class="btn" onclick="_dChatSend()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">➤</button>'
     +'</div>'
@@ -12285,6 +12349,106 @@ async function _dChatSend(){
     var d=await r.json();
     if(d.ok){ _dChatMsgs=d.messages; _dChatRender(); }
   }catch(e){ showToast('Send failed','danger'); }
+}
+// ── Desktop stickers — same global /stickers library as mobile ──────
+var _dStkList=null, _dStkManage=false;
+function _dStkUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)); }
+async function _dStkLoad(force){
+  if(_dStkList && !force) return _dStkList;
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'));
+    var d=await r.json();
+    _dStkList=Array.isArray(d.stickers)?d.stickers:[];
+  }catch(e){ _dStkList=_dStkList||[]; }
+  return _dStkList;
+}
+function _dStkRenderGrid(){
+  var g=document.getElementById('d-stk-grid'); if(!g) return;
+  var list=_dStkList||[];
+  if(!list.length){
+    g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:11px;text-align:center;padding:12px">No stickers yet. Upload one or import a Telegram pack.</div>';
+    return;
+  }
+  g.innerHTML=list.map(function(st){
+    return '<button onclick="'+(_dStkManage?'_dStkDelete':'_dStkSend')+'(\''+st.id+'\')" title="'+String(st.name||'').replace(/"/g,'')+'"'
+      +' style="background:'+(_dStkManage?'rgba(255,77,77,.10)':'var(--panel)')+';border:1px solid '+(_dStkManage?'var(--danger)':'var(--border)')+';border-radius:8px;padding:5px;cursor:pointer;position:relative">'
+      +'<img src="'+_dStkUrl(st.id)+'" style="width:100%;aspect-ratio:1;object-fit:contain" loading="lazy">'
+      +(_dStkManage?'<span style="position:absolute;top:1px;right:4px;color:var(--danger);font-size:11px">✕</span>':'')
+      +'</button>';
+  }).join('');
+}
+async function _dStkTogglePanel(){
+  var p=document.getElementById('d-stk-panel'); if(!p) return;
+  var show=p.style.display==='none';
+  p.style.display=show?'block':'none';
+  if(show){ await _dStkLoad(); _dStkRenderGrid(); }
+}
+function _dStkToggleManage(){
+  _dStkManage=!_dStkManage;
+  var b=document.getElementById('d-stk-manage-btn');
+  if(b) b.textContent=_dStkManage?'✓ Done':'🗑 Manage';
+  _dStkRenderGrid();
+}
+async function _dStkSend(id){
+  var p=document.getElementById('d-stk-panel'); if(p) p.style.display='none';
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({by:'planner',sticker:id})
+    });
+    var d=await r.json();
+    if(d.ok){ _dChatMsgs=d.messages; _dChatRender(); }
+  }catch(e){ showToast('Send failed','danger'); }
+}
+async function _dStkDelete(id){
+  if(!confirm('Delete this sticker for everyone?')) return;
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)),{method:'DELETE'});
+    var d=await r.json();
+    if(d.ok){ _dStkList=d.stickers||[]; _dStkRenderGrid(); showToast('Sticker deleted','ok'); }
+  }catch(e){ showToast('Delete failed','danger'); }
+}
+function _dStkUploadPick(){ document.getElementById('d-stk-file').click(); }
+function _dStkUpload(file){
+  if(!file) return;
+  var img=new Image();
+  img.onload=function(){
+    var max=512, w=img.width, h=img.height;
+    if(w>max||h>max){ var f=Math.min(max/w,max/h); w=Math.round(w*f); h=Math.round(h*f); }
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    var durl=c.toDataURL('image/webp',0.85);
+    var mime='image/webp';
+    if(durl.indexOf('data:image/webp')!==0){ durl=c.toDataURL('image/png'); mime='image/png'; }
+    var b64=durl.split(',')[1]||'';
+    if(b64.length>1000000){ showToast('Image too big after resize','warn'); return; }
+    fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:(file.name||'sticker').replace(/\.[^.]+$/,''),mime:mime,data:b64})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.ok){ _dStkList=d.stickers||null; _dStkRenderGrid(); showToast('Sticker added','ok'); }
+      else showToast(d.error||'Upload failed','danger');
+    }).catch(function(){ showToast('Upload failed','danger'); });
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror=function(){ showToast('Could not read image','warn'); URL.revokeObjectURL(img.src); };
+  img.src=URL.createObjectURL(file);
+}
+async function _dStkImport(){
+  var pack=prompt('Telegram pack name\n(the part after t.me/addstickers/…)');
+  if(!pack) return;
+  showToast('Importing pack…','info');
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/import'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pack:pack.trim()})
+    });
+    var d=await r.json();
+    if(d.ok){
+      showToast('Imported '+d.added+' sticker(s)'+(d.skipped?' · '+d.skipped+' skipped (animated/video)':''),'ok');
+      await _dStkLoad(true); _dStkRenderGrid();
+    } else showToast(d.error||'Import failed','danger');
+  }catch(e){ showToast('Import failed — offline?','danger'); }
 }
 async function _dChatWipe(){
   if(!confirm('Wipe the ENTIRE chat history for this project? Cannot be undone.')) return;
@@ -12456,16 +12620,16 @@ function _iwImport(){
   } else stage=_stages[parseInt(sel,10)]||_stages[0];
 
   var devsAdded=0, packAdded=0, skipped=0;
-  // Existing numbering per model within the TARGET stage only (restarts at 1 per stage)
+  // Existing numbering per model across ALL stages — ids must stay globally unique.
   function nextNum(model){
     var taken={};
-    (stage.devices||[]).forEach(function(d){
+    _stages.forEach(function(st){(st.devices||[]).forEach(function(d){
       var dm=modelFromId(d.device_id||'');
       if(dm && dm.toUpperCase()===model.toUpperCase()){
         var n=parseInt((d.device_id||'').slice(dm.length),10);
         if(!isNaN(n)) taken[n]=true;
       }
-    });
+    });});
     var n=1; while(taken[n])n++; return n;
   }
   _iwRows.forEach(function(r){
