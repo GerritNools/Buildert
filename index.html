@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.989m</title>
+<title>WTU · Buildert v3.992m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.989m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.992m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -709,14 +709,24 @@ body.sun-mode .pack-table td {
   <div class="sheet-title">📅 Day schedule</div>
   <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
 </div>
-<div class="sheet" id="sheet-chat" style="height:min(82dvh,82vh)">
+<div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Project chat</div>
   <div class="sheet-body" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden">
-    <div id="chat-msgs" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
+    <div id="chat-msgs" style="flex:1;min-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
       <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
     </div>
+    <div id="chat-stk-panel" style="display:none;flex-shrink:0;border-top:1px solid var(--border);padding-top:8px;max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div id="chat-stk-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="sb" onclick="_stkUploadPick()" style="flex:1;font-size:12px">＋ Upload</button>
+        <button class="sb" onclick="_stkImport()" style="flex:1;font-size:12px">📥 Telegram</button>
+        <button class="sb" id="chat-stk-manage-btn" onclick="_stkToggleManage()" style="flex:1;font-size:12px">🗑 Manage</button>
+      </div>
+      <input id="chat-stk-file" type="file" accept="image/*" style="display:none" onchange="_stkUpload(this.files[0]);this.value=''">
+    </div>
     <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+      <button class="sb" onclick="_stkTogglePanel()" style="padding:10px 12px;font-size:16px" title="Stickers">😀</button>
       <input id="chat-input" type="text" placeholder="Message the crew…" autocomplete="off"
         style="flex:1;font-size:15px" onkeydown="if(event.key==='Enter')chatSend()">
       <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
@@ -3981,6 +3991,7 @@ async function wPull(){
     try{
       // Worker sync: always apply — no version gating, desktop is source of truth
       _mergeProjectNoConflict(projData);
+      try{ _mSnapBaseline(); }catch(e){}   // baseline = freshly-synced state
     }finally{_isPulling=false;}
     _dbxSetStatus('✓ synced '+_hhmm(),'var(--ok)');
     _updateMobileProjectBadge();
@@ -4079,6 +4090,51 @@ window.addEventListener('offline', function(){
 setTimeout(_mUpdateNetStatus, 100);
 setInterval(_mUpdateNetStatus, 5000);
 
+// ── Per-field edit timestamps (v3.992m) ──────────────────────────────
+// Serials and other scalar rigger fields carry a device._ts map so the
+// server can resolve conflicts by newest edit instead of by push order.
+// We detect edits by diffing against the last-synced baseline — one place,
+// rather than stamping at every edit site.
+var _TS_FIELDS=['serial','status','pointed','notes','note_opts','date'];
+window._syncBaseline = window._syncBaseline || {};   // { device_id: { field:value } }
+
+function _mAllSyncDevices(){
+  // Every device across stages (+ flat list) that a push would send.
+  var out=[], seen={};
+  function add(arr){ (arr||[]).forEach(function(d){ if(d&&d.device_id&&!seen[d.device_id]){ seen[d.device_id]=1; out.push(d); } }); }
+  if(_mStages&&_mStages.length){ _mStages.forEach(function(s){ add(s.devices); }); }
+  add(devices);
+  return out;
+}
+// Capture the current values as the synced baseline (called after pull/push).
+function _mSnapBaseline(){
+  var b={};
+  _mAllSyncDevices().forEach(function(d){
+    var rec={};
+    _TS_FIELDS.forEach(function(f){ rec[f]=d[f]; });
+    b[d.device_id]=rec;
+  });
+  window._syncBaseline=b;
+}
+// Stamp _ts[field]=now for any field whose value differs from the baseline.
+// Fields with no baseline entry (device never synced this session) are left
+// alone, so a freshly-loaded phone can't claim false freshness on old data.
+function _mStampChanged(){
+  var now=new Date().toISOString();
+  _mAllSyncDevices().forEach(function(d){
+    var base=window._syncBaseline[d.device_id];
+    if(!base) return;                 // no baseline yet → don't stamp
+    _TS_FIELDS.forEach(function(f){
+      var cur=(d[f]===undefined?'':d[f]);
+      var was=(base[f]===undefined?'':base[f]);
+      if(cur!==was){
+        if(!d._ts||typeof d._ts!=='object') d._ts={};
+        d._ts[f]=now;
+      }
+    });
+  });
+}
+
 async function wPush(silent){
   if(!_workerUrl||!_projectKey) return;
   var combinedLog=(window._remoteLog||[]).concat(window._activityLog||[]);
@@ -4086,6 +4142,10 @@ async function wPush(silent){
   if(_mStages.length){
     _mStages[_mCurrentStageIdx].devices=devices;
   }
+  // Per-field timestamps: stamp any scalar field that changed since the last
+  // synced baseline, so the server's timestamp merge (v4.5) can keep the
+  // newest serial/status/note and never lose one to a stale push.
+  _mStampChanged();
   var payload={
     _format:'wtu-project',
     _version:_projectVersion+1,
@@ -4123,6 +4183,7 @@ async function wPush(silent){
     });
     if(resp.ok){
       window._remoteLog=combinedLog;window._activityLog=[];
+      try{ _mSnapBaseline(); }catch(e){}   // pushed state is the new baseline
       // A fresh push supersedes anything queued for this project — drop it,
       // or the later flush would overwrite this newer state with stale data.
       if((window._mObQueue||[]).some(function(e){return e.pid===pid;})){
@@ -6281,7 +6342,9 @@ function _chatRender(){
       +'border:1px solid '+(mine?'var(--accent)':'var(--border)')+';'
       +'border-radius:12px;padding:8px 12px">'
       +(mine?'':'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+'</div>')
-      +'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>'
+      +(m.sticker
+        ?'<img src="'+_stkUrl(m.sticker)+'" alt="sticker" style="max-width:128px;max-height:128px;display:block;margin:2px 0" loading="lazy">'
+        :'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>')
       +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px">'+t+'</div>'
       +'</div>';
   }).join('');
@@ -6368,6 +6431,108 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
+// ── Stickers — global library on the worker (/stickers) ──────────────
+var _stkList=null, _stkManage=false;
+function _stkUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)); }
+async function _stkLoad(force){
+  if(_stkList && !force) return _stkList;
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'));
+    var d=await r.json();
+    _stkList=Array.isArray(d.stickers)?d.stickers:[];
+  }catch(e){ _stkList=_stkList||[]; }
+  return _stkList;
+}
+function _stkRenderGrid(){
+  var g=document.getElementById('chat-stk-grid'); if(!g) return;
+  var list=_stkList||[];
+  if(!list.length){
+    g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:14px">No stickers yet.<br>Upload one or import a Telegram pack.</div>';
+    return;
+  }
+  g.innerHTML=list.map(function(st){
+    return '<button onclick="'+(_stkManage?'_stkDelete':'_stkSend')+'(\''+st.id+'\')" title="'+String(st.name||'').replace(/"/g,'')+'"'
+      +' style="background:'+(_stkManage?'rgba(255,77,77,.10)':'var(--panel)')+';border:1px solid '+(_stkManage?'var(--danger)':'var(--border)')+';border-radius:10px;padding:6px;cursor:pointer;position:relative">'
+      +'<img src="'+_stkUrl(st.id)+'" style="width:100%;aspect-ratio:1;object-fit:contain" loading="lazy">'
+      +(_stkManage?'<span style="position:absolute;top:2px;right:5px;color:var(--danger);font-size:12px">✕</span>':'')
+      +'</button>';
+  }).join('');
+}
+async function _stkTogglePanel(){
+  var p=document.getElementById('chat-stk-panel'); if(!p) return;
+  var show=p.style.display==='none';
+  p.style.display=show?'block':'none';
+  if(show){ await _stkLoad(); _stkRenderGrid(); }
+}
+function _stkToggleManage(){
+  _stkManage=!_stkManage;
+  var b=document.getElementById('chat-stk-manage-btn');
+  if(b) b.textContent=_stkManage?'✓ Done':'🗑 Manage';
+  _stkRenderGrid();
+}
+async function _stkSend(id){
+  document.getElementById('chat-stk-panel').style.display='none';
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({by:_aliasNameM(window._riggerName||'rigger'),sticker:id})
+    });
+    var d=await r.json();
+    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
+    else showToast('Send failed','danger');
+  }catch(e){ showToast('Send failed — offline?','danger'); }
+}
+async function _stkDelete(id){
+  if(!confirm('Delete this sticker for everyone?')) return;
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)),{method:'DELETE'});
+    var d=await r.json();
+    if(d.ok){ _stkList=d.stickers||[]; _stkRenderGrid(); showToast('Sticker deleted','ok'); }
+  }catch(e){ showToast('Delete failed','danger'); }
+}
+function _stkUploadPick(){ document.getElementById('chat-stk-file').click(); }
+function _stkUpload(file){
+  if(!file) return;
+  var img=new Image();
+  img.onload=function(){
+    var max=512, w=img.width, h=img.height;
+    if(w>max||h>max){ var f=Math.min(max/w,max/h); w=Math.round(w*f); h=Math.round(h*f); }
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    var durl=c.toDataURL('image/webp',0.85);
+    var mime='image/webp';
+    if(durl.indexOf('data:image/webp')!==0){ durl=c.toDataURL('image/png'); mime='image/png'; }  // Safari fallback
+    var b64=durl.split(',')[1]||'';
+    if(b64.length>1000000){ showToast('Image too big after resize','warn'); return; }
+    fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:(file.name||'sticker').replace(/\.[^.]+$/,''),mime:mime,data:b64})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.ok){ _stkList=d.stickers||null; _stkRenderGrid(); showToast('Sticker added','ok'); }
+      else showToast(d.error||'Upload failed','danger');
+    }).catch(function(){ showToast('Upload failed','danger'); });
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror=function(){ showToast('Could not read image','warn'); URL.revokeObjectURL(img.src); };
+  img.src=URL.createObjectURL(file);
+}
+async function _stkImport(){
+  var pack=prompt('Telegram pack name\n(the part after t.me/addstickers/…)');
+  if(!pack) return;
+  showToast('Importing pack…','info');
+  try{
+    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/import'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pack:pack.trim()})
+    });
+    var d=await r.json();
+    if(d.ok){
+      showToast('Imported '+d.added+' sticker(s)'+(d.skipped?' · '+d.skipped+' skipped (animated/video)':''),'ok');
+      await _stkLoad(true); _stkRenderGrid();
+    } else showToast(d.error||'Import failed','danger');
+  }catch(e){ showToast('Import failed — offline?','danger'); }
+}
+
 // ── Feedback wizard: step 1 (about) → step 2 (kind) → step 3 (message) ──
 var _fbAbout = '';
 var _FB_KIND_LABELS = {idea:'💡 Idea', bug:'🐞 Failure / bug', feedback:'💬 Feedback', evaluatiepuntje:'📝 Evaluatiepuntje'};
@@ -6441,7 +6606,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.989m',
+    version: 'v3.992m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
