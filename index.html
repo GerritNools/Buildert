@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.992m</title>
+<title>WTU · Buildert v3.993m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.992m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.993m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4090,7 +4090,7 @@ window.addEventListener('offline', function(){
 setTimeout(_mUpdateNetStatus, 100);
 setInterval(_mUpdateNetStatus, 5000);
 
-// ── Per-field edit timestamps (v3.992m) ──────────────────────────────
+// ── Per-field edit timestamps (v3.993m) ──────────────────────────────
 // Serials and other scalar rigger fields carry a device._ts map so the
 // server can resolve conflicts by newest edit instead of by push order.
 // We detect edits by diffing against the last-synced baseline — one place,
@@ -4634,8 +4634,260 @@ window._riggerMode=false;
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 
 // ── Single init entry point — called after all setup ─────────────
+// ══════════════════════════════════════════════════════════════════════
+// MOBILE ACCOUNTS (v3.993m) — rigger login / invite redeem / my projects
+//   • ?redeem=<code>&worker=<url>  → set-password screen → session
+//   • Login screen                 → session
+//   • "My projects"                → the projects this account is assigned to;
+//                                     tapping one binds the app to it (session
+//                                     token becomes the worker token) and hands
+//                                     off to the normal sync path.
+// Uses the SAME key-derivation as the desktop Manager so redeem/login match
+// what the worker validates. Session token is stored and sent as ?t= on every
+// worker call via the existing _wT() helper (we point _mToken at it).
+// ══════════════════════════════════════════════════════════════════════
+
+var _maSession = '';
+try { _maSession = localStorage.getItem('brt_account_session') || ''; } catch(e){}
+var _maMe = null;               // { user, memberships:{pid:role} }
+var _maWorker = '';             // worker URL resolved for account calls
+
+// Canonical KDF — MUST match desktop mgrDeriveAuthKey exactly.
+async function _maDeriveAuthKey(email, password){
+  var enc = new TextEncoder();
+  var saltBuf = await crypto.subtle.digest('SHA-256', enc.encode(String(email||'').toLowerCase()));
+  var keyMat = await crypto.subtle.importKey('raw', enc.encode(String(password||'')), 'PBKDF2', false, ['deriveBits']);
+  var bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt:saltBuf, iterations:600000, hash:'SHA-256' }, keyMat, 256);
+  var arr = new Uint8Array(bits), hex = '';
+  for (var i=0;i<arr.length;i++) hex += arr[i].toString(16).padStart(2,'0');
+  return hex;
+}
+
+function _maSetSession(tok){
+  _maSession = tok || '';
+  try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
+}
+
+function _maWorkerUrl(){
+  return _maWorker
+    || (typeof _workerUrl!=='undefined' && _workerUrl)
+    || (function(){ try{ return localStorage.getItem('buildert_worker_url')||''; }catch(e){ return ''; } })()
+    || 'https://buildert.untitledtechnologies.workers.dev';
+}
+
+async function _maApi(method, path, body){
+  var base = _maWorkerUrl();
+  if(!base) throw new Error('No worker URL');
+  var url = base + path + (path.indexOf('?')>=0?'&':'?') + '_=' + Date.now();
+  if(_maSession) url += '&t=' + encodeURIComponent(_maSession);
+  var opts = { method:method, headers:{'Content-Type':'application/json'}, cache:'no-store' };
+  if(body!==undefined) opts.body = JSON.stringify(body);
+  var resp = await fetch(url, opts);
+  var data = {}; try { data = await resp.json(); } catch(e){ data = { error:'bad response ('+resp.status+')' }; }
+  return { status: resp.status, data: data };
+}
+
+// ── Full-screen overlay host ──────────────────────────────────────────
+function _maOverlay(html){
+  var el = document.getElementById('ma-overlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'ma-overlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:5000;background:var(--bg,#0a0c0f);overflow:auto;'
+      + 'padding:calc(env(safe-area-inset-top,0) + 24px) 20px calc(env(safe-area-inset-bottom,0) + 24px);'
+      + '-webkit-overflow-scrolling:touch;';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+function _maCloseOverlay(){ var el=document.getElementById('ma-overlay'); if(el) el.style.display='none'; }
+
+var _maField = 'width:100%;box-sizing:border-box;background:#12161c;border:1px solid #2a2f3a;color:#e8ecf3;'
+  + 'padding:13px 14px;border-radius:9px;font-size:16px;margin-bottom:12px;';   // 16px = no iOS zoom
+var _maBtn = 'width:100%;box-sizing:border-box;background:#00d4ff;color:#001018;font-weight:800;border:none;'
+  + 'padding:14px;border-radius:9px;font-size:16px;letter-spacing:.5px;';
+var _maBtnGhost = 'width:100%;box-sizing:border-box;background:transparent;color:#8891a5;border:1px solid #2a2f3a;'
+  + 'padding:12px;border-radius:9px;font-size:14px;margin-top:10px;';
+function _maHead(title, sub){
+  return '<div style="max-width:420px;margin:0 auto">'
+    + '<div style="font-family:var(--cond,sans-serif);font-weight:900;font-size:26px;letter-spacing:1px;color:#e8ecf3;margin-bottom:4px">'+title+'</div>'
+    + (sub?'<div style="color:#8891a5;font-size:13px;margin-bottom:20px;line-height:1.5">'+sub+'</div>':'<div style="margin-bottom:20px"></div>');
+}
+
+// ── Redeem screen (from ?redeem=CODE) ────────────────────────────────
+function _maRenderRedeem(code, email){
+  _maOverlay(_maHead('Set your password', 'You were invited to Buildert. Choose a password to finish creating your account.')
+    + (email?'<div style="color:#8891a5;font-size:12px;margin-bottom:6px">Account: <b style="color:#e8ecf3">'+_maEsc(email)+'</b></div>':'')
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Your name</label>'
+    + '<input id="ma-name" type="text" autocomplete="name" style="'+_maField+'">'
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Password</label>'
+    + '<input id="ma-pass" type="password" autocomplete="new-password" style="'+_maField+'">'
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Confirm password</label>'
+    + '<input id="ma-pass2" type="password" autocomplete="new-password" style="'+_maField+'">'
+    + '<button style="'+_maBtn+'" onclick="_maDoRedeem(\''+_maJs(code)+'\')">Create account</button>'
+    + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
+    + '<div style="color:#5a6270;font-size:11px;margin-top:16px;line-height:1.5;text-align:center">Your password never leaves this phone — it is stretched locally before anything is sent.</div>'
+    + '</div>');
+}
+async function _maDoRedeem(code){
+  var msg=document.getElementById('ma-msg');
+  var name=(document.getElementById('ma-name').value||'').trim();
+  var pw=document.getElementById('ma-pass').value||'';
+  var pw2=document.getElementById('ma-pass2').value||'';
+  if(pw.length<6){ msg.style.color='#ffb454'; msg.textContent='Password must be at least 6 characters.'; return; }
+  if(pw!==pw2){ msg.style.color='#ffb454'; msg.textContent='Passwords do not match.'; return; }
+  msg.style.color='#8891a5'; msg.textContent='Creating account (~1s)…';
+  try{
+    // The invite carries the email; redeem needs only code + auth_key. But the
+    // KDF salt is the email, which the rigger may not have typed. We ask the
+    // worker to tell us the invite's email first so the salt is correct.
+    var info = await _maApi('GET','/accounts/invite/'+encodeURIComponent(code));
+    var email = info.data && info.data.email;
+    if(!email){ msg.style.color='#ff6b6b'; msg.textContent=(info.data&&info.data.error)||'Invite not found or expired.'; return; }
+    var authKey = await _maDeriveAuthKey(email, pw);
+    var r = await _maApi('POST','/accounts/redeem',{ code:code, auth_key:authKey, name:name });
+    if(r.status===200 && r.data && r.data.ok){
+      _maSetSession(r.data.token);
+      _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
+      showToast && showToast('Account created ✓','ok');
+      _maRenderProjects();
+    } else {
+      msg.style.color='#ff6b6b'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+    }
+  }catch(e){ msg.style.color='#ff6b6b'; msg.textContent='Error: '+(e.message||e); }
+}
+
+// ── Login screen ─────────────────────────────────────────────────────
+function _maRenderLogin(prefillEmail){
+  _maOverlay(_maHead('Log in', 'Sign in to see the projects you are assigned to.')
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Email</label>'
+    + '<input id="ma-email" type="email" autocomplete="username" value="'+_maEsc(prefillEmail||'')+'" style="'+_maField+'">'
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Password</label>'
+    + '<input id="ma-pass" type="password" autocomplete="current-password" style="'+_maField+'" onkeydown="if(event.key===\'Enter\')_maDoLogin()">'
+    + '<button style="'+_maBtn+'" onclick="_maDoLogin()">Log in</button>'
+    + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
+    + '</div>');
+}
+async function _maDoLogin(){
+  var msg=document.getElementById('ma-msg');
+  var email=(document.getElementById('ma-email').value||'').trim();
+  var pw=document.getElementById('ma-pass').value||'';
+  if(!email||!pw){ msg.style.color='#ffb454'; msg.textContent='Email and password required.'; return; }
+  msg.style.color='#8891a5'; msg.textContent='Signing in (~1s)…';
+  try{
+    var authKey = await _maDeriveAuthKey(email, pw);
+    var r = await _maApi('POST','/accounts/login',{ email:email, auth_key:authKey });
+    if(r.status===200 && r.data && r.data.ok){
+      _maSetSession(r.data.token);
+      _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
+      showToast && showToast('Logged in ✓','ok');
+      _maRenderProjects();
+    } else {
+      msg.style.color='#ff6b6b'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+    }
+  }catch(e){ msg.style.color='#ff6b6b'; msg.textContent='Error: '+(e.message||e); }
+}
+
+// ── My projects (assignments) ────────────────────────────────────────
+async function _maRenderProjects(){
+  _maOverlay(_maHead('Loading…',''));
+  var me = _maMe;
+  if(!me){ var r=await _maApi('GET','/accounts/me'); if(r.status===200 && r.data && r.data.ok){ me=_maMe={user:r.data.user,memberships:r.data.memberships||{}}; } }
+  if(!me){ _maSetSession(''); return _maRenderLogin(); }
+  var mems = me.memberships || {};
+  var pids = Object.keys(mems);
+  // Resolve friendly names via /projects (only returns ones this account can see).
+  var names = {};
+  try { var pl=await _maApi('GET','/projects'); (pl.data && pl.data.projects || []).forEach(function(p){ names[p.key]=p.name||p.key; }); } catch(e){}
+  var rows = pids.length ? pids.map(function(pid){
+    var role = mems[pid];
+    return '<button onclick="_maPickProject(\''+_maJs(pid)+'\')" style="width:100%;box-sizing:border-box;text-align:left;'
+      + 'background:#12161c;border:1px solid #2a2f3a;border-radius:11px;padding:16px;margin-bottom:10px;color:#e8ecf3;display:flex;align-items:center;gap:12px">'
+      + '<span style="font-size:22px">📂</span>'
+      + '<span style="flex:1"><span style="display:block;font-weight:800;font-size:16px">'+_maEsc(names[pid]||pid)+'</span>'
+      + '<span style="display:block;color:#8891a5;font-size:11px;font-family:monospace">'+_maEsc(pid)+'</span></span>'
+      + '<span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:'+(role==='admin'?'#ffd700':'#00d4ff')+'">'+_maEsc(role)+'</span>'
+      + '<span style="color:#5a6270;font-size:20px">›</span></button>';
+  }).join('') : '<div style="color:#8891a5;text-align:center;padding:30px 0;font-size:14px">You are not assigned to any project yet.<br>Ask your manager to add you.</div>';
+  _maOverlay(_maHead('Your projects', 'Hi '+_maEsc(me.user.name||me.user.email)+' — tap a project to open it.')
+    + rows
+    + '<button style="'+_maBtnGhost+'" onclick="_maLogout()">Log out</button>'
+    + '</div>');
+}
+
+// Bind the app to the chosen project and hand off to the normal sync path.
+function _maPickProject(pid){
+  var w = _maWorkerUrl();
+  try{
+    // Point the app's worker + project + token (session) at this assignment,
+    // exactly as a share link would have, then let the existing sync run.
+    localStorage.setItem('buildert_worker_url', w);
+    localStorage.setItem('buildert_project_key', pid);
+    localStorage.setItem('brt_worker_token', _maSession);   // session token = worker token
+  }catch(e){}
+  if(typeof _workerUrl!=='undefined') _workerUrl = w;
+  if(typeof _projectKey!=='undefined') _projectKey = pid;
+  if(typeof _mToken!=='undefined') _mToken = _maSession;
+  _maCloseOverlay();
+  // Clear stale project data so we pull fresh, then start worker polling.
+  try{ localStorage.removeItem('wtu_devices'); localStorage.removeItem('wtu_project_meta'); }catch(e){}
+  if(typeof devices!=='undefined') devices=[];
+  if(typeof _projectVersion!=='undefined') _projectVersion=0;
+  if(typeof _projectBaseVersion!=='undefined') _projectBaseVersion=0;
+  if(typeof wStartPolling==='function') wStartPolling();
+  else if(typeof wPull==='function') wPull(true);
+  showToast && showToast('Opened project ✓','ok');
+}
+
+function _maLogout(){
+  if(_maSession) _maApi('POST','/accounts/logout').catch(function(){});
+  _maSetSession(''); _maMe=null;
+  try{ localStorage.removeItem('brt_worker_token'); }catch(e){}
+  _maRenderLogin();
+}
+
+// ── Boot hook: called from _initSync BEFORE the legacy project handling ──
+// Returns true if it took over the screen (so _initSync should stop).
+async function _maBoot(){
+  var params = new URLSearchParams(location.search);
+  var redeem = params.get('redeem');
+  var wparam = params.get('worker') || params.get('w');
+  if(wparam){ _maWorker = wparam; try{ localStorage.setItem('buildert_worker_url', wparam); }catch(e){} }
+
+  // 1. Invite redeem link → set-password screen.
+  if(redeem){ _maRenderRedeem(redeem); return true; }
+
+  // 2. If a legacy share link is present (?project=&t=), let the OLD flow run —
+  //    accounts do not override an explicit share link.
+  if(params.get('project')) return false;
+
+  // 3. Returning logged-in rigger with no project bound yet → show my-projects.
+  var hasProjectBound = false;
+  try{ hasProjectBound = !!localStorage.getItem('buildert_project_key'); }catch(e){}
+  if(_maSession && !hasProjectBound){
+    var me = await _maApi('GET','/accounts/me');
+    if(me.status===200 && me.data && me.data.ok){ _maMe={user:me.data.user,memberships:me.data.memberships||{}}; _maRenderProjects(); return true; }
+    _maSetSession(''); // stale
+  }
+  return false;   // nothing to take over — normal boot continues
+}
+
+// Small helpers (self-contained so load order doesn't matter)
+function _maEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function _maJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// A visible way in for someone who already has an account but no link:
+// expose a login launcher other UI can call.
+function openAccountLogin(){ _maRenderLogin(); }
+
+
 async function _initSync(){
   console.log("[INIT] start, url=",_workerUrl,"key=",_projectKey);
+  // 0. Accounts: invite-redeem / login / my-projects. If this takes over the
+  //    screen (redeem link, or a logged-in rigger with no project bound), stop
+  //    here — the account flow will bind a project and start sync itself.
+  try { if (await _maBoot()) { console.log('[INIT] accounts flow took over'); return; } } catch(e){ console.log('[INIT] _maBoot error', e); }
   // 1. Handle project/rigger params from URL
   _handleProjectParam(); // Worker-based — sets _workerUrl + _projectKey
   console.log("[INIT] after handleProjectParam, url=",_workerUrl,"key=",_projectKey);
@@ -6606,7 +6858,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.992m',
+    version: 'v3.993m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
