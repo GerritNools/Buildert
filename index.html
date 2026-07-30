@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.993m</title>
+<title>WTU · Buildert v3.995m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.993m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.995m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -4090,7 +4090,7 @@ window.addEventListener('offline', function(){
 setTimeout(_mUpdateNetStatus, 100);
 setInterval(_mUpdateNetStatus, 5000);
 
-// ── Per-field edit timestamps (v3.993m) ──────────────────────────────
+// ── Per-field edit timestamps (v3.995m) ──────────────────────────────
 // Serials and other scalar rigger fields carry a device._ts map so the
 // server can resolve conflicts by newest edit instead of by push order.
 // We detect edits by diffing against the last-synced baseline — one place,
@@ -4634,8 +4634,91 @@ window._riggerMode=false;
 // ── Handle ?d= share param (snapshot in URL) ──────────────────────
 
 // ── Single init entry point — called after all setup ─────────────
+// ── Project switching on mobile ───────────────────────────────────────
+// Riggers with an account can be on several projects. Once a project was
+// bound there was no way back to the list, so this adds a switcher to the
+// project sheet (tap the project name in the header).
+//
+// Safety: the current project is PUSHED before switching, then the
+// project-scoped local caches are cleared so the next project cannot show
+// stale devices/todos/pack data. The offline queue is deliberately NOT
+// cleared — its entries carry their own pid and flush to the right project.
+
+// Keys that belong to ONE project and must not leak into the next one.
+// (Everything in this list is part of the push payload, so it is already on
+// the worker by the time we clear it.)
+var _MA_PROJECT_KEYS = ['wtu_devices','wtu_project','wtu_project_meta',
+  'buildert_todos','buildert_xp_bonus','buildert_xp_awarded',
+  'brt_packsigns','brt_packsigns_del','brt_psh','brt_pspares',
+  'buildert_specs_overrides','buildert_stage_view'];
+
+function _maClearProjectCaches(){
+  _MA_PROJECT_KEYS.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+}
+
+// Card shown at the top of the project sheet for account users.
+function _maSheetBlock(){
+  if(!_maSession) {
+    return '<button onclick="closeSheet(\'conn\');openAccountLogin()" '
+      + 'style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);'
+      + 'color:var(--muted);border-radius:8px;padding:11px;font-size:13px;margin-bottom:14px">'
+      + '🔐 Log in with an account</button>';
+  }
+  var u=(_maMe&&_maMe.user)||{};
+  var mems=(_maMe&&_maMe.memberships)||{};
+  var n=Object.keys(mems).length;
+  var role=mems[_projectKey]||'';
+  return '<div style="background:rgba(0,212,255,.06);border:1px solid var(--border);border-radius:8px;'
+    + 'padding:11px 13px;margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">'
+    +   '<span style="font-size:18px">🔐</span>'
+    +   '<div style="flex:1;min-width:0">'
+    +     '<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_maEsc(u.name||u.email||'')+'</div>'
+    +     '<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">'
+    +       (role?('this project: '+_maEsc(role)+' · '):'')+n+' project'+(n===1?'':'s')+' assigned</div>'
+    +   '</div>'
+    + '</div>'
+    + (n>1
+        ? '<button onclick="_maSwitchProject()" style="width:100%;box-sizing:border-box;background:var(--accent);'
+          + 'color:#001018;border:none;border-radius:7px;padding:11px;font-size:14px;font-weight:800">'
+          + '🔄 Switch project</button>'
+        : '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center">'
+          + 'Only one project assigned to you</div>')
+    + '<button onclick="_maLogout()" style="width:100%;box-sizing:border-box;background:transparent;'
+    + 'border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px;font-size:12px;margin-top:7px">'
+    + 'Log out</button>'
+    + '</div>';
+}
+
+// Flush, then show the list. Never switch with unpushed work still local.
+async function _maSwitchProject(){
+  var queued=((window._mObQueue)||[]).length;
+  if(queued){
+    if(!confirm(queued+' change'+(queued===1?'':'s')+' still waiting to send.\n\n'
+      +'They are tagged with this project and will be sent as soon as you have signal, '
+      +'even after switching.\n\nSwitch project now?')) return;
+  }
+  try{ closeSheet('conn'); }catch(e){}
+  showToast && showToast('Saving this project…','ok');
+  // Push the current project so nothing local is left behind.
+  var pushed=false;
+  try{ if(typeof wPush==='function'){ await wPush(true); pushed=true; } }catch(e){}
+  if(!pushed && !queued){
+    // Could not reach the worker and nothing was queued — let the rigger decide.
+    if(!confirm('Could not confirm the save (no signal?).\n\n'
+      +'Switching now may leave recent edits only on this phone.\n\nSwitch anyway?')) return;
+  }
+  // Refresh memberships so the list is current, then show it.
+  try{
+    var me=await _maApi('GET','/accounts/me');
+    if(me.status===200 && me.data && me.data.ok){ _maMe={user:me.data.user,memberships:me.data.memberships||{}}; }
+  }catch(e){}
+  _maRenderProjects(true);
+}
+
+
 // ══════════════════════════════════════════════════════════════════════
-// MOBILE ACCOUNTS (v3.993m) — rigger login / invite redeem / my projects
+// MOBILE ACCOUNTS (v3.995m) — rigger login / invite redeem / my projects
 //   • ?redeem=<code>&worker=<url>  → set-password screen → session
 //   • Login screen                 → session
 //   • "My projects"                → the projects this account is assigned to;
@@ -4661,6 +4744,21 @@ async function _maDeriveAuthKey(email, password){
   var arr = new Uint8Array(bits), hex = '';
   for (var i=0;i<arr.length;i++) hex += arr[i].toString(16).padStart(2,'0');
   return hex;
+}
+
+// Invite links are ONE-SHOT. If the code stays in the address bar, every
+// reload (and every launch from a home-screen shortcut) reopens the
+// set-password screen — which can never succeed a second time, trapping the
+// rigger. So we strip it from the URL as soon as it has served its purpose.
+function _maStripInviteParams(){
+  try{
+    var u=new URL(location.href);
+    if(!u.searchParams.has('redeem') && !u.searchParams.has('worker') && !u.searchParams.has('w')) return;
+    u.searchParams.delete('redeem');
+    // keep the worker URL out of the bar too; it is saved in localStorage
+    u.searchParams.delete('worker'); u.searchParams.delete('w');
+    history.replaceState(null,'',u.pathname+(u.searchParams.toString()?('?'+u.searchParams.toString()):'')+u.hash);
+  }catch(e){}
 }
 
 function _maSetSession(tok){
@@ -4717,6 +4815,7 @@ function _maHead(title, sub){
 
 // ── Redeem screen (from ?redeem=CODE) ────────────────────────────────
 function _maRenderRedeem(code, email){
+  if(email){ try{ window.__maInviteEmail=email; }catch(e){} }
   _maOverlay(_maHead('Set your password', 'You were invited to Buildert. Choose a password to finish creating your account.')
     + (email?'<div style="color:#8891a5;font-size:12px;margin-bottom:6px">Account: <b style="color:#e8ecf3">'+_maEsc(email)+'</b></div>':'')
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Your name</label>'
@@ -4726,6 +4825,7 @@ function _maRenderRedeem(code, email){
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Confirm password</label>'
     + '<input id="ma-pass2" type="password" autocomplete="new-password" style="'+_maField+'">'
     + '<button style="'+_maBtn+'" onclick="_maDoRedeem(\''+_maJs(code)+'\')">Create account</button>'
+    + '<button style="'+_maBtnGhost+'" onclick="_maStripInviteParams();_maRenderLogin(window.__maInviteEmail||\'\')">Already set a password? Log in</button>'
     + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
     + '<div style="color:#5a6270;font-size:11px;margin-top:16px;line-height:1.5;text-align:center">Your password never leaves this phone — it is stretched locally before anything is sent.</div>'
     + '</div>');
@@ -4744,12 +4844,21 @@ async function _maDoRedeem(code){
     // worker to tell us the invite's email first so the salt is correct.
     var info = await _maApi('GET','/accounts/invite/'+encodeURIComponent(code));
     var email = info.data && info.data.email;
-    if(!email){ msg.style.color='#ff6b6b'; msg.textContent=(info.data&&info.data.error)||'Invite not found or expired.'; return; }
+    if(!(info.status===200 && info.data && info.data.ok)){
+      // Spent/expired: send them to login rather than leaving them stuck here.
+      _maStripInviteParams();
+      msg.style.color='#ff6b6b';
+      msg.textContent=(info.data&&info.data.error)||'This invite is no longer valid.';
+      setTimeout(function(){ _maRenderLogin(email||'',
+        'That invite was already used. Log in with the password you chose.'); }, 1200);
+      return;
+    }
     var authKey = await _maDeriveAuthKey(email, pw);
     var r = await _maApi('POST','/accounts/redeem',{ code:code, auth_key:authKey, name:name });
     if(r.status===200 && r.data && r.data.ok){
       _maSetSession(r.data.token);
       _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
+      _maStripInviteParams();          // one-shot code must leave the URL
       showToast && showToast('Account created ✓','ok');
       _maRenderProjects();
     } else {
@@ -4759,8 +4868,8 @@ async function _maDoRedeem(code){
 }
 
 // ── Login screen ─────────────────────────────────────────────────────
-function _maRenderLogin(prefillEmail){
-  _maOverlay(_maHead('Log in', 'Sign in to see the projects you are assigned to.')
+function _maRenderLogin(prefillEmail, note){
+  _maOverlay(_maHead('Log in', note || 'Sign in to see the projects you are assigned to.')
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Email</label>'
     + '<input id="ma-email" type="email" autocomplete="username" value="'+_maEsc(prefillEmail||'')+'" style="'+_maField+'">'
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Password</label>'
@@ -4800,18 +4909,23 @@ async function _maRenderProjects(){
   // Resolve friendly names via /projects (only returns ones this account can see).
   var names = {};
   try { var pl=await _maApi('GET','/projects'); (pl.data && pl.data.projects || []).forEach(function(p){ names[p.key]=p.name||p.key; }); } catch(e){}
+  window.__maNames = names;
   var rows = pids.length ? pids.map(function(pid){
     var role = mems[pid];
+    var isOpen = (String(pid)===String((function(){try{return localStorage.getItem('buildert_project_key')||'';}catch(e){return '';}})()));
     return '<button onclick="_maPickProject(\''+_maJs(pid)+'\')" style="width:100%;box-sizing:border-box;text-align:left;'
       + 'background:#12161c;border:1px solid #2a2f3a;border-radius:11px;padding:16px;margin-bottom:10px;color:#e8ecf3;display:flex;align-items:center;gap:12px">'
       + '<span style="font-size:22px">📂</span>'
       + '<span style="flex:1"><span style="display:block;font-weight:800;font-size:16px">'+_maEsc(names[pid]||pid)+'</span>'
       + '<span style="display:block;color:#8891a5;font-size:11px;font-family:monospace">'+_maEsc(pid)+'</span></span>'
       + '<span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:'+(role==='admin'?'#ffd700':'#00d4ff')+'">'+_maEsc(role)+'</span>'
-      + '<span style="color:#5a6270;font-size:20px">›</span></button>';
+      + (isOpen?'<span style="font-size:9px;background:#00d4ff;color:#001018;padding:2px 7px;border-radius:3px;font-weight:800">OPEN</span>':'<span style="color:#5a6270;font-size:20px">›</span>')
+      + '</button>';
   }).join('') : '<div style="color:#8891a5;text-align:center;padding:30px 0;font-size:14px">You are not assigned to any project yet.<br>Ask your manager to add you.</div>';
+  var bound=''; try{ bound=localStorage.getItem('buildert_project_key')||''; }catch(e){}
   _maOverlay(_maHead('Your projects', 'Hi '+_maEsc(me.user.name||me.user.email)+' — tap a project to open it.')
     + rows
+    + (bound ? '<button style="'+_maBtnGhost+'" onclick="_maCloseOverlay()">← Back to '+_maEsc(_maProjLabel(bound))+'</button>' : '')
     + '<button style="'+_maBtnGhost+'" onclick="_maLogout()">Log out</button>'
     + '</div>');
 }
@@ -4831,8 +4945,14 @@ function _maPickProject(pid){
   if(typeof _mToken!=='undefined') _mToken = _maSession;
   _maCloseOverlay();
   // Clear stale project data so we pull fresh, then start worker polling.
-  try{ localStorage.removeItem('wtu_devices'); localStorage.removeItem('wtu_project_meta'); }catch(e){}
+  // (The offline queue is left alone on purpose — its entries carry their own
+  // pid and will still flush to the project they belong to.)
+  _maClearProjectCaches();
   if(typeof devices!=='undefined') devices=[];
+  try{ if(typeof _mStages!=='undefined') _mStages=[]; }catch(e){}
+  try{ if(typeof project!=='undefined' && project) { project.name=''; } }catch(e){}
+  try{ if(typeof window._projectLog!=='undefined') window._projectLog=[]; }catch(e){}
+  try{ if(typeof todos!=='undefined') todos=[]; }catch(e){}
   if(typeof _projectVersion!=='undefined') _projectVersion=0;
   if(typeof _projectBaseVersion!=='undefined') _projectBaseVersion=0;
   if(typeof wStartPolling==='function') wStartPolling();
@@ -4855,8 +4975,46 @@ async function _maBoot(){
   var wparam = params.get('worker') || params.get('w');
   if(wparam){ _maWorker = wparam; try{ localStorage.setItem('buildert_worker_url', wparam); }catch(e){} }
 
-  // 1. Invite redeem link → set-password screen.
-  if(redeem){ _maRenderRedeem(redeem); return true; }
+  // 1. Invite redeem link → set-password screen, but only if the invite is
+  //    still usable. A spent or expired code must not trap the rigger on a
+  //    form that cannot succeed.
+  if(redeem){
+    var info=null, reachable=true;
+    try{ info=await _maApi('GET','/accounts/invite/'+encodeURIComponent(redeem)); }
+    catch(e){ reachable=false; }
+    if(info && info.status===200 && info.data && info.data.ok){
+      _maRenderRedeem(redeem, info.data.email);
+      return true;
+    }
+    // Could not reach the worker (venue signal, worker down): do NOT declare a
+    // possibly-valid invite dead. Keep the set-password screen so the rigger
+    // can retry once they have signal, and leave the code in the URL.
+    if(!reachable || !info){
+      _maRenderRedeem(redeem, '');
+      var m0=document.getElementById('ma-msg');
+      if(m0){ m0.style.color='#ffb454'; m0.textContent='No connection — you can still try, or retry when you have signal.'; }
+      return true;
+    }
+    // The worker answered and the invite is genuinely unusable.
+    _maStripInviteParams();
+    var why=(info && info.data && info.data.reason) || 'unknown';
+    var knownEmail=(info && info.data && info.data.email) || '';
+    // Already signed in? Just go to their projects.
+    if(_maSession){
+      var me0=await _maApi('GET','/accounts/me');
+      if(me0.status===200 && me0.data && me0.data.ok){
+        _maMe={user:me0.data.user,memberships:me0.data.memberships||{}};
+        _maRenderProjects();
+        return true;
+      }
+      _maSetSession('');
+    }
+    _maRenderLogin(knownEmail,
+      why==='used'    ? 'That invite link was already used. Log in with the password you chose.' :
+      why==='expired' ? 'That invite link has expired. Ask for a new one, or log in if you already set a password.' :
+                        'That invite link is not valid any more. Log in, or ask for a new link.');
+    return true;
+  }
 
   // 2. If a legacy share link is present (?project=&t=), let the OLD flow run —
   //    accounts do not override an explicit share link.
@@ -4874,6 +5032,13 @@ async function _maBoot(){
 }
 
 // Small helpers (self-contained so load order doesn't matter)
+function _maProjLabel(pid){
+  try{
+    var p=(window.__maNames||{})[pid];
+    if(p) return p;
+  }catch(e){}
+  return pid;
+}
 function _maEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function _maJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
@@ -6858,7 +7023,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.993m',
+    version: 'v3.995m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7117,6 +7282,8 @@ function openProjectSheet(){
   if(title) title.textContent = project.name || 'Project';
 
   var html = '';
+  // Account + project switcher (accounts users only; no-op for share links)
+  try{ html += _maSheetBlock(); }catch(e){}
 
   // ── Rigger identity ───────────────────────────────────────────
   if(window._riggerName){
