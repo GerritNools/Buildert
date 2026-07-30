@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.067</title>
+<title>WTUniverse · Buildert Editor v4.068</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.067</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.068</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -12754,6 +12754,101 @@ function openRewardsModal(){
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// ── Change my password ───────────────────────────────────────────────
+function _mgrChangePwDialog(){
+  var u=(_mgrMe&&_mgrMe.user)||{};
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='mgr-pw-modal'; box.style.zIndex='1000';
+  box.innerHTML =
+    '<div class="modal" style="max-width:400px">'
+    + '<h2 style="margin-top:0">Change password</h2>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">'+_escHtml(u.email||'')+'</div>'
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Current password</label>'
+    + '<input id="mgr-pw-cur" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">'
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">New password</label>'
+    + '<input id="mgr-pw-new" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:10px">'
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Confirm new password</label>'
+    + '<input id="mgr-pw-new2" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px;margin-bottom:14px" onkeydown="if(event.key===\'Enter\')_mgrDoChangePw()">'
+    + '<div style="display:flex;gap:8px">'
+    +   '<button class="btn btn-ghost" onclick="document.getElementById(\'mgr-pw-modal\').remove()" style="flex:1">Cancel</button>'
+    +   '<button class="btn" onclick="_mgrDoChangePw()" style="flex:2;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">Change password</button>'
+    + '</div>'
+    + '<div id="mgr-pw-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>'
+    + '<p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5">Anyone else signed in as you will be logged out. This browser stays signed in.</p>'
+    + '</div>';
+  document.body.appendChild(box);
+  setTimeout(function(){ var f=document.getElementById('mgr-pw-cur'); if(f) f.focus(); },50);
+}
+async function _mgrDoChangePw(){
+  var msg=document.getElementById('mgr-pw-msg');
+  var cur=document.getElementById('mgr-pw-cur').value||'';
+  var nw =document.getElementById('mgr-pw-new').value||'';
+  var nw2=document.getElementById('mgr-pw-new2').value||'';
+  if(!cur||!nw){ msg.style.color='var(--warn)'; msg.textContent='Fill in every field.'; return; }
+  if(nw.length<6){ msg.style.color='var(--warn)'; msg.textContent='New password must be at least 6 characters.'; return; }
+  if(nw!==nw2){ msg.style.color='var(--warn)'; msg.textContent='New passwords do not match.'; return; }
+  if(nw===cur){ msg.style.color='var(--warn)'; msg.textContent='New password must be different.'; return; }
+  var email=((_mgrMe&&_mgrMe.user)||{}).email||'';
+  msg.style.color='var(--muted)'; msg.textContent='Deriving keys (~2s)…';
+  try{
+    var curKey=await mgrDeriveAuthKey(email,cur);
+    var newKey=await mgrDeriveAuthKey(email,nw);
+    var r=await _mgrApi('POST','/accounts/password',{current_auth_key:curKey,new_auth_key:newKey});
+    if(r.status===200 && r.data && r.data.ok){
+      document.getElementById('mgr-pw-modal').remove();
+      var n=r.data.other_sessions_revoked||0;
+      showToast('Password changed ✓'+(n?(' — '+n+' other session'+(n===1?'':'s')+' signed out'):''),'ok');
+    } else if(r.status===404){
+      msg.style.color='var(--danger)'; msg.textContent='Your worker is older than v4.12 — update it to change passwords here.';
+    } else {
+      msg.style.color='var(--danger)'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+    }
+  }catch(e){ msg.style.color='var(--danger)'; msg.textContent='Error: '+(e.message||e); }
+}
+
+// ── Reset someone else's password ────────────────────────────────────
+// Implemented as a fresh invite for their existing email: redeeming it sets a
+// new password on the SAME account. An owner sends it with no project, so the
+// person's roles are left completely untouched. A project admin must scope the
+// invite to a project they administer, so we re-send that person's CURRENT
+// role for it, which makes the role write a no-op.
+async function _mgrResetPassword(uid){
+  var u=(_mgrCache.users||[]).filter(function(x){return String(x.id)===String(uid);})[0];
+  if(!u) return;
+  var isOwner=!!((_mgrMe&&_mgrMe.user)||{}).is_owner;
+  var payload={ email:u.email, name:u.name||'' };
+  if(!isOwner){
+    var roles=_mgrRolesFor(uid);
+    var mine=(_mgrMe&&_mgrMe.memberships)||{};
+    var pid=Object.keys(roles).filter(function(k){ return mine[k]==='admin'; })[0];
+    if(!pid){ showToast('You can only reset people on projects you administer','warn'); return; }
+    payload.pid=pid; payload.role=roles[pid];
+  }
+  var r=await _mgrApi('POST','/accounts/invite',payload);
+  if(r.status!==200 || !r.data || !r.data.code){
+    showToast((r.data&&r.data.error)||'Could not create reset link','danger'); return;
+  }
+  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='mgr-reset-modal'; box.style.zIndex='1000';
+  box.innerHTML =
+    '<div class="modal" style="max-width:560px">'
+    + '<h2 style="margin-top:0">Password reset link</h2>'
+    + '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">Send this to <b>'+_escHtml(u.email)+'</b>. Opening it lets them choose a new password. '
+    + 'Their projects, roles and XP stay exactly as they are'+(isOwner?'':' (scoped to your project)')+'. The old password stops working once they finish.</p>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px">'
+    +   '<input id="mgr-reset-link" readonly value="'+_escHtml(link)+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:8px 10px;border-radius:5px;font-family:var(--mono);font-size:11px">'
+    +   '<button class="btn btn-ghost" onclick="_mgrCopy(\'mgr-reset-link\')">Copy</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Link expires in a few days and works once. If they never use it, nothing changes.</div>'
+    + '<button class="btn" onclick="document.getElementById(\'mgr-reset-modal\').remove()" style="width:100%">Done</button>'
+    + '</div>';
+  document.body.appendChild(box);
+  setTimeout(function(){ _mgrCopy('mgr-reset-link'); },100);
+}
+
+
 // ── Shared project list ──────────────────────────────────────────────
 // ONE loader feeding BOTH the header switcher and Manager → Projects.
 // Having two builders is what let the same project show up under two
@@ -13153,6 +13248,7 @@ function _mgrRenderShell(){
     +   '<span style="font-size:11px;color:var(--muted)">'+_escHtml(u.email||'')+(isOwner?' · <b style="color:#ffd700">owner</b>':' · admin')+'</span>'
     +   '<span style="flex:1"></span>'
     +   tab('projects','📂 Projects') + tab('people','👥 People') + tab('access','🔗 Access') + tab('xp','🏆 XP')
+    +   '<button class="btn btn-ghost" onclick="_mgrChangePwDialog()" style="font-size:11px" title="Change your password">🔑 Password</button>'
     +   '<button class="btn btn-ghost" onclick="_mgrLogout()" style="font-size:11px;color:var(--danger)">Log out</button>'
     + '</div>'
     + '<div id="mgr-sub"></div></div>';
@@ -13268,6 +13364,7 @@ async function _mgrRenderPeople(){
       + '<td style="padding:9px 10px">'+chips+'</td>'
       + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
       +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')">Edit roles…</button>'
+      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Send this person a password reset link" onclick="_mgrResetPassword(\''+_mgrJs(u.id)+'\')">🔑 Reset</button>'
       + '</td></tr>';
   }).join('');
   document.getElementById('mgr-sub').innerHTML =
