@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.072</title>
+<title>WTUniverse · Buildert Editor v4.073</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.072</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.073</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6802,10 +6802,12 @@ function _mergeProjectNoConflict(data) {
   }
   // CRITICAL: Reset project key for new project — each project must have its own worker slot
   // Use saved key from file if present, otherwise derive from project name
-  var savedKey = (data._project_id || '').trim();
-  var derivedKey = (_projectMeta.name || _projectMeta.id || 'default')
-    .toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,32);
-  var newKey = savedKey || derivedKey;
+  var newKey = _brtResolveLoadKey(data);
+  if(!newKey){
+    // Nothing sensible to load into; leave the current project untouched.
+    addSyncLog('Open cancelled — no project slot chosen','warn');
+    return;
+  }
   if(newKey && newKey !== _projectKey){
     addSyncLog('Switched project key: '+(_projectKey||'(none)')+' → '+newKey,'info');
     _projectKey = newKey;
@@ -7358,6 +7360,7 @@ async function _dbxPush(silent){
     _version: _projectVersion+1,
     _saved:   new Date().toISOString(),
     _saved_by:'desktop',
+    _project_id: _projectKey || '',
     project:  Object.assign({},_projectMeta,{anbernic_ip:ip}),
     devices:  devices,
     spec_overrides: _specsOverrides,
@@ -12961,6 +12964,61 @@ async function _brtLoadProjectList(force){
 // the open project, the local name is the freshest truth (you just opened a
 // backup, or renamed and haven't pushed). When it does not match, the local
 // value is a leftover and the worker's list wins.
+// Which worker slot should a file being opened occupy?
+//
+// Local backups written before v4.073 carry no _project_id, so the slot used
+// to be derived from the project NAME. Two shows sharing a name therefore
+// resolved to the SAME slot and each load-and-push overwrote the previous one
+// — which is how projects ended up replacing each other on the worker.
+// Anything ambiguous now asks instead of guessing.
+function _brtKnownProjects(){
+  var known={};
+  try{ (_brtProjCache.list||[]).forEach(function(p){ known[p.key]={name:p._display||'',devices:p.devices,saved:p.saved}; }); }catch(e){}
+  try{
+    var reg=_kpAll();
+    Object.keys(reg).forEach(function(k){ if(!(k in known)) known[k]={name:(reg[k]||{}).name||'',devices:-1,saved:(reg[k]||{}).last||''}; });
+  }catch(e){}
+  return known;
+}
+function _brtUniqueKey(base, known){
+  base = (base||'project').toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,28) || 'project';
+  if(!(base in known)) return base;
+  for(var i=2;i<200;i++){ var c=base+'_'+i; if(!(c in known)) return c; }
+  return base+'_'+Date.now().toString(36).slice(-4);
+}
+// Returns the key to use, or '' if the user cancelled the open.
+function _brtResolveLoadKey(data){
+  var known=_brtKnownProjects();
+  var saved=String((data && data._project_id) || '').trim();
+  var name =String((data && data.project && data.project.name) || (data && data._project_name) || '').trim();
+  var slug = name ? name.toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,32) : '';
+
+  // The file knows its own slot.
+  if(saved){
+    var occ=known[saved];
+    if(!occ) return saved;
+    var sameName = !name || !occ.name || occ.name.toLowerCase()===name.toLowerCase();
+    if(sameName) return saved;                       // genuine restore over itself
+    if(confirm('Slot "'+saved+'" already holds a different project:\n\n'
+      + '  ' + (occ.name||'(unnamed)') + (occ.devices>=0?('  ·  '+occ.devices+' devices'):'')
+      + '\n\nOK  — replace that project with the file you just opened.\n'
+      + 'Cancel — keep both; the file gets its own new slot.')) return saved;
+    return _brtUniqueKey(slug||saved, known);
+  }
+
+  // No id in the file (older backup): never silently take an occupied slot.
+  var base = slug || 'project';
+  if(!(base in known)) return base;
+  var o=known[base];
+  if(!confirm('This file has no project id, so Buildert matched it to slot "'+base+'" by name.\n\n'
+    + 'That slot already holds:\n  ' + (o.name||'(unnamed)')
+    + (o.devices>=0?('  ·  '+o.devices+' devices'):'') + '\n\n'
+    + 'OK  — this IS that project; replace it.\n'
+    + 'Cancel — this is a different show; give it its own new slot.')){
+    return _brtUniqueKey(base, known);
+  }
+  return base;
+}
 var _brtMetaKey = (function(){ try{ return localStorage.getItem('buildert_project_key')||''; }catch(e){ return ''; } })();
 function _brtMetaTrusted(){
   try{ return String(_brtMetaKey)===String(_projectKey) && _projectKey!==''; }catch(e){ return false; }
@@ -14607,6 +14665,7 @@ async function _wPushImpl(silent){
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
+    _project_id: _projectKey || '',
     _project_id: pid,
     _project_name: _brtNameForPush(),
     project:Object.assign({},_projectMeta,{name:_brtNameForPush()}),
