@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.071</title>
+<title>WTUniverse · Buildert Editor v4.072</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.071</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.072</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6791,6 +6791,11 @@ function _mergeProjectNoConflict(data) {
     // preserve any extra custom fields the incoming project carried
     Object.keys(_inMeta).forEach(function(k){ if(!(k in _newMeta)) _newMeta[k]=_inMeta[k]; });
     _projectMeta = _newMeta;
+    try{ _brtMetaKey = (data && data._project_id) ? String(data._project_id) : String(_projectKey||''); }catch(e){}
+    // Opening a file changes the project identity: refresh every label now
+    // rather than waiting for the next list load, or the header keeps showing
+    // the previously open project's name.
+    try{ _brtSyncLabels(); }catch(e){}
     var ip = _keepIp;
     var ipEl = document.getElementById('device-ip');
     if(ip && ipEl) ipEl.value = ip;
@@ -6804,6 +6809,8 @@ function _mergeProjectNoConflict(data) {
   if(newKey && newKey !== _projectKey){
     addSyncLog('Switched project key: '+(_projectKey||'(none)')+' → '+newKey,'info');
     _projectKey = newKey;
+    _brtMetaKey = newKey;   // this meta describes the project we just opened
+    try{ setTimeout(function(){ try{ _brtSyncLabels(); }catch(e){} },0); }catch(e){}
     try{ localStorage.setItem('buildert_project_key', _projectKey); }catch(e){}
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
@@ -7024,6 +7031,15 @@ function _wAllTokens(){
 }
 // ── Known projects registry (drives the multi-project manager) ─────
 function _kpAll(){ try{ return JSON.parse(localStorage.getItem('buildert_known_projects')||'{}'); }catch(e){ return {}; } }
+function _kpForget(pid){
+  try{
+    var r=_kpAll();
+    if(r && Object.prototype.hasOwnProperty.call(r,pid)){
+      delete r[pid];
+      localStorage.setItem('buildert_known_projects',JSON.stringify(r));
+    }
+  }catch(e){}
+}
 function _kpTouch(pid,name){
   if(!pid) return;
   try{
@@ -12941,7 +12957,18 @@ async function _brtLoadProjectList(force){
 // entry for _projectKey so an in-memory value left over from another project
 // can never be pushed over this one. '(unnamed)' is a display label, not a
 // name, so it is written as empty.
+// The project key that _projectMeta currently describes. When this matches
+// the open project, the local name is the freshest truth (you just opened a
+// backup, or renamed and haven't pushed). When it does not match, the local
+// value is a leftover and the worker's list wins.
+var _brtMetaKey = (function(){ try{ return localStorage.getItem('buildert_project_key')||''; }catch(e){ return ''; } })();
+function _brtMetaTrusted(){
+  try{ return String(_brtMetaKey)===String(_projectKey) && _projectKey!==''; }catch(e){ return false; }
+}
 function _brtNameForPush(){
+  // What you have open wins: pushing must not overwrite a freshly opened
+  // backup's name with whatever the worker happened to hold at that key.
+  try{ if(_brtMetaTrusted()) return String(_projectMeta.name||''); }catch(err){}
   try{
     var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
     var e=(_brtProjCache.list||[]).filter(function(pp){ return String(pp.key)===key; })[0];
@@ -12952,6 +12979,8 @@ function _brtNameForPush(){
 }
 function _brtCurrentName(){
   var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
+  // Show what is actually open, including a name that hasn't been pushed yet.
+  try{ if(_brtMetaTrusted() && _projectMeta.name) return String(_projectMeta.name); }catch(err){}
   var e=(_brtProjCache.list||[]).filter(function(p){ return String(p.key)===key; })[0];
   if(e) return e._display;
   try{ if(_projectMeta && _projectMeta.name) return String(_projectMeta.name); }catch(err){}
@@ -12979,7 +13008,7 @@ function _brtSyncLabels(){
 // reflects the edit immediately instead of waiting for a push.
 function _brtLocalRename(v){
   v=String(v||'').trim();
-  try{ _projectMeta.name=v; }catch(e){}
+  try{ _projectMeta.name=v; _brtMetaKey=String(_projectKey||''); }catch(e){}
   var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
   (_brtProjCache.list||[]).forEach(function(p){
     if(String(p.key)===key){ p.name=v; p._display=v||'(unnamed)'; }
@@ -13436,7 +13465,7 @@ async function _mgrDeleteSelected(){
     var pid=pids[i];
     try{
       var r=await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
-      if(r.status===200 && r.data && r.data.ok) okN++;
+      if(r.status===200 && r.data && r.data.ok){ okN++; _kpForget(pid); }
       else { failN++; msgs.push(pid+': '+((r.data&&r.data.error)||('HTTP '+r.status))); }
     }catch(e){ failN++; msgs.push(pid+': '+(e.message||e)); }
   }
@@ -13458,6 +13487,7 @@ async function _mgrDeleteProject(pid){
     + (isOpen?'\n\nThis is the project you have open — the editor will detach from it.':''))) return;
   var r = await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
   if(r.status===200 && r.data && r.data.ok){
+    _kpForget(pid);
     if(isOpen){
       try{ localStorage.removeItem('buildert_project_key'); }catch(e){}
       _projectKey='';
