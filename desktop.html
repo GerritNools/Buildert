@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.068</title>
+<title>WTUniverse · Buildert Editor v4.069</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.068</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.069</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3784,8 +3784,16 @@ var qrcode = function() {
   <div class="modal" style="max-width:520px">
     <h2>&#128190; Project</h2>
     <label>Show / project name</label>
-    <input id="proj-name" type="text" placeholder="Festival Main Stage"
-           oninput="_brtLocalRename(this.value);_updateProjectBadge();_persistProjectMeta()">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <div id="proj-name-display" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
+           border-radius:6px;padding:9px 11px;font-size:14px;color:var(--text);overflow:hidden;
+           text-overflow:ellipsis;white-space:nowrap">—</div>
+      <button class="btn btn-ghost" style="flex-shrink:0;font-size:12px" onclick="_projRenameFromSettings()">&#9998; Rename&#8230;</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">
+      Names are managed in <b>Manager &rarr; Projects</b>, so one project can&rsquo;t end up with two different names.
+    </div>
+    <input id="proj-name" type="hidden">
     <label>Venue</label>
     <input id="proj-venue" type="text" placeholder="AFAS Live"
            oninput="_projectMeta.venue=this.value.trim();_persistProjectMeta()">
@@ -12926,6 +12934,10 @@ function _brtSyncLabels(){
   var nm=_brtCurrentName();
   var btn=document.getElementById('hdr-proj-name');
   if(btn) btn.textContent=nm;
+  var disp=document.getElementById('proj-name-display');
+  if(disp) disp.textContent=nm;
+  var hid=document.getElementById('proj-name');
+  if(hid) hid.value=(nm==='(unnamed)'?'':nm);
   // The filename strip sits right next to the switcher and reads like a
   // project name, so it must show the same thing. The ● dot already signals
   // unsaved changes, so no "(unsaved)" text is needed here.
@@ -12975,7 +12987,24 @@ async function _brtRenameProject(pid, newName){
     var d=await r.json();
     proj=(d && d._projects && d._projects[pid]) || null;
   }catch(e){ return { ok:false, error:e.message||'Network error' }; }
-  if(!proj) return { ok:false, error:'Project not found on worker' };
+  if(!proj){
+    // Never pushed yet: it exists only in this browser, so rename locally.
+    if(String(pid)===String(_projectKey)){
+      try{
+        _projectMeta.name=newName;
+        if(typeof _persistProjectMeta==='function') _persistProjectMeta();
+        var li=document.getElementById('proj-name-display'); if(li) li.textContent=newName;
+        _kpTouch(pid,newName);
+      }catch(e){}
+      (_brtProjCache.list||[]).forEach(function(pp){
+        if(String(pp.key)===String(pid)){ pp.name=newName; pp._display=newName||'(unnamed)'; }
+      });
+      _brtProjCache.at=0;
+      try{ _brtLocalRename(newName); }catch(e){}
+      return { ok:true, name:newName, devices:(devices||[]).length, local:true };
+    }
+    return { ok:false, error:'That project is not on the worker, and it is not the one you have open.' };
+  }
 
   // Guard: count devices before, and refuse to write back something emptier.
   function devCount(p){
@@ -13017,10 +13046,21 @@ async function _brtRenameProject(pid, newName){
     }
     _kpTouch(pid, newName);
   }catch(e){}
+  // Update the cached list entry in place, then invalidate, so labels refresh
+  // right away instead of reading the pre-rename name.
+  (_brtProjCache.list||[]).forEach(function(pp){
+    if(String(pp.key)===String(pid)){ pp.name=newName; pp._display=newName||'(unnamed)'; }
+  });
+  try{ _brtSyncLabels(); }catch(e){}
   _brtProjCache.at=0;
   return { ok:true, name:newName, devices:before };
 }
 
+// The ONLY way to change a project name, wherever you start from.
+function _projRenameFromSettings(){
+  var cur=(typeof _brtCurrentName==='function')?_brtCurrentName():(_projectMeta.name||'');
+  _brtPromptRename(_projectKey, cur);
+}
 async function _brtPromptRename(pid, currentName){
   var n=prompt('Rename project "'+(currentName||pid)+'"\n\nThis updates the name everywhere. Devices and serials are not touched.', currentName==='(unnamed)'?'':currentName);
   if(n===null) return;
@@ -13034,7 +13074,9 @@ async function _brtPromptRename(pid, currentName){
   }
   var r=await _brtRenameProject(pid, n);
   if(r.ok){
-    showToast('Renamed to "'+r.name+'" ✓ ('+r.devices+' devices intact)','ok');
+    showToast(r.local
+      ? 'Renamed to "'+r.name+'" ✓ — push to save it to the worker'
+      : 'Renamed to "'+r.name+'" ✓ ('+r.devices+' devices intact)','ok');
     try{ if(typeof _mgrRenderProjects==='function' && _mgrSubtab==='projects') _mgrRenderProjects(); }catch(e){}
     try{ _hdrUpdateProjName(); }catch(e){}
   } else {
@@ -13270,6 +13312,9 @@ async function _mgrLoadProjects(){
   return list;
 }
 async function _mgrRenderProjects(){
+  // The Manager panel may not be mounted (e.g. renaming from Project settings
+  // while another tab is open). Bail out quietly instead of throwing.
+  if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading projects…');
   var list = await _mgrLoadProjects();
   var dupCount = list.filter(function(p){ return p._dupName; }).length;
@@ -13295,7 +13340,9 @@ async function _mgrRenderProjects(){
       +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+jsKey+'\')">🗑</button>'
       + '</td></tr>';
   }).join('');
-  document.getElementById('mgr-sub').innerHTML =
+  var _host=document.getElementById('mgr-sub');
+  if(!_host) return;
+  _host.innerHTML =
     '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
     + (dupCount?'<div style="border:1px solid var(--warn);background:rgba(255,180,84,.08);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--warn)">⚠ '+dupCount+' project'+(dupCount===1?'':'s')+' share a name with another. Rename them (✎) so you can tell them apart in the switcher.</div>':'')
     + '<input id="mgr-pf" placeholder="Filter projects…" oninput="_mgrFilterProjects()" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
@@ -13338,6 +13385,7 @@ function _mgrRolesFor(uid){
   return out;
 }
 async function _mgrRenderPeople(){
+  if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
   if(!_mgrCache.matrixSupported){
@@ -13542,6 +13590,7 @@ function _mgrRenderAccess(){
 
 // ══ XP — global (accounts) + per-project bonus ════════════════════════
 async function _mgrRenderXp(){
+  if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading XP…');
   var r = await _mgrApi('GET','/accounts/xp');
   var host=document.getElementById('mgr-sub');
@@ -13603,6 +13652,16 @@ function newEdition(){
   if(suggested===oldName) suggested=oldName+' — new edition';
   var newName=prompt('Name for the new edition:', suggested);
   if(!newName) return;
+  newName=String(newName).trim();
+  // Same collision guard the Manager rename uses, so editions can't silently
+  // create another same-named project.
+  try{
+    var clash=(_brtProjCache.list||[]).filter(function(pp){
+      return pp._display.toLowerCase()===newName.toLowerCase();
+    });
+    if(clash.length && !confirm('"'+newName+'" is already used by '+clash.length+' project'
+      +(clash.length===1?'':'s')+'.\n\nYou will not be able to tell them apart.\n\nUse it anyway?')) return;
+  }catch(e){}
   if(!confirm('Create "'+newName+'"?\n\nStructure (devices, layout, backgrounds, pack) stays.\nAll runtime data (checks, statuses, log, sign-offs) is wiped.\nThe new edition is DISCONNECTED from the current worker project.')) return;
 
   // Wipe runtime data on every device in every stage
