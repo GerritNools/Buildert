@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.073</title>
+<title>WTUniverse · Buildert Editor v4.074</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.073</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.074</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6825,7 +6825,18 @@ function _mergeProjectNoConflict(data) {
     if(typeof renderActivityLog === 'function') renderActivityLog();
   } else if(Array.isArray(data._log)) {
     // Same project being reopened — replace log with file's log (file wins for own project)
-    _activityLog = data._log.slice(0, MAX_ACTIVITY);
+    // Merge rather than replace: entries logged here that the worker has not
+    // seen yet would otherwise be lost on the next pull.
+    (function(){
+      var inc=data._log||[], cur=Array.isArray(_activityLog)?_activityLog:[], seen={}, out=[];
+      inc.concat(cur).forEach(function(e){
+        if(!e) return;
+        var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'')+'|'+(e.device_id||'');
+        if(seen[k]) return; seen[k]=1; out.push(e);
+      });
+      out.sort(function(x,y){ return (y.at||'')>(x.at||'')?1:-1; });
+      _activityLog = out.slice(0, MAX_ACTIVITY);
+    })();
     if(typeof renderActivityLog === 'function') renderActivityLog();
   }
   // Restore worker URL from project file (so opening a saved project re-binds to the right worker)
@@ -7870,7 +7881,7 @@ function buildPayload() {
     _project_name: _brtNameForPush(),
     _pushed_at:    new Date().toISOString(),
     _pushed_by:    'desktop',
-    _log: _activityLog.slice(0, 100),  // last 100 entries
+    _log: _brtActivityForPush().slice(0, 100),  // last 100 entries
   };
   if(Object.keys(_specsOverrides).length) proj._specs = _specsOverrides;
   // Write into the multi-project envelope
@@ -13023,6 +13034,22 @@ var _brtMetaKey = (function(){ try{ return localStorage.getItem('buildert_projec
 function _brtMetaTrusted(){
   try{ return String(_brtMetaKey)===String(_projectKey) && _projectKey!==''; }catch(e){ return false; }
 }
+// Desktop activity is recorded in _activityLog, while file loads and merges
+// populate window._projectLog. The push used to send only the latter, so
+// nothing you did on the desktop was ever synced. Send both, deduplicated.
+function _brtActivityForPush(){
+  var a = Array.isArray(typeof _activityLog!=='undefined'?_activityLog:null) ? _activityLog : [];
+  var b = Array.isArray(window._projectLog) ? window._projectLog : [];
+  var seen={}, out=[];
+  a.concat(b).forEach(function(e){
+    if(!e) return;
+    var k=(e.at||'')+'|'+(e.by||'')+'|'+(e.action||'')+'|'+(e.device_id||'');
+    if(seen[k]) return;
+    seen[k]=1; out.push(e);
+  });
+  out.sort(function(x,y){ return (y.at||'') > (x.at||'') ? 1 : -1; });
+  return out.slice(0,500);
+}
 function _brtNameForPush(){
   // What you have open wins: pushing must not overwrite a freshly opened
   // backup's name with whatever the worker happened to hold at that key.
@@ -14665,7 +14692,6 @@ async function _wPushImpl(silent){
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
-    _project_id: _projectKey || '',
     _project_id: pid,
     _project_name: _brtNameForPush(),
     project:Object.assign({},_projectMeta,{name:_brtNameForPush()}),
@@ -14681,7 +14707,7 @@ async function _wPushImpl(silent){
     schedule:_schedule||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares,
-    _log:window._projectLog||[],
+    _log:_brtActivityForPush(),
     _node_positions:JSON.parse(np),
     _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
@@ -15245,6 +15271,7 @@ function wPushLayout(){
     _version:_projectVersion+1,
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
+    _project_id:_projectKey || '',
     project:Object.assign({},_projectMeta),
     devices:devices,
     spec_overrides:_specsOverrides,
