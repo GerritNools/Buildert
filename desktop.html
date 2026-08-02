@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.070</title>
+<title>WTUniverse · Buildert Editor v4.071</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.070</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.071</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -13351,6 +13351,7 @@ async function _mgrRenderProjects(){
     var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return '<tr style="border-top:1px solid var(--border);'+(cur?'background:rgba(0,212,255,.07)':'')+'">'
+      + '<td style="padding:9px 4px 9px 10px;width:26px"><input type="checkbox" class="mgr-psel" value="'+_escHtml(p.key)+'" onchange="_mgrSelCount()" style="cursor:pointer"></td>'
       + '<td style="padding:9px 10px">'
       +   '<div style="font-family:var(--cond);font-weight:700;font-size:14px">'+_escHtml(p._display)
       +     (cur?' <span style="font-size:9px;background:var(--accent);color:#000;padding:1px 6px;border-radius:3px;font-weight:700">CURRENT</span>':'')
@@ -13373,10 +13374,18 @@ async function _mgrRenderProjects(){
   _host.innerHTML =
     '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
     + (dupCount?'<div style="border:1px solid var(--warn);background:rgba(255,180,84,.08);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--warn)">⚠ '+dupCount+' project'+(dupCount===1?'':'s')+' share a name with another. Rename them (✎) so you can tell them apart in the switcher.</div>':'')
+    + '<div id="mgr-bulk" style="display:none;align-items:center;gap:10px;border:1px solid var(--danger);'
+    +   'background:rgba(255,77,77,.06);border-radius:8px;padding:9px 12px;margin-bottom:10px">'
+    +   '<span id="mgr-bulk-n" style="font-size:12px;color:var(--danger);font-weight:700"></span>'
+    +   '<span style="flex:1"></span>'
+    +   '<button class="btn btn-ghost" style="font-size:11px" onclick="_mgrSelAll(false)">Clear selection</button>'
+    +   '<button class="btn" style="font-size:11px;background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700" onclick="_mgrDeleteSelected()">Delete selected</button>'
+    + '</div>'
     + '<input id="mgr-pf" placeholder="Filter projects…" oninput="_mgrFilterProjects()" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;margin-bottom:10px">'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="padding:4px 4px 4px 10px;width:26px"><input type="checkbox" id="mgr-pall" onchange="_mgrSelAll(this.checked)" style="cursor:pointer" title="Select all"></th>'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
-    + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')+'</tbody></table>';
+    + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')+'</tbody></table>';
 }
 function _mgrFilterProjects(){
   var q=((document.getElementById('mgr-pf')||{}).value||'').toLowerCase();
@@ -13391,11 +13400,72 @@ async function _mgrSwitchProject(pid){
   _brtSyncLabels();
   setTab('manager');
 }
+function _mgrSelBoxes(){ return Array.prototype.slice.call(document.querySelectorAll('.mgr-psel')); }
+function _mgrSelected(){ return _mgrSelBoxes().filter(function(b){return b.checked;}).map(function(b){return b.value;}); }
+function _mgrSelAll(on){
+  _mgrSelBoxes().forEach(function(b){ if(b.closest('tr').style.display!=='none') b.checked=!!on; });
+  var all=document.getElementById('mgr-pall'); if(all) all.checked=!!on;
+  _mgrSelCount();
+}
+function _mgrSelCount(){
+  var n=_mgrSelected().length;
+  var bar=document.getElementById('mgr-bulk');
+  var lbl=document.getElementById('mgr-bulk-n');
+  if(bar) bar.style.display = n?'flex':'none';
+  if(lbl) lbl.textContent = n+' project'+(n===1?'':'s')+' selected for deletion';
+}
+
+// Bulk delete. One confirmation for the whole set, and the project you have
+// open can be included — we detach from it afterwards instead of refusing,
+// which is what used to leave you unable to remove the last one.
+async function _mgrDeleteSelected(){
+  var pids=_mgrSelected();
+  if(!pids.length) return;
+  var names=pids.map(function(k){
+    var e=(_mgrCache.projects||[]).filter(function(x){return String(x.key)===String(k);})[0];
+    return '  · '+((e&&e._display)||k)+'  ['+k+']';
+  });
+  var openIncluded = pids.indexOf(String(_projectKey))>=0;
+  if(!confirm('Delete '+pids.length+' project'+(pids.length===1?'':'s')+' from the worker?\n\n'
+    + names.join('\n')
+    + '\n\nThis cannot be undone. Local backup files are not affected.'
+    + (openIncluded?'\n\nThis includes the project you currently have open — the editor will detach from it.':''))) return;
+
+  var okN=0, failN=0, msgs=[];
+  for(var i=0;i<pids.length;i++){
+    var pid=pids[i];
+    try{
+      var r=await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
+      if(r.status===200 && r.data && r.data.ok) okN++;
+      else { failN++; msgs.push(pid+': '+((r.data&&r.data.error)||('HTTP '+r.status))); }
+    }catch(e){ failN++; msgs.push(pid+': '+(e.message||e)); }
+  }
+  if(openIncluded){
+    // Detach: stop pointing at a project that no longer exists.
+    try{ localStorage.removeItem('buildert_project_key'); }catch(e){}
+    _projectKey='';
+    try{ _brtSyncLabels(); }catch(e){}
+  }
+  _brtProjCache.at=0;
+  showToast(okN+' deleted'+(failN?(', '+failN+' failed'):' ✓'), failN?'warn':'ok');
+  if(failN) alert('Some projects could not be deleted:\n\n'+msgs.join('\n'));
+  _mgrRenderProjects();
+}
+
 async function _mgrDeleteProject(pid){
-  if(pid===_projectKey){ showToast('Switch away before deleting this project','warn'); return; }
-  if(!confirm('Delete project "'+pid+'" from the worker?\n\nThis cannot be undone.')) return;
+  var isOpen = (String(pid)===String(_projectKey));
+  if(!confirm('Delete project "'+pid+'" from the worker?\n\nThis cannot be undone. Local backup files are not affected.'
+    + (isOpen?'\n\nThis is the project you have open — the editor will detach from it.':''))) return;
   var r = await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
-  if(r.status===200 && r.data && r.data.ok){ showToast('Deleted ✓','ok'); _mgrRenderProjects(); }
+  if(r.status===200 && r.data && r.data.ok){
+    if(isOpen){
+      try{ localStorage.removeItem('buildert_project_key'); }catch(e){}
+      _projectKey='';
+      try{ _brtSyncLabels(); }catch(e){}
+    }
+    _brtProjCache.at=0;
+    showToast('Deleted ✓','ok'); _mgrRenderProjects();
+  }
   else showToast((r.data&&r.data.error)||'Delete failed','danger');
 }
 
