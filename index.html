@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.995m</title>
+<title>WTU · Buildert v3.996m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.995m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.996m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -3234,7 +3234,11 @@ function _mergeProjectNoConflict(data){
   }
   // Apply stage permissions from server shares list (no URL needed after first load)
   if(Array.isArray(data.schedule)){ window._mSchedule = data.schedule; if(typeof _nextUpTick==='function') setTimeout(_nextUpTick,200); }
-  if(Array.isArray(data.shares) && data.shares.length && window._riggerName){
+  if(_maIsAccountMember() && Array.isArray(data.shares)){
+    window._mShares=data.shares;
+    Object.keys(_mStagePerms).forEach(function(k){delete _mStagePerms[k];});
+    _mPeekMode=false;
+  } else if(Array.isArray(data.shares) && data.shares.length && window._riggerName){
     window._mShares = data.shares;  // full crew share list — used for assignee dropdown
     var myShare=data.shares.find(function(sh){return sh.name===window._riggerName;});
     if(myShare && myShare.stagePerms){
@@ -4090,7 +4094,7 @@ window.addEventListener('offline', function(){
 setTimeout(_mUpdateNetStatus, 100);
 setInterval(_mUpdateNetStatus, 5000);
 
-// ── Per-field edit timestamps (v3.995m) ──────────────────────────────
+// ── Per-field edit timestamps (v3.996m) ──────────────────────────────
 // Serials and other scalar rigger fields carry a device._ts map so the
 // server can resolve conflicts by newest edit instead of by push order.
 // We detect edits by diffing against the last-synced baseline — one place,
@@ -4678,7 +4682,7 @@ function _maSheetBlock(){
     +       (role?('this project: '+_maEsc(role)+' · '):'')+n+' project'+(n===1?'':'s')+' assigned</div>'
     +   '</div>'
     + '</div>'
-    + (n>1
+    + ((n>1 || !_maMe)
         ? '<button onclick="_maSwitchProject()" style="width:100%;box-sizing:border-box;background:var(--accent);'
           + 'color:#001018;border:none;border-radius:7px;padding:11px;font-size:14px;font-weight:800">'
           + '🔄 Switch project</button>'
@@ -4702,7 +4706,14 @@ async function _maSwitchProject(){
   showToast && showToast('Saving this project…','ok');
   // Push the current project so nothing local is left behind.
   var pushed=false;
-  try{ if(typeof wPush==='function'){ await wPush(true); pushed=true; } }catch(e){}
+  try{
+    if(typeof wPush==='function'){
+      await Promise.race([
+        wPush(true).then(function(){ pushed=true; }),
+        new Promise(function(res){ setTimeout(res, 8000); })
+      ]);
+    } else { pushed=true; }
+  }catch(e){}
   if(!pushed && !queued){
     // Could not reach the worker and nothing was queued — let the rigger decide.
     if(!confirm('Could not confirm the save (no signal?).\n\n'
@@ -4718,7 +4729,7 @@ async function _maSwitchProject(){
 
 
 // ══════════════════════════════════════════════════════════════════════
-// MOBILE ACCOUNTS (v3.995m) — rigger login / invite redeem / my projects
+// MOBILE ACCOUNTS (v3.996m) — rigger login / invite redeem / my projects
 //   • ?redeem=<code>&worker=<url>  → set-password screen → session
 //   • Login screen                 → session
 //   • "My projects"                → the projects this account is assigned to;
@@ -4818,12 +4829,14 @@ function _maRenderRedeem(code, email){
   if(email){ try{ window.__maInviteEmail=email; }catch(e){} }
   _maOverlay(_maHead('Set your password', 'You were invited to Buildert. Choose a password to finish creating your account.')
     + (email?'<div style="color:#8891a5;font-size:12px;margin-bottom:6px">Account: <b style="color:#e8ecf3">'+_maEsc(email)+'</b></div>':'')
+    + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Email</label>'
+    + '<input id="ma-user" name="username" type="email" autocomplete="username" readonly value="'+_maEsc(email||'')+'" style="'+_maField+'opacity:.7">'
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Your name</label>'
-    + '<input id="ma-name" type="text" autocomplete="name" style="'+_maField+'">'
+    + '<input id="ma-name" name="fullname" type="text" autocomplete="name" style="'+_maField+'">'
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Password</label>'
-    + '<input id="ma-pass" type="password" autocomplete="new-password" style="'+_maField+'">'
+    + '<input id="ma-pass" name="new-password" type="password" autocomplete="new-password" style="'+_maField+'">'
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Confirm password</label>'
-    + '<input id="ma-pass2" type="password" autocomplete="new-password" style="'+_maField+'">'
+    + '<input id="ma-pass2" name="confirm-password" type="password" autocomplete="new-password" style="'+_maField+'">'
     + '<button style="'+_maBtn+'" onclick="_maDoRedeem(\''+_maJs(code)+'\')">Create account</button>'
     + '<button style="'+_maBtnGhost+'" onclick="_maStripInviteParams();_maRenderLogin(window.__maInviteEmail||\'\')">Already set a password? Log in</button>'
     + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
@@ -4871,9 +4884,9 @@ async function _maDoRedeem(code){
 function _maRenderLogin(prefillEmail, note){
   _maOverlay(_maHead('Log in', note || 'Sign in to see the projects you are assigned to.')
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Email</label>'
-    + '<input id="ma-email" type="email" autocomplete="username" value="'+_maEsc(prefillEmail||'')+'" style="'+_maField+'">'
+    + '<input id="ma-email" name="username" type="email" autocomplete="username" value="'+_maEsc(prefillEmail||'')+'" style="'+_maField+'">'
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Password</label>'
-    + '<input id="ma-pass" type="password" autocomplete="current-password" style="'+_maField+'" onkeydown="if(event.key===\'Enter\')_maDoLogin()">'
+    + '<input id="ma-pass" name="password" type="password" autocomplete="current-password" style="'+_maField+'" onkeydown="if(event.key===\'Enter\')_maDoLogin()">'
     + '<button style="'+_maBtn+'" onclick="_maDoLogin()">Log in</button>'
     + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
     + '</div>');
@@ -5023,6 +5036,19 @@ async function _maBoot(){
   // 3. Returning logged-in rigger with no project bound yet → show my-projects.
   var hasProjectBound = false;
   try{ hasProjectBound = !!localStorage.getItem('buildert_project_key'); }catch(e){}
+  // Always refresh who we are when a session exists: the project sheet needs
+  // the membership list to decide whether to offer "Switch project", and
+  // without this it stayed hidden after every reload. It also drives the
+  // stage-permission override above.
+  if(_maSession && hasProjectBound){
+    try{
+      var meB=await _maApi('GET','/accounts/me');
+      if(meB.status===200 && meB.data && meB.data.ok){
+        _maMe={user:meB.data.user,memberships:meB.data.memberships||{}};
+        if(typeof _renderMobileStageBar==='function') _renderMobileStageBar();
+      } else if(meB.status===401){ _maSetSession(''); }
+    }catch(e){ /* offline: keep whatever we had */ }
+  }
   if(_maSession && !hasProjectBound){
     var me = await _maApi('GET','/accounts/me');
     if(me.status===200 && me.data && me.data.ok){ _maMe={user:me.data.user,memberships:me.data.memberships||{}}; _maRenderProjects(); return true; }
@@ -7023,7 +7049,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.995m',
+    version: 'v3.996m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7418,7 +7444,18 @@ function openProjectSheet(){
 }
 
 // ── Permission helpers ────────────────────────────────────────────
+// True when this device is signed in with an ACCOUNT that has a role on the
+// open project. Stage limits in the project's share list are keyed on rigger
+// NAME and belong to the old share-link world; applying them to an account
+// member silently hid stages they are entitled to see.
+function _maIsAccountMember(){
+  try{
+    return !!(typeof _maSession!=='undefined' && _maSession && _maMe &&
+              _maMe.memberships && _maMe.memberships[_projectKey]);
+  }catch(e){ return false; }
+}
 function _permCanView(stageId){
+  if(_maIsAccountMember()) return true;
   var noPerms = Object.keys(_mStagePerms).length===0;
   if(noPerms) return true;
   var p = _mStagePerms[stageId];
@@ -7427,6 +7464,7 @@ function _permCanView(stageId){
   return !!(p.view || p.edit);
 }
 function _permCanEdit(stageId){
+  if(_maIsAccountMember()) return true;
   var noPerms = Object.keys(_mStagePerms).length===0;
   if(noPerms) return true;
   var p = _mStagePerms[stageId];
