@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.069</title>
+<title>WTUniverse · Buildert Editor v4.070</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.069</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.070</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6774,9 +6774,24 @@ function _mergeProjectNoConflict(data) {
     }
     // else: full import in Worker — ignore, baked specs are truth
   }
-  if(data.project){
-    _projectMeta = Object.assign(_projectMeta, data.project);
-    var ip = data.project.anbernic_ip||'';
+  {
+    // Project identity is REPLACED, never merged. Object.assign used to keep
+    // the previous project's name/venue/date whenever the incoming project
+    // omitted them; the next push then wrote that stale name onto this
+    // project, silently creating duplicate names (and, worse, feeding the
+    // project-key derivation below).
+    var _inMeta = (data && data.project && typeof data.project==='object') ? data.project : {};
+    var _keepIp = _inMeta.anbernic_ip !== undefined ? _inMeta.anbernic_ip : (_projectMeta.anbernic_ip||'');
+    var _newMeta = {
+      name:  _inMeta.name  !== undefined ? _inMeta.name  : ((data && data._project_name) || ''),
+      venue: _inMeta.venue !== undefined ? _inMeta.venue : '',
+      date:  _inMeta.date  !== undefined ? _inMeta.date  : '',
+      anbernic_ip: _keepIp
+    };
+    // preserve any extra custom fields the incoming project carried
+    Object.keys(_inMeta).forEach(function(k){ if(!(k in _newMeta)) _newMeta[k]=_inMeta[k]; });
+    _projectMeta = _newMeta;
+    var ip = _keepIp;
     var ipEl = document.getElementById('device-ip');
     if(ip && ipEl) ipEl.value = ip;
   }
@@ -7833,7 +7848,7 @@ function buildPayload() {
     devices: devices,
     stages:  _stages,
     _project_id:   pid,
-    _project_name: _projectMeta.name || '',
+    _project_name: _brtNameForPush(),
     _pushed_at:    new Date().toISOString(),
     _pushed_by:    'desktop',
     _log: _activityLog.slice(0, 100),  // last 100 entries
@@ -12922,6 +12937,19 @@ async function _brtLoadProjectList(force){
 // project was actually open. The worker's project list is the only source
 // that is reliably about _projectKey, so it wins; local meta is a fallback
 // for projects that were never pushed.
+// The name to WRITE for the open project. Prefers the authoritative list
+// entry for _projectKey so an in-memory value left over from another project
+// can never be pushed over this one. '(unnamed)' is a display label, not a
+// name, so it is written as empty.
+function _brtNameForPush(){
+  try{
+    var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
+    var e=(_brtProjCache.list||[]).filter(function(pp){ return String(pp.key)===key; })[0];
+    if(e) return (e._display==='(unnamed)') ? '' : (e.name||'');
+  }catch(err){}
+  try{ return _projectMeta.name||''; }catch(err){}
+  return '';
+}
 function _brtCurrentName(){
   var key=String(typeof _projectKey!=='undefined'?_projectKey:'');
   var e=(_brtProjCache.list||[]).filter(function(p){ return String(p.key)===key; })[0];
@@ -14480,8 +14508,8 @@ async function _wPushImpl(silent){
     _saved:new Date().toISOString(),
     _saved_by:'desktop',
     _project_id: pid,
-    _project_name: _projectMeta.name || '',
-    project:Object.assign({},_projectMeta),
+    _project_name: _brtNameForPush(),
+    project:Object.assign({},_projectMeta,{name:_brtNameForPush()}),
     stages:JSON.parse(JSON.stringify(_stages)),
     devices:devices,
     spec_overrides:_specsOverrides,
