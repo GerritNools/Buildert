@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.074</title>
+<title>WTUniverse · Buildert Editor v4.075</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.074</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.075</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -7044,6 +7044,52 @@ function _wAllTokens(){
 }
 // ── Known projects registry (drives the multi-project manager) ─────
 function _kpAll(){ try{ return JSON.parse(localStorage.getItem('buildert_known_projects')||'{}'); }catch(e){ return {}; } }
+// Remove every local trace of a project: the known-projects registry, its
+// admin token, protection flag and chat marker. Without this a project that
+// was deleted on the worker kept reappearing in the switcher and Manager as
+// "not on worker", with no way to get rid of it.
+function _brtPurgeLocal(pid){
+  if(!pid) return;
+  _kpForget(pid);
+  ['buildert_admin__','buildert_protected__','buildert_chat_seen_d__'].forEach(function(pfx){
+    try{ localStorage.removeItem(pfx+pid); }catch(e){}
+  });
+  try{
+    if(String(pid)===String(_projectKey)){
+      localStorage.removeItem('buildert_project_key');
+      _projectKey='';
+    }
+  }catch(e){}
+  try{ _brtProjCache.at=0; }catch(e){}
+}
+
+// Projects this browser remembers that the worker no longer has.
+function _brtLocalOrphans(){
+  var onWorker={};
+  try{ (_brtProjCache.list||[]).forEach(function(p){ if(p.devices>=0) onWorker[p.key]=1; }); }catch(e){}
+  var out=[];
+  try{
+    var reg=_kpAll();
+    Object.keys(reg).forEach(function(k){ if(!onWorker[k]) out.push({key:k,name:(reg[k]||{}).name||''}); });
+  }catch(e){}
+  return out;
+}
+
+// One-click cleanup of those leftovers.
+function _brtCleanLocalOrphans(){
+  var orphans=_brtLocalOrphans();
+  if(!orphans.length){ showToast('Nothing to clean up — no local leftovers','ok'); return; }
+  var lines=orphans.map(function(o){ return '  · '+(o.name||'(unnamed)')+'  ['+o.key+']'; });
+  if(!confirm('Remove '+orphans.length+' project'+(orphans.length===1?'':'s')+' from this browser?\n\n'
+    + lines.join('\n')
+    + '\n\nThese no longer exist on the worker. Only local references are removed — '
+    + 'your backup files and anything on the worker are untouched.')) return;
+  orphans.forEach(function(o){ _brtPurgeLocal(o.key); });
+  showToast(orphans.length+' local leftover'+(orphans.length===1?'':'s')+' removed ✓','ok');
+  try{ _brtSyncLabels(); }catch(e){}
+  _mgrRenderProjects();
+}
+
 function _kpForget(pid){
   try{
     var r=_kpAll();
@@ -13487,6 +13533,15 @@ async function _mgrRenderProjects(){
   if(!_host) return;
   _host.innerHTML =
     '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
+    + (function(){
+        var orph=[];
+        try{ orph=_brtLocalOrphans(); }catch(e){}
+        if(!orph.length) return '';
+        return '<div style="border:1px solid var(--border);background:rgba(255,255,255,.03);border-radius:8px;'
+          + 'padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:10px">'
+          + '<span style="flex:1">'+orph.length+' project'+(orph.length===1?'':'s')+' still listed here but no longer on the worker.</span>'
+          + '<button class="btn btn-ghost" style="font-size:11px" onclick="_brtCleanLocalOrphans()">Clean up</button></div>';
+      })()
     + (dupCount?'<div style="border:1px solid var(--warn);background:rgba(255,180,84,.08);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--warn)">⚠ '+dupCount+' project'+(dupCount===1?'':'s')+' share a name with another. Rename them (✎) so you can tell them apart in the switcher.</div>':'')
     + '<div id="mgr-bulk" style="display:none;align-items:center;gap:10px;border:1px solid var(--danger);'
     +   'background:rgba(255,77,77,.06);border-radius:8px;padding:9px 12px;margin-bottom:10px">'
@@ -13550,7 +13605,9 @@ async function _mgrDeleteSelected(){
     var pid=pids[i];
     try{
       var r=await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
-      if(r.status===200 && r.data && r.data.ok){ okN++; _kpForget(pid); }
+      var gone=(r.status===200 && r.data && r.data.ok);
+      var already=(r.status===404) || (r.data && r.data.error && /not found/i.test(String(r.data.error)));
+      if(gone || already){ okN++; _brtPurgeLocal(pid); }
       else { failN++; msgs.push(pid+': '+((r.data&&r.data.error)||('HTTP '+r.status))); }
     }catch(e){ failN++; msgs.push(pid+': '+(e.message||e)); }
   }
@@ -13571,15 +13628,16 @@ async function _mgrDeleteProject(pid){
   if(!confirm('Delete project "'+pid+'" from the worker?\n\nThis cannot be undone. Local backup files are not affected.'
     + (isOpen?'\n\nThis is the project you have open — the editor will detach from it.':''))) return;
   var r = await _mgrApi('DELETE','/project/'+encodeURIComponent(pid));
-  if(r.status===200 && r.data && r.data.ok){
-    _kpForget(pid);
-    if(isOpen){
-      try{ localStorage.removeItem('buildert_project_key'); }catch(e){}
-      _projectKey='';
-      try{ _brtSyncLabels(); }catch(e){}
-    }
-    _brtProjCache.at=0;
-    showToast('Deleted ✓','ok'); _mgrRenderProjects();
+  var gone = (r.status===200 && r.data && r.data.ok);
+  // "Not found" means it is already off the worker — that is the end state we
+  // want, so still clear it locally instead of leaving it stuck in the list.
+  var alreadyGone = (r.status===404) ||
+    (r.data && r.data.error && /not found/i.test(String(r.data.error)));
+  if(gone || alreadyGone){
+    _brtPurgeLocal(pid);
+    if(isOpen){ try{ _brtSyncLabels(); }catch(e){} }
+    showToast(gone?'Deleted ✓':'Was already gone — cleared locally ✓','ok');
+    _mgrRenderProjects();
   }
   else showToast((r.data&&r.data.error)||'Delete failed','danger');
 }
