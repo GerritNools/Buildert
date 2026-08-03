@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.075</title>
+<title>WTUniverse · Buildert Editor v4.076</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.075</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.076</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -12827,25 +12827,7 @@ function openRewardsModal(){
         +'<th style="text-align:right;padding:4px 10px">Bonus XP</th><th style="text-align:right;padding:4px 10px">Total</th></tr></thead>'
         +'<tbody>'+rows+'</tbody></table>'
       :'<p style="color:var(--muted);font-size:13px;padding:12px;border:1px dashed var(--border);border-radius:8px">No rigger activity yet in this project.</p>')
-    +'<div style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">'
-    +  '<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">🔀 MERGE NAMES</div>'
-    +  '<p style="font-size:11px;color:var(--muted);margin:0 0 8px">Same rigger, different spellings? Tick the wrong ones, type the correct name, merge. Applied everywhere (points, leaderboard, assignments) without touching history.</p>'
-    +  '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
-    +    Object.keys(names).sort().map(function(n){
-           return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">'
-             +'<input type="checkbox" class="rw-merge-src" value="'+n.replace(/"/g,'&quot;')+'">'+n+'</label>';
-         }).join('')
-    +  '</div>'
-    +  '<div style="display:flex;gap:8px">'
-    +    '<input id="rw-merge-target" type="text" placeholder="Correct name" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px">'
-    +    '<button class="btn btn-ghost" onclick="_rwMergeNames()" style="font-size:12px">Merge →</button>'
-    +  '</div>'
-    +  (Object.keys(window._riggerAliases||{}).length
-        ? '<div style="font-size:11px;color:var(--muted);margin-top:8px">Active: '
-          +Object.keys(window._riggerAliases).map(function(k){return k+' → '+window._riggerAliases[k];}).join(' · ')
-          +' <button onclick="window._riggerAliases={};autoSave();document.getElementById(\'modal-rewards\').remove();openRewardsModal();" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">reset</button></div>'
-        : '')
-    +'</div>'
+    + _rwMergeSection(Object.keys(names))
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +'<button class="btn btn-ghost" onclick="document.getElementById(\'modal-rewards\').remove()" style="flex:1">Close</button>'
     +'<button class="btn btn-ghost" onclick="_rwExportCsv()" style="flex:1" title="Download the full activity log as CSV for analysis">⬇ Log CSV</button>'
@@ -13347,6 +13329,307 @@ document.addEventListener('click', function(e){
   if(!wrap||!menu||menu.style.display!=='block') return;
   if(!wrap.contains(e.target)) menu.style.display='none';
 }, true);
+
+
+// ── Cross-project XP ──────────────────────────────────────────────────
+// The Rewards modal only ever scored the project you had open. This walks
+// every project you can reach and builds one table: who earned what, where.
+
+// Score one project's log. Kept identical to _rwCalcPoints so the numbers
+// here always match what the Rewards modal shows for a single project.
+function _xpScoreLog(log, aliases){
+  function alias(n){ return (aliases && aliases[n]) || n; }
+  var seen={}, out={};
+  (log||[]).forEach(function(e){
+    if(!e || !e.by) return;
+    var name=alias(e.by);
+    var k=name+'|'+(e.at||'')+'|'+(e.action||'');
+    if(seen[k]) return; seen[k]=1;
+    var a=(e.action||'').toLowerCase(), pts;
+    if(a.indexOf('signed')>=0||a.indexOf('signoff')>=0) pts=50;
+    else if(a.indexOf('todo done')>=0) pts=5;
+    else if(a.indexOf('feedback sent')>=0) pts=10;
+    else if((a.indexOf('mounted')>=0||a.indexOf('cabled')>=0||a.indexOf('pointed')>=0
+          ||a.indexOf('powered')>=0||a.indexOf('tested')>=0) && a.indexOf('✗')<0) pts=1;
+    else if(a.indexOf('status')>=0) pts=2;
+    else pts=1;
+    out[name]=(out[name]||0)+pts;
+  });
+  return out;
+}
+
+var _xpAll=null;   // [{pid, name, riggers:{name:{pts,bonus}}}]
+
+async function _xpLoadAll(){
+  var host=document.getElementById('xp-proj-body');
+  if(host) host.innerHTML='<div style="padding:20px;color:var(--muted);font-size:12px">Reading projects…</div>';
+  var list=await _brtLoadProjectList(true);
+  list=list.filter(function(p){ return p.devices>=0; });   // only what's on the worker
+  var out=[];
+  for(var i=0;i<list.length;i++){
+    var p=list[i];
+    if(host) host.innerHTML='<div style="padding:20px;color:var(--muted);font-size:12px">Reading '+(i+1)+' / '+list.length+' — '+_escHtml(p._display)+'…</div>';
+    try{
+      var tk=_brtAllTokens();
+      var r=await fetch(_workerUrl+'/project/'+encodeURIComponent(p.key)+'?_='+Date.now()+(tk?'&t='+encodeURIComponent(tk):''),{cache:'no-store'});
+      if(!r.ok) continue;
+      var d=await r.json();
+      var proj=(d&&d._projects&&d._projects[p.key])||null;
+      if(!proj) continue;
+      var aliases=proj.rigger_aliases||{};
+      var pts=_xpScoreLog(proj._log||[], aliases);
+      var bonus=proj.xp_bonus||{};
+      var riggers={};
+      Object.keys(pts).forEach(function(n){ riggers[n]={pts:pts[n],bonus:0}; });
+      Object.keys(bonus).forEach(function(nRaw){
+        var n=aliases[nRaw]||nRaw;
+        if(!riggers[n]) riggers[n]={pts:0,bonus:0};
+        riggers[n].bonus += (bonus[nRaw]|0);
+      });
+      out.push({pid:p.key, name:p._display, riggers:riggers});
+    }catch(e){}
+  }
+  _xpAll=out;
+  _xpRenderOverview();
+}
+
+function _xpRenderOverview(){
+  var host=document.getElementById('xp-proj-body');
+  if(!host) return;
+  if(!_xpAll){ host.innerHTML=''; return; }
+  if(!_xpAll.length){
+    host.innerHTML='<div style="padding:18px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px">No projects on the worker to score.</div>';
+    return;
+  }
+  // every rigger across every project
+  var people={};
+  _xpAll.forEach(function(pr){ Object.keys(pr.riggers).forEach(function(n){ people[n]=1; }); });
+  var names=Object.keys(people).sort(function(a,b){
+    var ta=0,tb=0;
+    _xpAll.forEach(function(pr){
+      if(pr.riggers[a]) ta+=pr.riggers[a].pts+pr.riggers[a].bonus;
+      if(pr.riggers[b]) tb+=pr.riggers[b].pts+pr.riggers[b].bonus;
+    });
+    return tb-ta;
+  });
+  if(!names.length){
+    host.innerHTML='<div style="padding:18px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px">No rigger activity recorded in any project yet.</div>';
+    return;
+  }
+  var head='<tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="text-align:left;padding:5px 10px;position:sticky;left:0;background:var(--bg)">Rigger</th>'
+    + _xpAll.map(function(pr){
+        return '<th style="text-align:right;padding:5px 10px;white-space:nowrap">'+_escHtml(pr.name)+'</th>';
+      }).join('')
+    + '<th style="text-align:right;padding:5px 10px;border-left:1px solid var(--border)">Total</th></tr>';
+
+  var body=names.map(function(n){
+    var tot=0;
+    var cells=_xpAll.map(function(pr){
+      var r=pr.riggers[n];
+      if(!r) return '<td style="padding:7px 10px;text-align:right;color:var(--faint,#5a6270)">—</td>';
+      var v=r.pts+r.bonus; tot+=v;
+      return '<td style="padding:7px 10px;text-align:right;font-family:var(--mono)" title="'+r.pts+' earned'+(r.bonus?(' + '+r.bonus+' bonus'):'')+'">'
+        + v + (r.bonus?'<span style="color:#ffd700;font-size:9px"> ★</span>':'') + '</td>';
+    }).join('');
+    return '<tr style="border-top:1px solid var(--border)">'
+      + '<td style="padding:7px 10px;font-weight:700;position:sticky;left:0;background:var(--bg)">'+_escHtml(n)+'</td>'
+      + cells
+      + '<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:700;color:#ffd700;border-left:1px solid var(--border)">'+tot+'</td></tr>';
+  }).join('');
+
+  var totals=_xpAll.map(function(pr){
+    var t=0; Object.keys(pr.riggers).forEach(function(n){ t+=pr.riggers[n].pts+pr.riggers[n].bonus; });
+    return '<td style="padding:7px 10px;text-align:right;font-family:var(--mono);color:var(--muted)">'+t+'</td>';
+  }).join('');
+  var grand=0; _xpAll.forEach(function(pr){ Object.keys(pr.riggers).forEach(function(n){ grand+=pr.riggers[n].pts+pr.riggers[n].bonus; }); });
+
+  host.innerHTML =
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead>'+head+'</thead><tbody>'+body+'</tbody>'
+    + '<tfoot><tr style="border-top:2px solid var(--border)">'
+    +   '<td style="padding:7px 10px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);position:sticky;left:0;background:var(--bg)">Project total</td>'
+    +   totals
+    +   '<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:700;border-left:1px solid var(--border)">'+grand+'</td>'
+    + '</tr></tfoot></table></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-top:10px">'
+    +   '<span style="font-size:11px;color:var(--muted);flex:1">★ marks a total that includes bonus XP. Hover a number to see earned vs bonus.</span>'
+    +   '<button class="btn btn-ghost" style="font-size:11px" onclick="_xpCopyCsv()">Copy as CSV</button>'
+    +   '<button class="btn btn-ghost" style="font-size:11px" onclick="_xpLoadAll()">Refresh</button>'
+    + '</div>';
+}
+
+function _xpCopyCsv(){
+  if(!_xpAll) return;
+  var people={};
+  _xpAll.forEach(function(pr){ Object.keys(pr.riggers).forEach(function(n){ people[n]=1; }); });
+  var names=Object.keys(people).sort();
+  var rows=[['Rigger'].concat(_xpAll.map(function(p){return p.name;})).concat(['Total'])];
+  names.forEach(function(n){
+    var tot=0;
+    var row=[n].concat(_xpAll.map(function(pr){
+      var r=pr.riggers[n]; if(!r) return '';
+      var v=r.pts+r.bonus; tot+=v; return String(v);
+    }));
+    row.push(String(tot)); rows.push(row);
+  });
+  var csv=rows.map(function(r){ return r.map(function(c){
+    return /[",\n]/.test(c)?('"'+String(c).replace(/"/g,'""')+'"'):c; }).join(','); }).join('\n');
+  var ta=document.createElement('textarea');
+  ta.value=csv; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); showToast('XP table copied as CSV ✓','ok'); }
+  catch(e){ try{ navigator.clipboard.writeText(csv); showToast('XP table copied ✓','ok'); }catch(e2){} }
+  ta.remove();
+}
+
+
+// ── Merge names, improved ─────────────────────────────────────────────
+// Before: a flat row of checkboxes and a free-text target. You couldn't see
+// which spelling was the real one, a typo in the target silently created yet
+// another variant, and the only undo was wiping every alias at once.
+
+// Names that are probably the same person: compared with case, spaces,
+// punctuation and any "rigger:" prefix removed.
+function _rwNormName(n){
+  return String(n||'').toLowerCase().replace(/^rigger:\s*/,'').replace(/[^a-z0-9]/g,'');
+}
+function _rwSuggestGroups(names){
+  var byNorm={};
+  names.forEach(function(n){
+    var k=_rwNormName(n);
+    if(!k) return;
+    (byNorm[k]=byNorm[k]||[]).push(n);
+  });
+  return Object.keys(byNorm).filter(function(k){ return byNorm[k].length>1; })
+    .map(function(k){ return byNorm[k]; });
+}
+// The best name to keep: the one with the most points, ties broken by longest.
+function _rwPickCanonical(group, scoreOf){
+  var best=group[0];
+  group.forEach(function(n){
+    var a=scoreOf(n), b=scoreOf(best);
+    if(a>b || (a===b && n.length>best.length)) best=n;
+  });
+  return best;
+}
+function _rwApplyMerge(srcs, target){
+  if(!window._riggerAliases) window._riggerAliases={};
+  srcs.forEach(function(n){
+    if(n===target) return;
+    window._riggerAliases[n]=target;
+    Object.keys(window._riggerAliases).forEach(function(k){
+      if(window._riggerAliases[k]===n) window._riggerAliases[k]=target;
+    });
+  });
+  try{ autoSave(); }catch(e){}
+}
+function _rwUnmerge(from){
+  if(!window._riggerAliases) return;
+  delete window._riggerAliases[from];
+  try{ autoSave(); }catch(e){}
+  try{
+    var m=document.getElementById('modal-rewards');
+    if(m){ m.remove(); openRewardsModal(); }
+  }catch(e){}
+  showToast('"'+from+'" separated again','ok');
+}
+// One-click accept of a suggested group.
+function _rwMergeSuggested(idx){
+  var g=(window.__rwSuggest||[])[idx];
+  if(!g || g.length<2) return;
+  var target=_rwPickCanonical(g, function(n){ return _rwCalcPoints(n); });
+  if(!confirm('Merge these into "'+target+'"?\n\n'+g.map(function(n){
+      return '  · '+n+'  ('+_rwCalcPoints(n)+' pts)';}).join('\n')
+      +'\n\nHistory is not changed — only how the names are grouped.')) return;
+  _rwApplyMerge(g.filter(function(n){return n!==target;}), target);
+  var m=document.getElementById('modal-rewards');
+  if(m){ m.remove(); openRewardsModal(); }
+  showToast('Merged into "'+target+'" ✓','ok');
+}
+// Manual merge, with the target picked from names that actually exist.
+function _rwMergeNames(){
+  var sel=document.getElementById('rw-merge-target');
+  var target=(sel && sel.value || '').trim();
+  var custom=(document.getElementById('rw-merge-custom')||{}).value||'';
+  if(target==='__new__') target=custom.trim();
+  if(!target){ showToast('Choose or type the name to keep','warn'); return; }
+  var srcs=[];
+  Array.prototype.forEach.call(document.querySelectorAll('#modal-rewards .rw-merge-src:checked'), function(c){
+    if(c.value!==target) srcs.push(c.value);
+  });
+  if(!srcs.length){ showToast('Tick at least one name to merge in','warn'); return; }
+  if(!confirm('Merge '+srcs.length+' name'+(srcs.length===1?'':'s')+' into "'+target+'"?\n\n'
+      + srcs.map(function(n){ return '  · '+n+'  ('+_rwCalcPoints(n)+' pts)'; }).join('\n')
+      + '\n\nHistory is not changed — only how the names are grouped.')) return;
+  _rwApplyMerge(srcs, target);
+  var m=document.getElementById('modal-rewards');
+  if(m){ m.remove(); openRewardsModal(); }
+  showToast('Merged into "'+target+'" ✓','ok');
+}
+// The merge section, rendered with real numbers so you can see what you're doing.
+function _rwMergeSection(names){
+  var scored=names.map(function(n){ return {n:n, p:_rwCalcPoints(n)}; })
+                  .sort(function(a,b){ return b.p-a.p || a.n.localeCompare(b.n); });
+  var suggest=_rwSuggestGroups(names);
+  window.__rwSuggest=suggest;
+
+  var h='<div style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">'
+    + '<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">🔀 MERGE NAMES</div>'
+    + '<p style="font-size:11px;color:var(--muted);margin:0 0 10px">Same rigger, different spellings? Points move to the name you keep. History is never rewritten.</p>';
+
+  if(suggest.length){
+    h+='<div style="border:1px solid var(--accent);background:rgba(0,212,255,.05);border-radius:8px;padding:10px 12px;margin-bottom:12px">'
+      + '<div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:6px">Looks like the same person</div>'
+      + suggest.map(function(g,i){
+          var target=_rwPickCanonical(g,function(n){return _rwCalcPoints(n);});
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+            + '<span style="flex:1;font-size:12px">'+g.map(function(n){
+                return _escHtml(n)+' <span style="color:var(--muted);font-size:10px">('+_rwCalcPoints(n)+')</span>';
+              }).join(' <span style="color:var(--muted)">+</span> ')
+            + ' <span style="color:var(--muted)">→</span> <b>'+_escHtml(target)+'</b></span>'
+            + '<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="_rwMergeSuggested('+i+')">Merge</button></div>';
+        }).join('')
+      + '</div>';
+  }
+
+  h+='<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Merge these…</div>'
+   + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+   + scored.map(function(s){
+       return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;'
+         + 'border:1px solid var(--border);border-radius:5px;padding:4px 8px">'
+         + '<input type="checkbox" class="rw-merge-src" value="'+_escHtml(s.n).replace(/"/g,'&quot;')+'">'
+         + _escHtml(s.n)+' <span style="color:var(--muted);font-size:10px">'+s.p+' pts</span></label>';
+     }).join('')
+   + '</div>'
+   + '<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">…into</div>'
+   + '<div style="display:flex;gap:8px">'
+   +   '<select id="rw-merge-target" onchange="document.getElementById(\'rw-merge-custom\').style.display=(this.value===\'__new__\'?\'block\':\'none\')" '
+   +     'style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px">'
+   +     '<option value="">— pick the name to keep —</option>'
+   +     scored.map(function(s){ return '<option value="'+_escHtml(s.n).replace(/"/g,'&quot;')+'">'+_escHtml(s.n)+'  ('+s.p+' pts)</option>'; }).join('')
+   +     '<option value="__new__">Type a different name…</option>'
+   +   '</select>'
+   +   '<button class="btn btn-ghost" onclick="_rwMergeNames()" style="font-size:12px">Merge →</button>'
+   + '</div>'
+   + '<input id="rw-merge-custom" type="text" placeholder="New name to keep" style="display:none;width:100%;box-sizing:border-box;'
+   +   'background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px;margin-top:8px">';
+
+  var al=window._riggerAliases||{};
+  var keys=Object.keys(al);
+  if(keys.length){
+    h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">'
+      + '<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Currently merged</div>'
+      + keys.map(function(k){
+          return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px">'
+            + '<span style="flex:1">'+_escHtml(k)+' <span style="color:var(--muted)">→</span> <b>'+_escHtml(al[k])+'</b></span>'
+            + '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--muted)" onclick="_rwUnmerge(\''
+            + String(k).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">separate</button></div>';
+        }).join('')
+      + '</div>';
+  }
+  return h+'</div>';
+}
 
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13865,7 +14148,16 @@ async function _mgrRenderXp(){
   _mgrBusy('Loading XP…');
   var r = await _mgrApi('GET','/accounts/xp');
   var host=document.getElementById('mgr-sub');
-  var head = '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">'
+  var head = '<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+    +   '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;font-size:14px">📊 XP per project</div>'
+    +   '<span style="flex:1"></span>'
+    +   '<button class="btn btn-ghost" style="font-size:11px" onclick="_xpLoadAll()">Load</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Every project on the worker, scored from its own activity log and bonus XP.</div>'
+    + '<div id="xp-proj-body"></div>'
+    + '</div>'
+    + '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">'
     + '<b style="color:#ffd700">Global XP</b> is a career total per account, across every project. '
     + '<b>Per-project bonus XP</b> is scored inside the current project by rigger name. Both are editable — set any number you like.</p>'
     + '<div style="margin-bottom:14px"><button class="btn btn-ghost" onclick="openRewardsModal()" style="font-size:12px">🏆 Per-project bonus XP for '+_escHtml(_projectKey||'current project')+'…</button></div>';
@@ -13967,33 +14259,7 @@ function newEdition(){
   showToast('New edition "'+newName+'" created — file saved. Connect to worker to sync as a new project.','ok');
 }
 
-function _rwMergeNames(){
-  var target=(document.getElementById('rw-merge-target').value||'').trim();
-  if(!target){ showToast('Type the correct name first','warn'); return; }
-  var srcs=[];
-  document.querySelectorAll('#modal-rewards .rw-merge-src:checked').forEach(function(c){
-    if(c.value!==target) srcs.push(c.value);
-  });
-  if(!srcs.length){ showToast('Tick at least one name to merge','warn'); return; }
-  if(!window._riggerAliases) window._riggerAliases={};
-  srcs.forEach(function(n){
-    window._riggerAliases[n]=target;
-    // Re-point aliases that targeted the merged name
-    Object.keys(window._riggerAliases).forEach(function(k){
-      if(window._riggerAliases[k]===n) window._riggerAliases[k]=target;
-    });
-    // Move any bonus XP to the canonical name
-    if(window._xpBonus && window._xpBonus[n]){
-      window._xpBonus[target]=(window._xpBonus[target]|0)+(window._xpBonus[n]|0);
-      delete window._xpBonus[n];
-    }
-  });
-  autoSave();
-  if(typeof wPush==='function') try{ wPush(); }catch(e){}
-  showToast('Merged '+srcs.join(', ')+' → '+target+' ✓','ok');
-  document.getElementById('modal-rewards').remove();
-  openRewardsModal();
-}
+
 function _rwExportCsv(){
   var rows=[['at','by','device','device_type','device_model','action','stage']];
   (window._projectLog||[]).forEach(function(e){
