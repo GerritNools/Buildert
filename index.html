@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.996m</title>
+<title>WTU · Buildert v3.997m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.996m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.997m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1304,6 +1304,19 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v3.997m: per-project XP ledger (localStorage
+//   buildert_xp_ledger) — riggers see XP per project AND total career XP.
+//   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
+//   • Project sheet rank card shows both numbers
+//   • Log-derived project points are snapshotted into the ledger so they
+//     survive after a project's activity log is gone
+//   • Legacy buildert_career_xp auto-migrated into an "Earlier projects"
+//     bucket (and kept mirrored as the ledger sum for compatibility)
+//   • Check-tick XP now dedupes per device+check per project (no farming)
+//     and shows a small "+1 XP · N this project" chip top-right
+//   • Tier & Motivator™ now rank on the full ledger total
+//   Client-side only — no sync payload / schema changes.
+//
 // FUTURE TODOS:
 //   • Auto-pull merge bug: checks sometimes uncheck after sync.
 //     Workaround: auto-pull OFF by default (v3.964m). Root cause unknown.
@@ -1517,7 +1530,15 @@ function tapCheck(gi,check){
   if(!devices[gi].checks) devices[gi].checks={};
   devices[gi].checks[check]=!devices[gi].checks[check];
   if(typeof _buzz==='function') _buzz(devices[gi].checks[check]?35:15);
-  if(devices[gi].checks[check] && typeof _careerXpAdd==='function') _careerXpAdd(1);
+  // +1 XP per check — but only ONCE per device+check per project (no untick/retick farming)
+  if(devices[gi].checks[check] && typeof _careerXpAdd==='function'){
+    var _xk='chk|'+(_projectKey||'')+'|'+(devices[gi].device_id||gi)+'|'+check;
+    if(typeof _xpAlreadyAwarded!=='function' || !_xpAlreadyAwarded(_xk)){
+      if(typeof _xpMarkAwarded==='function') _xpMarkAwarded(_xk);
+      _careerXpAdd(1);
+      if(typeof _showXpChip==='function') _showXpChip(1);
+    }
+  }
   if(check==='Mounted'){
     if(devices[gi].checks[check]){var n=new Date(),p=function(v){return v<10?'0'+v:''+v;};devices[gi].mounted_at=p(n.getHours())+':'+p(n.getMinutes());}
     else devices[gi].mounted_at='';
@@ -6159,9 +6180,91 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-function _careerXpGet(){ try{ return parseInt(localStorage.getItem('buildert_career_xp')||'0',10)||0; }catch(e){ return 0; } }
+// v3.997m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// can see XP per project AND total. Legacy buildert_career_xp is migrated
+// once into a "Earlier projects" entry and then kept in sync as the sum.
+function _xpLedger(){
+  try{
+    var l = JSON.parse(localStorage.getItem('buildert_xp_ledger')||'null');
+    if(l && typeof l === 'object') return l;
+  }catch(e){}
+  return null;
+}
+function _xpLedgerSave(l){
+  try{ localStorage.setItem('buildert_xp_ledger', JSON.stringify(l)); }catch(e){}
+}
+function _xpLedgerEnsure(){
+  var l = _xpLedger();
+  if(!l){
+    l = {};
+    // One-time migration: old flat career total → "Earlier projects" bucket
+    var legacy = 0;
+    try{ legacy = parseInt(localStorage.getItem('buildert_career_xp')||'0',10)||0; }catch(e){}
+    if(legacy > 0) l['_legacy'] = { name:'Earlier projects', xp:legacy, logPts:0, last:'' };
+    _xpLedgerSave(l);
+  }
+  return l;
+}
+function _xpProjKey(){ return _projectKey || '_noproject'; }
+function _xpProjEntry(l){
+  var k = _xpProjKey();
+  if(!l[k]) l[k] = { name:'', xp:0, logPts:0, last:'' };
+  // Keep display name fresh
+  var nm = (project && project.name) || '';
+  if(nm) l[k].name = nm;
+  return l[k];
+}
+// Total career XP = sum of local xp over all projects (keeps old callers working)
+function _careerXpGet(){
+  var l = _xpLedgerEnsure(), sum = 0;
+  Object.keys(l).forEach(function(k){ sum += (l[k].xp|0); });
+  return sum;
+}
 function _careerXpAdd(n){
-  try{ localStorage.setItem('buildert_career_xp', String(_careerXpGet()+(n|0))); }catch(e){}
+  n = n|0; if(!n) return;
+  var l = _xpLedgerEnsure();
+  var e = _xpProjEntry(l);
+  e.xp += n;
+  e.last = new Date().toISOString().slice(0,10);
+  _xpLedgerSave(l);
+  // Mirror into legacy key so nothing that reads it directly breaks
+  try{ localStorage.setItem('buildert_career_xp', String(_careerXpGet())); }catch(e2){}
+}
+// Snapshot the log-derived project points for the CURRENT project into the
+// ledger, so they survive after the project log is gone (per-project history).
+function _xpSnapshotLogPts(){
+  try{
+    var me = _aliasNameM(window._riggerName||''); if(!me) return;
+    var pts = _calcRiggerStats(me).points|0;
+    var l = _xpLedgerEnsure();
+    var e = _xpProjEntry(l);
+    if(pts > (e.logPts|0)) { e.logPts = pts; e.last = new Date().toISOString().slice(0,10); _xpLedgerSave(l); }
+  }catch(e){}
+}
+// One place that answers: this project / per project / grand total
+function _xpTotals(){
+  var me = _aliasNameM(window._riggerName||'');
+  var bonus = (_xpBonusMap()[me]|0);
+  _xpSnapshotLogPts();
+  var l = _xpLedgerEnsure();
+  var curKey = _xpProjKey();
+  var livePts = me ? (_calcRiggerStats(me).points|0) : 0;
+  var perProject = [];
+  var total = bonus;
+  Object.keys(l).forEach(function(k){
+    var e = l[k];
+    var logPts = (k === curKey) ? Math.max(livePts, e.logPts|0) : (e.logPts|0);
+    var sub = logPts + (e.xp|0);
+    total += sub;
+    perProject.push({ key:k, name:e.name || (k==='_legacy'?'Earlier projects':k), xp:sub, last:e.last||'', current:(k===curKey) });
+  });
+  // Current project first, then most recent
+  perProject.sort(function(a,b){
+    if(a.current) return -1; if(b.current) return 1;
+    return (b.last||'').localeCompare(a.last||'');
+  });
+  var cur = perProject.filter(function(p){ return p.current; })[0];
+  return { total:total, bonus:bonus, project:(cur?cur.xp:0), perProject:perProject };
 }
 // Rigger name aliases (synced from desktop) — applied at read time
 function _aliasNameM(n){
@@ -6253,6 +6356,33 @@ document.addEventListener('visibilitychange', async function(){
   }
 });
 
+// ── Tiny +XP chip — subtle float for small awards (check ticks) ─────
+// Shows "+1 XP · <running project total>" so riggers SEE points land.
+var _xpChipEl=null, _xpChipTimer=null, _xpChipSum=0;
+function _showXpChip(xp){
+  try{
+    _xpChipSum += (xp|0);
+    var t = (typeof _xpTotals==='function') ? _xpTotals() : {project:0};
+    if(!_xpChipEl){
+      _xpChipEl=document.createElement('div');
+      _xpChipEl.style.cssText='position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + 8px);right:12px;z-index:9997;'
+        +'background:rgba(0,212,255,.14);border:1px solid var(--accent);color:var(--accent);'
+        +'font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1px;'
+        +'padding:6px 12px;border-radius:20px;box-shadow:0 2px 10px rgba(0,0,0,.4);'
+        +'opacity:0;transform:translateY(-8px);transition:all .25s ease-out;pointer-events:none';
+      document.body.appendChild(_xpChipEl);
+    }
+    _xpChipEl.textContent='+'+_xpChipSum+' XP · '+t.project+' this project';
+    requestAnimationFrame(function(){ _xpChipEl.style.opacity='1'; _xpChipEl.style.transform='translateY(0)'; });
+    if(_xpChipTimer) clearTimeout(_xpChipTimer);
+    _xpChipTimer=setTimeout(function(){
+      if(_xpChipEl){ _xpChipEl.style.opacity='0'; _xpChipEl.style.transform='translateY(-8px)'; }
+      setTimeout(function(){ if(_xpChipEl){ _xpChipEl.remove(); _xpChipEl=null; } _xpChipSum=0; },300);
+      _xpChipTimer=null;
+    },1600);
+  }catch(e){}
+}
+
 // ── XP laser beam — a beam sweeps across the screen from a random angle ─
 function _showXpBeam(xp){
   try{
@@ -6320,9 +6450,7 @@ var _MOTIV = {
 };
 function _motivShow(){
   try{
-    var me = window._riggerName||'';
-    var stats = (typeof _calcRiggerStats==='function') ? _calcRiggerStats(me) : {points:0};
-    var total = stats.points + (typeof _careerXpGet==='function'?_careerXpGet():0) + ((_xpBonusMap()[me]|0));
+    var total = (typeof _xpTotals==='function') ? _xpTotals().total : 0;
     var tier = _tierFromPoints(total);
     var idx = _TIERS.indexOf(tier);
     var pool = idx<=1?_MOTIV.low : idx<=4?_MOTIV.mid : _MOTIV.high;
@@ -7049,7 +7177,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.996m',
+    version: 'v3.997m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7212,8 +7340,8 @@ function openRankSheet(){
 
   var me = _aliasNameM(window._riggerName||'');
   var myStats = _calcRiggerStats(me);
-  var careerTotal = _careerXpGet() + ((_xpBonusMap()[me]|0));
-  var combined = myStats.points + careerTotal;
+  var xpT = _xpTotals();                 // {total, bonus, project, perProject}
+  var combined = xpT.total;
   var tier = _tierFromPoints(combined);
   var nextTier = _nextTier(tier);
   var board = _getLeaderboard();
@@ -7225,8 +7353,19 @@ function openRankSheet(){
     +'border:1px solid '+tier.color+';border-radius:14px;padding:18px 14px;margin-bottom:16px;text-align:center">'
     +  '<div style="font-size:48px;line-height:1">'+tier.emoji+'</div>'
     +  '<div style="font-family:var(--cond);font-weight:900;font-size:14px;letter-spacing:2px;color:'+tier.color+';margin-top:6px;text-transform:uppercase;line-height:1.3">'+tier.name+'</div>'
-    +  '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px">'+(me||'you')+' · '+myStats.points+' project pts · '+myStats.actions+' actions</div>'
-    +  '<div style="font-family:var(--mono);font-size:12px;color:#ffd700;margin-top:4px;font-weight:700">🌍 CAREER XP: '+careerTotal+((_xpBonusMap()[me]|0)?' <span style="font-size:10px;color:var(--muted)">(incl. '+(_xpBonusMap()[me]|0)+' planner bonus)</span>':'')+'</div>';
+    +  '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px">'+(me||'you')+' · '+myStats.actions+' actions this project</div>'
+    // The two numbers riggers actually want: THIS PROJECT and TOTAL
+    +  '<div style="display:flex;gap:8px;justify-content:center;margin-top:12px">'
+    +    '<div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;padding:8px 14px;min-width:100px">'
+    +      '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent)">'+xpT.project+'</div>'
+    +      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">THIS PROJECT</div>'
+    +    '</div>'
+    +    '<div style="background:rgba(0,0,0,.25);border:1px solid #ffd700;border-radius:10px;padding:8px 14px;min-width:100px">'
+    +      '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#ffd700">'+xpT.total+'</div>'
+    +      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">🌍 TOTAL XP</div>'
+    +    '</div>'
+    +  '</div>'
+    +  (xpT.bonus?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">incl. '+xpT.bonus+' planner bonus 🎁</div>':'');
 
   if(nextTier){
     var pct = Math.round((combined - tier.min) / (nextTier.min - tier.min) * 100);
@@ -7248,6 +7387,35 @@ function openRankSheet(){
     html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text);padding:4px 0;border-bottom:1px dashed var(--border2)">✓ '+p+'</div>';
   });
   html += '</div>';
+
+  // ── XP by project — the passport 📓 ─────────────────────────────
+  if(xpT.perProject.length){
+    var maxXp = Math.max.apply(null, xpT.perProject.map(function(p){return p.xp;}).concat([1]));
+    html += '<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;color:var(--text);margin-bottom:8px">📓 XP BY PROJECT</div>';
+    xpT.perProject.forEach(function(p){
+      var barPct = Math.max(3, Math.round(p.xp / maxXp * 100));
+      var col = p.current ? 'var(--accent)' : '#ffd700';
+      html += '<div style="background:'+(p.current?'rgba(0,212,255,.06)':'var(--bg)')+';'
+        +'border:1px solid '+(p.current?'var(--accent)':'var(--border2)')+';'
+        +'border-radius:8px;padding:9px 12px;margin-bottom:5px">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +  '<div style="flex:1;min-width:0;font-family:var(--cond);font-weight:700;font-size:13px;'
+        +    'color:'+(p.current?'var(--accent)':'var(--text)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+        +    (p.name||'(unnamed project)')+(p.current?' <span style="font-size:9px;font-family:var(--mono);color:var(--ok)">● active</span>':'')
+        +  '</div>'
+        +  '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:'+col+'">'+p.xp+'</div>'
+        +  '<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">XP</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px">'
+        +  '<div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">'
+        +    '<div style="width:'+barPct+'%;height:100%;background:'+col+';border-radius:2px"></div>'
+        +  '</div>'
+        +  (p.last?'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);flex-shrink:0">'+p.last+'</div>':'')
+        +'</div>'
+        +'</div>';
+    });
+    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;padding:4px 0 12px">stored on this phone · project pts + local awards</div>';
+  }
 
   // Stats breakdown
   html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">'
@@ -7322,9 +7490,8 @@ function openProjectSheet(){
 
     // ── Rank card ─────────────────────────────────────────────────
     var _cName = _aliasNameM(window._riggerName);
-    var myStats = _calcRiggerStats(_cName);
-    var _cTot = _careerXpGet() + ((_xpBonusMap()[_cName]|0));
-    var _comb = myStats.points + _cTot;
+    var _xpT = _xpTotals();
+    var _comb = _xpT.total;
     var tier = _tierFromPoints(_comb);
     var nextTier = _nextTier(tier);
     var progressPct = nextTier
@@ -7337,7 +7504,7 @@ function openProjectSheet(){
       +    '<span style="font-size:28px">'+tier.emoji+'</span>'
       +    '<div style="flex:1">'
       +      '<div style="font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:1.5px;color:'+tier.color+';line-height:1.2">'+tier.name.toUpperCase()+'</div>'
-      +      '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">'+_comb+' pts (incl. career) · tap for leaderboard 🏆</div>'
+      +      '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px"><span style="color:var(--accent)">'+_xpT.project+' XP this project</span> · <span style="color:#ffd700">'+_xpT.total+' total</span> · tap 🏆</div>'
       +    '</div>'
       +  '</div>'
       +  (nextTier
