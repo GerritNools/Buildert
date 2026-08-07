@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.076</title>
+<title>WTUniverse · Buildert Editor v4.077</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.076</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.077</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -13938,10 +13938,12 @@ function _mgrRolesFor(uid){
   var out={}; (_mgrCache.memberships||[]).forEach(function(x){ if(x.user_id===uid) out[x.pid]=x.role; });
   return out;
 }
+var _mgrPeopleFilter = '';
 async function _mgrRenderPeople(){
   if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
+  await _mgrLoadInvites();          // v4.077 — pending invites (worker v4.14+)
   if(!_mgrCache.matrixSupported){
     document.getElementById('mgr-sub').innerHTML =
       '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
@@ -13949,34 +13951,158 @@ async function _mgrRenderPeople(){
     return;
   }
   var users = _mgrCache.users || [];
-  var rows = users.map(function(u){
-    var roles = _mgrRolesFor(u.id);
-    var pids = Object.keys(roles);
-    var chips = pids.length ? pids.map(function(pid){
-      var isAdm = roles[pid]==='admin';
-      return '<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin:2px 3px 0 0;'
-        + 'background:'+(isAdm?'rgba(255,215,0,.14)':'rgba(0,212,255,.12)')+';color:'+(isAdm?'#ffd700':'var(--accent)')+'">'
-        + _escHtml(_mgrProjName(pid))+' · '+roles[pid]+'</span>';
-    }).join('') : '<span style="font-size:11px;color:var(--muted)">no projects</span>';
-    var dis = u.status==='disabled';
-    return '<tr style="border-top:1px solid var(--border);'+(dis?'opacity:.45':'')+'">'
-      + '<td style="padding:9px 10px">'
-      +   '<div style="font-weight:700;font-size:14px">'+_escHtml(u.name||'—')+(u.is_owner?' <span style="font-size:10px;color:#ffd700">★ owner</span>':'')+'</div>'
-      +   '<div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
-      + '<td style="padding:9px 10px">'+chips+'</td>'
-      + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
-      +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')">Edit roles…</button>'
-      +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Send this person a password reset link" onclick="_mgrResetPassword(\''+_mgrJs(u.id)+'\')">🔑 Reset</button>'
-      + '</td></tr>';
-  }).join('');
+  var f = _mgrPeopleFilter.toLowerCase();
+  var shown = f ? users.filter(function(u){
+    var hay=((u.name||'')+' '+(u.email||'')).toLowerCase();
+    if(hay.indexOf(f)>=0) return true;
+    // also match by assigned project name
+    var roles=_mgrRolesFor(u.id);
+    return Object.keys(roles).some(function(pid){ return _mgrProjName(pid).toLowerCase().indexOf(f)>=0; });
+  }) : users;
+  var isOwner = !!((_mgrMe&&_mgrMe.user)||{}).is_owner;
+  var nAdmins = users.filter(function(u){ var r=_mgrRolesFor(u.id); return u.is_owner||Object.keys(r).some(function(k){return r[k]==='admin';}); }).length;
+  var nDisabled = users.filter(function(u){ return u.status==='disabled'; }).length;
+  var pend = (_mgrCache.invites||[]).filter(function(i){ return i.state==='pending'; });
+
+  var rows = shown.map(_mgrPersonRowHtml).join('');
+
+  // Pending invites block
+  var invHtml = '';
+  if(_mgrCache.invitesSupported){
+    invHtml = '<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">'
+      + '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;font-size:13px;margin-bottom:6px">✉️ PENDING INVITES <span style="font-weight:400;color:var(--muted);font-size:11px">('+pend.length+')</span></div>'
+      + (pend.length ? pend.map(function(i){
+          var exp = i.expires_at ? String(i.expires_at).slice(0,10) : '?';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border2);font-size:12px">'
+            + '<div style="flex:1;min-width:0"><b>'+_escHtml(i.name||i.email)+'</b> <span style="color:var(--muted)">'+_escHtml(i.email)+'</span>'
+            +   '<div style="font-size:10px;color:var(--muted)">'+(i.pid?_escHtml(_mgrProjName(i.pid))+' · '+_escHtml(i.role):'password reset — roles untouched')+' · expires '+exp+'</div></div>'
+            + '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px" title="Old link keeps its own expiry; this creates a fresh one" onclick="_mgrResendInvite(\''+_mgrJs(i.id)+'\')">🔗 Resend</button>'
+            + '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--danger)" onclick="_mgrRevokeInvite(\''+_mgrJs(i.id)+'\',false)">Revoke</button>'
+            + '</div>';
+        }).join('') : '<div style="font-size:11px;color:var(--muted);padding:6px 0">No open invites — everyone you invited has signed up (or links expired).</div>')
+      + '</div>';
+  } else {
+    invHtml = '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Pending-invite overview, resend & delete need worker v4.14+.</div>';
+  }
+
   document.getElementById('mgr-sub').innerHTML =
     '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">'
     + '<button class="btn" onclick="_mgrInviteDialog()" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:13px">+ Invite person</button>'
-    + '<span style="font-size:12px;color:var(--muted)">'+users.length+' account'+(users.length===1?'':'s')+'</span></div>'
+    + '<input id="mgr-people-search" type="search" placeholder="🔎 name, email or project…" value="'+_escHtml(_mgrPeopleFilter)+'" '
+    +   'oninput="_mgrPeopleFilter=this.value;clearTimeout(window.__mgrFT);window.__mgrFT=setTimeout(function(){_mgrRenderPeopleTableOnly()},150)" '
+    +   'style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 11px;border-radius:6px;font-size:13px;width:230px">'
+    + '<span style="font-size:12px;color:var(--muted)">'+users.length+' account'+(users.length===1?'':'s')
+    +   ' · '+nAdmins+' admin'+(nAdmins===1?'':'s')
+    +   (nDisabled?' · <span style="color:var(--danger)">'+nDisabled+' disabled</span>':'')
+    +   (pend.length?' · <span style="color:var(--warn)">'+pend.length+' invite'+(pend.length===1?'':'s')+' open</span>':'')
+    + '</span></div>'
     + '<div id="mgr-invite-slot"></div>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
-    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:left;padding:4px 10px">Projects &amp; roles</th><th></th></tr></thead>'
-    + '<tbody>'+(rows||'<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--muted)">No accounts yet — invite someone.</td></tr>')+'</tbody></table>';
+    + invHtml
+    + '<div id="mgr-people-table">'+_mgrPeopleTableHtml(rows)+'</div>';
+}
+function _mgrPeopleTableHtml(rows){
+  return '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
+    + '<th style="text-align:left;padding:4px 10px">Person</th><th style="text-align:left;padding:4px 10px">Projects &amp; roles</th><th style="text-align:left;padding:4px 10px">Status</th><th></th></tr></thead>'
+    + '<tbody>'+(rows||'<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--muted)">'+(_mgrPeopleFilter?'No match for “'+_escHtml(_mgrPeopleFilter)+'”.':'No accounts yet — invite someone.')+'</td></tr>')+'</tbody></table>';
+}
+// Search re-render without re-fetching from the worker
+function _mgrRenderPeopleTableOnly(){
+  var host=document.getElementById('mgr-people-table'); if(!host) return _mgrRenderPeople();
+  var users=_mgrCache.users||[], f=_mgrPeopleFilter.toLowerCase();
+  var shown=f?users.filter(function(u){
+    var hay=((u.name||'')+' '+(u.email||'')).toLowerCase();
+    if(hay.indexOf(f)>=0) return true;
+    var roles=_mgrRolesFor(u.id);
+    return Object.keys(roles).some(function(pid){ return _mgrProjName(pid).toLowerCase().indexOf(f)>=0; });
+  }):users;
+  host.innerHTML=_mgrPeopleTableHtml(shown.map(_mgrPersonRowHtml).join(''));
+}
+function _mgrPersonRowHtml(u){
+  var roles=_mgrRolesFor(u.id);
+  var pids=Object.keys(roles);
+  var chips=pids.map(function(pid){
+    var isAdm=roles[pid]==='admin';
+    return '<span onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')" title="Edit projects & roles" '
+      + 'style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin:2px 3px 0 0;cursor:pointer;'
+      + 'background:'+(isAdm?'rgba(255,215,0,.14)':'rgba(0,212,255,.12)')+';color:'+(isAdm?'#ffd700':'var(--accent)')+'">'
+      + _escHtml(_mgrProjName(pid))+' · '+roles[pid]+'</span>';
+  }).join('');
+  chips+='<span onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')" title="Add or remove projects"'
+    + ' style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin:2px 0 0 0;cursor:pointer;'
+    + 'border:1px dashed var(--border);color:var(--muted)">＋ project</span>';
+  var dis=u.status==='disabled';
+  var ll=u.last_login?String(u.last_login).slice(0,10):'';
+  return '<tr style="border-top:1px solid var(--border);'+(dis?'opacity:.45':'')+'">'
+    + '<td style="padding:9px 10px"><div style="font-weight:700;font-size:14px">'+_escHtml(u.name||'—')+(u.is_owner?' <span style="font-size:10px;color:#ffd700">★ owner</span>':'')+'</div>'
+    + '<div style="font-size:11px;color:var(--muted)">'+_escHtml(u.email)+'</div></td>'
+    + '<td style="padding:9px 10px">'+chips+'</td>'
+    + '<td style="padding:9px 10px;white-space:nowrap;font-size:11px">'
+    +   (dis?'<span style="color:var(--danger)">⛔ disabled</span>':'<span style="color:var(--ok)">● active</span>')
+    +   '<div style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-top:2px">'+(ll?('last login '+_escHtml(ll)):'never logged in')+'</div></td>'
+    + '<td style="padding:9px 10px;text-align:right;white-space:nowrap">'
+    +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')">Edit roles…</button>'
+    +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Send this person a fresh login / password-reset link" onclick="_mgrResetPassword(\''+_mgrJs(u.id)+'\')">🔗 Resend link</button>'
+    + '</td></tr>';
+}
+
+// ── Invites: load / resend / revoke (worker v4.14+) ──────────────────
+async function _mgrLoadInvites(){
+  var r = await _mgrApi('GET','/accounts/invites');
+  _mgrCache.invitesSupported = (r.status===200 && r.data && r.data.ok);
+  _mgrCache.invites = _mgrCache.invitesSupported ? (r.data.invites||[]) : [];
+}
+async function _mgrResendInvite(id){
+  var inv=(_mgrCache.invites||[]).filter(function(i){return i.id===id;})[0];
+  if(!inv) return;
+  // Fresh code for the same person + same assignment; revoke the old one so
+  // exactly one live link exists per resend.
+  var r=await _mgrApi('POST','/accounts/invite',{email:inv.email,name:inv.name||'',pid:inv.pid||undefined,role:inv.role||'rigger'});
+  if(r.status!==200 || !r.data || !r.data.code){
+    showToast((r.data&&r.data.error)||'Could not create new link','danger'); return;
+  }
+  await _mgrRevokeInvite(id,true);   // silent revoke of the superseded link
+  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='mgr-resend-modal'; box.style.zIndex='1000';
+  box.innerHTML='<div class="modal" style="max-width:560px">'
+    + '<h2 style="margin-top:0">New invite link</h2>'
+    + '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">Fresh link for <b>'+_escHtml(inv.email)+'</b>. The previous link no longer works.</p>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px">'
+    +   '<input id="mgr-resend-link" readonly value="'+_escHtml(link)+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:8px 10px;border-radius:5px;font-family:var(--mono);font-size:11px">'
+    +   '<button class="btn btn-ghost" onclick="_mgrCopy(\'mgr-resend-link\')">Copy</button></div>'
+    + '<button class="btn" onclick="document.getElementById(\'mgr-resend-modal\').remove()" style="width:100%">Done</button></div>';
+  document.body.appendChild(box);
+  setTimeout(function(){ _mgrCopy('mgr-resend-link'); },100);
+  _mgrRenderPeople();
+}
+async function _mgrRevokeInvite(id, silent){
+  var r=await _mgrApi('DELETE','/accounts/invites/'+encodeURIComponent(id));
+  if(silent) return;
+  if(r.status===200 && r.data && r.data.ok){ showToast('Invite revoked ✓','ok'); _mgrRenderPeople(); }
+  else showToast((r.data&&r.data.error)||'Revoke failed','danger');
+}
+
+// ── Delete a person for good (owner only, worker v4.14+) ─────────────
+async function _mgrDeleteUser(uid){
+  var u=(_mgrCache.users||[]).filter(function(x){return x.id===uid;})[0];
+  if(!u) return;
+  if(!confirm('Permanently delete '+(u.name||u.email)+'?\n\n'
+    + '• Account, roles, sessions and global XP are removed\n'
+    + '• Unused invite links for '+u.email+' stop working\n'
+    + '• Their name stays in project activity logs\n\nThis cannot be undone.')) return;
+  var typed=prompt('Type their email to confirm deletion:','');
+  if((typed||'').trim().toLowerCase()!==String(u.email||'').toLowerCase()){
+    showToast('Email did not match — nothing deleted','warn'); return;
+  }
+  var r=await _mgrApi('DELETE','/accounts/user/'+encodeURIComponent(uid));
+  if(r.status===200 && r.data && r.data.ok){
+    showToast('Account deleted','ok');
+    var m=document.getElementById('mgr-person-modal'); if(m) m.remove();
+    _mgrRenderPeople();
+  } else if(r.status===404 && !(r.data&&r.data.error)){
+    showToast('Delete needs worker v4.14+','warn');
+  } else showToast((r.data&&r.data.error)||'Delete failed','danger');
 }
 function _mgrProjName(pid){
   var p=(_mgrCache.projects||[]).filter(function(x){return String(x.key)===String(pid);})[0];
@@ -14019,6 +14145,7 @@ function _mgrOpenPerson(uid){
     +   '</tbody></table></div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +   (u.is_owner?'':'<button class="btn btn-ghost" style="font-size:11px;color:'+(u.status==='disabled'?'var(--accent)':'var(--danger)')+'" onclick="_mgrToggleUser(\''+_mgrJs(u.id)+'\','+(u.status==='disabled'?'true':'false')+')">'+(u.status==='disabled'?'Enable account':'Disable account')+'</button>')
+    +   ((!u.is_owner && ((_mgrMe&&_mgrMe.user)||{}).is_owner)?' <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" title="Remove this account permanently (worker v4.14+)" onclick="_mgrDeleteUser(\''+_mgrJs(u.id)+'\')">🗑 Delete…</button>':'')
     +   '<span style="flex:1"></span>'
     +   '<button class="btn btn-ghost" onclick="document.getElementById(\'mgr-person-modal\').remove()">Cancel</button>'
     +   '<button class="btn" onclick="_mgrSaveMatrix(\''+_mgrJs(u.id)+'\')" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)">Save roles</button>'
@@ -14114,7 +14241,7 @@ async function _mgrDoInvite(){
     + '<button class="btn btn-ghost" style="font-size:12px" onclick="_mgrCopy(\'mgr-inv-link\')">Copy</button></div>'
     + '<div style="font-size:11px;color:var(--muted);margin-top:6px">They set a password on their phone and see the projects you assigned. Needs mobile v3.993m+.</div></div>';
   showToast('Invite created ✓','ok');
-  _mgrLoadPeople();
+  _mgrLoadPeople(); _mgrLoadInvites();
 }
 function _mgrCopy(id){
   var el=document.getElementById(id); if(!el) return;
