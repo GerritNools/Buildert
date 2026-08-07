@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.997m</title>
+<title>WTU · Buildert v3.998m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.997m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.998m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1304,7 +1304,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v3.997m: per-project XP ledger (localStorage
+// FEATURES ADDED v3.998m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1316,6 +1316,11 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
+//   ALSO v3.998m: account users are no longer called "rigger" in chat.
+//   _maApplyName() propagates the ACCOUNT name (or email) into
+//   window._riggerName at login/redeem/session-refresh, so chat, the
+//   activity log and XP all attribute to the real person. Logout clears
+//   the propagated name so a shared phone doesn't leak identities.
 //
 // FUTURE TODOS:
 //   • Auto-pull merge bug: checks sometimes uncheck after sync.
@@ -4798,6 +4803,16 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
+// v3.998m: propagate the ACCOUNT name into the rigger identity used by chat,
+// activity log and XP. Without this every account user posted as "rigger".
+function _maApplyName(user){
+  if(!user) return;
+  var nm = (user.name||'').trim() || (user.email||'').trim();
+  if(!nm) return;
+  window._riggerName = nm;
+  try{ localStorage.setItem('brt_rigger_name', nm); }catch(e){}
+}
+
 function _maWorkerUrl(){
   return _maWorker
     || (typeof _workerUrl!=='undefined' && _workerUrl)
@@ -4892,6 +4907,7 @@ async function _maDoRedeem(code){
     if(r.status===200 && r.data && r.data.ok){
       _maSetSession(r.data.token);
       _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
+      _maApplyName(r.data.user);
       _maStripInviteParams();          // one-shot code must leave the URL
       showToast && showToast('Account created ✓','ok');
       _maRenderProjects();
@@ -4924,6 +4940,7 @@ async function _maDoLogin(){
     if(r.status===200 && r.data && r.data.ok){
       _maSetSession(r.data.token);
       _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
+      _maApplyName(r.data.user);
       showToast && showToast('Logged in ✓','ok');
       _maRenderProjects();
     } else {
@@ -4936,7 +4953,7 @@ async function _maDoLogin(){
 async function _maRenderProjects(){
   _maOverlay(_maHead('Loading…',''));
   var me = _maMe;
-  if(!me){ var r=await _maApi('GET','/accounts/me'); if(r.status===200 && r.data && r.data.ok){ me=_maMe={user:r.data.user,memberships:r.data.memberships||{}}; } }
+  if(!me){ var r=await _maApi('GET','/accounts/me'); if(r.status===200 && r.data && r.data.ok){ me=_maMe={user:r.data.user,memberships:r.data.memberships||{}}; _maApplyName(r.data.user); } }
   if(!me){ _maSetSession(''); return _maRenderLogin(); }
   var mems = me.memberships || {};
   var pids = Object.keys(mems);
@@ -4998,6 +5015,10 @@ function _maLogout(){
   if(_maSession) _maApi('POST','/accounts/logout').catch(function(){});
   _maSetSession(''); _maMe=null;
   try{ localStorage.removeItem('brt_worker_token'); }catch(e){}
+  // Drop the propagated identity — next person on this phone must not chat
+  // or earn XP under the previous account's name.
+  window._riggerName='';
+  try{ localStorage.removeItem('brt_rigger_name'); }catch(e){}
   _maRenderLogin();
 }
 
@@ -5038,6 +5059,7 @@ async function _maBoot(){
       var me0=await _maApi('GET','/accounts/me');
       if(me0.status===200 && me0.data && me0.data.ok){
         _maMe={user:me0.data.user,memberships:me0.data.memberships||{}};
+        _maApplyName(me0.data.user);
         _maRenderProjects();
         return true;
       }
@@ -5066,13 +5088,14 @@ async function _maBoot(){
       var meB=await _maApi('GET','/accounts/me');
       if(meB.status===200 && meB.data && meB.data.ok){
         _maMe={user:meB.data.user,memberships:meB.data.memberships||{}};
+        _maApplyName(meB.data.user);
         if(typeof _renderMobileStageBar==='function') _renderMobileStageBar();
       } else if(meB.status===401){ _maSetSession(''); }
     }catch(e){ /* offline: keep whatever we had */ }
   }
   if(_maSession && !hasProjectBound){
     var me = await _maApi('GET','/accounts/me');
-    if(me.status===200 && me.data && me.data.ok){ _maMe={user:me.data.user,memberships:me.data.memberships||{}}; _maRenderProjects(); return true; }
+    if(me.status===200 && me.data && me.data.ok){ _maMe={user:me.data.user,memberships:me.data.memberships||{}}; _maApplyName(me.data.user); _maRenderProjects(); return true; }
     _maSetSession(''); // stale
   }
   return false;   // nothing to take over — normal boot continues
@@ -6180,7 +6203,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v3.997m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v3.998m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6975,7 +6998,7 @@ async function chatSend(){
   try{
     var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({by:_aliasNameM(window._riggerName||'rigger'),text:text})
+      body:JSON.stringify({by:_aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'),text:text})
     });
     var d=await r.json();
     if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
@@ -7177,7 +7200,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.997m',
+    version: 'v3.998m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
