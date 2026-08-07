@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.077</title>
+<title>WTUniverse · Buildert Editor v4.079</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.077</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.079</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6996,12 +6996,27 @@ function resolveProjectConflict(mode) {
   _pendingFileData = null;
 }
 
+// v4.079: project meta is stored PER PROJECT. The old single global key
+// ('wtu_project_meta') was shared by every project, so after a switch or on
+// boot the UI could show — and then push — the previous project's name. That
+// is the root of "projects load under different names".
+function _pmMetaKeyFor(pid){ return 'wtu_project_meta__'+(pid||'_unbound'); }
+function _pmLoadMetaFor(pid){
+  try{
+    var s=localStorage.getItem(_pmMetaKeyFor(pid));
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return null;
+}
 function _persistProjectMeta() {
   try {
-    localStorage.setItem('wtu_project_meta', JSON.stringify({
+    localStorage.setItem(_pmMetaKeyFor(_projectKey), JSON.stringify({
       name: _projectMeta.name, venue: _projectMeta.venue, date: _projectMeta.date,
       version: _projectVersion, base_version: _projectBaseVersion
     }));
+    // The legacy global key must not linger — anything still reading it would
+    // resurrect cross-project names.
+    localStorage.removeItem('wtu_project_meta');
   } catch(e) {}
 }
 
@@ -7475,7 +7490,10 @@ function dbxStopPolling(){
 }
 
 function autoSave(){
-  try{localStorage.setItem('buildert_devices',JSON.stringify(devices));}catch(e){}
+  try{
+    localStorage.setItem('buildert_devices',JSON.stringify(devices));
+    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.079: cache ownership
+  }catch(e){}
   // Crash-safe: snapshot the FULL project to localStorage 10s after the last
   // edit — same payload as quick-save, so a browser crash or closed tab
   // loses at most a few seconds, even if the user never presses Save.
@@ -11036,9 +11054,32 @@ function renderSpecs(){
 }
 
 // ── Init
-try{var s=localStorage.getItem('buildert_devices');if(s)devices=JSON.parse(s);}catch(e){}
+// v4.079: only restore the devices cache if it belongs to the bound project.
+// Both caches used to be global, so booting after a switch elsewhere showed
+// the previous project's devices and name under the new key.
 try{
-  var _pm=localStorage.getItem('wtu_project_meta');
+  var _bootKey=localStorage.getItem('buildert_project_key')||'';
+  var _devPid=localStorage.getItem('buildert_devices_pid');
+  var s=localStorage.getItem('buildert_devices');
+  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.079 cache, accept once
+    devices=JSON.parse(s);
+    if(_devPid===null) try{ localStorage.setItem('buildert_devices_pid',_bootKey); }catch(e2){}
+  } else if(s){
+    // Cache belongs to another project — do not show it under this key.
+    devices=[];
+  }
+}catch(e){}
+try{
+  var _bootKey2=localStorage.getItem('buildert_project_key')||'';
+  var _pm=localStorage.getItem(_pmMetaKeyFor(_bootKey2));
+  if(!_pm){
+    // One-time migration: adopt the legacy global meta for the bound key,
+    // then delete it so it can never describe a different project again.
+    var _legacy=localStorage.getItem('wtu_project_meta');
+    if(_legacy){ _pm=_legacy;
+      try{ localStorage.setItem(_pmMetaKeyFor(_bootKey2),_legacy); localStorage.removeItem('wtu_project_meta'); }catch(e3){}
+    }
+  }
   if(_pm){var _pmd=JSON.parse(_pm);
     _projectMeta.name=_pmd.name||'';_projectMeta.venue=_pmd.venue||'';_projectMeta.date=_pmd.date||'';
     _projectVersion=_pmd.version||0;_projectBaseVersion=_pmd.base_version||0;
@@ -12383,9 +12424,29 @@ function _aliasName(n){
   var a = window._riggerAliases||{};
   return a[n] || n;
 }
+// v4.079: score ONLY this project's activity. The log used to bleed across
+// project switches (fixed in pmOpenProject), but logs polluted before the fix
+// still contain foreign entries. Every entry carries the stage id it was made
+// on, so anything referencing a stage this project doesn't have is foreign and
+// excluded. Entries without a stage id can't be attributed and stay counted.
+var _rwIncludeForeign = false;   // planner can toggle to inspect the raw log
+function _rwScopedLog(){
+  var all = window._projectLog||[];
+  if(_rwIncludeForeign) return { entries: all, excluded: 0 };
+  var known = {};
+  (_stages||[]).forEach(function(s){ if(s && s.id) known[s.id]=1; });
+  var out=[], ex=0;
+  all.forEach(function(e){
+    if(!e){ return; }
+    var sid = e.stage || e.stage_id || '';
+    if(sid && !known[sid]){ ex++; return; }   // stage from another project
+    out.push(e);
+  });
+  return { entries: out, excluded: ex };
+}
 function _rwCalcPoints(name){
   var seen={}, pts=0;
-  (window._projectLog||[]).forEach(function(e){
+  _rwScopedLog().entries.forEach(function(e){
     if(!e || _aliasName(e.by)!==name) return;
     var k=(e.at||'')+'|'+(e.action||'');
     if(seen[k]) return; seen[k]=1;
@@ -12800,23 +12861,35 @@ function _iwImport(){
 
 function openRewardsModal(){
   if(!window._xpBonus) window._xpBonus = {};
+  var scoped = _rwScopedLog();
   var names={};
-  (window._projectLog||[]).forEach(function(e){ if(e&&e.by) names[_aliasName(e.by)]=1; });
+  scoped.entries.forEach(function(e){ if(e&&e.by) names[_aliasName(e.by)]=1; });
   Object.keys(window._xpBonus).forEach(function(n){ names[_aliasName(n)]=1; });
   var rows=Object.keys(names).sort().map(function(n){
     var p=_rwCalcPoints(n), b=window._xpBonus[n]|0;
+    var jsN=n.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;');
     return '<tr>'
-      +'<td style="padding:6px 10px;font-weight:700">'+n+'</td>'
+      +'<td style="padding:6px 10px;font-weight:700">'+_escHtml(n)+'</td>'
       +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono)">'+p+'</td>'
-      +'<td style="padding:6px 10px;text-align:right"><input type="number" value="'+b+'" data-name="'+n.replace(/"/g,'&quot;')+'" '
+      +'<td style="padding:6px 10px;text-align:right"><input type="number" value="'+b+'" data-name="'+_escHtml(n).replace(/"/g,'&quot;')+'" '
       +'class="rw-bonus" style="width:80px;background:var(--panel);border:1px solid var(--border);color:#ffd700;'
       +'padding:4px 6px;border-radius:4px;font-family:var(--mono);text-align:right"></td>'
       +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);color:#ffd700;font-weight:700">'+(p+b)+'</td>'
+      +'<td style="padding:6px 4px;text-align:right"><button class="btn btn-ghost" title="Delete this name from THIS project: log entries, bonus XP and aliases" '
+      +'style="font-size:11px;padding:3px 8px;color:var(--danger)" onclick="_rwDeleteName(\''+jsN+'\')">🗑</button></td>'
       +'</tr>';
   }).join('');
+  var scopeNote = scoped.excluded
+    ? '<div style="border:1px solid var(--warn);background:rgba(255,180,84,.07);border-radius:7px;padding:8px 11px;margin:0 0 12px;font-size:11px;color:var(--warn)">'
+      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.079). '
+      +'<a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn);text-decoration:underline">'+(_rwIncludeForeign?'hide them again':'show them anyway')+'</a>'
+      +' · <a href="#" onclick="_rwPurgeForeign();return false" style="color:var(--danger);text-decoration:underline">purge them for good</a></div>'
+    : (_rwIncludeForeign?'<div style="font-size:11px;color:var(--warn);margin:0 0 12px">Showing unscoped log. <a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn)">back to this project only</a></div>':'');
   var html='<div class="modal-overlay open" id="modal-rewards" style="z-index:1000">'
-    +'<div class="modal" style="max-width:560px">'
+    +'<div class="modal" style="max-width:600px;max-height:88vh;overflow-y:auto">'
     +'<h2>🏆 Rigger Rewards™ — admin</h2>'
+    +'<div style="font-size:11px;color:var(--accent);font-family:var(--mono);margin:2px 0 8px">📂 '+_escHtml(_projectMeta&&_projectMeta.name?_projectMeta.name:(_projectKey||'this project'))+' — scored from this project\'s activity log only</div>'
+    + scopeNote
     +'<p style="font-size:12px;color:var(--muted);margin:4px 0 12px">Project points come from the activity log. '
     +'<b style="color:#ffd700">Bonus XP</b> is yours to hand out (or take away — negative works). '
     +'It syncs to riggers\' phones and counts toward their career tier. Use this power for good. Or for fun.</p>'
@@ -12824,7 +12897,7 @@ function openRewardsModal(){
       ?'<table style="width:100%;border-collapse:collapse;font-size:13px">'
         +'<thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
         +'<th style="text-align:left;padding:4px 10px">Rigger</th><th style="text-align:right;padding:4px 10px">Project pts</th>'
-        +'<th style="text-align:right;padding:4px 10px">Bonus XP</th><th style="text-align:right;padding:4px 10px">Total</th></tr></thead>'
+        +'<th style="text-align:right;padding:4px 10px">Bonus XP</th><th style="text-align:right;padding:4px 10px">Total</th><th></th></tr></thead>'
         +'<tbody>'+rows+'</tbody></table>'
       :'<p style="color:var(--muted);font-size:13px;padding:12px;border:1px dashed var(--border);border-radius:8px">No rigger activity yet in this project.</p>')
     + _rwMergeSection(Object.keys(names))
@@ -12834,6 +12907,48 @@ function openRewardsModal(){
     +'<button class="btn" onclick="_rwSave()" style="flex:2;background:#ffd700;color:#000;font-weight:700;border-color:#ffd700">Save & sync</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+}
+function _rwToggleScope(){
+  _rwIncludeForeign=!_rwIncludeForeign;
+  var m=document.getElementById('modal-rewards'); if(m){ m.remove(); openRewardsModal(); }
+}
+// Permanently remove the foreign entries from this project's log.
+function _rwPurgeForeign(){
+  var known={}; (_stages||[]).forEach(function(s){ if(s&&s.id) known[s.id]=1; });
+  var before=(window._projectLog||[]).length;
+  var kept=(window._projectLog||[]).filter(function(e){
+    var sid=e&&(e.stage||e.stage_id)||'';
+    return !(sid && !known[sid]);
+  });
+  var n=before-kept.length;
+  if(!n){ showToast('Nothing foreign to purge','muted'); return; }
+  if(!confirm('Permanently remove '+n+' log entr'+(n===1?'y':'ies')+' that belong to other projects?\n\nNote: a phone that still holds these entries may push them back once. Purge again if that happens.')) return;
+  window._projectLog=kept;
+  try{ autoSave(); }catch(e){}
+  if(typeof wPush==='function') try{ wPush(); }catch(e){}
+  var m=document.getElementById('modal-rewards'); if(m){ m.remove(); openRewardsModal(); }
+  showToast('Purged '+n+' foreign entr'+(n===1?'y':'ies')+' ✓','ok');
+}
+// Delete ONE rigger name from this project: their log entries, bonus XP and
+// any alias rows mentioning them. Career XP on their own phone is untouched.
+function _rwDeleteName(name){
+  var pts=_rwCalcPoints(name), b=(window._xpBonus||{})[name]|0;
+  if(!confirm('Delete "'+name+'" from this project\'s rewards?\n\n'
+    +'• '+pts+' project pts (their log entries here) are removed\n'
+    +(b?('• '+b+' bonus XP is removed\n'):'')
+    +'• Aliases pointing to this name are removed\n'
+    +'• Career XP stored on their own phone is NOT touched\n\n'
+    +'A phone that still holds these log entries may push them back once.')) return;
+  window._projectLog=(window._projectLog||[]).filter(function(e){
+    return !(e && _aliasName(e.by)===name);
+  });
+  if(window._xpBonus) delete window._xpBonus[name];
+  var al=window._riggerAliases||{};
+  Object.keys(al).forEach(function(k){ if(k===name||al[k]===name) delete al[k]; });
+  try{ autoSave(); }catch(e){}
+  if(typeof wPush==='function') try{ wPush(); }catch(e){}
+  var m=document.getElementById('modal-rewards'); if(m){ m.remove(); openRewardsModal(); }
+  showToast('"'+name+'" deleted from this project ✓','ok');
 }
 // ── Change my password ───────────────────────────────────────────────
 function _mgrChangePwDialog(){
@@ -12989,12 +13104,10 @@ async function _brtLoadProjectList(force){
 }
 
 // ── Authoritative name of the OPEN project ───────────────────────────
-// _projectMeta.name comes from a SINGLE localStorage key ('wtu_project_meta')
-// shared by every project, so after switching it can still hold the previous
-// project's name. That is why the switcher once said "L700" while a different
-// project was actually open. The worker's project list is the only source
-// that is reliably about _projectKey, so it wins; local meta is a fallback
-// for projects that were never pushed.
+// Since v4.079, _projectMeta is stored per project ('wtu_project_meta__<pid>')
+// and swapped on every switch, so it always describes _projectKey. The
+// worker's project list still wins when it disagrees (it is the shared truth);
+// local meta covers projects that were never pushed and offline boots.
 // The name to WRITE for the open project. Prefers the authoritative list
 // entry for _projectKey so an in-memory value left over from another project
 // can never be pushed over this one. '(unnamed)' is a display label, not a
@@ -13548,16 +13661,53 @@ function _rwMergeSuggested(idx){
   showToast('Merged into "'+target+'" ✓','ok');
 }
 // Manual merge, with the target picked from names that actually exist.
+// Live merge preview: auto-picks the highest-scoring ticked name as the one
+// to keep (unless the planner chose one), and narrates exactly what will
+// happen before the button is pressed.
+function _rwMergePreview(){
+  var box=document.getElementById('rw-merge-preview');
+  var go=document.getElementById('rw-merge-go');
+  var sel=document.getElementById('rw-merge-target');
+  if(!box||!sel) return;
+  var ticked=[];
+  Array.prototype.forEach.call(document.querySelectorAll('#modal-rewards .rw-merge-src:checked'), function(c){
+    ticked.push({n:c.value, p:parseInt(c.dataset.pts,10)||0});
+  });
+  var target=(sel.value||'').trim();
+  if(target==='__new__') target=((document.getElementById('rw-merge-custom')||{}).value||'').trim();
+  // Auto-target: nothing chosen → the ticked name with the most points wins
+  var auto=false;
+  if(!target && ticked.length>=2){
+    target=ticked.slice().sort(function(a,b){return b.p-a.p||a.n.localeCompare(b.n);})[0].n;
+    auto=true;
+  }
+  var srcs=ticked.filter(function(t){return t.n!==target;});
+  var enough=!!target && srcs.length>=1;
+  if(go) go.disabled=!enough;
+  if(!ticked.length){ box.textContent=''; return; }
+  if(!enough){ box.innerHTML='<span style="color:var(--muted)">Tick at least two names, or one name plus a target to keep.</span>'; return; }
+  var tot=ticked.reduce(function(s,t){return s+t.p;},0);
+  // If target wasn't ticked, its points still count toward the merged total
+  if(!ticked.some(function(t){return t.n===target;})) tot+=_rwCalcPoints(target);
+  box.innerHTML='Merging '+srcs.map(function(s){return '<b>'+_escHtml(s.n)+'</b> ('+s.p+')';}).join(' + ')
+    +' → keeps <b style="color:var(--accent)">'+_escHtml(target)+'</b>'+(auto?' <span style="color:var(--muted)">(auto: most points)</span>':'')
+    +' · <b style="color:#ffd700">'+tot+' pts total</b>';
+}
 function _rwMergeNames(){
   var sel=document.getElementById('rw-merge-target');
   var target=(sel && sel.value || '').trim();
   var custom=(document.getElementById('rw-merge-custom')||{}).value||'';
   if(target==='__new__') target=custom.trim();
-  if(!target){ showToast('Choose or type the name to keep','warn'); return; }
-  var srcs=[];
+  var ticked=[];
   Array.prototype.forEach.call(document.querySelectorAll('#modal-rewards .rw-merge-src:checked'), function(c){
-    if(c.value!==target) srcs.push(c.value);
+    ticked.push({n:c.value, p:parseInt(c.dataset.pts,10)||0});
   });
+  // Same auto-target rule as the preview so what you saw is what you get
+  if(!target && ticked.length>=2){
+    target=ticked.slice().sort(function(a,b){return b.p-a.p||a.n.localeCompare(b.n);})[0].n;
+  }
+  if(!target){ showToast('Choose or type the name to keep','warn'); return; }
+  var srcs=ticked.map(function(t){return t.n;}).filter(function(n){return n!==target;});
   if(!srcs.length){ showToast('Tick at least one name to merge in','warn'); return; }
   if(!confirm('Merge '+srcs.length+' name'+(srcs.length===1?'':'s')+' into "'+target+'"?\n\n'
       + srcs.map(function(n){ return '  · '+n+'  ('+_rwCalcPoints(n)+' pts)'; }).join('\n')
@@ -13598,22 +13748,23 @@ function _rwMergeSection(names){
    + scored.map(function(s){
        return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;'
          + 'border:1px solid var(--border);border-radius:5px;padding:4px 8px">'
-         + '<input type="checkbox" class="rw-merge-src" value="'+_escHtml(s.n).replace(/"/g,'&quot;')+'">'
+         + '<input type="checkbox" class="rw-merge-src" value="'+_escHtml(s.n).replace(/"/g,'&quot;')+'" data-pts="'+s.p+'" onchange="_rwMergePreview()">'
          + _escHtml(s.n)+' <span style="color:var(--muted);font-size:10px">'+s.p+' pts</span></label>';
      }).join('')
    + '</div>'
    + '<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">…into</div>'
    + '<div style="display:flex;gap:8px">'
-   +   '<select id="rw-merge-target" onchange="document.getElementById(\'rw-merge-custom\').style.display=(this.value===\'__new__\'?\'block\':\'none\')" '
+   +   '<select id="rw-merge-target" onchange="document.getElementById(\'rw-merge-custom\').style.display=(this.value===\'__new__\'?\'block\':\'none\');_rwMergePreview()" '
    +     'style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px">'
-   +     '<option value="">— pick the name to keep —</option>'
+   +     '<option value="">— pick the name to keep (auto: most points) —</option>'
    +     scored.map(function(s){ return '<option value="'+_escHtml(s.n).replace(/"/g,'&quot;')+'">'+_escHtml(s.n)+'  ('+s.p+' pts)</option>'; }).join('')
    +     '<option value="__new__">Type a different name…</option>'
    +   '</select>'
-   +   '<button class="btn btn-ghost" onclick="_rwMergeNames()" style="font-size:12px">Merge →</button>'
+   +   '<button class="btn" id="rw-merge-go" onclick="_rwMergeNames()" style="font-size:12px;background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)" disabled>Merge →</button>'
    + '</div>'
-   + '<input id="rw-merge-custom" type="text" placeholder="New name to keep" style="display:none;width:100%;box-sizing:border-box;'
-   +   'background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px;margin-top:8px">';
+   + '<input id="rw-merge-custom" type="text" placeholder="New name to keep" oninput="_rwMergePreview()" style="display:none;width:100%;box-sizing:border-box;'
+   +   'background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:5px;font-size:13px;margin-top:8px">'
+   + '<div id="rw-merge-preview" style="font-size:11px;color:var(--muted);margin-top:7px;min-height:15px"></div>';
 
   var al=window._riggerAliases||{};
   var keys=Object.keys(al);
@@ -13767,7 +13918,7 @@ function _mgrRenderShell(){
     + '<div id="mgr-sub"></div></div>';
   _mgrRenderSubtab();
 }
-function _mgrSetSubtab(id){ _mgrSubtab=id; _mgrRenderSubtab(); }
+function _mgrSetSubtab(id){ _mgrSubtab=id; _mgrRenderShell(); }   // shell re-render = tab highlight follows
 function _mgrRenderSubtab(){
   if(_mgrSubtab==='people') return _mgrRenderPeople();
   if(_mgrSubtab==='access') return _mgrRenderAccess();
@@ -13793,6 +13944,11 @@ async function _mgrRenderProjects(){
     var cur = (String(p.key)===String(_projectKey));
     var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // v4.079: surface a stale local alias — the registry remembering an old
+    // name is one of the ways "the same project shows up under two names".
+    var regName=''; try{ regName=((_kpAll()[p.key])||{}).name||''; }catch(e){}
+    var aliasMismatch = regName && p.devices>=0 && p._display!=='(unnamed)'
+      && regName.toLowerCase()!==String(p._display).toLowerCase();
     return '<tr style="border-top:1px solid var(--border);'+(cur?'background:rgba(0,212,255,.07)':'')+'">'
       + '<td style="padding:9px 4px 9px 10px;width:26px"><input type="checkbox" class="mgr-psel" value="'+_escHtml(p.key)+'" onchange="_mgrSelCount()" style="cursor:pointer"></td>'
       + '<td style="padding:9px 10px">'
@@ -13802,6 +13958,10 @@ async function _mgrRenderProjects(){
       +     (p._dupName?' <span title="Another project shares this name — rename to tell them apart" style="color:var(--warn);font-size:10px">⚠ duplicate name</span>':'')
       +   '</div>'
       +   '<div style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+_escHtml(p.key)+'</div>'
+      +   (aliasMismatch
+          ? '<div style="font-size:10px;color:var(--warn)">this browser remembered it as “'+_escHtml(regName)+'” '
+            +'<a href="#" onclick="_kpTouch(\''+jsKey+'\',\''+jsName+'\');_mgrRenderProjects();return false" style="color:var(--warn);text-decoration:underline">forget old name</a></div>'
+          : '')
       + '</td>'
       + '<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+(p.devices>=0?(p.devices+' <span style="color:var(--muted);font-size:10px">dev</span>'):'<span style="color:var(--warn);font-size:10px">not on worker</span>')+'</td>'
       + '<td style="padding:9px 10px;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_escHtml(_brtShortDate(p.saved))+'<br>'+_escHtml(p.by||'?')+'</td>'
@@ -13815,7 +13975,19 @@ async function _mgrRenderProjects(){
   var _host=document.getElementById('mgr-sub');
   if(!_host) return;
   _host.innerHTML =
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
+    // v4.079: identity strip — one line that says exactly what is open and
+    // where its displayed name comes from. No more guessing.
+    (function(){
+      var cur=list.filter(function(p){ return String(p.key)===String(_projectKey); })[0];
+      var src = cur && cur.devices>=0 ? 'worker' : (_projectKey ? 'this browser only (never pushed)' : '—');
+      var nm = _projectKey ? (typeof _brtCurrentName==='function'?_brtCurrentName():(_projectMeta.name||_projectKey)) : 'no project open';
+      return '<div style="border:1px solid var(--accent);background:rgba(0,212,255,.05);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        + '<span style="color:var(--muted)">Open now:</span>'
+        + '<b style="color:var(--accent)">'+_escHtml(nm)+'</b>'
+        + (_projectKey?'<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">slot '+_escHtml(_projectKey)+' · name from '+src+'</span>':'')
+        + '</div>';
+    })()
+    + '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Every project you can reach. Opening one flushes the current project first, so nothing is lost. Use ✎ to rename — devices and serials are never touched.</p>'
     + (function(){
         var orph=[];
         try{ orph=_brtLocalOrphans(); }catch(e){}
@@ -13837,7 +14009,54 @@ async function _mgrRenderProjects(){
     + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase">'
     + '<th style="padding:4px 4px 4px 10px;width:26px"><input type="checkbox" id="mgr-pall" onchange="_mgrSelAll(this.checked)" style="cursor:pointer" title="Select all"></th>'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
-    + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')+'</tbody></table>';
+    + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No projects yet.</td></tr>')+'</tbody></table>'
+    // v4.079: the clean-slate path for when local naming state has gone bad.
+    + '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px;display:flex;align-items:center;gap:10px">'
+    +   '<div style="flex:1;font-size:11px;color:var(--muted)">Names still wrong after the fixes above? Wipe this browser\'s local project caches and re-open your backups fresh. Projects on the worker, your login and project access keys are kept.</div>'
+    +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="mgrStartClean()">🧹 Start clean…</button>'
+    + '</div>';
+}
+
+// ── Start clean: wipe local project-identity caches, keep access ─────
+// For the "I have backups of all, I'll re-load them" workflow. Removes every
+// local cache that can hold a WRONG name or the WRONG project's data. Keeps
+// everything needed to stay connected: worker URL, admin secrets per project,
+// share tokens, Manager login, account session, device specs library.
+function mgrStartClean(){
+  if(!confirm('Start clean?\n\nCLEARED (this browser only):\n'
+    +'  · which project is open + its cached devices\n'
+    +'  · all locally stored project names & meta\n'
+    +'  · the known-projects registry and recent-files list\n'
+    +'  · the crash-recovery snapshot\n'
+    +'  · in-memory activity log / bonus XP / aliases\n\n'
+    +'KEPT:\n'
+    +'  · every project on the worker (nothing is deleted there)\n'
+    +'  · worker URL, project access keys, Manager login\n'
+    +'  · device specs library\n\n'
+    +'Afterwards, open projects from this list or via File → Open with your backups.')) return;
+  var kill=[];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i); if(!k) continue;
+      if(k==='buildert_devices'||k==='buildert_devices_pid'||k==='buildert_project_key'
+        ||k==='wtu_project_meta'||k.indexOf('wtu_project_meta__')===0
+        ||k==='brt_project_snapshot'||k==='buildert_known_projects'||k==='brt_recent'
+        ||k==='wtu_devices'||k==='buildert_todos') kill.push(k);
+    }
+    kill.forEach(function(k){ localStorage.removeItem(k); });
+  }catch(e){}
+  // In-memory state
+  try{
+    _projectKey=''; _brtMetaKey='';
+    devices=[]; _stages=[]; _currentStageIdx=0;
+    _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
+    _projectVersion=0; _projectBaseVersion=0;
+    window._projectLog=[]; window._xpBonus=null; window._riggerAliases=null;
+    _recentFiles=[]; _brtProjCache={list:[],at:0};
+  }catch(e){}
+  showToast('Local caches cleared ('+kill.length+' keys) — open a project to continue','ok');
+  try{ _brtSyncLabels(); }catch(e){}
+  try{ _mgrRenderProjects(); }catch(e){}
 }
 function _mgrFilterProjects(){
   var q=((document.getElementById('mgr-pf')||{}).value||'').toLowerCase();
@@ -13943,7 +14162,7 @@ async function _mgrRenderPeople(){
   if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
-  await _mgrLoadInvites();          // v4.077 — pending invites (worker v4.14+)
+  await _mgrLoadInvites();          // v4.079 — pending invites (worker v4.14+)
   if(!_mgrCache.matrixSupported){
     document.getElementById('mgr-sub').innerHTML =
       '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
@@ -14022,10 +14241,16 @@ function _mgrPersonRowHtml(u){
   var pids=Object.keys(roles);
   var chips=pids.map(function(pid){
     var isAdm=roles[pid]==='admin';
-    return '<span onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')" title="Edit projects & roles" '
-      + 'style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin:2px 3px 0 0;cursor:pointer;'
-      + 'background:'+(isAdm?'rgba(255,215,0,.14)':'rgba(0,212,255,.12)')+';color:'+(isAdm?'#ffd700':'var(--accent)')+'">'
-      + _escHtml(_mgrProjName(pid))+' · '+roles[pid]+'</span>';
+    var col=isAdm?'#ffd700':'var(--accent)';
+    return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 5px 2px 7px;border-radius:10px;margin:2px 3px 0 0;'
+      + 'background:'+(isAdm?'rgba(255,215,0,.14)':'rgba(0,212,255,.12)')+';color:'+col+'">'
+      + '<span onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')" title="Edit projects & roles" style="cursor:pointer">'
+      +   _escHtml(_mgrProjName(pid))+' · '+roles[pid]+'</span>'
+      + '<span onclick="event.stopPropagation();_mgrQuickRemoveRole(\''+_mgrJs(u.id)+'\',\''+_mgrJs(pid)+'\')" '
+      +   'title="Remove '+_escHtml(_mgrProjName(pid))+' from this person" '
+      +   'style="cursor:pointer;font-weight:900;opacity:.55;padding:0 2px" '
+      +   'onmouseover="this.style.opacity=1;this.style.color=\'var(--danger)\'" onmouseout="this.style.opacity=.55;this.style.color=\''+col+'\'">×</span>'
+      + '</span>';
   }).join('');
   chips+='<span onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')" title="Add or remove projects"'
     + ' style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin:2px 0 0 0;cursor:pointer;'
@@ -14043,6 +14268,21 @@ function _mgrPersonRowHtml(u){
     +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_mgrOpenPerson(\''+_mgrJs(u.id)+'\')">Edit roles…</button>'
     +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Send this person a fresh login / password-reset link" onclick="_mgrResetPassword(\''+_mgrJs(u.id)+'\')">🔗 Resend link</button>'
     + '</td></tr>';
+}
+
+// ── Quick-remove one project from a person (the × on a chip) ─────────
+// Uses the long-existing POST /accounts/membership {role:'none'} — no worker
+// update needed. The full matrix (Edit roles…) stays for bigger changes.
+async function _mgrQuickRemoveRole(uid, pid){
+  var u=(_mgrCache.users||[]).filter(function(x){return x.id===uid;})[0];
+  if(!u) return;
+  if(u.is_owner){ showToast('Owner has admin everywhere — rows don\'t apply','warn'); return; }
+  if(!confirm('Remove '+_mgrProjName(pid)+' from '+(u.name||u.email)+'?\n\nThey lose access to that project immediately. Their XP and log history stay.')) return;
+  var r=await _mgrApi('POST','/accounts/membership',{user_id:uid,pid:pid,role:'none'});
+  if(r.status===200 && r.data && r.data.ok){
+    showToast('Removed '+_mgrProjName(pid)+' from '+(u.name||u.email)+' ✓','ok');
+    _mgrRenderPeople();
+  } else showToast((r.data&&r.data.error)||'Remove failed','danger');
 }
 
 // ── Invites: load / resend / revoke (worker v4.14+) ──────────────────
@@ -14595,6 +14835,25 @@ async function pmOpenProject(pid){
   _kpTouch(_projectKey, _projectMeta.name||'');   // remember where we came from
   _projectKey = pid;
   try{ localStorage.setItem('buildert_project_key', pid); }catch(e){}
+  // v4.079: per-project reward state MUST NOT survive a switch. The activity
+  // log merge is additive, so without this the old project's log entries (and
+  // bonus XP + aliases) bled into the new project — Rewards then scored riggers
+  // on BOTH projects, and the next push wrote the polluted log into the new
+  // project permanently.
+  window._projectLog = [];
+  window._xpBonus = null;        // null (not {}) so the pull adopts the new project's synced bonus
+  window._riggerAliases = null;  // idem for aliases
+  if(typeof _spUpdateBadge==='function') try{ _spUpdateBadge(); }catch(e){}
+  // v4.079: swap to THIS project's stored meta right away. The name is correct
+  // the instant you switch — even offline — instead of showing the previous
+  // project's name until a pull happens to fix it.
+  try{
+    var _swMeta=_pmLoadMetaFor(pid);
+    _projectMeta={ name:(_swMeta&&_swMeta.name)||'', venue:(_swMeta&&_swMeta.venue)||'', date:(_swMeta&&_swMeta.date)||'', anbernic_ip:_projectMeta.anbernic_ip||'' };
+    _projectVersion=(_swMeta&&_swMeta.version)||0; _projectBaseVersion=(_swMeta&&_swMeta.base_version)||0;
+    _brtMetaKey=String(pid);
+    if(typeof _brtSyncLabels==='function') _brtSyncLabels();
+  }catch(e){}
   document.getElementById('modal-project-manager').classList.remove('open');
   showToast('Switching to '+pid+'…','muted');
   await wPull(true);
@@ -15114,6 +15373,9 @@ async function _wPushImpl(silent){
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
     addSyncLog('Auto-derived project key: '+_projectKey,'info');
+    // v4.079: slot creation must never be silent — invisible auto-derived
+    // slots are how projects "appeared out of nowhere" in the Manager.
+    showToast('📂 New worker slot created: '+_projectKey+' — rename it in Manager → Projects if needed','info');
   }
 
   var pid = _getProjectId();
@@ -17045,12 +17307,23 @@ function hideRecentMenu(){
 function recentOpen(idx){
   document.getElementById('file-menu').style.display='none';
   var r=_recentFiles[idx]; if(!r) return;
-  // Try to load from localStorage snapshot first
+  // v4.079: the snapshot is ONE slot. It used to be loaded for ANY recent
+  // entry clicked — pick "Show B", get whatever project the snapshot held,
+  // labeled "Show B". Now the snapshot's identity must match the entry.
   try{
     var snap=localStorage.getItem('brt_project_snapshot');
     if(snap){
       var data=JSON.parse(snap);
       if(data&&data._format==='wtu-project'){
+        var snapName=(data.project&&data.project.name)||'';
+        var wantName=r.project||'';
+        var sameProject =
+          (wantName && snapName && wantName.toLowerCase()===snapName.toLowerCase())
+          || (!wantName && !snapName);
+        if(!sameProject){
+          showToast('Snapshot holds "'+(snapName||data._project_id||'another project')+'", not "'+(wantName||r.name)+'" — use File → Open on the backup file','warn');
+          return;
+        }
         if(_unsaved && !confirm('Discard unsaved changes?')) return;
         _isReceiving=true;
         try{ _mergeProjectNoConflict(data); }finally{ _isReceiving=false; }
