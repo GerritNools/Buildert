@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.999m</title>
+<title>WTU · Buildert v4.000m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.999m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.000m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -711,7 +711,13 @@ body.sun-mode .pack-table td {
 </div>
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
-  <div class="sheet-title">💬 Project chat</div>
+  <div class="sheet-title">💬 Chat</div>
+  <!-- v4.000m: channel tabs — project chat + two company-wide channels -->
+  <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
+    <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
+    <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
+    <button id="chat-tab-fun" onclick="chatSwitch('fun')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">🎉 Fun<span class="chat-tab-dot" id="chat-dot-fun" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
+  </div>
   <div class="sheet-body" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden">
     <div id="chat-msgs" style="flex:1;min-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
       <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
@@ -1304,7 +1310,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v3.999m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.000m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1316,7 +1322,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v3.999m: account users are no longer called "rigger" in chat.
+//   ALSO v4.000m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -4803,7 +4809,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v3.999m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.000m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6203,7 +6209,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v3.999m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.000m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6909,17 +6915,57 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Project chat — rides the worker (/chat/<pid>), no extra services ──
+// ── Chat — project channel + two company-wide channels (v4.000m) ─────
+// '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
+// across ALL projects (worker v4.18+, pids _global_info / _global_fun).
+// Global channels authenticate via the project you're in (?via=), so the
+// same credentials keep working. Per-channel unread dots on the tabs; the
+// header 💬 dot lights up when ANY channel has something new.
 var _chatMsgs=[], _chatPollTimer=null, _chatOpen=false;
-function _chatSeenKey(){ return 'buildert_chat_seen__'+(_projectKey||''); }
-async function _chatFetch(){
+var _chatChannel='project';
+var _CHAT_CHANNELS={ project:{label:'📌 Project'}, info:{label:'ℹ️ Info'}, fun:{label:'🎉 Fun'} };
+function _chatPid(ch){
+  ch=ch||_chatChannel;
+  if(ch==='info') return '_global_info';
+  if(ch==='fun') return '_global_fun';
+  return _projectKey||'';
+}
+function _chatUrl(ch){
+  var pid=_chatPid(ch);
+  var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(pid));
+  if(ch!=='project'&&_projectKey) u+=(u.indexOf('?')>=0?'&':'?')+'via='+encodeURIComponent(_projectKey);
+  return u;
+}
+function _chatSeenKey(ch){ return 'buildert_chat_seen__'+_chatPid(ch||_chatChannel); }
+async function _chatFetch(ch){
   if(!_workerUrl || !_projectKey) return null;
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)));
+    var r=await fetch(_chatUrl(ch||_chatChannel));
     if(!r.ok) return null;
     var d=await r.json();
     return Array.isArray(d.messages)?d.messages:[];
   }catch(e){ return null; }
+}
+function _chatStyleTabs(){
+  Object.keys(_CHAT_CHANNELS).forEach(function(ch){
+    var b=document.getElementById('chat-tab-'+ch); if(!b) return;
+    var on=(ch===_chatChannel);
+    b.style.background=on?'rgba(0,212,255,.16)':'var(--panel)';
+    b.style.borderColor=on?'var(--accent)':'var(--border)';
+    b.style.color=on?'var(--accent)':'var(--text)';
+  });
+}
+async function chatSwitch(ch){
+  if(!_CHAT_CHANNELS[ch]) return;
+  _chatChannel=ch;
+  _chatStyleTabs();
+  _chatMsgs=[];
+  _chatRender();
+  var box=document.getElementById('chat-msgs');
+  if(box) box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>';
+  var m=await _chatFetch(ch);
+  if(m){ _chatMsgs=m; _chatRender(); _chatMarkSeen(); }
+  else if(box) box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Could not load this channel.</div>';
 }
 function _chatRender(){
   var box=document.getElementById('chat-msgs'); if(!box) return;
@@ -6980,13 +7026,17 @@ function closeChatSheet(){
 async function openChatSheet(){
   if(!_workerUrl || !_projectKey){ showToast('Connect to a project first','warn'); return; }
   _chatOpen=true;
-  openSheet('chat');  var msgs=await _chatFetch();
+  _chatStyleTabs();
+  openSheet('chat');
+  var msgs=await _chatFetch();
   if(msgs){ _chatMsgs=msgs; _chatRender(); _chatMarkSeen(); }
-  // Poll faster while sheet is open
+  // Poll faster while sheet is open (active channel only)
   if(_chatPollTimer) clearInterval(_chatPollTimer);
   _chatPollTimer=setInterval(async function(){
     if(!_chatOpen){ clearInterval(_chatPollTimer); _chatPollTimer=null; return; }
-    var m=await _chatFetch();
+    var ch=_chatChannel;
+    var m=await _chatFetch(ch);
+    if(ch!==_chatChannel) return;   // switched while fetching — drop stale result
     if(m && m.length!==_chatMsgs.length){ _chatMsgs=m; _chatRender(); _chatMarkSeen(); }
   }, 10000);
 }
@@ -6996,7 +7046,7 @@ async function chatSend(){
   if(!text) return;
   inp.value='';
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+    var r=await fetch(_chatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({by:_aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'),text:text})
     });
@@ -7008,17 +7058,31 @@ async function chatSend(){
 function _chatMarkSeen(){
   var last=_chatMsgs.length?_chatMsgs[_chatMsgs.length-1].at:'';
   try{ localStorage.setItem(_chatSeenKey(), last); }catch(e){}
-  var dot=document.getElementById('chat-unread'); if(dot) dot.style.display='none';
+  var td=document.getElementById('chat-dot-'+_chatChannel); if(td) td.style.display='none';
+  // Header dot stays if ANOTHER channel is still unread
+  var any=false;
+  Object.keys(_CHAT_CHANNELS).forEach(function(ch){
+    var d=document.getElementById('chat-dot-'+ch);
+    if(d && d.style.display==='block') any=true;
+  });
+  var dot=document.getElementById('chat-unread'); if(dot) dot.style.display=any?'block':'none';
 }
-// Background unread check every 45s (cheap GET)
+// Background unread check every 45s — all three channels (3 cheap GETs)
 setInterval(async function(){
   if(_chatOpen || !_workerUrl || !_projectKey) return;
-  var m=await _chatFetch();
-  if(!m || !m.length) return;
-  _chatMsgs=m;
-  var seen=''; try{ seen=localStorage.getItem(_chatSeenKey())||''; }catch(e){}
+  var any=false;
+  var chans=Object.keys(_CHAT_CHANNELS);
+  for(var i=0;i<chans.length;i++){
+    var ch=chans[i];
+    var m=await _chatFetch(ch);
+    if(!m || !m.length) continue;
+    var seen=''; try{ seen=localStorage.getItem(_chatSeenKey(ch))||''; }catch(e){}
+    var un=(m[m.length-1].at>seen);
+    var td=document.getElementById('chat-dot-'+ch); if(td) td.style.display=un?'block':'none';
+    if(un) any=true;
+  }
   var dot=document.getElementById('chat-unread');
-  if(dot) dot.style.display=(m[m.length-1].at>seen)?'block':'none';
+  if(dot) dot.style.display=any?'block':'none';
 }, 45000);
 // Track sheet close
 document.addEventListener('click',function(e){
@@ -7067,7 +7131,7 @@ function _stkToggleManage(){
 async function _stkSend(id){
   document.getElementById('chat-stk-panel').style.display='none';
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+    var r=await fetch(_chatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({by:_aliasNameM(window._riggerName||'rigger'),sticker:id})
     });
@@ -7200,7 +7264,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.999m',
+    version: 'v4.000m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7751,7 +7815,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v3.999m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.000m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
