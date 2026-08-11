@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.090</title>
+<title>WTUniverse · Buildert Editor v4.093</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -491,9 +491,11 @@
       style="color:var(--accent);font-weight:900;font-size:14px;cursor:pointer">🗓</div>
     <div onclick="openRewardsModal()" title="Rigger Rewards™ — view points, grant bonus XP"
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
+    <div onclick="openEvalModal()" title="Project evaluation — notes & photos for the next edition"
+      style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.090</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.093</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -620,7 +622,7 @@
       <button class="tab-btn" id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
       <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">📄 Docs</button>
       <span style="flex:1"></span>
-      <!-- v4.090: Workshop group — everything here is YOURS, not the open
+      <!-- v4.093: Workshop group — everything here is YOURS, not the open
            project's: the Manager, the cross-project activity view, the device
            spec library and the label printer. Grouped and tinted so the split
            between "this project" and "my tools" is visible at a glance. -->
@@ -6328,6 +6330,8 @@ function _injectProjectIntoMobile(html) {
     spec_overrides: _specsOverrides,
     pack_spares: _packSpares,
     xp_bonus: window._xpBonus || {},
+    evaluation: window._evaluation || [],
+    evaluation_deleted: window._evaluationDeleted || [],
     rigger_aliases: window._riggerAliases || {},
   };
 
@@ -6381,6 +6385,8 @@ function _buildProjectPayload() {
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     xp_bonus: window._xpBonus || {},
+    evaluation: window._evaluation || [],
+    evaluation_deleted: window._evaluationDeleted || [],
     rigger_aliases: window._riggerAliases || {},
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
@@ -6652,6 +6658,9 @@ function _mergeProjectNoConflict(data) {
     }
     // Adopt xp_bonus from remote if we have none locally (planner edits win otherwise)
     if(data.xp_bonus && !window._xpBonus){ window._xpBonus = data.xp_bonus; }
+    // Evaluation: the worker unions by id, so remote is always the fuller set
+    if(data.evaluation) window._evaluation = data.evaluation;
+    if(data.evaluation_deleted) window._evaluationDeleted = data.evaluation_deleted;
     if(data.rigger_aliases && !window._riggerAliases){ window._riggerAliases = data.rigger_aliases; }
     // Merge activity log from mobile
     if(Array.isArray(data._log) && data._log.length){
@@ -6985,6 +6994,7 @@ function resolveProjectConflict(mode) {
   } else if (mode === 'file') {
     if (Array.isArray(fileData._log)) window._projectLog = fileData._log;
     if (fileData.xp_bonus) window._xpBonus = fileData.xp_bonus;
+    if (fileData.evaluation) window._evaluation = fileData.evaluation;
     if (fileData.rigger_aliases) window._riggerAliases = fileData.rigger_aliases;
     _mergeProjectNoConflict(fileData);
     document.getElementById('modal-conflict-proj').classList.remove('open');
@@ -7023,7 +7033,7 @@ function resolveProjectConflict(mode) {
   _pendingFileData = null;
 }
 
-// v4.090: project meta is stored PER PROJECT. The old single global key
+// v4.093: project meta is stored PER PROJECT. The old single global key
 // ('wtu_project_meta') was shared by every project, so after a switch or on
 // boot the UI could show — and then push — the previous project's name. That
 // is the root of "projects load under different names".
@@ -7468,6 +7478,8 @@ async function _dbxPush(silent){
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
     xp_bonus: window._xpBonus || {},
+    evaluation: window._evaluation || [],
+    evaluation_deleted: window._evaluationDeleted || [],
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     _log:           window._projectLog || [],
@@ -7522,7 +7534,7 @@ function dbxStopPolling(){
 function autoSave(){
   try{
     localStorage.setItem('buildert_devices',JSON.stringify(devices));
-    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.090: cache ownership
+    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.093: cache ownership
   }catch(e){}
   // Crash-safe: snapshot the FULL project to localStorage 10s after the last
   // edit — same payload as quick-save, so a browser crash or closed tab
@@ -11084,14 +11096,14 @@ function renderSpecs(){
 }
 
 // ── Init
-// v4.090: only restore the devices cache if it belongs to the bound project.
+// v4.093: only restore the devices cache if it belongs to the bound project.
 // Both caches used to be global, so booting after a switch elsewhere showed
 // the previous project's devices and name under the new key.
 try{
   var _bootKey=localStorage.getItem('buildert_project_key')||'';
   var _devPid=localStorage.getItem('buildert_devices_pid');
   var s=localStorage.getItem('buildert_devices');
-  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.090 cache, accept once
+  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.093 cache, accept once
     devices=JSON.parse(s);
     if(_devPid===null) try{ localStorage.setItem('buildert_devices_pid',_bootKey); }catch(e2){}
   } else if(s){
@@ -12404,7 +12416,7 @@ function wSyncInit(){
   if(cbPush) cbPush.checked = _autoPushOn;
   if(_autoPullOn) _wStartAutoPull();
   _wRefreshModeButtons();
-  // v4.090: ONE fresh pull on every boot with a bound project — even with
+  // v4.093: ONE fresh pull on every boot with a bound project — even with
   // auto-pull off. Without it the app opened on stale local caches and only
   // updated when you pulled by hand, which read as "wrong project loaded".
   // A single pull does not enable continuous polling (the auto-pull merge
@@ -12469,7 +12481,7 @@ function _aliasName(n){
   var a = window._riggerAliases||{};
   return a[n] || n;
 }
-// v4.090: score ONLY this project's activity. The log used to bleed across
+// v4.093: score ONLY this project's activity. The log used to bleed across
 // project switches (fixed in pmOpenProject), but logs polluted before the fix
 // still contain foreign entries. Every entry carries the stage id it was made
 // on, so anything referencing a stage this project doesn't have is foreign and
@@ -12506,7 +12518,7 @@ function _rwCalcPoints(name){
   });
   return pts;
 }
-// ── Chat (desktop, v4.090) — project channel + two company channels ──
+// ── Chat (desktop, v4.093) — project channel + two company channels ──
 // Same /chat/<pid> endpoints as mobile; 'ℹ️ Info' and '🎉 Fun' live on the
 // reserved global pids (worker v4.18+) and span every project and user.
 var _dChatMsgs=[], _dChatTimer=null, _dChatChannel='project';
@@ -12627,7 +12639,103 @@ async function _dChatSend(){
     if(d.ok){ _dChatMsgs=d.messages; _dChatRender(); }
   }catch(e){ showToast('Send failed','danger'); }
 }
-// ── Desktop chat media + readers (v4.090, worker v4.19+) ─────────────
+// ── ⭐ Project evaluation (desktop, v4.093, worker v4.20+) ───────────
+// Same evaluation array as mobile — notes + photos for the next edition.
+// The worker unions entries by id, so planner and riggers can write at the
+// same time without losing anything.
+window._evaluation = window._evaluation || [];
+var _dEvalPending = [];
+function openEvalModal(){
+  if(!_projectKey){ showToast('Open a project first','warn'); return; }
+  _dEvalPending=[];
+  var html='<div class="modal-overlay open" id="modal-eval" style="z-index:1000">'
+    +'<div class="modal" style="max-width:620px;max-height:88vh;overflow-y:auto">'
+    +'<h2 style="margin-top:0">⭐ Evaluation — '+_escHtml((_projectMeta&&_projectMeta.name)||_projectKey)+'</h2>'
+    +'<p style="font-size:11px;color:var(--muted);margin:2px 0 12px">Notes and photos for the next edition of this show. Synced with every phone; photos are kept permanently.</p>'
+    +'<div id="d-eval-body"></div>'
+    +'<button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="document.getElementById(\'modal-eval\').remove()">Close</button>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  _dEvalRender();
+}
+function _dEvalRender(){
+  var host=document.getElementById('d-eval-body'); if(!host) return;
+  var list=(window._evaluation||[]).slice().sort(function(a,b){ return String(b.at||'').localeCompare(String(a.at||'')); });
+  var pend=_dEvalPending.map(function(id,i){
+    return '<div style="position:relative;display:inline-block;margin:0 6px 6px 0">'
+      +'<img src="'+_dChatMediaUrl(id)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--accent)">'
+      +'<span onclick="_dEvalPending.splice('+i+',1);_dEvalRender()" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</span>'
+      +'</div>';
+  }).join('');
+  var entries=list.length?list.map(function(ev,ei){
+    var photos=(ev.media||[]).map(function(mid){
+      return '<a href="'+_dChatMediaUrl(mid)+'" target="_blank" rel="noopener"><img src="'+_dChatMediaUrl(mid)+'" style="width:92px;height:92px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0" loading="lazy"></a>';
+    }).join('');
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +  '<span style="flex:1;font-family:var(--cond);font-weight:700;font-size:12px;color:var(--accent)">'+_escHtml(ev.by||'?')+'</span>'
+      +  '<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+_escHtml(String(ev.at||'').slice(0,10))+'</span>'
+      +  '<span onclick="_dEvalDelete(\''+_escHtml(String(ev.id||'')).replace(/"/g,'&quot;')+'\')" title="Delete this note" style="cursor:pointer;color:var(--danger);font-weight:900;padding:0 3px">✕</span>'
+      +'</div>'
+      +(ev.text?'<div style="font-size:13px;line-height:1.45;margin-top:4px;word-break:break-word">'+_escHtml(ev.text)+'</div>':'')
+      +(photos?'<div style="display:flex;flex-wrap:wrap;margin-top:2px">'+photos+'</div>':'')
+      +'</div>';
+  }).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:22px;border:1px dashed var(--border);border-radius:10px;margin-bottom:10px">No evaluation notes yet — the phones can add them too (⭐ in the project sheet).</div>';
+  host.innerHTML=
+    '<div style="border:1px dashed var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">'
+    +'<textarea id="d-eval-text" rows="2" placeholder="For next time: what worked, what to change…" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical"></textarea>'
+    +(pend?'<div style="margin-top:8px">'+pend+'</div>':'')
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +  '<button class="btn btn-ghost" style="font-size:12px" onclick="document.getElementById(\'d-eval-file\').click()">📎 Photos</button>'
+    +  '<input id="d-eval-file" type="file" accept="image/*" multiple style="display:none" onchange="_dEvalPick(this.files);this.value=\'\'">'
+    +  '<button class="btn" style="flex:1;background:#ffd700;color:#000;font-weight:700;border-color:#ffd700;font-size:12px" onclick="_dEvalAdd()">⭐ Save note</button>'
+    +'</div></div>'
+    + entries;
+}
+async function _dEvalPick(files){
+  if(!files||!files.length) return;
+  for(var i=0;i<files.length && i<8;i++){
+    try{
+      var blob=await _dChatCompressImage(files[i]);
+      var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media')+'&pid='+encodeURIComponent(_projectKey)+'&scope=eval';
+      if(u.indexOf('?')<0) u=u.replace('&pid=','?pid=');
+      var r=await fetch(u,{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
+      var d=await r.json();
+      if(d.ok) _dEvalPending.push(d.id);
+      else showToast(d.error||'Upload failed','danger');
+    }catch(e){ showToast('Could not read a photo','danger'); }
+  }
+  _dEvalRender();
+}
+function _dEvalAdd(){
+  var ta=document.getElementById('d-eval-text');
+  var text=(ta&&ta.value||'').trim();
+  if(!text && !_dEvalPending.length){ showToast('Write a note or add a photo first','warn'); return; }
+  window._evaluation=window._evaluation||[];
+  window._evaluation.push({
+    id:'ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    at:new Date().toISOString(),
+    by:'planner',
+    text:text,
+    media:_dEvalPending.slice()
+  });
+  _dEvalPending=[];
+  if(ta) ta.value='';
+  _dEvalRender();
+  showToast('Saved for the next edition ⭐','ok');
+  try{ autoSave(); }catch(e){}
+  if(typeof wPush==='function') try{ wPush(true); }catch(e){}
+}
+function _dEvalDelete(id){
+  if(!confirm('Delete this evaluation note for everyone? Photos in it stay stored but lose their place here.')) return;
+  window._evaluation=(window._evaluation||[]).filter(function(ev){ return ev.id!==id; });
+  (window._evaluationDeleted=window._evaluationDeleted||[]).push(id);   // tombstone — survives the union merge
+  _dEvalRender();
+  try{ autoSave(); }catch(e){}
+  if(typeof wPush==='function') try{ wPush(true); }catch(e){}
+}
+
+// ── Desktop chat media + readers (v4.093, worker v4.19+) ─────────────
 function _dChatMediaUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)); }
 function _dChatCompressImage(file){
   return new Promise(function(res, rej){
@@ -13064,7 +13172,7 @@ function openRewardsModal(){
   }).join('');
   var scopeNote = scoped.excluded
     ? '<div style="border:1px solid var(--warn);background:rgba(255,180,84,.07);border-radius:7px;padding:8px 11px;margin:0 0 12px;font-size:11px;color:var(--warn)">'
-      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.090). '
+      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.093). '
       +'<a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn);text-decoration:underline">'+(_rwIncludeForeign?'hide them again':'show them anyway')+'</a>'
       +' · <a href="#" onclick="_rwPurgeForeign();return false" style="color:var(--danger);text-decoration:underline">purge them for good</a></div>'
     : (_rwIncludeForeign?'<div style="font-size:11px;color:var(--warn);margin:0 0 12px">Showing unscoped log. <a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn)">back to this project only</a></div>':'');
@@ -13287,7 +13395,7 @@ async function _brtLoadProjectList(force){
 }
 
 // ── Authoritative name of the OPEN project ───────────────────────────
-// Since v4.090, _projectMeta is stored per project ('wtu_project_meta__<pid>')
+// Since v4.093, _projectMeta is stored per project ('wtu_project_meta__<pid>')
 // and swapped on every switch, so it always describes _projectKey. The
 // worker's project list still wins when it disagrees (it is the shared truth);
 // local meta covers projects that were never pushed and offline boots.
@@ -13585,7 +13693,7 @@ async function _hdrLoadProjects(){
     + ' style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:12px"></div>'
     + '<div id="hdr-proj-list">'
     + (function(){
-        // v4.090: past projects sink below a divider so the everyday list is short
+        // v4.093: past projects sink below a divider so the everyday list is short
         var act=list.filter(function(p){return p.status!=='past';});
         var pst=list.filter(function(p){return p.status==='past';});
         function item(p, dim){
@@ -14140,7 +14248,7 @@ async function _mgrRenderProjects(){
     var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var isPast = p.status==='past';
-    // v4.090: surface a stale local alias — the registry remembering an old
+    // v4.093: surface a stale local alias — the registry remembering an old
     // name is one of the ways "the same project shows up under two names".
     var regName=''; try{ regName=((_kpAll()[p.key])||{}).name||''; }catch(e){}
     var aliasMismatch = regName && p.devices>=0 && p._display!=='(unnamed)'
@@ -14156,7 +14264,7 @@ async function _mgrRenderProjects(){
       +     (p._dupName?' <span title="Another project shares this name — rename to tell them apart" style="color:var(--warn);font-size:10px">⚠ duplicate name</span>':'')
       +   '</div>'
       +   '<div style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+_escHtml(p.key)+'</div>'
-      // v4.090: register line — the row reads like a database record
+      // v4.093: register line — the row reads like a database record
       +   (function(){
             var bits=[];
             if(p.client) bits.push('👤 '+_escHtml(p.client));
@@ -14177,6 +14285,7 @@ async function _mgrRenderProjects(){
              ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Bring back to the active list" onclick="_mgrSetStatus(\''+jsKey+'\',\'current\')">↩ current</button> '
              : '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Archive: moves it under Past, nothing is deleted" onclick="_mgrSetStatus(\''+jsKey+'\',\'past\')">📁 past</button> ')
           : '')
+      +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Archive: final backup + mark past + optional worker cleanup" onclick="_arcOpen(\''+jsKey+'\')">📦</button> '
       +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Client, venue, city, show dates" onclick="_mgrOpenRegister(\''+jsKey+'\')">🗂</button> '
       +   '<button class="btn btn-ghost" style="font-size:11px;padding:4px 9px" title="Rename this project" onclick="_brtPromptRename(\''+jsKey+'\',\''+jsName+'\')">✎</button> '
       +   (cur?'<span style="font-size:11px;color:var(--muted)">open</span>'
@@ -14184,7 +14293,7 @@ async function _mgrRenderProjects(){
       +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+jsKey+'\')">🗑</button>'
       + '</td></tr>';
   }
-  // v4.090: sortable register. 'saved' (default) keeps recent work on top;
+  // v4.093: sortable register. 'saved' (default) keeps recent work on top;
   // 'date' orders by show date (soonest/most recent first); name/client A-Z.
   var sortFns={
     saved: function(a,b){ return String(b.saved||'').localeCompare(String(a.saved||'')); },
@@ -14204,7 +14313,7 @@ async function _mgrRenderProjects(){
   var _host=document.getElementById('mgr-sub');
   if(!_host) return;
   _host.innerHTML =
-    // v4.090: identity strip — one line that says exactly what is open and
+    // v4.093: identity strip — one line that says exactly what is open and
     // where its displayed name comes from. No more guessing.
     (function(){
       var cur=list.filter(function(p){ return String(p.key)===String(_projectKey); })[0];
@@ -14248,7 +14357,7 @@ async function _mgrRenderProjects(){
     + '<th style="padding:4px 4px 4px 10px;width:26px"><input type="checkbox" id="mgr-pall" onchange="_mgrSelAll(this.checked)" style="cursor:pointer" title="Select all"></th>'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
     + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">'+(past.length?'No active projects — everything is under Past below.':'No projects yet.')+'</td></tr>')+'</tbody></table>'
-    // v4.090: past projects live in a collapsed section — the active list
+    // v4.093: past projects live in a collapsed section — the active list
     // stays short and every finished show is one click away, not deleted.
     + (past.length
       ? '<div style="margin-top:14px">'
@@ -14261,22 +14370,22 @@ async function _mgrRenderProjects(){
         + '</div>'
       : '')
     + (statusSupported?'':'<div style="font-size:11px;color:var(--muted);margin-top:10px">Current/past organisation needs worker v4.15+ — update the worker to sort projects into Past.</div>')
-    // v4.090: the clean-slate path for when local naming state has gone bad.
+    // v4.093: the clean-slate path for when local naming state has gone bad.
     + '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px;display:flex;align-items:center;gap:10px">'
     +   '<div style="flex:1;font-size:11px;color:var(--muted)">Names still wrong after the fixes above? Wipe this browser\'s local project caches and re-open your backups fresh. Projects on the worker, your login and project access keys are kept.</div>'
     +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="mgrStartClean()">🧹 Start clean…</button>'
     + '</div>';
 }
 
-// ── 📊 History (v4.090) — the cross-project database view ────────────
+// ── 📊 History (v4.093) — the cross-project database view ────────────
 // One table over every project on the worker: register fields, gear counts,
 // riggers and activity — plus a rigger XP overview aggregated across all
 // projects. Payloads are fetched once and cached per (pid, saved-stamp) in
 // localStorage, so revisiting is instant and a project only re-downloads
 // after it actually changed. That cache IS the "XP updates" mechanism: a new
 // save on any project refreshes its numbers on the next History load.
-function _histCacheAll(){ try{ return JSON.parse(localStorage.getItem('brt_history_cache2')||'{}'); }catch(e){ return {}; } }
-function _histCacheSave(c){ try{ localStorage.setItem('brt_history_cache2', JSON.stringify(c)); }catch(e){} }
+function _histCacheAll(){ try{ return JSON.parse(localStorage.getItem('brt_history_cache3')||'{}'); }catch(e){ return {}; } }
+function _histCacheSave(c){ try{ localStorage.setItem('brt_history_cache3', JSON.stringify(c)); }catch(e){} }
 function _histScoreLog(log, aliases){
   aliases=aliases||{};
   var out={}, seen={};
@@ -14333,7 +14442,7 @@ async function _histLoadAll(force){
         var devN=0;
         if(Array.isArray(proj.stages)) proj.stages.forEach(function(s){ devN+=((s&&s.devices)||[]).length; });
         if(!devN) devN=((proj.devices)||[]).length;
-        // v4.090: keep stage ids + a trimmed copy of the log so the unified
+        // v4.093: keep stage ids + a trimmed copy of the log so the unified
         // all-projects activity list can re-attribute legacy entries.
         var stageIds=[];
         if(Array.isArray(proj.stages)) proj.stages.forEach(function(st){ if(st&&st.id) stageIds.push(st.id); });
@@ -14342,8 +14451,14 @@ async function _histLoadAll(force){
                    stage:e&&(e.stage||e.stage_id)||'', stage_name:e&&e.stage_name||'',
                    device:e&&e.device||'', pid:e&&e.pid||'' };
         });
+        // v4.093: carry the evaluation into History — next year's edition
+        // starts with last year's lessons on screen.
+        var trimEval=(proj.evaluation||[]).map(function(ev){
+          return { id:ev&&ev.id||'', at:ev&&ev.at||'', by:ev&&ev.by||'',
+                   text:ev&&ev.text||'', media:(ev&&ev.media)||[] };
+        });
         var entry={ saved:String(p.saved||''), devN:devN, logN:(proj._log||[]).length, riggers:riggers,
-                    stageIds:stageIds, log:trimLog };
+                    stageIds:stageIds, log:trimLog, evaluation:trimEval };
         cache[p.key]=entry;
         out.push(Object.assign({pid:p.key},entry,{list:p}));
       }catch(e){}
@@ -14379,7 +14494,7 @@ function _histRender(){
   all.forEach(function(h){
     totDev+=h.devN; totLog+=h.logN;
     Object.keys(h.riggers).forEach(function(nRaw){
-      var n=_gAlias(nRaw);                       // v4.090: global name merge
+      var n=_gAlias(nRaw);                       // v4.093: global name merge
       if(!allRiggers[n]) allRiggers[n]={projects:0,actions:0,pts:0,bonus:0,_p:{}};
       if(!allRiggers[n]._p[h.pid]){ allRiggers[n]._p[h.pid]=1; allRiggers[n].projects++; }
       allRiggers[n].actions+=h.riggers[nRaw].actions|0;
@@ -14389,7 +14504,8 @@ function _histRender(){
   });
   var rNames=Object.keys(allRiggers);
   var strip='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-    + [[all.length,'projects'],[totDev,'devices deployed'],[rNames.length,'riggers'],[totLog,'log entries']].map(function(x){
+    + [[all.length,'projects'],[totDev,'devices deployed'],[rNames.length,'riggers'],[totLog,'log entries'],
+       [all.reduce(function(n,h){return n+((h.evaluation||[]).length);},0),'eval notes']].map(function(x){
         return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 16px;text-align:center">'
           +'<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent)">'+x[0]+'</div>'
           +'<div style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">'+x[1]+'</div></div>';
@@ -14409,6 +14525,11 @@ function _histRender(){
       +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono)">'+h.devN+'</td>'
       +'<td style="padding:8px 10px;font-size:11px">'+(rn.length?rn.map(function(n){return _escHtml(n);}).join(', '):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted)">'+h.logN+'</td>'
+      +'<td style="padding:8px 10px;text-align:right">'
+      +  ((h.evaluation||[]).length
+          ?'<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;color:#ffd700" onclick="_histEvalOpen(\''+String(h.pid).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">⭐ '+h.evaluation.length+'</button>'
+          :'<span style="color:var(--muted);font-size:11px">—</span>')
+      +'</td>'
       +'</tr>';
   }).join('');
   var xrows=rNames.sort(function(a,b){
@@ -14433,7 +14554,7 @@ function _histRender(){
     +'<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:left;padding:4px 10px">Client</th>'
     +'<th style="text-align:left;padding:4px 10px">Where</th><th style="text-align:left;padding:4px 10px">Show dates</th>'
     +'<th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Riggers</th>'
-    +'<th style="text-align:right;padding:4px 10px">Log</th></tr></thead><tbody>'+prows+'</tbody></table></div>'
+    +'<th style="text-align:right;padding:4px 10px">Log</th><th style="text-align:right;padding:4px 10px">⭐ Eval</th></tr></thead><tbody>'+prows+'</tbody></table></div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
     +  '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;font-size:13px">🏆 RIGGER XP — ALL PROJECTS</div><span style="flex:1"></span>'
     +  '<button class="btn btn-ghost" style="font-size:11px" onclick="_gMergeOpen()">🔗 Merge names…</button> '
@@ -14447,7 +14568,7 @@ function _histRender(){
     +'<tbody>'+(xrows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">No rigger activity found.</td></tr>')+'</tbody></table>'
     + _histActSection();
 }
-// ── 🧾 Unified activity (v4.090) — every log entry, one list, with a ──
+// ── 🧾 Unified activity (v4.093) — every log entry, one list, with a ──
 // PROJECT column. Attribution, in order of trust:
 //   1. e.pid — entries stamped by mobile v3.999m+. Authoritative forever.
 //   2. Stage fingerprint — legacy entries carry the stage id they were made
@@ -14457,7 +14578,7 @@ function _histRender(){
 //   3. The payload it sits in — entries with no stamp and no known stage.
 // Duplicated entries (the old bleed copied them into several payloads) are
 // collapsed to one, preferring the copy that sits in its attributed project.
-// ── 🔗 Global name merge (v4.090) — one rigger, one name, everywhere ──
+// ── 🔗 Global name merge (v4.093) — one rigger, one name, everywhere ──
 // Per-project aliases (Rewards window) fix spelling inside ONE project;
 // this maps spelling variants across ALL projects in the History view.
 // Stored in this browser (brt_global_aliases) and applied at display time:
@@ -14659,6 +14780,41 @@ function _histCsvActivity(){
     ['when','project','slot','rigger','action','device','stage','attribution'], rows);
 }
 
+// ── ⭐ Evaluation viewer from History (v4.093) — read-only ────────────
+// Opens any project's evaluation straight from the History table, without
+// switching projects. Editing stays in the project itself (⭐ in header).
+function _histEvalOpen(pid){
+  var h=(_histAll||[]).filter(function(x){ return String(x.pid)===String(pid); })[0];
+  if(!h) return;
+  var p=h.list||{};
+  var list=(h.evaluation||[]).slice().sort(function(a,b){ return String(b.at||'').localeCompare(String(a.at||'')); });
+  var entries=list.map(function(ev){
+    var photos=(ev.media||[]).map(function(mid){
+      return '<a href="'+_dChatMediaUrl(mid)+'" target="_blank" rel="noopener"><img src="'+_dChatMediaUrl(mid)+'" style="width:92px;height:92px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0" loading="lazy"></a>';
+    }).join('');
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +  '<span style="flex:1;font-family:var(--cond);font-weight:700;font-size:12px;color:var(--accent)">'+_escHtml(ev.by||'?')+'</span>'
+      +  '<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+_escHtml(String(ev.at||'').slice(0,10))+'</span>'
+      +'</div>'
+      +(ev.text?'<div style="font-size:13px;line-height:1.45;margin-top:4px;word-break:break-word">'+_escHtml(ev.text)+'</div>':'')
+      +(photos?'<div style="display:flex;flex-wrap:wrap;margin-top:2px">'+photos+'</div>':'')
+      +'</div>';
+  }).join('');
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='hist-eval-modal'; box.style.zIndex='1001';
+  box.onclick=function(e){ if(e.target===box) box.remove(); };
+  box.innerHTML='<div class="modal" style="max-width:620px;max-height:85vh;overflow-y:auto">'
+    +'<h2 style="margin-top:0">⭐ Evaluation — '+_escHtml(p._display||p.name||pid)+'</h2>'
+    +'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:-4px 0 10px">'+_escHtml(pid)
+    +  ((p.date_from)?' · '+_escHtml(p.date_from):'')+'</div>'
+    + entries
+    +'<div style="font-size:10px;color:var(--muted);margin:4px 0 10px">Read-only here — open the project and use ⭐ in the header to add or edit notes.</div>'
+    +'<button class="btn btn-ghost" style="width:100%" onclick="document.getElementById(\'hist-eval-modal\').remove()">Close</button>'
+    +'</div>';
+  document.body.appendChild(box);
+}
+
 function _histCsvDownload(name, header, rows){
   function esc(v){ v=String(v==null?'':v); return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
   var csv=[header.map(esc).join(',')].concat(rows.map(function(r){ return r.map(esc).join(','); })).join('\n');
@@ -14671,10 +14827,11 @@ function _histCsvProjects(){
   var rows=(_histAll||[]).map(function(h){
     var p=h.list;
     return [p._display||p.name||h.pid, h.pid, p.status||'', p.client||'', p.venue||'', p.city||'',
-            p.date_from||'', p.date_to||'', h.devN, Object.keys(h.riggers).join(' / '), h.logN, h.saved];
+            p.date_from||'', p.date_to||'', h.devN, Object.keys(h.riggers).join(' / '), h.logN,
+            (h.evaluation||[]).length, h.saved];
   });
   _histCsvDownload('buildert_projects_history.csv',
-    ['project','slot','status','client','venue','city','date_from','date_to','devices','riggers','log_entries','last_saved'], rows);
+    ['project','slot','status','client','venue','city','date_from','date_to','devices','riggers','log_entries','eval_notes','last_saved'], rows);
 }
 function _histCsvRiggers(){
   var agg={};
@@ -14694,7 +14851,7 @@ function _histCsvRiggers(){
     ['rigger','projects','actions','log_points','bonus_xp','total'], rows);
 }
 
-// ── Backup importer (v4.090) — turn a folder of backups into a tidy ──
+// ── Backup importer (v4.093) — turn a folder of backups into a tidy ──
 // project database in one session. Drop any number of backup files
 // (single-project 'wtu-project' files or multi-project 'v2' envelopes),
 // review every project found — editable name & slot, duplicate warnings,
@@ -14892,7 +15049,7 @@ async function _impRun(){
   _mgrRenderProjects();
 }
 
-// ── Project register (v4.090, worker v4.17+) — client, venue, city, ──
+// ── Project register (v4.093, worker v4.17+) — client, venue, city, ──
 // dates and notes per project. Fields live in the payload (project.*) so
 // they sync, survive Start clean and travel with backups. The open project
 // edits locally + pushes; any other project is patched read-modify-write
@@ -14992,7 +15149,115 @@ function _mgrSetProjSort(v){
   _mgrRenderProjects();
 }
 
-// ── Project status: current / past (v4.090, worker v4.15+) ───────────
+// ── 📦 Archive flow (v4.093) — end a project properly, in one place ──
+// Order is enforced by the UI: the worker-delete step only unlocks AFTER
+// the final backup file has actually been downloaded in this session, so
+// "clean up the worker" can never run before the data is safe on disk.
+var _arcState=null;   // {pid, payload, downloaded}
+async function _arcOpen(pid){
+  var p=_pmListCacheGet(pid)||{};
+  var box=document.createElement('div');
+  box.className='modal-overlay open'; box.id='arc-modal'; box.style.zIndex='1001';
+  box.innerHTML='<div class="modal" style="max-width:520px">'
+    +'<h2 style="margin-top:0">📦 Archive — '+_escHtml(p._display||p.name||pid)+'</h2>'
+    +'<div id="arc-body" style="font-size:12px;color:var(--muted);padding:14px 0">Reading project from worker…</div>'
+    +'</div>';
+  document.body.appendChild(box);
+  // Full payload straight from the worker — the archive must be the truth,
+  // not whatever this browser happens to have cached.
+  var tk=_brtAllTokens(), q=(tk?'&t='+encodeURIComponent(tk):'');
+  var proj=null;
+  try{
+    var r=await fetch(_workerUrl+'/project/'+encodeURIComponent(pid)+'?_='+Date.now()+q,{cache:'no-store'});
+    if(r.ok){ var d=await r.json(); proj=(d&&d._projects&&d._projects[pid])||null; }
+  }catch(e){}
+  var host=document.getElementById('arc-body'); if(!host) return;
+  if(!proj){ host.innerHTML='Could not read this project from the worker — archive from a backup file instead.'
+    +'<div style="margin-top:12px"><button class="btn btn-ghost" style="width:100%" onclick="document.getElementById(\'arc-modal\').remove()">Close</button></div>'; return; }
+  var devN=0;
+  if(Array.isArray(proj.stages)) proj.stages.forEach(function(st){ devN+=((st&&st.devices)||[]).length; });
+  if(!devN) devN=((proj.devices)||[]).length;
+  var evN=(proj.evaluation||[]).length;
+  var evMediaN=0; (proj.evaluation||[]).forEach(function(ev){ evMediaN+=((ev&&ev.media)||[]).length; });
+  _arcState={ pid:pid, payload:proj, downloaded:false };
+  host.innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;color:var(--text)">'
+    + [[devN,'devices'],[(proj._log||[]).length,'log entries'],[evN,'eval notes'],[evMediaN,'eval photos']].map(function(x){
+        return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 12px;text-align:center">'
+          +'<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent)">'+x[0]+'</div>'
+          +'<div style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">'+x[1]+'</div></div>';
+      }).join('')
+    +'</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);margin-bottom:8px;cursor:pointer">'
+    +  '<input type="checkbox" id="arc-embed"'+(evMediaN?' checked':'')+(evMediaN?'':' disabled')+'>'
+    +  'Embed the '+evMediaN+' evaluation photo'+(evMediaN===1?'':'s')+' in the file <span style="color:var(--muted)">(bigger file, fully self-contained)</span></label>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">'
+    +  '<button class="btn" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)" onclick="_arcDownload()">1 · ⬇ Download final backup</button>'
+    +  '<button class="btn btn-ghost" id="arc-past" onclick="_arcMarkPast()"'+(p.status==='past'?' disabled':'')+'>2 · 📁 Mark as past'+(p.status==='past'?' — already past ✓':'')+'</button>'
+    +  '<button class="btn btn-ghost" id="arc-del" disabled title="Unlocks after the backup file is downloaded" style="color:var(--danger)">3 · 🗑 Remove from worker (optional)</button>'
+    +'</div>'
+    +'<div id="arc-note" style="font-size:10px;color:var(--muted);margin-top:10px">Step 3 unlocks after the download. Photos referenced by id keep working from the worker'+(evMediaN?'; embedding makes the file readable even without it':'')+'.</div>'
+    +'<button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="document.getElementById(\'arc-modal\').remove()">Close</button>';
+}
+async function _arcDownload(){
+  if(!_arcState) return;
+  var proj=JSON.parse(JSON.stringify(_arcState.payload));
+  proj._format='wtu-project';
+  proj._project_id=_arcState.pid;
+  proj._archived_at=new Date().toISOString();
+  var embed=document.getElementById('arc-embed');
+  if(embed && embed.checked){
+    // Pull every evaluation photo into the file as base64 — cold-storage safe
+    var ids={};
+    (proj.evaluation||[]).forEach(function(ev){ ((ev&&ev.media)||[]).forEach(function(id){ ids[id]=1; }); });
+    var idList=Object.keys(ids);
+    proj._eval_media={};
+    for(var i=0;i<idList.length;i++){
+      try{
+        showToast('Embedding photo '+(i+1)+'/'+idList.length+'…','muted');
+        var r=await fetch(_dChatMediaUrl(idList[i]));
+        if(!r.ok) continue;
+        var blob=await r.blob();
+        var dataUrl=await new Promise(function(res,rej){
+          var fr=new FileReader();
+          fr.onload=function(){res(fr.result);}; fr.onerror=rej;
+          fr.readAsDataURL(blob);
+        });
+        proj._eval_media[idList[i]]=dataUrl;
+      }catch(e){}
+    }
+  }
+  var name=((proj.project&&proj.project.name)||_arcState.pid).replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'');
+  var fname=name+'_'+new Date().toISOString().slice(0,10)+'_FINAL.json';
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(proj,null,2)],{type:'application/json'}));
+  a.download=fname; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+  _arcState.downloaded=true;
+  var del=document.getElementById('arc-del');
+  if(del){ del.disabled=false; del.onclick=_arcDelete; del.title='Backup is on disk — safe to clean up'; }
+  var note=document.getElementById('arc-note');
+  if(note) note.innerHTML='✓ Saved as <b>'+_escHtml(fname)+'</b> — step 3 is unlocked.';
+  showToast('Final backup downloaded ✓','ok');
+}
+async function _arcMarkPast(){
+  if(!_arcState) return;
+  var r=await _brtSetProjectStatus(_arcState.pid,'past');
+  if(r.ok){
+    var b=document.getElementById('arc-past');
+    if(b){ b.disabled=true; b.textContent='2 · 📁 Mark as past — done ✓'; }
+    _brtProjCache.at=0;
+    showToast('Moved to past 📁','ok');
+  } else showToast(r.error||'Failed','danger');
+}
+async function _arcDelete(){
+  if(!_arcState || !_arcState.downloaded) return;
+  var m=document.getElementById('arc-modal'); if(m) m.remove();
+  await _mgrDeleteProject(_arcState.pid);   // its own confirm + local purge
+  _arcState=null;
+}
+
+// ── Project status: current / past (v4.093, worker v4.15+) ───────────
 // Status lives INSIDE the project payload (project.status) so it syncs and
 // survives Start clean. For the open project we set it locally and push the
 // project we have; for any other project we read-modify-write the worker
@@ -15186,7 +15451,7 @@ async function _mgrRenderPeople(){
   if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
-  await _mgrLoadInvites();          // v4.090 — pending invites (worker v4.14+)
+  await _mgrLoadInvites();          // v4.093 — pending invites (worker v4.14+)
   if(!_mgrCache.matrixSupported){
     document.getElementById('mgr-sub').innerHTML =
       '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
@@ -15859,7 +16124,7 @@ async function pmOpenProject(pid){
   _kpTouch(_projectKey, _projectMeta.name||'');   // remember where we came from
   _projectKey = pid;
   try{ localStorage.setItem('buildert_project_key', pid); }catch(e){}
-  // v4.090: per-project reward state MUST NOT survive a switch. The activity
+  // v4.093: per-project reward state MUST NOT survive a switch. The activity
   // log merge is additive, so without this the old project's log entries (and
   // bonus XP + aliases) bled into the new project — Rewards then scored riggers
   // on BOTH projects, and the next push wrote the polluted log into the new
@@ -15867,8 +16132,9 @@ async function pmOpenProject(pid){
   window._projectLog = [];
   window._xpBonus = null;        // null (not {}) so the pull adopts the new project's synced bonus
   window._riggerAliases = null;  // idem for aliases
+  window._evaluation = [];       // v4.093: evaluation belongs to ONE project
   if(typeof _spUpdateBadge==='function') try{ _spUpdateBadge(); }catch(e){}
-  // v4.090: swap to THIS project's stored meta right away. The name is correct
+  // v4.093: swap to THIS project's stored meta right away. The name is correct
   // the instant you switch — even offline — instead of showing the previous
   // project's name until a pull happens to fix it.
   try{
@@ -16394,7 +16660,7 @@ async function _wPushImpl(silent){
 
   // Step 2: Derive project key from project meta if not explicitly set
   if(!_projectKey) {
-    // v4.090: with no key AND no project name, derivation yields the junk
+    // v4.093: with no key AND no project name, derivation yields the junk
     // slot 'default'. Refuse instead: a push must go to a real, named project.
     if(!((_projectMeta.id||_projectMeta.name||'').trim())){
       showToast('No project open — name this project (Project settings) or open one in the Manager before pushing','warn');
@@ -16407,7 +16673,7 @@ async function _wPushImpl(silent){
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
     addSyncLog('Auto-derived project key: '+_projectKey,'info');
-    // v4.090: slot creation must never be silent — invisible auto-derived
+    // v4.093: slot creation must never be silent — invisible auto-derived
     // slots are how projects "appeared out of nowhere" in the Manager.
     showToast('📂 New worker slot created: '+_projectKey+' — rename it in Manager → Projects if needed','info');
   }
@@ -16448,6 +16714,8 @@ async function _wPushImpl(silent){
     cable_types:CABLE_TYPES,
     pack_spares:_packSpares,
     xp_bonus: window._xpBonus || {},
+    evaluation: window._evaluation || [],
+    evaluation_deleted: window._evaluationDeleted || [],
     rigger_aliases: window._riggerAliases || {},
     pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
@@ -18341,7 +18609,7 @@ function hideRecentMenu(){
 function recentOpen(idx){
   document.getElementById('file-menu').style.display='none';
   var r=_recentFiles[idx]; if(!r) return;
-  // v4.090: the snapshot is ONE slot. It used to be loaded for ANY recent
+  // v4.093: the snapshot is ONE slot. It used to be loaded for ANY recent
   // entry clicked — pick "Show B", get whatever project the snapshot held,
   // labeled "Show B". Now the snapshot's identity must match the entry.
   try{
@@ -18739,7 +19007,7 @@ function _syncCableIn() {
   var el = document.getElementById('m-cable-in'); if (el) el.value = primary;
 }
 
-// ── v4.090: Buildert always starts on the Manager screen ─────────────
+// ── v4.093: Buildert always starts on the Manager screen ─────────────
 // The Manager is the control room: which project is open, who has access,
 // what state everything is in. Starting there means every session begins
 // with a deliberate "this is the project I'm working on" instead of landing
