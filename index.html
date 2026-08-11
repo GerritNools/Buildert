@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v4.001m</title>
+<title>WTU · Buildert v4.002m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.001m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.002m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -712,7 +712,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.001m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.002m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -741,6 +741,12 @@ body.sun-mode .pack-table td {
       <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
     </div>
   </div>
+</div>
+
+<div class="sheet" id="sheet-eval" style="height:82vh;height:min(82dvh,82vh)">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">⭐ Evaluation — for the next edition</div>
+  <div class="sheet-body" id="eval-body" style="overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
 </div>
 
 <div class="sheet" id="sheet-feedback">
@@ -1313,7 +1319,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.001m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.002m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1325,7 +1331,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.001m: account users are no longer called "rigger" in chat.
+//   ALSO v4.002m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -3003,6 +3009,8 @@ function saveProject(){
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
     xp_bonus: _xpBonusMap(),
+    evaluation: window._mEvaluation||[],
+    evaluation_deleted: window._mEvaluationDeleted||[],
   };
   var json=JSON.stringify(payload,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -3132,6 +3140,8 @@ function _mergeProjectNoConflict(data){
   }
   if((Date.now()-(_lastLocalEdit||0))>10000)_packSpares=data.pack_spares||[];
   if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
+  if(data.evaluation) window._mEvaluation=data.evaluation;
+  if(data.evaluation_deleted) window._mEvaluationDeleted=data.evaluation_deleted;
   if(data.rigger_aliases){ window._riggerAliases=data.rigger_aliases; try{localStorage.setItem('buildert_rigger_aliases',JSON.stringify(data.rigger_aliases));}catch(e){} }
   if(data.project){
     project=Object.assign(project,data.project);
@@ -3371,6 +3381,8 @@ function _mergeSmartFromFile(data){
   }
   if((Date.now()-(_lastLocalEdit||0))>10000) _packSpares = data.pack_spares || [];
   if(data.xp_bonus){ window._xpBonus=data.xp_bonus; try{localStorage.setItem('buildert_xp_bonus',JSON.stringify(data.xp_bonus));}catch(e){} }
+  if(data.evaluation) window._mEvaluation=data.evaluation;
+  if(data.evaluation_deleted) window._mEvaluationDeleted=data.evaluation_deleted;
   if(data.rigger_aliases){ window._riggerAliases=data.rigger_aliases; try{localStorage.setItem('buildert_rigger_aliases',JSON.stringify(data.rigger_aliases));}catch(e){} }
   if(data.project){
     project = Object.assign(project, data.project);
@@ -4196,6 +4208,8 @@ async function wPush(silent){
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
     xp_bonus: _xpBonusMap(),
+    evaluation: window._mEvaluation||[],
+    evaluation_deleted: window._mEvaluationDeleted||[],
     pack_shared:_packShared,
     pack_signoffs:window._packSignoffs||[],
     pack_signoffs_deleted:window._packSignoffsDeleted||[],
@@ -4462,6 +4476,8 @@ async function _dbxPush(silent){
     spec_overrides:_getSpecOverrides(),
     pack_spares:_packSpares,
     xp_bonus: _xpBonusMap(),
+    evaluation: window._mEvaluation||[],
+    evaluation_deleted: window._mEvaluationDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
     _log:combinedLog,
   };
@@ -4812,7 +4828,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.001m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.002m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6212,7 +6228,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.001m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.002m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6918,7 +6934,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.001m) ─────
+// ── Chat — project channel + two company-wide channels (v4.002m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -6990,7 +7006,8 @@ function _chatRender(){
         :m.media
         ?(m.media_type==='video'
           ?'<video src="'+_chatMediaUrl(m.media)+'" controls playsinline preload="metadata" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:2px 0"></video>'
-          :'<img src="'+_chatMediaUrl(m.media)+'" alt="photo" onclick="chatMediaView(\''+m.media+'\')" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:2px 0;cursor:pointer" loading="lazy">')
+          :'<div style="position:relative"><img src="'+_chatMediaUrl(m.media)+'" alt="photo" onclick="chatMediaView(\''+m.media+'\')" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:2px 0;cursor:pointer" loading="lazy">'
+            +'<button onclick="event.stopPropagation();chatPromoteToEval(\''+m.media+'\')" title="Save to project evaluation" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);border:1px solid var(--border);border-radius:6px;color:#ffd700;font-size:13px;padding:3px 7px;cursor:pointer">📌</button></div>')
         :'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>')
       +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px">'+t+'</div>'
       +'</div>';
@@ -7096,7 +7113,7 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.001m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.002m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)); }
 function chatMediaView(id){
   var ov=document.createElement('div');
@@ -7154,7 +7171,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.001m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.002m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7197,6 +7214,112 @@ async function chatMembersOpen(){
     var host2=document.getElementById('chat-members-body');
     if(host2) host2.textContent='Could not load — offline?';
   }
+}
+
+// ── ⭐ Project evaluation (v4.002m, worker v4.20+) ────────────────────
+// Notes + photos meant for the NEXT edition of this show. Entries live in
+// the project payload (evaluation array — merged by id on the worker, so
+// two people can write at once without losing anything). Photos go to the
+// permanent eval store (em_ ids), never cleaned up by the chat trim.
+window._mEvaluation = window._mEvaluation || [];
+var _evalPendingMedia = [];   // uploaded ids waiting for the note to be saved
+function _evalMeName(){ return _aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'); }
+function openEvalSheet(){
+  if(!_projectKey){ showToast('Open a project first','warn'); return; }
+  _evalPendingMedia=[];
+  _evalRender();
+  openSheet('eval');
+}
+function _evalRender(){
+  var host=document.getElementById('eval-body'); if(!host) return;
+  var list=(window._mEvaluation||[]).slice().sort(function(a,b){ return String(b.at||'').localeCompare(String(a.at||'')); });
+  var pend=_evalPendingMedia.map(function(id,i){
+    return '<div style="position:relative;display:inline-block;margin:0 6px 6px 0">'
+      +'<img src="'+_chatMediaUrl(id)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--accent)">'
+      +'<span onclick="_evalPendingMedia.splice('+i+',1);_evalRender()" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</span>'
+      +'</div>';
+  }).join('');
+  var entries=list.length?list.map(function(ev){
+    var photos=(ev.media||[]).map(function(mid){
+      return '<img src="'+_chatMediaUrl(mid)+'" onclick="chatMediaView(\''+mid+'\')" style="width:84px;height:84px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;cursor:pointer" loading="lazy">';
+    }).join('');
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +  '<span style="flex:1;font-family:var(--cond);font-weight:700;font-size:12px;color:var(--accent)">'+String(ev.by||'?').replace(/</g,'&lt;')+'</span>'
+      +  '<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+String(ev.at||'').slice(0,10)+'</span>'
+      +'</div>'
+      +(ev.text?'<div style="font-size:13px;line-height:1.45;margin-top:4px;word-break:break-word">'+String(ev.text).replace(/</g,'&lt;')+'</div>':'')
+      +(photos?'<div style="display:flex;flex-wrap:wrap;margin-top:2px">'+photos+'</div>':'')
+      +'</div>';
+  }).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">No evaluation notes yet.<br><span style="font-size:11px">Write down what the next edition should know — with photos.</span></div>';
+  host.innerHTML=
+    '<div style="background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">'
+    +'<textarea id="eval-text" rows="2" placeholder="For next time: what worked, what to change…" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:14px;resize:vertical"></textarea>'
+    +(pend?'<div style="margin-top:8px">'+pend+'</div>':'')
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +  '<button class="sb" onclick="document.getElementById(\'eval-media-file\').click()" style="font-size:13px;padding:9px 12px">📎 Photo</button>'
+    +  '<input id="eval-media-file" type="file" accept="image/*" multiple style="display:none" onchange="evalMediaPick(this.files);this.value=\'\'">'
+    +  '<button class="sb" onclick="evalAddEntry()" style="flex:1;background:#ffd700;color:#000;font-weight:700;font-size:13px">⭐ Save note</button>'
+    +'</div></div>'
+    + entries;
+}
+async function evalMediaPick(files){
+  if(!files||!files.length) return;
+  for(var i=0;i<files.length && i<6;i++){
+    var f=files[i];
+    try{
+      showToast('Uploading photo '+(i+1)+'/'+Math.min(files.length,6)+'…','muted');
+      var blob=await _chatCompressImage(f);
+      var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media')+'&pid='+encodeURIComponent(_projectKey)+'&scope=eval';
+      if(u.indexOf('?')<0) u=u.replace('&pid=','?pid=');
+      var r=await fetch(u,{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
+      var d=await r.json();
+      if(d.ok) _evalPendingMedia.push(d.id);
+      else showToast(d.error||'Upload failed','danger');
+    }catch(e){ showToast('Could not read that photo','danger'); }
+  }
+  _evalRender();
+}
+function evalAddEntry(){
+  var ta=document.getElementById('eval-text');
+  var text=(ta&&ta.value||'').trim();
+  if(!text && !_evalPendingMedia.length){ showToast('Write a note or add a photo first','warn'); return; }
+  window._mEvaluation=window._mEvaluation||[];
+  window._mEvaluation.push({
+    id:'ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    at:new Date().toISOString(),
+    by:_evalMeName(),
+    text:text,
+    media:_evalPendingMedia.slice()
+  });
+  _evalPendingMedia=[];
+  if(ta) ta.value='';
+  _evalRender();
+  showToast('Saved for the next edition ⭐','ok');
+  if(typeof wPush==='function') try{ wPush(true); }catch(e){}
+}
+// 📌 from chat: copy the photo into the permanent store + make an entry
+async function chatPromoteToEval(mediaId){
+  if(!_projectKey){ showToast('Open a project first','warn'); return; }
+  try{
+    var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media/promote/'+encodeURIComponent(mediaId))+'&pid='+encodeURIComponent(_chatPid());
+    if(u.indexOf('?')<0) u=u.replace('&pid=','?pid=');
+    if(_chatChannel!=='project') u+='&via='+encodeURIComponent(_projectKey);
+    var r=await fetch(u,{method:'POST'});
+    var d=await r.json();
+    if(!d.ok){ showToast(d.error||'Could not save','danger'); return; }
+    var note=prompt('Note for the evaluation? (optional)','')||'';
+    window._mEvaluation=window._mEvaluation||[];
+    window._mEvaluation.push({
+      id:'ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      at:new Date().toISOString(),
+      by:_evalMeName(),
+      text:note.trim(),
+      media:[d.id]
+    });
+    showToast('Photo saved to project evaluation ⭐','ok');
+    if(typeof wPush==='function') try{ wPush(true); }catch(e){}
+  }catch(e){ showToast('Could not save — offline?','danger'); }
 }
 
 // ── Stickers — global library on the worker (/stickers) ──────────────
@@ -7374,7 +7497,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.001m',
+    version: 'v4.002m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7718,6 +7841,9 @@ function openProjectSheet(){
     +(project.name?'<div style="font-family:var(--cond);font-weight:900;font-size:22px;color:var(--text);margin-bottom:2px">'+project.name+'</div>':'')
     +(project.venue?'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">📍 '+project.venue+'</div>':'')
     +(project.date?'<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">📅 '+project.date+'</div>':'')
+    +'<button onclick="openEvalSheet()" style="margin-top:8px;width:100%;background:rgba(255,215,0,.08);border:1px solid #ffd700;border-radius:10px;color:#ffd700;font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:1px;padding:10px;cursor:pointer">⭐ EVALUATION — notes &amp; photos for next time'
+    +((window._mEvaluation&&window._mEvaluation.length)?' <span style="font-family:var(--mono);font-size:11px">('+window._mEvaluation.length+')</span>':'')
+    +'</button>'
     +'</div>';
 
   // ── Stages ────────────────────────────────────────────────────
@@ -7925,7 +8051,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.001m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.002m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
