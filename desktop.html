@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.088</title>
+<title>WTUniverse · Buildert Editor v4.089</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.088</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.089</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -620,7 +620,7 @@
       <button class="tab-btn" id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
       <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">📄 Docs</button>
       <span style="flex:1"></span>
-      <!-- v4.088: Workshop group — everything here is YOURS, not the open
+      <!-- v4.089: Workshop group — everything here is YOURS, not the open
            project's: the Manager, the cross-project activity view, the device
            spec library and the label printer. Grouped and tinted so the split
            between "this project" and "my tools" is visible at a glance. -->
@@ -7023,7 +7023,7 @@ function resolveProjectConflict(mode) {
   _pendingFileData = null;
 }
 
-// v4.088: project meta is stored PER PROJECT. The old single global key
+// v4.089: project meta is stored PER PROJECT. The old single global key
 // ('wtu_project_meta') was shared by every project, so after a switch or on
 // boot the UI could show — and then push — the previous project's name. That
 // is the root of "projects load under different names".
@@ -7522,7 +7522,7 @@ function dbxStopPolling(){
 function autoSave(){
   try{
     localStorage.setItem('buildert_devices',JSON.stringify(devices));
-    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.088: cache ownership
+    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.089: cache ownership
   }catch(e){}
   // Crash-safe: snapshot the FULL project to localStorage 10s after the last
   // edit — same payload as quick-save, so a browser crash or closed tab
@@ -11084,14 +11084,14 @@ function renderSpecs(){
 }
 
 // ── Init
-// v4.088: only restore the devices cache if it belongs to the bound project.
+// v4.089: only restore the devices cache if it belongs to the bound project.
 // Both caches used to be global, so booting after a switch elsewhere showed
 // the previous project's devices and name under the new key.
 try{
   var _bootKey=localStorage.getItem('buildert_project_key')||'';
   var _devPid=localStorage.getItem('buildert_devices_pid');
   var s=localStorage.getItem('buildert_devices');
-  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.088 cache, accept once
+  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.089 cache, accept once
     devices=JSON.parse(s);
     if(_devPid===null) try{ localStorage.setItem('buildert_devices_pid',_bootKey); }catch(e2){}
   } else if(s){
@@ -12404,7 +12404,7 @@ function wSyncInit(){
   if(cbPush) cbPush.checked = _autoPushOn;
   if(_autoPullOn) _wStartAutoPull();
   _wRefreshModeButtons();
-  // v4.088: ONE fresh pull on every boot with a bound project — even with
+  // v4.089: ONE fresh pull on every boot with a bound project — even with
   // auto-pull off. Without it the app opened on stale local caches and only
   // updated when you pulled by hand, which read as "wrong project loaded".
   // A single pull does not enable continuous polling (the auto-pull merge
@@ -12469,7 +12469,7 @@ function _aliasName(n){
   var a = window._riggerAliases||{};
   return a[n] || n;
 }
-// v4.088: score ONLY this project's activity. The log used to bleed across
+// v4.089: score ONLY this project's activity. The log used to bleed across
 // project switches (fixed in pmOpenProject), but logs polluted before the fix
 // still contain foreign entries. Every entry carries the stage id it was made
 // on, so anything referencing a stage this project doesn't have is foreign and
@@ -12506,16 +12506,52 @@ function _rwCalcPoints(name){
   });
   return pts;
 }
-// ── Project chat (desktop) — same /chat/<pid> endpoints as mobile ──
-var _dChatMsgs=[], _dChatTimer=null;
-async function _dChatFetch(){
+// ── Chat (desktop, v4.089) — project channel + two company channels ──
+// Same /chat/<pid> endpoints as mobile; 'ℹ️ Info' and '🎉 Fun' live on the
+// reserved global pids (worker v4.18+) and span every project and user.
+var _dChatMsgs=[], _dChatTimer=null, _dChatChannel='project';
+function _dChatPid(ch){
+  ch=ch||_dChatChannel;
+  if(ch==='info') return '_global_info';
+  if(ch==='fun') return '_global_fun';
+  return _projectKey||'';
+}
+function _dChatUrl(ch){
+  var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_dChatPid(ch)));
+  if((ch||_dChatChannel)!=='project'&&_projectKey) u+=(u.indexOf('?')>=0?'&':'?')+'via='+encodeURIComponent(_projectKey);
+  return u;
+}
+async function _dChatFetch(ch){
   if(!_workerUrl||!_projectKey) return null;
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)));
+    var r=await fetch(_dChatUrl(ch));
     if(!r.ok) return null;
     var d=await r.json();
     return Array.isArray(d.messages)?d.messages:[];
   }catch(e){ return null; }
+}
+function _dChatTabs(){
+  var chans=[['project','📌 This project'],['info','ℹ️ Info · all'],['fun','🎉 Fun · all']];
+  return '<div style="display:flex;gap:6px;margin-bottom:8px">'
+    + chans.map(function(c){
+        var on=(_dChatChannel===c[0]);
+        return '<button onclick="_dChatSwitch(\''+c[0]+'\')" style="flex:1;background:'+(on?'rgba(0,212,255,.14)':'var(--panel)')
+          +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--text)')
+          +';border-radius:7px;padding:6px 4px;font-size:12px;font-weight:700;cursor:pointer">'+c[1]+'</button>';
+      }).join('')
+    + '</div>';
+}
+async function _dChatSwitch(ch){
+  _dChatChannel=ch;
+  var tb=document.getElementById('d-chat-tabs'); if(tb) tb.innerHTML=_dChatTabs().replace(/^<div[^>]*>|<\/div>$/g,'');
+  var box=document.getElementById('d-chat-msgs');
+  if(box) box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>';
+  _dChatMsgs=[];
+  var m=await _dChatFetch(ch);
+  if(ch!==_dChatChannel) return;
+  if(m){ _dChatMsgs=m; _dChatRender(); }
+  else if(box) box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Could not load this channel'+(ch!=='project'?' — worker v4.18+ needed for company channels':'')+'.</div>';
+  try{ localStorage.setItem('buildert_chat_seen_d__'+_dChatPid(ch), _dChatMsgs.length?_dChatMsgs[_dChatMsgs.length-1].at:''); }catch(e){}
 }
 function _dChatRender(){
   var box=document.getElementById('d-chat-msgs'); if(!box) return;
@@ -12536,7 +12572,8 @@ async function openChatModal(){
   if(!_workerUrl||!_projectKey){ showToast('Connect to worker first','warn'); return; }
   var html='<div class="modal-overlay open" id="modal-chat" style="z-index:1000">'
     +'<div class="modal" style="max-width:520px;display:flex;flex-direction:column;height:70vh">'
-    +'<h2 style="margin-bottom:8px">💬 Project chat</h2>'
+    +'<h2 style="margin-bottom:8px">💬 Chat</h2>'
+    +'<div id="d-chat-tabs" style="display:flex;gap:6px;margin-bottom:8px">'+_dChatTabs().replace(/^<div[^>]*>|<\/div>$/g,'')+'</div>'
     +'<div id="d-chat-msgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:6px 2px"></div>'
     +'<div id="d-stk-panel" style="display:none;border-top:1px solid var(--border);padding-top:8px;max-height:200px;overflow-y:auto">'
     +'<div id="d-stk-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"></div>'
@@ -12554,7 +12591,7 @@ async function openChatModal(){
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px">'
     +'<button class="btn btn-ghost" onclick="_dChatClose()" style="flex:1">Close</button>'
-    +'<button class="btn btn-ghost" onclick="_dChatWipe()" style="color:var(--danger);border-color:var(--danger)" title="Planner control: wipe the whole chat history for this project">🗑 Wipe chat</button>'
+    +'<button class="btn btn-ghost" id="d-chat-wipe" onclick="_dChatWipe()" style="color:var(--danger);border-color:var(--danger)" title="Planner control: wipe the whole chat history for this project">🗑 Wipe chat</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   var m=await _dChatFetch(); if(m){ _dChatMsgs=m; _dChatRender(); }
@@ -12563,7 +12600,9 @@ async function openChatModal(){
   if(_dChatTimer) clearInterval(_dChatTimer);
   _dChatTimer=setInterval(async function(){
     if(!document.getElementById('modal-chat')){ clearInterval(_dChatTimer); _dChatTimer=null; return; }
-    var mm=await _dChatFetch();
+    var ch=_dChatChannel;
+    var mm=await _dChatFetch(ch);
+    if(ch!==_dChatChannel) return;
     if(mm && mm.length!==_dChatMsgs.length){ _dChatMsgs=mm; _dChatRender(); }
   },10000);
 }
@@ -12573,7 +12612,7 @@ async function _dChatSend(){
   var text=(inp.value||'').trim(); if(!text) return;
   inp.value='';
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+    var r=await fetch(_dChatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({by:'planner',text:text})
     });
@@ -12623,7 +12662,7 @@ function _dStkToggleManage(){
 async function _dStkSend(id){
   var p=document.getElementById('d-stk-panel'); if(p) p.style.display='none';
   try{
-    var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{
+    var r=await fetch(_dChatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({by:'planner',sticker:id})
     });
@@ -12682,9 +12721,11 @@ async function _dStkImport(){
   }catch(e){ showToast('Import failed — offline?','danger'); }
 }
 async function _dChatWipe(){
-  if(!confirm('Wipe the ENTIRE chat history for this project? Cannot be undone.')) return;
+  var what=_dChatChannel==='project'?'this project\'s chat':( _dChatChannel==='info'?'the company-wide INFO chat':'the company-wide FUN chat');
+  if(!confirm('Wipe the ENTIRE history of '+what+'? Cannot be undone.')) return;
   try{
-    await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/chat/'+encodeURIComponent(_projectKey)),{method:'DELETE'});
+    var r=await fetch(_dChatUrl(),{method:'DELETE'});
+    if(!r.ok){ showToast(r.status===401?'Only an admin can wipe this channel':'Wipe failed','warn'); return; }
     _dChatMsgs=[]; _dChatRender();
     showToast('Chat wiped','ok');
   }catch(e){ showToast('Wipe failed','danger'); }
@@ -12926,7 +12967,7 @@ function openRewardsModal(){
   }).join('');
   var scopeNote = scoped.excluded
     ? '<div style="border:1px solid var(--warn);background:rgba(255,180,84,.07);border-radius:7px;padding:8px 11px;margin:0 0 12px;font-size:11px;color:var(--warn)">'
-      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.088). '
+      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.089). '
       +'<a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn);text-decoration:underline">'+(_rwIncludeForeign?'hide them again':'show them anyway')+'</a>'
       +' · <a href="#" onclick="_rwPurgeForeign();return false" style="color:var(--danger);text-decoration:underline">purge them for good</a></div>'
     : (_rwIncludeForeign?'<div style="font-size:11px;color:var(--warn);margin:0 0 12px">Showing unscoped log. <a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn)">back to this project only</a></div>':'');
@@ -13149,7 +13190,7 @@ async function _brtLoadProjectList(force){
 }
 
 // ── Authoritative name of the OPEN project ───────────────────────────
-// Since v4.088, _projectMeta is stored per project ('wtu_project_meta__<pid>')
+// Since v4.089, _projectMeta is stored per project ('wtu_project_meta__<pid>')
 // and swapped on every switch, so it always describes _projectKey. The
 // worker's project list still wins when it disagrees (it is the shared truth);
 // local meta covers projects that were never pushed and offline boots.
@@ -13447,7 +13488,7 @@ async function _hdrLoadProjects(){
     + ' style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:12px"></div>'
     + '<div id="hdr-proj-list">'
     + (function(){
-        // v4.088: past projects sink below a divider so the everyday list is short
+        // v4.089: past projects sink below a divider so the everyday list is short
         var act=list.filter(function(p){return p.status!=='past';});
         var pst=list.filter(function(p){return p.status==='past';});
         function item(p, dim){
@@ -14002,7 +14043,7 @@ async function _mgrRenderProjects(){
     var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var isPast = p.status==='past';
-    // v4.088: surface a stale local alias — the registry remembering an old
+    // v4.089: surface a stale local alias — the registry remembering an old
     // name is one of the ways "the same project shows up under two names".
     var regName=''; try{ regName=((_kpAll()[p.key])||{}).name||''; }catch(e){}
     var aliasMismatch = regName && p.devices>=0 && p._display!=='(unnamed)'
@@ -14018,7 +14059,7 @@ async function _mgrRenderProjects(){
       +     (p._dupName?' <span title="Another project shares this name — rename to tell them apart" style="color:var(--warn);font-size:10px">⚠ duplicate name</span>':'')
       +   '</div>'
       +   '<div style="font-family:var(--mono);font-size:10px;color:var(--accent)">'+_escHtml(p.key)+'</div>'
-      // v4.088: register line — the row reads like a database record
+      // v4.089: register line — the row reads like a database record
       +   (function(){
             var bits=[];
             if(p.client) bits.push('👤 '+_escHtml(p.client));
@@ -14046,7 +14087,7 @@ async function _mgrRenderProjects(){
       +   ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--danger)" onclick="_mgrDeleteProject(\''+jsKey+'\')">🗑</button>'
       + '</td></tr>';
   }
-  // v4.088: sortable register. 'saved' (default) keeps recent work on top;
+  // v4.089: sortable register. 'saved' (default) keeps recent work on top;
   // 'date' orders by show date (soonest/most recent first); name/client A-Z.
   var sortFns={
     saved: function(a,b){ return String(b.saved||'').localeCompare(String(a.saved||'')); },
@@ -14066,7 +14107,7 @@ async function _mgrRenderProjects(){
   var _host=document.getElementById('mgr-sub');
   if(!_host) return;
   _host.innerHTML =
-    // v4.088: identity strip — one line that says exactly what is open and
+    // v4.089: identity strip — one line that says exactly what is open and
     // where its displayed name comes from. No more guessing.
     (function(){
       var cur=list.filter(function(p){ return String(p.key)===String(_projectKey); })[0];
@@ -14110,7 +14151,7 @@ async function _mgrRenderProjects(){
     + '<th style="padding:4px 4px 4px 10px;width:26px"><input type="checkbox" id="mgr-pall" onchange="_mgrSelAll(this.checked)" style="cursor:pointer" title="Select all"></th>'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
     + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">'+(past.length?'No active projects — everything is under Past below.':'No projects yet.')+'</td></tr>')+'</tbody></table>'
-    // v4.088: past projects live in a collapsed section — the active list
+    // v4.089: past projects live in a collapsed section — the active list
     // stays short and every finished show is one click away, not deleted.
     + (past.length
       ? '<div style="margin-top:14px">'
@@ -14123,14 +14164,14 @@ async function _mgrRenderProjects(){
         + '</div>'
       : '')
     + (statusSupported?'':'<div style="font-size:11px;color:var(--muted);margin-top:10px">Current/past organisation needs worker v4.15+ — update the worker to sort projects into Past.</div>')
-    // v4.088: the clean-slate path for when local naming state has gone bad.
+    // v4.089: the clean-slate path for when local naming state has gone bad.
     + '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px;display:flex;align-items:center;gap:10px">'
     +   '<div style="flex:1;font-size:11px;color:var(--muted)">Names still wrong after the fixes above? Wipe this browser\'s local project caches and re-open your backups fresh. Projects on the worker, your login and project access keys are kept.</div>'
     +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="mgrStartClean()">🧹 Start clean…</button>'
     + '</div>';
 }
 
-// ── 📊 History (v4.088) — the cross-project database view ────────────
+// ── 📊 History (v4.089) — the cross-project database view ────────────
 // One table over every project on the worker: register fields, gear counts,
 // riggers and activity — plus a rigger XP overview aggregated across all
 // projects. Payloads are fetched once and cached per (pid, saved-stamp) in
@@ -14195,7 +14236,7 @@ async function _histLoadAll(force){
         var devN=0;
         if(Array.isArray(proj.stages)) proj.stages.forEach(function(s){ devN+=((s&&s.devices)||[]).length; });
         if(!devN) devN=((proj.devices)||[]).length;
-        // v4.088: keep stage ids + a trimmed copy of the log so the unified
+        // v4.089: keep stage ids + a trimmed copy of the log so the unified
         // all-projects activity list can re-attribute legacy entries.
         var stageIds=[];
         if(Array.isArray(proj.stages)) proj.stages.forEach(function(st){ if(st&&st.id) stageIds.push(st.id); });
@@ -14241,7 +14282,7 @@ function _histRender(){
   all.forEach(function(h){
     totDev+=h.devN; totLog+=h.logN;
     Object.keys(h.riggers).forEach(function(nRaw){
-      var n=_gAlias(nRaw);                       // v4.088: global name merge
+      var n=_gAlias(nRaw);                       // v4.089: global name merge
       if(!allRiggers[n]) allRiggers[n]={projects:0,actions:0,pts:0,bonus:0,_p:{}};
       if(!allRiggers[n]._p[h.pid]){ allRiggers[n]._p[h.pid]=1; allRiggers[n].projects++; }
       allRiggers[n].actions+=h.riggers[nRaw].actions|0;
@@ -14309,7 +14350,7 @@ function _histRender(){
     +'<tbody>'+(xrows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">No rigger activity found.</td></tr>')+'</tbody></table>'
     + _histActSection();
 }
-// ── 🧾 Unified activity (v4.088) — every log entry, one list, with a ──
+// ── 🧾 Unified activity (v4.089) — every log entry, one list, with a ──
 // PROJECT column. Attribution, in order of trust:
 //   1. e.pid — entries stamped by mobile v3.999m+. Authoritative forever.
 //   2. Stage fingerprint — legacy entries carry the stage id they were made
@@ -14319,7 +14360,7 @@ function _histRender(){
 //   3. The payload it sits in — entries with no stamp and no known stage.
 // Duplicated entries (the old bleed copied them into several payloads) are
 // collapsed to one, preferring the copy that sits in its attributed project.
-// ── 🔗 Global name merge (v4.088) — one rigger, one name, everywhere ──
+// ── 🔗 Global name merge (v4.089) — one rigger, one name, everywhere ──
 // Per-project aliases (Rewards window) fix spelling inside ONE project;
 // this maps spelling variants across ALL projects in the History view.
 // Stored in this browser (brt_global_aliases) and applied at display time:
@@ -14556,7 +14597,7 @@ function _histCsvRiggers(){
     ['rigger','projects','actions','log_points','bonus_xp','total'], rows);
 }
 
-// ── Backup importer (v4.088) — turn a folder of backups into a tidy ──
+// ── Backup importer (v4.089) — turn a folder of backups into a tidy ──
 // project database in one session. Drop any number of backup files
 // (single-project 'wtu-project' files or multi-project 'v2' envelopes),
 // review every project found — editable name & slot, duplicate warnings,
@@ -14754,7 +14795,7 @@ async function _impRun(){
   _mgrRenderProjects();
 }
 
-// ── Project register (v4.088, worker v4.17+) — client, venue, city, ──
+// ── Project register (v4.089, worker v4.17+) — client, venue, city, ──
 // dates and notes per project. Fields live in the payload (project.*) so
 // they sync, survive Start clean and travel with backups. The open project
 // edits locally + pushes; any other project is patched read-modify-write
@@ -14854,7 +14895,7 @@ function _mgrSetProjSort(v){
   _mgrRenderProjects();
 }
 
-// ── Project status: current / past (v4.088, worker v4.15+) ───────────
+// ── Project status: current / past (v4.089, worker v4.15+) ───────────
 // Status lives INSIDE the project payload (project.status) so it syncs and
 // survives Start clean. For the open project we set it locally and push the
 // project we have; for any other project we read-modify-write the worker
@@ -15048,7 +15089,7 @@ async function _mgrRenderPeople(){
   if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
-  await _mgrLoadInvites();          // v4.088 — pending invites (worker v4.14+)
+  await _mgrLoadInvites();          // v4.089 — pending invites (worker v4.14+)
   if(!_mgrCache.matrixSupported){
     document.getElementById('mgr-sub').innerHTML =
       '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
@@ -15721,7 +15762,7 @@ async function pmOpenProject(pid){
   _kpTouch(_projectKey, _projectMeta.name||'');   // remember where we came from
   _projectKey = pid;
   try{ localStorage.setItem('buildert_project_key', pid); }catch(e){}
-  // v4.088: per-project reward state MUST NOT survive a switch. The activity
+  // v4.089: per-project reward state MUST NOT survive a switch. The activity
   // log merge is additive, so without this the old project's log entries (and
   // bonus XP + aliases) bled into the new project — Rewards then scored riggers
   // on BOTH projects, and the next push wrote the polluted log into the new
@@ -15730,7 +15771,7 @@ async function pmOpenProject(pid){
   window._xpBonus = null;        // null (not {}) so the pull adopts the new project's synced bonus
   window._riggerAliases = null;  // idem for aliases
   if(typeof _spUpdateBadge==='function') try{ _spUpdateBadge(); }catch(e){}
-  // v4.088: swap to THIS project's stored meta right away. The name is correct
+  // v4.089: swap to THIS project's stored meta right away. The name is correct
   // the instant you switch — even offline — instead of showing the previous
   // project's name until a pull happens to fix it.
   try{
@@ -16256,7 +16297,7 @@ async function _wPushImpl(silent){
 
   // Step 2: Derive project key from project meta if not explicitly set
   if(!_projectKey) {
-    // v4.088: with no key AND no project name, derivation yields the junk
+    // v4.089: with no key AND no project name, derivation yields the junk
     // slot 'default'. Refuse instead: a push must go to a real, named project.
     if(!((_projectMeta.id||_projectMeta.name||'').trim())){
       showToast('No project open — name this project (Project settings) or open one in the Manager before pushing','warn');
@@ -16269,7 +16310,7 @@ async function _wPushImpl(silent){
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
     addSyncLog('Auto-derived project key: '+_projectKey,'info');
-    // v4.088: slot creation must never be silent — invisible auto-derived
+    // v4.089: slot creation must never be silent — invisible auto-derived
     // slots are how projects "appeared out of nowhere" in the Manager.
     showToast('📂 New worker slot created: '+_projectKey+' — rename it in Manager → Projects if needed','info');
   }
@@ -18203,7 +18244,7 @@ function hideRecentMenu(){
 function recentOpen(idx){
   document.getElementById('file-menu').style.display='none';
   var r=_recentFiles[idx]; if(!r) return;
-  // v4.088: the snapshot is ONE slot. It used to be loaded for ANY recent
+  // v4.089: the snapshot is ONE slot. It used to be loaded for ANY recent
   // entry clicked — pick "Show B", get whatever project the snapshot held,
   // labeled "Show B". Now the snapshot's identity must match the entry.
   try{
@@ -18601,7 +18642,7 @@ function _syncCableIn() {
   var el = document.getElementById('m-cable-in'); if (el) el.value = primary;
 }
 
-// ── v4.088: Buildert always starts on the Manager screen ─────────────
+// ── v4.089: Buildert always starts on the Manager screen ─────────────
 // The Manager is the control room: which project is open, who has access,
 // what state everything is in. Starting there means every session begins
 // with a deliberate "this is the project I'm working on" instead of landing
