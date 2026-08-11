@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v3.998m</title>
+<title>WTU · Buildert v3.999m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +533,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.998m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v3.999m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -1304,7 +1304,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v3.998m: per-project XP ledger (localStorage
+// FEATURES ADDED v3.999m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1316,7 +1316,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v3.998m: account users are no longer called "rigger" in chat.
+//   ALSO v3.999m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -4803,7 +4803,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v3.998m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v3.999m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6203,7 +6203,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v3.998m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v3.999m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -7200,7 +7200,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v3.998m',
+    version: 'v3.999m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7751,6 +7751,8 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
+    pid:_projectKey||'',   // v3.999m: explicit project stamp — activity can
+                           // never be misattributed across projects again
   };
   window._activityLog.push(entry);
   var cnt=document.getElementById('rigger-log-count');
