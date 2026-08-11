@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.083</title>
+<title>WTUniverse · Buildert Editor v4.084</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">🏆</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.083</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.084</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -620,7 +620,7 @@
       <button class="tab-btn" id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
       <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">📄 Docs</button>
       <span style="flex:1"></span>
-      <!-- v4.083: Workshop group — everything here is YOURS, not the open
+      <!-- v4.084: Workshop group — everything here is YOURS, not the open
            project's: the Manager, the cross-project activity view, the device
            spec library and the label printer. Grouped and tinted so the split
            between "this project" and "my tools" is visible at a glance. -->
@@ -7002,7 +7002,7 @@ function resolveProjectConflict(mode) {
   _pendingFileData = null;
 }
 
-// v4.083: project meta is stored PER PROJECT. The old single global key
+// v4.084: project meta is stored PER PROJECT. The old single global key
 // ('wtu_project_meta') was shared by every project, so after a switch or on
 // boot the UI could show — and then push — the previous project's name. That
 // is the root of "projects load under different names".
@@ -7498,7 +7498,7 @@ function dbxStopPolling(){
 function autoSave(){
   try{
     localStorage.setItem('buildert_devices',JSON.stringify(devices));
-    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.083: cache ownership
+    localStorage.setItem('buildert_devices_pid',_projectKey||'');   // v4.084: cache ownership
   }catch(e){}
   // Crash-safe: snapshot the FULL project to localStorage 10s after the last
   // edit — same payload as quick-save, so a browser crash or closed tab
@@ -11060,14 +11060,14 @@ function renderSpecs(){
 }
 
 // ── Init
-// v4.083: only restore the devices cache if it belongs to the bound project.
+// v4.084: only restore the devices cache if it belongs to the bound project.
 // Both caches used to be global, so booting after a switch elsewhere showed
 // the previous project's devices and name under the new key.
 try{
   var _bootKey=localStorage.getItem('buildert_project_key')||'';
   var _devPid=localStorage.getItem('buildert_devices_pid');
   var s=localStorage.getItem('buildert_devices');
-  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.083 cache, accept once
+  if(s && (_devPid===null || _devPid===_bootKey)){   // null = pre-v4.084 cache, accept once
     devices=JSON.parse(s);
     if(_devPid===null) try{ localStorage.setItem('buildert_devices_pid',_bootKey); }catch(e2){}
   } else if(s){
@@ -12373,7 +12373,7 @@ function wSyncInit(){
   if(cbPush) cbPush.checked = _autoPushOn;
   if(_autoPullOn) _wStartAutoPull();
   _wRefreshModeButtons();
-  // v4.083: ONE fresh pull on every boot with a bound project — even with
+  // v4.084: ONE fresh pull on every boot with a bound project — even with
   // auto-pull off. Without it the app opened on stale local caches and only
   // updated when you pulled by hand, which read as "wrong project loaded".
   // A single pull does not enable continuous polling (the auto-pull merge
@@ -12438,7 +12438,7 @@ function _aliasName(n){
   var a = window._riggerAliases||{};
   return a[n] || n;
 }
-// v4.083: score ONLY this project's activity. The log used to bleed across
+// v4.084: score ONLY this project's activity. The log used to bleed across
 // project switches (fixed in pmOpenProject), but logs polluted before the fix
 // still contain foreign entries. Every entry carries the stage id it was made
 // on, so anything referencing a stage this project doesn't have is foreign and
@@ -12895,7 +12895,7 @@ function openRewardsModal(){
   }).join('');
   var scopeNote = scoped.excluded
     ? '<div style="border:1px solid var(--warn);background:rgba(255,180,84,.07);border-radius:7px;padding:8px 11px;margin:0 0 12px;font-size:11px;color:var(--warn)">'
-      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.083). '
+      +'⚠ '+scoped.excluded+' log entr'+(scoped.excluded===1?'y':'ies')+' from other projects excluded (they reference stages this project doesn\'t have — leftovers from switching projects before v4.084). '
       +'<a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn);text-decoration:underline">'+(_rwIncludeForeign?'hide them again':'show them anyway')+'</a>'
       +' · <a href="#" onclick="_rwPurgeForeign();return false" style="color:var(--danger);text-decoration:underline">purge them for good</a></div>'
     : (_rwIncludeForeign?'<div style="font-size:11px;color:var(--warn);margin:0 0 12px">Showing unscoped log. <a href="#" onclick="_rwToggleScope();return false" style="color:var(--warn)">back to this project only</a></div>':'');
@@ -13118,7 +13118,7 @@ async function _brtLoadProjectList(force){
 }
 
 // ── Authoritative name of the OPEN project ───────────────────────────
-// Since v4.083, _projectMeta is stored per project ('wtu_project_meta__<pid>')
+// Since v4.084, _projectMeta is stored per project ('wtu_project_meta__<pid>')
 // and swapped on every switch, so it always describes _projectKey. The
 // worker's project list still wins when it disagrees (it is the shared truth);
 // local meta covers projects that were never pushed and offline boots.
@@ -13416,7 +13416,7 @@ async function _hdrLoadProjects(){
     + ' style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:12px"></div>'
     + '<div id="hdr-proj-list">'
     + (function(){
-        // v4.083: past projects sink below a divider so the everyday list is short
+        // v4.084: past projects sink below a divider so the everyday list is short
         var act=list.filter(function(p){return p.status!=='past';});
         var pst=list.filter(function(p){return p.status==='past';});
         function item(p, dim){
@@ -13970,7 +13970,7 @@ async function _mgrRenderProjects(){
     var jsKey = String(p.key).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var jsName = String(p._display).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var isPast = p.status==='past';
-    // v4.083: surface a stale local alias — the registry remembering an old
+    // v4.084: surface a stale local alias — the registry remembering an old
     // name is one of the ways "the same project shows up under two names".
     var regName=''; try{ regName=((_kpAll()[p.key])||{}).name||''; }catch(e){}
     var aliasMismatch = regName && p.devices>=0 && p._display!=='(unnamed)'
@@ -14012,7 +14012,7 @@ async function _mgrRenderProjects(){
   var _host=document.getElementById('mgr-sub');
   if(!_host) return;
   _host.innerHTML =
-    // v4.083: identity strip — one line that says exactly what is open and
+    // v4.084: identity strip — one line that says exactly what is open and
     // where its displayed name comes from. No more guessing.
     (function(){
       var cur=list.filter(function(p){ return String(p.key)===String(_projectKey); })[0];
@@ -14050,7 +14050,7 @@ async function _mgrRenderProjects(){
     + '<th style="padding:4px 4px 4px 10px;width:26px"><input type="checkbox" id="mgr-pall" onchange="_mgrSelAll(this.checked)" style="cursor:pointer" title="Select all"></th>'
     + '<th style="text-align:left;padding:4px 10px">Project</th><th style="text-align:right;padding:4px 10px">Devices</th><th style="text-align:left;padding:4px 10px">Last saved</th><th></th></tr></thead>'
     + '<tbody id="mgr-prows">'+(rows||'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">'+(past.length?'No active projects — everything is under Past below.':'No projects yet.')+'</td></tr>')+'</tbody></table>'
-    // v4.083: past projects live in a collapsed section — the active list
+    // v4.084: past projects live in a collapsed section — the active list
     // stays short and every finished show is one click away, not deleted.
     + (past.length
       ? '<div style="margin-top:14px">'
@@ -14063,14 +14063,14 @@ async function _mgrRenderProjects(){
         + '</div>'
       : '')
     + (statusSupported?'':'<div style="font-size:11px;color:var(--muted);margin-top:10px">Current/past organisation needs worker v4.15+ — update the worker to sort projects into Past.</div>')
-    // v4.083: the clean-slate path for when local naming state has gone bad.
+    // v4.084: the clean-slate path for when local naming state has gone bad.
     + '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px;display:flex;align-items:center;gap:10px">'
     +   '<div style="flex:1;font-size:11px;color:var(--muted)">Names still wrong after the fixes above? Wipe this browser\'s local project caches and re-open your backups fresh. Projects on the worker, your login and project access keys are kept.</div>'
     +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="mgrStartClean()">🧹 Start clean…</button>'
     + '</div>';
 }
 
-// ── Backup importer (v4.083) — turn a folder of backups into a tidy ──
+// ── Backup importer (v4.084) — turn a folder of backups into a tidy ──
 // project database in one session. Drop any number of backup files
 // (single-project 'wtu-project' files or multi-project 'v2' envelopes),
 // review every project found — editable name & slot, duplicate warnings,
@@ -14114,10 +14114,13 @@ function _impCountDevices(p){
 function _impAddProject(fileName, payload){
   var name=(payload.project&&payload.project.name)||payload._project_name||'';
   var slot=payload._project_id||_impSlug(name)||_impSlug(fileName.replace(/\.[^.]+$/,''));
+  slot=_impSlug(slot);
   _impRows.push({
     file:fileName, payload:payload,
     name:name||fileName.replace(/\.[^.]+$/,''),
-    slot:_impSlug(slot),
+    slot:slot,
+    suggest:slot,          // remembered so switching back to "new slot" restores it
+    slotMode:'new',        // resolved against the worker list in _impRefreshWorkerList
     status:(payload.project&&payload.project.status)==='current'?'current':'past',
     devices:_impCountDevices(payload),
     saved:String(payload._saved||'').slice(0,10),
@@ -14154,6 +14157,17 @@ async function _impRefreshWorkerList(){
     var list=await _brtLoadProjectList(true);
     list.forEach(function(p){ if(p.devices>=0) _impWorkerSlots[p.key]={name:p._display,devices:p.devices,saved:p.saved}; });
   }catch(e){}
+  // A suggestion that matches an existing worker slot starts as "merge into
+  // that slot" — the most common right answer when re-importing a backup.
+  _impRows.forEach(function(r){
+    if(!r._resolved){ r._resolved=true; if(_impWorkerSlots[r.slot]) r.slotMode='existing'; }
+  });
+  _impRender();
+}
+function _impSetSlot(i, v){
+  var r=_impRows[i]; if(!r) return;
+  if(v==='__new__'){ r.slotMode='new'; r.slot=r.suggest||_impSlug(r.name); }
+  else { r.slotMode='existing'; r.slot=v; }
   _impRender();
 }
 function _impRender(){
@@ -14161,27 +14175,44 @@ function _impRender(){
   if(!_impRows.length){ host.innerHTML=''; var g0=document.getElementById('imp-go'); if(g0) g0.disabled=true; return; }
   var slotCount={};
   _impRows.forEach(function(r){ if(r.include) slotCount[r.slot]=(slotCount[r.slot]||0)+1; });
+  var workerKeys=Object.keys(_impWorkerSlots).sort();
   var anyValid=false;
   var rows=_impRows.map(function(r,i){
-    var slotOk=/^[a-z0-9][a-z0-9_-]{1,31}$/.test(r.slot);
+    var isNew=(r.slotMode!=='existing');
+    var slotOk=!isNew || /^[a-z0-9][a-z0-9_-]{1,31}$/.test(r.slot);
     var dupBatch=r.include && slotCount[r.slot]>1;
     var onWorker=_impWorkerSlots[r.slot];
-    if(r.include && slotOk && !dupBatch) anyValid=true;
+    if(r.include && slotOk) anyValid=true;
     var note='';
     if(!slotOk) note='<span style="color:var(--danger)">slot: lowercase letters/digits/_/-, 2–32 chars</span>';
-    else if(dupBatch) note='<span style="color:var(--danger)">same slot twice in this batch — change one</span>';
     else if(String(r.slot)===String(_projectKey)) note='<span style="color:var(--warn)">this slot is OPEN — merges into the current project</span>';
-    else if(onWorker) note='<span style="color:var(--warn)">exists on worker ('+onWorker.devices+' dev'+(onWorker.name?', “'+_escHtml(onWorker.name)+'”':'')+') — will merge</span>';
+    else if(dupBatch) note='<span style="color:var(--warn)">another row targets this slot too — both merge into it</span>';
+    else if(onWorker) note='<span style="color:var(--warn)">merges into existing slot ('+onWorker.devices+' dev'+(onWorker.name?', “'+_escHtml(onWorker.name)+'”':'')+')</span>';
     else note='<span style="color:var(--ok)">new slot</span>';
+    // Slot dropdown: every worker slot (labelled with its name + device
+    // count), plus "create new slot…" which reveals the key input beside it.
+    var slotSel='<select onchange="_impSetSlot('+i+',this.value)" '
+      +'style="flex:1;min-width:150px;background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:6px 8px;border-radius:5px;font-family:var(--mono);font-size:12px">'
+      +'<option value="__new__"'+(isNew?' selected':'')+'>➕ create new slot…</option>'
+      + workerKeys.map(function(k){
+          var w=_impWorkerSlots[k];
+          return '<option value="'+_escHtml(k).replace(/"/g,'&quot;')+'"'+((!isNew&&r.slot===k)?' selected':'')+'>'
+            +_escHtml(k)+(w.name?' — “'+_escHtml(w.name)+'”':'')+' ('+w.devices+' dev)</option>';
+        }).join('')
+      +'</select>'
+      +(isNew
+        ? '<input type="text" value="'+_escHtml(r.slot).replace(/"/g,'&quot;')+'" placeholder="new_slot_key" '
+          +'oninput="_impRows['+i+'].slot=this.value.toLowerCase();_impRows['+i+'].suggest=_impRows['+i+'].slot" '
+          +'onchange="_impRender()" '
+          +'style="flex:1;min-width:110px;background:var(--panel);border:1px solid '+(slotOk?'var(--border)':'var(--danger)')+';color:var(--accent);padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:12px">'
+        : '');
     return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;'+(r.include?'':'opacity:.45')+'">'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
       +  '<input type="checkbox" '+(r.include?'checked':'')+' onchange="_impRows['+i+'].include=this.checked;_impRender()" style="cursor:pointer">'
       +  '<input type="text" value="'+_escHtml(r.name).replace(/"/g,'&quot;')+'" placeholder="Project name" '
       +    'oninput="_impRows['+i+'].name=this.value" '
       +    'style="flex:2;min-width:150px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 9px;border-radius:5px;font-size:13px;font-weight:700">'
-      +  '<input type="text" value="'+_escHtml(r.slot).replace(/"/g,'&quot;')+'" placeholder="slot_key" '
-      +    'oninput="_impRows['+i+'].slot=this.value.toLowerCase();_impRender()" '
-      +    'style="flex:1;min-width:110px;background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:12px">'
+      +  slotSel
       +  '<select onchange="_impRows['+i+'].status=this.value" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:5px;font-size:12px">'
       +    '<option value="past"'+(r.status==='past'?' selected':'')+'>📁 past</option>'
       +    '<option value="current"'+(r.status==='current'?' selected':'')+'>● current</option>'
@@ -14206,7 +14237,7 @@ async function _impRun(){
   var okN=0, failN=0;
   for(var i=0;i<_impRows.length;i++){
     var r=_impRows[i];
-    var slotOk=/^[a-z0-9][a-z0-9_-]{1,31}$/.test(r.slot);
+    var slotOk=(r.slotMode==='existing') || /^[a-z0-9][a-z0-9_-]{1,31}$/.test(r.slot);
     if(!r.include||!slotOk) continue;
     var res=document.getElementById('imp-res-'+i);
     if(res) res.textContent='…';
@@ -14237,7 +14268,7 @@ async function _impRun(){
   _mgrRenderProjects();
 }
 
-// ── Project status: current / past (v4.083, worker v4.15+) ───────────
+// ── Project status: current / past (v4.084, worker v4.15+) ───────────
 // Status lives INSIDE the project payload (project.status) so it syncs and
 // survives Start clean. For the open project we set it locally and push the
 // project we have; for any other project we read-modify-write the worker
@@ -14431,7 +14462,7 @@ async function _mgrRenderPeople(){
   if(!document.getElementById('mgr-sub')) return;
   _mgrBusy('Loading people…');
   await _mgrLoadPeople();
-  await _mgrLoadInvites();          // v4.083 — pending invites (worker v4.14+)
+  await _mgrLoadInvites();          // v4.084 — pending invites (worker v4.14+)
   if(!_mgrCache.matrixSupported){
     document.getElementById('mgr-sub').innerHTML =
       '<div style="padding:18px;border:1px dashed var(--warn);border-radius:8px;color:var(--muted);font-size:13px">'
@@ -15104,7 +15135,7 @@ async function pmOpenProject(pid){
   _kpTouch(_projectKey, _projectMeta.name||'');   // remember where we came from
   _projectKey = pid;
   try{ localStorage.setItem('buildert_project_key', pid); }catch(e){}
-  // v4.083: per-project reward state MUST NOT survive a switch. The activity
+  // v4.084: per-project reward state MUST NOT survive a switch. The activity
   // log merge is additive, so without this the old project's log entries (and
   // bonus XP + aliases) bled into the new project — Rewards then scored riggers
   // on BOTH projects, and the next push wrote the polluted log into the new
@@ -15113,7 +15144,7 @@ async function pmOpenProject(pid){
   window._xpBonus = null;        // null (not {}) so the pull adopts the new project's synced bonus
   window._riggerAliases = null;  // idem for aliases
   if(typeof _spUpdateBadge==='function') try{ _spUpdateBadge(); }catch(e){}
-  // v4.083: swap to THIS project's stored meta right away. The name is correct
+  // v4.084: swap to THIS project's stored meta right away. The name is correct
   // the instant you switch — even offline — instead of showing the previous
   // project's name until a pull happens to fix it.
   try{
@@ -15637,7 +15668,7 @@ async function _wPushImpl(silent){
 
   // Step 2: Derive project key from project meta if not explicitly set
   if(!_projectKey) {
-    // v4.083: with no key AND no project name, derivation yields the junk
+    // v4.084: with no key AND no project name, derivation yields the junk
     // slot 'default'. Refuse instead: a push must go to a real, named project.
     if(!((_projectMeta.id||_projectMeta.name||'').trim())){
       showToast('No project open — name this project (Project settings) or open one in the Manager before pushing','warn');
@@ -15650,7 +15681,7 @@ async function _wPushImpl(silent){
     var kd = document.getElementById('proj-key-display');
     if(kd) kd.textContent = _projectKey;
     addSyncLog('Auto-derived project key: '+_projectKey,'info');
-    // v4.083: slot creation must never be silent — invisible auto-derived
+    // v4.084: slot creation must never be silent — invisible auto-derived
     // slots are how projects "appeared out of nowhere" in the Manager.
     showToast('📂 New worker slot created: '+_projectKey+' — rename it in Manager → Projects if needed','info');
   }
@@ -17584,7 +17615,7 @@ function hideRecentMenu(){
 function recentOpen(idx){
   document.getElementById('file-menu').style.display='none';
   var r=_recentFiles[idx]; if(!r) return;
-  // v4.083: the snapshot is ONE slot. It used to be loaded for ANY recent
+  // v4.084: the snapshot is ONE slot. It used to be loaded for ANY recent
   // entry clicked — pick "Show B", get whatever project the snapshot held,
   // labeled "Show B". Now the snapshot's identity must match the entry.
   try{
@@ -17982,7 +18013,7 @@ function _syncCableIn() {
   var el = document.getElementById('m-cable-in'); if (el) el.value = primary;
 }
 
-// ── v4.083: Buildert always starts on the Manager screen ─────────────
+// ── v4.084: Buildert always starts on the Manager screen ─────────────
 // The Manager is the control room: which project is open, who has access,
 // what state everything is in. Starting there means every session begins
 // with a deliberate "this is the project I'm working on" instead of landing
