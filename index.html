@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.004m</title>
+<title>WTU · Buildert v4.005m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -18,7 +18,7 @@
   --accent:#00d4ff;--laser:#5b8fff;--smoke:#4de6b8;--distro:#f5a623;--psu:#c77dff;
   --warn:#f5a623;--danger:#ff4d4d;--ok:#3ddc84;
   --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;--cond:'Barlow Condensed',sans-serif;
-  --nav-h:64px;--hdr-h:52px;--ban-h:40px;--stg-h:44px;--sb:env(safe-area-inset-bottom,0px);
+  --nav-h:64px;--hdr-h:52px;--ban-h:40px;--stg-h:44px;--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
@@ -27,7 +27,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);}
 
 /* ── Header ── */
-header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hdr-h);
+header{position:fixed;top:0;left:0;right:0;z-index:100;height:calc(var(--hdr-h) + var(--st));padding-top:var(--st);box-sizing:content-box;height:var(--hdr-h);
   background:var(--surface);border-bottom:2px solid var(--border);
   display:flex;align-items:center;padding:0 12px;gap:8px;}
 .logo{font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:2px;
@@ -45,7 +45,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hdr-h);
 #conn-time{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
 
 /* ── Banner ── */
-.banner{position:fixed;top:var(--hdr-h);left:0;right:0;z-index:99;height:var(--ban-h);
+.banner{position:fixed;top:calc(var(--hdr-h) + var(--st));left:0;right:0;z-index:99;height:var(--ban-h);
   background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 14px;gap:10px;}
 .ban-bar{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
@@ -56,7 +56,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hdr-h);
 
 /* ── Scroll area ── */
 #scroll{position:fixed;
-  top:calc(var(--hdr-h) + var(--ban-h) + var(--stg-h));left:0;right:0;
+  top:calc(var(--hdr-h) + var(--ban-h) + var(--stg-h) + var(--st));left:0;right:0;
   bottom:calc(var(--nav-h) + var(--sb));
   overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 10px 16px;}
 
@@ -536,7 +536,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.004m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.005m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -552,7 +552,7 @@ body.sun-mode .pack-table td {
   <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0;max-width:130px;overflow:hidden" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
 </header>
 
-<div style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden">
+<div style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + var(--st));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden">
   <div id="mob-stage-bar" style="flex:1;padding:4px 6px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
 </div>
 <div class="banner">
@@ -715,7 +715,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.004m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.005m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -1322,7 +1322,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.004m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.005m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1334,7 +1334,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.004m: account users are no longer called "rigger" in chat.
+//   ALSO v4.005m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -4206,7 +4206,7 @@ async function wPush(silent){
     _saved:new Date().toISOString(),
     _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project),
-    // v4.004m: NEVER send stages:null — merged as-is by the worker it could
+    // v4.005m: NEVER send stages:null — merged as-is by the worker it could
     // read as "no stages". Omit the key entirely when this phone has none,
     // so the worker keeps whatever structure the project already has.
     stages:_mStages.length?JSON.parse(JSON.stringify(_mStages)):undefined,
@@ -4834,7 +4834,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.004m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.005m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6234,7 +6234,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.004m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.005m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6419,7 +6419,7 @@ function _showXpChip(xp){
     var t = (typeof _xpTotals==='function') ? _xpTotals() : {project:0};
     if(!_xpChipEl){
       _xpChipEl=document.createElement('div');
-      _xpChipEl.style.cssText='position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + 8px);right:12px;z-index:9997;'
+      _xpChipEl.style.cssText='position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + var(--st) + 8px);right:12px;z-index:9997;'
         +'background:rgba(0,212,255,.14);border:1px solid var(--accent);color:var(--accent);'
         +'font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1px;'
         +'padding:6px 12px;border-radius:20px;box-shadow:0 2px 10px rgba(0,0,0,.4);'
@@ -6940,7 +6940,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.004m) ─────
+// ── Chat — project channel + two company-wide channels (v4.005m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -7086,7 +7086,7 @@ async function chatSend(){
   var text=(inp.value||'').trim();
   if(!text) return;
   inp.value='';
-  // v4.004m: no signal → outbox instead of a lost message
+  // v4.005m: no signal → outbox instead of a lost message
   if(navigator.onLine===false){
     _chatOutboxAdd(_chatChannel, text);
     _chatRender();
@@ -7141,7 +7141,7 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.004m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.005m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)); }
 function chatMediaView(id){
   var ov=document.createElement('div');
@@ -7199,7 +7199,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.004m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.005m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7244,7 +7244,7 @@ async function chatMembersOpen(){
   }
 }
 
-// ── 📴 Offline-first / PWA (v4.004m) ─────────────────────────────────
+// ── 📴 Offline-first / PWA (v4.005m) ─────────────────────────────────
 // Three pieces, deployed alongside this file on the same host:
 //   buildert_sw_1.js        — service worker (app opens with zero signal)
 //   buildert_manifest.json  — installability (Add to homescreen)
@@ -7362,7 +7362,91 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && _chatOutbox().length) setTimeout(_chatOutboxFlush, 1200);
 });
 
-// ── ⭐ Project evaluation (v4.004m, worker v4.20+) ────────────────────
+// ── 🔔 Push notifications (v4.005m, worker v4.22+) ───────────────────
+// Requires the service worker (deployed since v4.003m). On iPhone this only
+// works when Buildert is INSTALLED on the homescreen (iOS 16.4+) — Safari
+// tabs cannot receive web push; the UI explains that instead of failing.
+function _pushB64ToU8(b64){
+  var pad='='.repeat((4-b64.length%4)%4);
+  var raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  var out=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+async function _pushReg(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{ return await navigator.serviceWorker.ready; }catch(e){ return null; }
+}
+async function _pushStatus(){
+  if(!('Notification' in window) || !('PushManager' in window)) return 'unsupported';
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent) && !_pwaStandalone()) return 'ios-not-installed';
+  var reg=await _pushReg(); if(!reg) return 'no-sw';
+  try{
+    var sub=await reg.pushManager.getSubscription();
+    return sub ? 'on' : (Notification.permission==='denied' ? 'denied' : 'off');
+  }catch(e){ return 'off'; }
+}
+async function pushToggle(){
+  var st=await _pushStatus();
+  if(st==='unsupported'){ showToast('This browser cannot do notifications','warn'); return; }
+  if(st==='ios-not-installed'){
+    alert('On iPhone, notifications only work when Buildert is installed:\n\n1. Share button → "Add to Home Screen"\n2. Open Buildert from the homescreen\n3. Turn notifications on here');
+    return;
+  }
+  if(st==='no-sw'){ showToast('Offline files not deployed yet (buildert_sw_1.js)','warn'); return; }
+  if(st==='denied'){ alert('Notifications are blocked for Buildert in your phone settings. Allow them there first, then try again.'); return; }
+  var reg=await _pushReg();
+  if(st==='on'){
+    try{
+      var sub=await reg.pushManager.getSubscription();
+      if(sub){
+        try{ await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/push/unsubscribe'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})}); }catch(e){}
+        await sub.unsubscribe();
+      }
+      showToast('🔕 Notifications off','ok');
+    }catch(e){ showToast('Could not switch off','danger'); }
+    _pushRenderBtn();
+    return;
+  }
+  // Turn ON
+  try{
+    var perm=await Notification.requestPermission();
+    if(perm!=='granted'){ showToast('No permission — notifications stay off','warn'); _pushRenderBtn(); return; }
+    var vr=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/push/vapid'));
+    var vd=await vr.json();
+    if(!vd.ok||!vd.key){ showToast('Worker v4.22+ needed for notifications','warn'); return; }
+    var sub=await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:_pushB64ToU8(vd.key) });
+    var u=_wT(_workerUrl.replace(/\/$/,'')+'/push/subscribe');
+    if(_projectKey) u+=(u.indexOf('?')>=0?'&':'?')+'via='+encodeURIComponent(_projectKey);
+    var r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({subscription:sub.toJSON(), name:_evalMeName()})});
+    var d=await r.json();
+    if(d.ok) showToast('🔔 Notifications on — you\'ll hear about new chat messages','ok');
+    else { showToast(d.error||'Subscribe failed','danger'); try{ await sub.unsubscribe(); }catch(e){} }
+  }catch(e){ showToast('Could not enable: '+(e.message||'error'),'danger'); }
+  _pushRenderBtn();
+}
+async function _pushRenderBtn(){
+  var el=document.getElementById('push-toggle-btn'); if(!el) return;
+  var st=await _pushStatus();
+  var label={'on':'🔔 NOTIFICATIONS: ON — tap to switch off',
+             'off':'🔕 TURN ON CHAT NOTIFICATIONS',
+             'denied':'🔕 Notifications blocked in phone settings',
+             'ios-not-installed':'🔔 Notifications — install Buildert first (tap for how)',
+             'no-sw':'🔔 Notifications — deploy offline files first',
+             'unsupported':'🔔 Not supported on this browser'}[st]||st;
+  el.textContent=label;
+  el.style.borderColor = st==='on' ? 'var(--ok)' : 'var(--accent)';
+  el.style.color = st==='on' ? 'var(--ok)' : 'var(--accent)';
+}
+// SW "open chat" message from a notification tap
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', function(ev){
+    if(ev.data && ev.data.type==='open-chat'){ try{ openChatSheet(); }catch(e){} }
+  });
+}
+
+// ── ⭐ Project evaluation (v4.005m, worker v4.20+) ────────────────────
 // Notes + photos meant for the NEXT edition of this show. Entries live in
 // the project payload (evaluation array — merged by id on the worker, so
 // two people can write at once without losing anything). Photos go to the
@@ -7643,7 +7727,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.004m',
+    version: 'v4.005m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -8062,15 +8146,18 @@ function openProjectSheet(){
         + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
         + '</div>'
       : '')
-    // v4.004m: install as an app — fullscreen, homescreen icon, opens offline
+    // v4.005m: install as an app — fullscreen, homescreen icon, opens offline
     + (!_pwaStandalone()
       ? '<button onclick="pwaInstall()" style="margin-top:10px;width:100%;background:rgba(0,212,255,.10);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">📲 INSTALL BUILDERT ON THIS PHONE</button>'
         +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Homescreen icon · fullscreen · opens without signal</div>'
       : '<div style="margin-top:10px;font-size:11px;color:var(--ok);text-align:center">📲 Installed as app ✓</div>')
+    + '<button id="push-toggle-btn" onclick="pushToggle()" style="margin-top:8px;width:100%;background:rgba(0,212,255,.06);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">🔔 CHAT NOTIFICATIONS</button>'
     +'</div>'
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
   body.innerHTML = html;
+  // v4.005m: the 🔔 button shows live state (on/off/blocked/needs-install)
+  try{ _pushRenderBtn(); }catch(e){}
 
   // Event delegation for stage rows
   body.onclick = function(e){
@@ -8202,7 +8289,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.004m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.005m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
