@@ -6,7 +6,10 @@
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>WTU · Buildert v4.002m</title>
+<meta name="apple-mobile-web-app-title" content="Buildert">
+<link rel="manifest" href="buildert_manifest.json">
+<link rel="apple-touch-icon" href="buildert_icon_180.png">
+<title>WTU · Buildert v4.003m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -533,7 +536,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.002m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.003m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -712,7 +715,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.002m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.003m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -1319,7 +1322,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.002m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.003m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1331,7 +1334,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.002m: account users are no longer called "rigger" in chat.
+//   ALSO v4.003m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -4828,7 +4831,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.002m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.003m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6228,7 +6231,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.002m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.003m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6934,7 +6937,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.002m) ─────
+// ── Chat — project channel + two company-wide channels (v4.003m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -7012,6 +7015,17 @@ function _chatRender(){
       +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px">'+t+'</div>'
       +'</div>';
   }).join('');
+  // ⏳ Queued (offline) messages for this channel — optimistic, dimmed
+  var ob=_chatOutbox().filter(function(q){ return q.ch===_chatChannel; });
+  if(ob.length){
+    box.insertAdjacentHTML('beforeend', ob.map(function(q){
+      return '<div style="margin:6px 0;text-align:right;opacity:.55">'
+        +'<div style="display:inline-block;background:rgba(0,212,255,.10);border:1px dashed var(--accent);border-radius:10px;padding:6px 10px;max-width:82%;text-align:left">'
+        +'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(q.text||'').replace(/</g,'&lt;')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:9px;color:var(--warn);margin-top:2px">⏳ queued — sends when online</div>'
+        +'</div></div>';
+    }).join(''));
+  }
   box.scrollTop=box.scrollHeight;
 }
 function openSchedSheet(){
@@ -7069,6 +7083,13 @@ async function chatSend(){
   var text=(inp.value||'').trim();
   if(!text) return;
   inp.value='';
+  // v4.003m: no signal → outbox instead of a lost message
+  if(navigator.onLine===false){
+    _chatOutboxAdd(_chatChannel, text);
+    _chatRender();
+    showToast('⏳ Queued — sends when back online','warn');
+    return;
+  }
   try{
     var r=await fetch(_chatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -7077,7 +7098,11 @@ async function chatSend(){
     var d=await r.json();
     if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
     else showToast('Send failed','danger');
-  }catch(e){ showToast('Send failed — offline?','danger'); }
+  }catch(e){
+    _chatOutboxAdd(_chatChannel, text);
+    _chatRender();
+    showToast('⏳ No connection — message queued','warn');
+  }
 }
 function _chatMarkSeen(){
   var last=_chatMsgs.length?_chatMsgs[_chatMsgs.length-1].at:'';
@@ -7113,7 +7138,7 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.002m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.003m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)); }
 function chatMediaView(id){
   var ov=document.createElement('div');
@@ -7171,7 +7196,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.002m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.003m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7216,7 +7241,125 @@ async function chatMembersOpen(){
   }
 }
 
-// ── ⭐ Project evaluation (v4.002m, worker v4.20+) ────────────────────
+// ── 📴 Offline-first / PWA (v4.003m) ─────────────────────────────────
+// Three pieces, deployed alongside this file on the same host:
+//   buildert_sw_1.js        — service worker (app opens with zero signal)
+//   buildert_manifest.json  — installability (Add to homescreen)
+//   buildert_icon_*.png     — homescreen icons
+// If those files are missing, everything degrades silently: the app keeps
+// working exactly as before, just without offline shell / install.
+(function(){
+  if('serviceWorker' in navigator){
+    try{
+      navigator.serviceWorker.register('buildert_sw_1.js').then(function(){
+        console.log('[PWA] service worker active — app opens offline');
+      }).catch(function(e){
+        console.log('[PWA] no service worker (deploy buildert_sw_1.js to enable offline):', e.message);
+      });
+    }catch(e){}
+  }
+})();
+
+// Install prompt: capture Android's beforeinstallprompt; iOS gets a hint.
+var _pwaInstallEvt=null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  _pwaInstallEvt=e;
+});
+function _pwaStandalone(){
+  return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
+}
+function pwaInstall(){
+  if(_pwaInstallEvt){
+    _pwaInstallEvt.prompt();
+    _pwaInstallEvt.userChoice.then(function(r){
+      if(r && r.outcome==='accepted'){ showToast('📲 Installed — Buildert is on your homescreen','ok'); _pwaInstallEvt=null; }
+    });
+  } else if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
+    alert('Install on iPhone:\n\n1. Tap the Share button (square with arrow)\n2. Choose "Add to Home Screen"\n\nBuildert then opens fullscreen and works offline.');
+  } else {
+    alert('Install: open the browser menu (⋮) and choose "Add to Home Screen" / "Install app".');
+  }
+}
+// One-time gentle hint, only when not installed and after real use
+(function(){
+  try{
+    if(_pwaStandalone()) return;
+    if(localStorage.getItem('buildert_pwa_hint_done')) return;
+    setTimeout(function(){
+      if(_pwaStandalone()) return;
+      showToast('📲 Tip: install Buildert on your homescreen — it works offline. See ⚙','info');
+      try{ localStorage.setItem('buildert_pwa_hint_done','1'); }catch(e){}
+    }, 90000);
+  }catch(e){}
+})();
+
+// Header offline badge — always visible when signal is gone, with the queue
+// count so a rigger KNOWS their taps are safe and waiting.
+function _pwaHdrBadge(){
+  var el=document.getElementById('hdr-offline-badge');
+  if(!el){
+    var hdr=document.querySelector('.hdr')||document.body;
+    el=document.createElement('div');
+    el.id='hdr-offline-badge';
+    el.style.cssText='display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 4px);left:50%;transform:translateX(-50%);'
+      +'z-index:9996;background:rgba(255,77,77,.15);border:1px solid var(--danger);color:var(--danger);'
+      +'font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 12px;border-radius:12px;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  var online=navigator.onLine!==false;
+  var pend=(window._mObQueue||[]).length + _chatOutbox().length;
+  if(!online){
+    el.style.display='block';
+    el.textContent='📴 OFFLINE'+(pend?' · '+pend+' queued':'')+' — keep working';
+  } else el.style.display='none';
+}
+setInterval(_pwaHdrBadge, 5000);
+window.addEventListener('offline', _pwaHdrBadge);
+window.addEventListener('online', _pwaHdrBadge);
+
+// ── Chat outbox — messages typed offline are queued, shown ⏳, and ───
+// flushed on the same triggers as the project queue.
+function _chatOutbox(){ try{ return JSON.parse(localStorage.getItem('buildert_chat_outbox')||'[]'); }catch(e){ return []; } }
+function _chatOutboxSave(q){ try{ localStorage.setItem('buildert_chat_outbox', JSON.stringify(q)); }catch(e){} }
+function _chatOutboxAdd(ch, text){
+  var q=_chatOutbox();
+  q.push({ch:ch, text:text, by:_evalMeName(), at:new Date().toISOString()});
+  _chatOutboxSave(q);
+  _pwaHdrBadge();
+}
+var _chatObFlushing=false;
+async function _chatOutboxFlush(){
+  if(_chatObFlushing) return;
+  var q=_chatOutbox();
+  if(!q.length || !_workerUrl || !_projectKey) return;
+  _chatObFlushing=true;
+  var remaining=[];
+  for(var i=0;i<q.length;i++){
+    var m=q[i];
+    try{
+      var r=await fetch(_chatUrl(m.ch),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({by:m.by,text:m.text})
+      });
+      if(!r.ok){ remaining=remaining.concat(q.slice(i)); break; }
+    }catch(e){ remaining=remaining.concat(q.slice(i)); break; }
+  }
+  _chatOutboxSave(remaining);
+  _chatObFlushing=false;
+  if(q.length && !remaining.length){
+    showToast('💬 '+q.length+' queued message'+(q.length===1?'':'s')+' sent','ok');
+    if(_chatOpen){ var mm=await _chatFetch(); if(mm){ _chatMsgs=mm; _chatRender(); _chatMarkSeen(); } }
+  }
+  _pwaHdrBadge();
+}
+setInterval(function(){ if(_chatOutbox().length) _chatOutboxFlush(); }, 25000);
+window.addEventListener('online', function(){ setTimeout(_chatOutboxFlush, 1800); });
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible' && _chatOutbox().length) setTimeout(_chatOutboxFlush, 1200);
+});
+
+// ── ⭐ Project evaluation (v4.003m, worker v4.20+) ────────────────────
 // Notes + photos meant for the NEXT edition of this show. Entries live in
 // the project payload (evaluation array — merged by id on the worker, so
 // two people can write at once without losing anything). Photos go to the
@@ -7497,7 +7640,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.002m',
+    version: 'v4.003m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -7916,6 +8059,11 @@ function openProjectSheet(){
         + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
         + '</div>'
       : '')
+    // v4.003m: install as an app — fullscreen, homescreen icon, opens offline
+    + (!_pwaStandalone()
+      ? '<button onclick="pwaInstall()" style="margin-top:10px;width:100%;background:rgba(0,212,255,.10);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">📲 INSTALL BUILDERT ON THIS PHONE</button>'
+        +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Homescreen icon · fullscreen · opens without signal</div>'
+      : '<div style="margin-top:10px;font-size:11px;color:var(--ok);text-align:center">📲 Installed as app ✓</div>')
     +'</div>'
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
@@ -8051,7 +8199,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.002m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.003m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
