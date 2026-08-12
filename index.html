@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.006m</title>
+<title>WTU · Buildert v4.007m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -28,9 +28,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 
 /* ── Header ── */
 header{position:fixed;top:0;left:0;right:0;z-index:100;
-  /* v4.006m: total height = bar + iPhone safe area; the single padding
+  /* v4.007m: total height = bar + iPhone safe area; the single padding
      shorthand carries the safe-area top (a later shorthand silently killed
-     the earlier padding-top in v4.006m — that's why the fix didn't land). */
+     the earlier padding-top in v4.007m — that's why the fix didn't land). */
   height:calc(var(--hdr-h) + var(--st));
   padding:var(--st) 12px 0 12px;box-sizing:border-box;
   background:var(--surface);border-bottom:2px solid var(--border);
@@ -304,11 +304,17 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .popt-sheet.sel-other{border-color:var(--warn);color:var(--warn);background:rgba(245,166,35,.15);}
 
 /* ── Toast ── */
-#toast{position:fixed;bottom:calc(var(--nav-h)+var(--sb)+10px);left:50%;
+#toast{position:fixed;bottom:calc(var(--sb) + 14px);left:50%;
+  /* v4.007m: toasts sit just above the home indicator (they floated ~110px
+     up, on top of the nav, and long texts were nowrap-clipped off-screen).
+     They now wrap, cap at 88vw, and briefly cover the nav — harmless, since
+     they ignore taps and vanish in 2.6s. */
   transform:translateX(-50%) translateY(16px);z-index:400;
   background:var(--surface);border:1px solid var(--border);color:var(--text);
-  padding:9px 18px;border-radius:20px;font-family:var(--mono);font-size:12px;
-  white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;}
+  padding:10px 18px;border-radius:16px;font-family:var(--mono);font-size:12px;
+  white-space:normal;max-width:88vw;width:max-content;text-align:center;line-height:1.45;
+  box-shadow:0 4px 18px rgba(0,0,0,.45);
+  opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:var(--ok);color:var(--ok);}
 #toast.err{border-color:var(--danger);color:var(--danger);}
@@ -541,7 +547,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.006m</small></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">WTU <small>v4.007m</small></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -721,7 +727,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <div class="sheet-handle"></div>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.006m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.007m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -1328,7 +1334,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.006m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.007m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1340,7 +1346,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.006m: account users are no longer called "rigger" in chat.
+//   ALSO v4.007m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -4212,7 +4218,7 @@ async function wPush(silent){
     _saved:new Date().toISOString(),
     _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project),
-    // v4.006m: NEVER send stages:null — merged as-is by the worker it could
+    // v4.007m: NEVER send stages:null — merged as-is by the worker it could
     // read as "no stages". Omit the key entirely when this phone has none,
     // so the worker keeps whatever structure the project already has.
     stages:_mStages.length?JSON.parse(JSON.stringify(_mStages)):undefined,
@@ -4840,7 +4846,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.006m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.007m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6240,7 +6246,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.006m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.007m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6946,7 +6952,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.006m) ─────
+// ── Chat — project channel + two company-wide channels (v4.007m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -7092,7 +7098,7 @@ async function chatSend(){
   var text=(inp.value||'').trim();
   if(!text) return;
   inp.value='';
-  // v4.006m: no signal → outbox instead of a lost message
+  // v4.007m: no signal → outbox instead of a lost message
   if(navigator.onLine===false){
     _chatOutboxAdd(_chatChannel, text);
     _chatRender();
@@ -7147,7 +7153,7 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.006m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.007m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)); }
 function chatMediaView(id){
   var ov=document.createElement('div');
@@ -7205,7 +7211,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.006m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.007m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7250,7 +7256,7 @@ async function chatMembersOpen(){
   }
 }
 
-// ── 📴 Offline-first / PWA (v4.006m) ─────────────────────────────────
+// ── 📴 Offline-first / PWA (v4.007m) ─────────────────────────────────
 // Three pieces, deployed alongside this file on the same host:
 //   buildert_sw_1.js        — service worker (app opens with zero signal)
 //   buildert_manifest.json  — installability (Add to homescreen)
@@ -7368,7 +7374,7 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && _chatOutbox().length) setTimeout(_chatOutboxFlush, 1200);
 });
 
-// ── 🔔 Push notifications (v4.006m, worker v4.22+) ───────────────────
+// ── 🔔 Push notifications (v4.007m, worker v4.22+) ───────────────────
 // Requires the service worker (deployed since v4.003m). On iPhone this only
 // works when Buildert is INSTALLED on the homescreen (iOS 16.4+) — Safari
 // tabs cannot receive web push; the UI explains that instead of failing.
@@ -7452,7 +7458,7 @@ if('serviceWorker' in navigator){
   });
 }
 
-// ── ⭐ Project evaluation (v4.006m, worker v4.20+) ────────────────────
+// ── ⭐ Project evaluation (v4.007m, worker v4.20+) ────────────────────
 // Notes + photos meant for the NEXT edition of this show. Entries live in
 // the project payload (evaluation array — merged by id on the worker, so
 // two people can write at once without losing anything). Photos go to the
@@ -7733,7 +7739,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.006m',
+    version: 'v4.007m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -8152,7 +8158,7 @@ function openProjectSheet(){
         + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
         + '</div>'
       : '')
-    // v4.006m: install as an app — fullscreen, homescreen icon, opens offline
+    // v4.007m: install as an app — fullscreen, homescreen icon, opens offline
     + (!_pwaStandalone()
       ? '<button onclick="pwaInstall()" style="margin-top:10px;width:100%;background:rgba(0,212,255,.10);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">📲 INSTALL BUILDERT ON THIS PHONE</button>'
         +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Homescreen icon · fullscreen · opens without signal</div>'
@@ -8162,7 +8168,7 @@ function openProjectSheet(){
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
   body.innerHTML = html;
-  // v4.006m: the 🔔 button shows live state (on/off/blocked/needs-install)
+  // v4.007m: the 🔔 button shows live state (on/off/blocked/needs-install)
   try{ _pushRenderBtn(); }catch(e){}
 
   // Event delegation for stage rows
@@ -8295,7 +8301,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.006m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.007m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
