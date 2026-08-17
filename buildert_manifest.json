@@ -1,7 +1,7 @@
 {
   "name": "WTU Buildert",
   "short_name": "Buildert",
-  "description": "Rigger companion — checks, todos, chat and XP, online or offline.",
+  "description": "Rigger companion \u2014 checks, todos, chat and XP, online or offline.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,7 +9,23 @@
   "background_color": "#0a0f14",
   "theme_color": "#0a0f14",
   "icons": [
-    { "src": "buildert_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "buildert_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "buildert_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "buildert_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "buildert_icon_512_maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
