@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.017m</title>
+<title>WTU · Buildert v4.018m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -28,9 +28,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 
 /* ── Header ── */
 header{position:fixed;top:0;left:0;right:0;z-index:100;
-  /* v4.017m: total height = bar + iPhone safe area; the single padding
+  /* v4.018m: total height = bar + iPhone safe area; the single padding
      shorthand carries the safe-area top (a later shorthand silently killed
-     the earlier padding-top in v4.017m — that's why the fix didn't land). */
+     the earlier padding-top in v4.018m — that's why the fix didn't land). */
   height:calc(var(--hdr-h) + var(--st));
   padding:var(--st) 12px 0 12px;box-sizing:border-box;
   background:var(--surface);border-bottom:2px solid var(--border);
@@ -227,7 +227,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.8px;padding:5px 0;
   border-top:3px solid transparent;border-radius:0;}
 .ntab .ni{font-size:22px;line-height:1;opacity:.75;}
-/* v4.017m: the active tab is unmistakable — accent top bar, tinted pill,
+/* v4.018m: the active tab is unmistakable — accent top bar, tinted pill,
    full-opacity icon. The color still follows the tab's own class below. */
 .ntab[class*="active-"]{background:rgba(0,212,255,.08);border-top-color:currentColor;}
 .ntab[class*="active-"] .ni{opacity:1;transform:scale(1.12);}
@@ -259,13 +259,15 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .sheet.open{transform:none;}
 .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;
   margin:10px auto 4px;flex-shrink:0;}
-/* v4.017m: one uniform way out of every sheet. A real, tappable back bar
+/* v4.018m: one uniform way out of every sheet. A real, tappable back bar
    pinned at the top-left — no more hunting for Cancel or guessing that the
    greyed strip does anything. */
 .sheet-back{display:flex;align-items:center;gap:6px;flex-shrink:0;
   background:none;border:none;color:var(--accent);cursor:pointer;
   font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;
-  text-transform:uppercase;padding:12px 14px 8px;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+  text-transform:uppercase;-webkit-tap-highlight-color:rgba(0,0,0,0);
+  /* v4.018m: clear the notch on tall sheets */
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 8px;}
 .sheet-back .bk-chev{font-size:20px;line-height:1;margin-top:-2px;}
 .sheet-back:active{opacity:.6;}
 .sheet-title{font-family:var(--cond);font-weight:900;font-size:18px;letter-spacing:2px;
@@ -320,7 +322,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── Toast ── */
 #toast{position:fixed;bottom:calc(var(--sb) + 14px);left:50%;
-  /* v4.017m: toasts sit just above the home indicator (they floated ~110px
+  /* v4.018m: toasts sit just above the home indicator (they floated ~110px
      up, on top of the nav, and long texts were nowrap-clipped off-screen).
      They now wrap, cap at 88vw, and briefly cover the nav — harmless, since
      they ignore taps and vanish in 2.6s. */
@@ -562,7 +564,7 @@ body.sun-mode .pack-table td {
 
 <header>
   <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);display:flex;align-items:center;gap:5px"><span style="font-size:22px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span><span>WTU <small>v4.017m</small></span></div>
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);display:flex;align-items:center;gap:5px"><span style="font-size:22px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span><span>WTU <small>v4.018m</small></span></div>
   <div style="flex:1;min-width:0;margin:0 6px;">
     <div id="mob-proj-name" onclick="openProjectSheet()"
          style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
@@ -594,7 +596,7 @@ body.sun-mode .pack-table td {
 </div>
 
 <div id="scroll">
-<!-- v4.017m: 📡 activity ticker — the crew's latest action, always in view.
+<!-- v4.018m: 📡 activity ticker — the crew's latest action, always in view.
      Tap opens the full recent-activity sheet. -->
 <div id="act-ticker" onclick="openActivitySheet()" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">
   <span style="font-size:12px">📡</span>
@@ -752,7 +754,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.017m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.018m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -773,13 +775,13 @@ body.sun-mode .pack-table td {
       <input id="chat-stk-file" type="file" accept="image/*" style="display:none" onchange="_stkUpload(this.files[0]);this.value=''">
     </div>
     <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
-      <button class="sb" onclick="_stkTogglePanel()" style="padding:10px 12px;font-size:16px" title="Stickers">😀</button>
-      <button class="sb" onclick="document.getElementById('chat-media-file').click()" style="padding:10px 12px;font-size:16px" title="Photo or video">📎</button>
+      <button onclick="_stkTogglePanel()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Stickers">😀</button>
+      <button onclick="document.getElementById('chat-media-file').click()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Photo or video">📎</button>
       <input id="chat-media-file" type="file" accept="image/*,video/*" style="display:none" onchange="chatMediaPick(this.files[0]);this.value=''">
-      <textarea id="chat-input" placeholder="Message the crew…" rows="2"
+      <textarea id="chat-input" placeholder="Message the crew…" rows="3"
         oninput="_chatInputGrow(this)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}"
-        style="flex:1;font-size:16px;resize:none;max-height:140px;min-height:64px !important;line-height:1.4;padding:11px 12px;border-radius:10px;font-family:inherit;overflow-y:auto;margin-bottom:0 !important"></textarea>
+        style="flex:1;font-size:16px;resize:none;max-height:160px;min-height:88px !important;line-height:1.45;padding:12px 13px;border-radius:12px;font-family:inherit;overflow-y:auto;margin-bottom:0 !important;box-sizing:border-box"></textarea>
       <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
     </div>
   </div>
@@ -1332,7 +1334,7 @@ function filtered(){
   var TYPE_BY_CAT = {laser:TL, smoke:TS, distro:TD, psu:TP, adapter:'Adapter'};
   return devices.filter(function(d){
     if(_cf !== 'all' && TYPE_BY_CAT[_cf] && d.type !== TYPE_BY_CAT[_cf]) return false;
-    if(_mMineOnly && !_mIsMine(d)) return false;   // v4.017m: 👤 Mine
+    if(_mMineOnly && !_mIsMine(d)) return false;   // v4.018m: 👤 Mine
     return true;
   });
 }
@@ -1380,7 +1382,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.017m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.018m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1392,7 +1394,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.017m: account users are no longer called "rigger" in chat.
+//   ALSO v4.018m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -1771,7 +1773,7 @@ function renderPack(){
     grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
     mOrd.forEach(function(m){
       var items=byM[m];
-      // v4.017m: cable in/out kolommen weg — kabels pak je via de Cables-
+      // v4.018m: cable in/out kolommen weg — kabels pak je via de Cables-
       // sectie; per-device connectors maakten de paklijst onleesbaar.
       var parentKey='model:'+m;
       var safeM=m.replace(/'/g,"\\'");
@@ -2133,7 +2135,7 @@ function renderSpecs(){
       var v=s[key]; var disp=(v===null||v===undefined||v==='')?'—':String(v);
       return '<div class="sp-row"><span class="sp-lbl">'+lbl+'</span><span class="sp-val">'+disp+'</span></div>';
     }).join('') : '';
-    // v4.017m: 📄 planner-curated documents (manuals, wiring, datasheets)
+    // v4.018m: 📄 planner-curated documents (manuals, wiring, datasheets)
     if(expanded && s.docs && s.docs.length){
       rows+='<div style="padding:8px 10px;border-top:1px solid var(--border2)">'
         +s.docs.map(function(doc){
@@ -2183,7 +2185,7 @@ function editSpecMobile(k,f,v){
 
 // ── Banner & chips ────────────────────────────────────────────────
 function _qaRefresh(){
-  // v4.017m: the quick-actions bar is gone (it doubled the header buttons
+  // v4.018m: the quick-actions bar is gone (it doubled the header buttons
   // and the nav, and ate vertical space) — only the 👤 Mine counter in the
   // filter bar remains.
   var mn=document.getElementById('mine-n');
@@ -2873,7 +2875,7 @@ function closeSheet(id){
   if(sh)sh.classList.remove('open');
   if(ovl)ovl.classList.remove('open');
 }
-// v4.017m: the uniform back button calls this — it finds the open sheet and
+// v4.018m: the uniform back button calls this — it finds the open sheet and
 // closes it the RIGHT way (chat has its own teardown), so one control works
 // everywhere without wiring each sheet by hand.
 function _sheetBack(){
@@ -4295,7 +4297,7 @@ async function wPush(silent){
     _saved:new Date().toISOString(),
     _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project),
-    // v4.017m: NEVER send stages:null — merged as-is by the worker it could
+    // v4.018m: NEVER send stages:null — merged as-is by the worker it could
     // read as "no stages". Omit the key entirely when this phone has none,
     // so the worker keeps whatever structure the project already has.
     stages:_mStages.length?JSON.parse(JSON.stringify(_mStages)):undefined,
@@ -4309,6 +4311,7 @@ async function wPush(silent){
     pack_signoffs:window._packSignoffs||[],
     pack_signoffs_deleted:window._packSignoffsDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
+    todos_deleted:window._mTodosDeleted||[],
     _log:combinedLog,
   };
   _projectVersion++;_projectBaseVersion=_projectVersion;
@@ -4574,6 +4577,7 @@ async function _dbxPush(silent){
     evaluation: window._mEvaluation||[],
     evaluation_deleted: window._mEvaluationDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
+    todos_deleted:window._mTodosDeleted||[],
     _log:combinedLog,
   };
   _projectVersion++;
@@ -4923,7 +4927,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.017m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.018m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6121,6 +6125,7 @@ function _showRiggerConnectPrompt(){
 
 
 // ── Todos (mobile) ─────────────────────────────────────────────────
+window._mTodosDeleted=(function(){try{return JSON.parse(localStorage.getItem('buildert_mtodos_deleted')||'[]');}catch(e){return[];}})();
 var _mTodos=[];
 function _mTodosLoad(){ try{var s=localStorage.getItem('buildert_todos');if(s)_mTodos=JSON.parse(s);}catch(e){} }
 function _mTodosSave(){ try{localStorage.setItem('buildert_todos',JSON.stringify(_mTodos));}catch(e){} }
@@ -6323,7 +6328,7 @@ function mTodoToggle(id){
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.017m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.018m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6675,6 +6680,10 @@ function _playLaserPew(){
   } catch(e) { /* audio blocked or unsupported — silently skip */ }
 }
 function mTodoDelete(id){
+  // v4.018m: remember the deletion so the worker merge can't bring it back
+  window._mTodosDeleted=window._mTodosDeleted||[];
+  if(window._mTodosDeleted.indexOf(id)<0) window._mTodosDeleted.push(id);
+  try{ localStorage.setItem('buildert_mtodos_deleted',JSON.stringify(window._mTodosDeleted)); }catch(e){}
   _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile(); autoSave();
 }
 var _mTodoEditId = null; // null = new, string = editing existing
@@ -7031,7 +7040,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.017m) ─────
+// ── Chat — project channel + two company-wide channels (v4.018m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -7093,10 +7102,11 @@ function _chatRender(){
   box.innerHTML=_chatMsgs.map(function(m){
     var mine=_aliasNameM(m.by||'')===me && me;
     var t=(m.at||'').slice(11,16);
-    return '<div style="max-width:82%;align-self:'+(mine?'flex-end':'flex-start')+';'
+    return '<div style="position:relative;max-width:82%;align-self:'+(mine?'flex-end':'flex-start')+';'
       +'background:'+(mine?'rgba(0,212,255,.16)':'var(--panel)')+';'
       +'border:1px solid '+(mine?'var(--accent)':'var(--border)')+';'
       +'border-radius:12px;padding:8px 12px">'
+      +(mine&&m.id?'<button onclick="chatDelete(\''+m.id+'\')" title="Delete message" style="position:absolute;top:-8px;left:-8px;background:var(--danger);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4)">✕</button>':'')
       +(mine?'':'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+'</div>')
       +(m.sticker
         ?'<img src="'+_stkUrl(m.sticker)+'" alt="sticker" style="max-width:128px;max-height:128px;display:block;margin:2px 0" loading="lazy">'
@@ -7174,15 +7184,29 @@ async function openChatSheet(){
 }
 function _chatInputGrow(el){
   el.style.height='auto';
-  el.style.height=Math.max(64,Math.min(el.scrollHeight,140))+'px';
+  el.style.height=Math.max(88,Math.min(el.scrollHeight,160))+'px';
+}
+async function chatDelete(id){
+  if(!id) return;
+  if(!confirm('Delete this message for everyone?')) return;
+  if(!_workerUrl||!_projectKey){ showToast('Offline — cannot delete right now','warn'); return; }
+  try{
+    var r=await fetch(_chatUrl(),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({delete:id})
+    });
+    var d=await r.json();
+    if(d.ok){ _chatMsgs=d.messages||_chatMsgs.filter(function(m){return m.id!==id;}); _chatRender(); showToast('Message deleted','ok'); }
+    else showToast(d.error||'Delete failed','danger');
+  }catch(e){ showToast('Delete failed — offline?','danger'); }
 }
 async function chatSend(){
   var inp=document.getElementById('chat-input');
   var text=(inp.value||'').trim();
   if(!text) return;
   inp.value='';
-  inp.style.height='64px';
-  // v4.017m: no signal → outbox instead of a lost message
+  inp.style.height='88px';
+  // v4.018m: no signal → outbox instead of a lost message
   if(navigator.onLine===false){
     _chatOutboxAdd(_chatChannel, text);
     _chatRender();
@@ -7237,9 +7261,9 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.017m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.018m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){
-  // v4.017m: evaluation media (em_*) are permanent-scope — fetch needs
+  // v4.018m: evaluation media (em_*) are permanent-scope — fetch needs
   // scope=eval, otherwise the worker 404s and pinned photos "vanish".
   var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id));
   if(String(id).indexOf('em_')===0) u+=(u.indexOf('?')>=0?'&':'?')+'scope=eval';
@@ -7301,7 +7325,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.017m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.018m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7346,7 +7370,7 @@ async function chatMembersOpen(){
   }
 }
 
-// ── 📡 Activity ticker (v4.017m) ─────────────────────────────────────
+// ── 📡 Activity ticker (v4.018m) ─────────────────────────────────────
 // One line of crew awareness on the main screen: the latest action by
 // SOMEONE ELSE when available (your own taps are not news to you), the
 // latest overall otherwise. Tap → the full recent list.
@@ -7407,7 +7431,7 @@ function openActivitySheet(){
   openSheet('activity');
 }
 
-// ── 📴 Offline-first / PWA (v4.017m) ─────────────────────────────────
+// ── 📴 Offline-first / PWA (v4.018m) ─────────────────────────────────
 // Three pieces, deployed alongside this file on the same host:
 //   buildert_sw_1.js        — service worker (app opens with zero signal)
 //   buildert_manifest.json  — installability (Add to homescreen)
@@ -7525,7 +7549,7 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && _chatOutbox().length) setTimeout(_chatOutboxFlush, 1200);
 });
 
-// ── 🔔 Push notifications (v4.017m, worker v4.22+) ───────────────────
+// ── 🔔 Push notifications (v4.018m, worker v4.22+) ───────────────────
 // Requires the service worker (deployed since v4.003m). On iPhone this only
 // works when Buildert is INSTALLED on the homescreen (iOS 16.4+) — Safari
 // tabs cannot receive web push; the UI explains that instead of failing.
@@ -7609,7 +7633,7 @@ if('serviceWorker' in navigator){
   });
 }
 
-// ── ⭐ Project evaluation (v4.017m, worker v4.20+) ────────────────────
+// ── ⭐ Project evaluation (v4.018m, worker v4.20+) ────────────────────
 // Notes + photos meant for the NEXT edition of this show. Entries live in
 // the project payload (evaluation array — merged by id on the worker, so
 // two people can write at once without losing anything). Photos go to the
@@ -7619,7 +7643,7 @@ var _evalPendingMedia = [];   // uploaded ids waiting for the note to be saved
 function _evalMeName(){ return _aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'); }
 function openEvalSheet(){
   if(!_projectKey){ showToast('Open a project first','warn'); return; }
-  // v4.017m: opened from inside the project sheet, the eval sheet landed
+  // v4.018m: opened from inside the project sheet, the eval sheet landed
   // UNDER it — it only became visible after something else (tapping a
   // stage) closed the project sheet. Close it first, always.
   try{ closeSheet('conn'); }catch(e){}
@@ -7894,7 +7918,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.017m',
+    version: 'v4.018m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -8053,7 +8077,7 @@ function openRankSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
   if(!body) return;
-  // v4.017m: refresh the account XP quietly; re-render the badge if changed
+  // v4.018m: refresh the account XP quietly; re-render the badge if changed
   if(_maMe&&_maMe.user){
     (async function(){
       try{
@@ -8097,7 +8121,7 @@ function openRankSheet(){
     +    '</div>'
     +  '</div>'
     +  (xpT.bonus?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">incl. '+xpT.bonus+' planner bonus 🎁</div>':'')
-    // v4.017m: the ACCOUNT career XP — the number the planner syncs from all
+    // v4.018m: the ACCOUNT career XP — the number the planner syncs from all
     // scored projects (or hand-tunes). Only shown for logged-in accounts.
     +  ((_maMe&&_maMe.user&&typeof _maMe.user.xp==='number')
         ? '<div id="rank-acct-xp" style="margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed #ffd700;border-radius:10px;padding:7px 12px;display:inline-block">'
@@ -8264,7 +8288,7 @@ function openProjectSheet(){
     +'</button>'
     +'</div>';
 
-  // v4.017m: the stage list left this sheet — switching stages is what the
+  // v4.018m: the stage list left this sheet — switching stages is what the
   // stage bar on the main screen is for, and the duplicate list made this
   // sheet endless. (The delegation handler below stays; it simply never
   // matches anymore.)
@@ -8291,7 +8315,7 @@ function openProjectSheet(){
         + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
         + '</div>'
       : '')
-    // v4.017m: install as an app — fullscreen, homescreen icon, opens offline
+    // v4.018m: install as an app — fullscreen, homescreen icon, opens offline
     + (!_pwaStandalone()
       ? '<button onclick="pwaInstall()" style="margin-top:10px;width:100%;background:rgba(0,212,255,.10);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">📲 INSTALL BUILDERT ON THIS PHONE</button>'
         +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Homescreen icon · fullscreen · opens without signal</div>'
@@ -8301,7 +8325,7 @@ function openProjectSheet(){
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
   body.innerHTML = html;
-  // v4.017m: the 🔔 button shows live state (on/off/blocked/needs-install)
+  // v4.018m: the 🔔 button shows live state (on/off/blocked/needs-install)
   try{ _pushRenderBtn(); }catch(e){}
 
   // Event delegation for stage rows
@@ -8434,7 +8458,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.017m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.018m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
