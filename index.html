@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.020m</title>
+<title>WTU · Buildert v4.021m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -28,9 +28,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 
 /* ── Header ── */
 header{position:fixed;top:0;left:0;right:0;z-index:100;
-  /* v4.020m: total height = bar + iPhone safe area; the single padding
+  /* v4.021m: total height = bar + iPhone safe area; the single padding
      shorthand carries the safe-area top (a later shorthand silently killed
-     the earlier padding-top in v4.020m — that's why the fix didn't land). */
+     the earlier padding-top in v4.021m — that's why the fix didn't land). */
   height:calc(var(--hdr-h) + var(--st));
   padding:var(--st) 12px 0 12px;box-sizing:border-box;
   background:var(--surface);border-bottom:2px solid var(--border);
@@ -227,7 +227,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.8px;padding:5px 0;
   border-top:3px solid transparent;border-radius:0;}
 .ntab .ni{font-size:22px;line-height:1;opacity:.75;}
-/* v4.020m: the active tab is unmistakable — accent top bar, tinted pill,
+/* v4.021m: the active tab is unmistakable — accent top bar, tinted pill,
    full-opacity icon. The color still follows the tab's own class below. */
 .ntab[class*="active-"]{background:rgba(0,212,255,.08);border-top-color:currentColor;}
 .ntab[class*="active-"] .ni{opacity:1;transform:scale(1.12);}
@@ -259,14 +259,17 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 .sheet.open{transform:none;}
 .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;
   margin:10px auto 4px;flex-shrink:0;}
-/* v4.020m: one uniform way out of every sheet. A real, tappable back bar
+/* v4.021m: one uniform way out of every sheet. A real, tappable back bar
    pinned at the top-left — no more hunting for Cancel or guessing that the
    greyed strip does anything. */
+.hdr-ico{flex-shrink:0;background:none;border:none;padding:4px 5px;font-size:19px;line-height:1;
+  cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);opacity:.85;}
+.hdr-ico:active{opacity:.5;}
 .sheet-back{display:flex;align-items:center;gap:6px;flex-shrink:0;
   background:none;border:none;color:var(--accent);cursor:pointer;
   font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;
   text-transform:uppercase;-webkit-tap-highlight-color:rgba(0,0,0,0);
-  /* v4.020m: clear the notch on tall sheets */
+  /* v4.021m: clear the notch on tall sheets */
   padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 8px;}
 .sheet-back .bk-chev{font-size:20px;line-height:1;margin-top:-2px;}
 .sheet-back:active{opacity:.6;}
@@ -322,7 +325,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
 
 /* ── Toast ── */
 #toast{position:fixed;bottom:calc(var(--sb) + 14px);left:50%;
-  /* v4.020m: toasts sit just above the home indicator (they floated ~110px
+  /* v4.021m: toasts sit just above the home indicator (they floated ~110px
      up, on top of the nav, and long texts were nowrap-clipped off-screen).
      They now wrap, cap at 88vw, and briefly cover the nav — harmless, since
      they ignore taps and vanish in 2.6s. */
@@ -563,22 +566,36 @@ body.sun-mode .pack-table td {
 <div class="stage-view-banner">⚠ STAGE VIEW — MIRRORED ← FROM THE STAGE → ⚠</div>
 
 <header>
-  <div class="logo" onclick="openFeedbackSheet()" title="Tap to report a bug, idea or comment"
-    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);display:flex;align-items:center;gap:5px"><span style="font-size:22px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span><span>WTU <small>v4.020m</small></span></div>
-  <div style="flex:1;min-width:0;margin:0 6px;">
-    <div id="mob-proj-name" onclick="openProjectSheet()"
-         style="font-family:var(--cond);font-weight:700;font-size:13px;color:var(--text);
-         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.2">—</div>
-    <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.2">
-      <span id="m-net-status" style="color:#3ddc84">🟢 Online</span>
+  <!-- v4.021m: the header carried 8 competing elements (logo + wordmark +
+       version, project name, net text, 4 boxed buttons, a conn dot AND a
+       sync pill) so everything clipped: "Onl.", a chopped "J", a sync pill
+       running off-screen. Now: mark · project (with live status line) ·
+       four flat icons · one status dot. Version moved to the project sheet. -->
+  <div class="logo" onclick="openProjectSheet()" title="Project"
+    style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);flex-shrink:0;display:flex;align-items:center">
+    <span style="font-size:26px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
+  </div>
+
+  <div style="flex:1;min-width:0;margin:0 8px" onclick="openProjectSheet()">
+    <div id="mob-proj-name"
+         style="font-family:var(--cond);font-weight:700;font-size:14px;color:var(--text);
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.15">—</div>
+    <div id="mob-proj-ver" style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.3;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+      <span id="m-net-status" style="color:#3ddc84">online</span><span id="dbx-led-txt" style="color:var(--muted)"></span>
     </div>
   </div>
-  <button onclick="openSchedSheet()" title="Day schedule — times" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">📅</button>
-  <button onclick="openChatSheet()" title="Project chat" style="flex-shrink:0;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">💬<span id="chat-unread" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--danger)"></span></button>
-  <button onclick="mToggleSunMode()" id="btn-sun-mode-hdr" title="Sun mode — light theme for outdoor" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">☀️</button>
-  <button onclick="setTab('specs')" title="Specs (not project dependent)" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer;margin-right:4px">📋</button>
-  <div class="conn-dot" id="conn-dot"></div>
-  <span id="dbx-led" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2px 7px;flex-shrink:0;max-width:130px;overflow:hidden" onclick="openProjectSheet()"><span id="dbx-led-dot" style="width:8px;height:8px;border-radius:50%;background:#55606e;flex-shrink:0"></span><span id="dbx-led-txt" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">tap to sync</span></span>
+
+  <button onclick="event.stopPropagation();openSchedSheet()" title="Day schedule" class="hdr-ico">📅</button>
+  <button onclick="event.stopPropagation();openChatSheet()" title="Project chat" class="hdr-ico" style="position:relative">💬<span id="chat-unread" style="display:none;position:absolute;top:0;right:0;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
+  <button onclick="event.stopPropagation();mToggleSunMode()" id="btn-sun-mode-hdr" title="Sun mode" class="hdr-ico">☀️</button>
+  <button onclick="event.stopPropagation();setTab('specs')" title="Specs" class="hdr-ico">📋</button>
+
+  <span id="dbx-led" onclick="event.stopPropagation();openProjectSheet()" title="Sync status — tap for details"
+        style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px;cursor:pointer">
+    <span id="dbx-led-dot" style="width:9px;height:9px;border-radius:50%;background:#55606e;box-shadow:0 0 0 3px rgba(85,96,110,.18)"></span>
+  </span>
+  <span class="conn-dot" id="conn-dot" style="display:none"></span>
 </header>
 
 <div style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + var(--st));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden">
@@ -596,7 +613,7 @@ body.sun-mode .pack-table td {
 </div>
 
 <div id="scroll">
-<!-- v4.020m: 📡 activity ticker — the crew's latest action, always in view.
+<!-- v4.021m: 📡 activity ticker — the crew's latest action, always in view.
      Tap opens the full recent-activity sheet. -->
 <div id="act-ticker" onclick="openActivitySheet()" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">
   <span style="font-size:12px">📡</span>
@@ -754,7 +771,7 @@ body.sun-mode .pack-table td {
 <div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.020m: channel tabs — project chat + two company-wide channels -->
+  <!-- v4.021m: channel tabs — project chat + two company-wide channels -->
   <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
     <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
@@ -1334,7 +1351,7 @@ function filtered(){
   var TYPE_BY_CAT = {laser:TL, smoke:TS, distro:TD, psu:TP, adapter:'Adapter'};
   return devices.filter(function(d){
     if(_cf !== 'all' && TYPE_BY_CAT[_cf] && d.type !== TYPE_BY_CAT[_cf]) return false;
-    if(_mMineOnly && !_mIsMine(d)) return false;   // v4.020m: 👤 Mine
+    if(_mMineOnly && !_mIsMine(d)) return false;   // v4.021m: 👤 Mine
     return true;
   });
 }
@@ -1382,7 +1399,7 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
-// FEATURES ADDED v4.020m: per-project XP ledger (localStorage
+// FEATURES ADDED v4.021m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
 //   • Project sheet rank card shows both numbers
@@ -1394,7 +1411,7 @@ function updateLocDl(){
 //     and shows a small "+1 XP · N this project" chip top-right
 //   • Tier & Motivator™ now rank on the full ledger total
 //   Client-side only — no sync payload / schema changes.
-//   ALSO v4.020m: account users are no longer called "rigger" in chat.
+//   ALSO v4.021m: account users are no longer called "rigger" in chat.
 //   _maApplyName() propagates the ACCOUNT name (or email) into
 //   window._riggerName at login/redeem/session-refresh, so chat, the
 //   activity log and XP all attribute to the real person. Logout clears
@@ -1773,7 +1790,7 @@ function renderPack(){
     grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
     mOrd.forEach(function(m){
       var items=byM[m];
-      // v4.020m: cable in/out kolommen weg — kabels pak je via de Cables-
+      // v4.021m: cable in/out kolommen weg — kabels pak je via de Cables-
       // sectie; per-device connectors maakten de paklijst onleesbaar.
       var parentKey='model:'+m;
       var safeM=m.replace(/'/g,"\\'");
@@ -2135,7 +2152,7 @@ function renderSpecs(){
       var v=s[key]; var disp=(v===null||v===undefined||v==='')?'—':String(v);
       return '<div class="sp-row"><span class="sp-lbl">'+lbl+'</span><span class="sp-val">'+disp+'</span></div>';
     }).join('') : '';
-    // v4.020m: 📄 planner-curated documents (manuals, wiring, datasheets)
+    // v4.021m: 📄 planner-curated documents (manuals, wiring, datasheets)
     if(expanded && s.docs && s.docs.length){
       rows+='<div style="padding:8px 10px;border-top:1px solid var(--border2)">'
         +s.docs.map(function(doc){
@@ -2185,7 +2202,7 @@ function editSpecMobile(k,f,v){
 
 // ── Banner & chips ────────────────────────────────────────────────
 function _qaRefresh(){
-  // v4.020m: the quick-actions bar is gone (it doubled the header buttons
+  // v4.021m: the quick-actions bar is gone (it doubled the header buttons
   // and the nav, and ate vertical space) — only the 👤 Mine counter in the
   // filter bar remains.
   var mn=document.getElementById('mine-n');
@@ -2875,7 +2892,7 @@ function closeSheet(id){
   if(sh)sh.classList.remove('open');
   if(ovl)ovl.classList.remove('open');
 }
-// v4.020m: the uniform back button calls this — it finds the open sheet and
+// v4.021m: the uniform back button calls this — it finds the open sheet and
 // closes it the RIGHT way (chat has its own teardown), so one control works
 // everywhere without wiring each sheet by hand.
 function _sheetBack(){
@@ -3082,7 +3099,18 @@ function _updateMobileProjectBadge(){
   var nm=document.getElementById('mob-proj-name');
   var vr=document.getElementById('mob-proj-ver');
   if(nm) nm.textContent=project.name||'(no project)';
-  if(vr) vr.textContent=(window._riggerName?'👤 '+window._riggerName:'')+(_projectVersion>0?' v'+_projectVersion:'');
+  if(vr){
+    // v4.021m: keep the live status spans alive here too — this second
+    // writer used to blow them away with textContent, so the online/sync
+    // indicators silently disappeared depending on which path ran last.
+    var netSpan=document.getElementById('m-net-status');
+    var syncSpan=document.getElementById('dbx-led-txt');
+    var netHtml=netSpan?netSpan.outerHTML:'<span id="m-net-status" style="color:#3ddc84">🟢</span>';
+    var syncHtml=syncSpan?syncSpan.outerHTML:'<span id="dbx-led-txt" style="color:var(--muted)"></span>';
+    var who=(window._riggerName||'').trim();
+    if(who.length>14) who=who.slice(0,13)+'…';
+    vr.innerHTML=netHtml+syncHtml+(who?' · '+who:'')+(_projectVersion>0?' · v'+_projectVersion:'');
+  }
 }
 
 // ── Project file sync ────────────────────────────────────────────
@@ -3178,6 +3206,14 @@ function _applyProjectLoad(data){
 }
 
 function _mergeProjectNoConflict(data){
+  window._mIsReceiving=true;
+  try{ return _mergeProjectNoConflictImpl(data); }
+  finally{
+    window._mIsReceiving=false;
+    if(window._mQuickPending) setTimeout(_mQuickSyncFlush, 400);
+  }
+}
+function _mergeProjectNoConflictImpl(data){
   // VERSION MARKER — confirms v3.962m+ code is running
   console.log('[SYNC] _mergeProjectNoConflict v3.962m running. data._saved_by='+(data._saved_by||'?'));
   // SAFETY NET: snapshot all current local checks BEFORE any merge runs.
@@ -4174,13 +4210,13 @@ function _mUpdateNetStatus(){
   var online = navigator.onLine !== false;
   var pending = (window._mObQueue||[]).length;
   if(!online){
-    el.textContent = pending>0 ? '🔴 Offline · '+pending+' queued' : '🔴 Offline';
+    el.textContent = pending>0 ? '🔴 offline ·'+pending : '🔴 offline';
     el.style.color = '#ff4d4d';
   } else if(pending > 0){
     el.textContent = '🟡 '+pending+' pending';
     el.style.color = '#f5a623';
   } else {
-    el.textContent = '🟢 Online';
+    el.textContent = '🟢';
     el.style.color = '#3ddc84';
   }
 }
@@ -4280,6 +4316,31 @@ function _mStampChanged(){
   });
 }
 
+// ── v4.021m: todo quick-sync ─────────────────────────────────────────
+// Adding/finishing/deleting a todo used to reach the worker ONLY when
+// auto-poll happened to be on (autoSave → `if(_pollTimer) _autoPush()`, and
+// _autoPush is the old Anbernic route that sends devices only). So tasks sat
+// on the phone and never arrived — the other half of "todos sync neither
+// way". Now every todo change pushes for real, holding the intent if a pull
+// is still in flight, exactly like the desktop.
+function _mQuickSync(){
+  autoSave();
+  if(!_workerUrl || !_projectKey) return;
+  window._mQuickPending=true;
+  clearTimeout(window._mQuickT);
+  window._mQuickT=setTimeout(_mQuickSyncFlush, 700);
+}
+function _mQuickSyncFlush(){
+  if(!window._mQuickPending) return;
+  if(!_workerUrl || !_projectKey){ window._mQuickPending=false; return; }
+  if(window._mIsReceiving){
+    clearTimeout(window._mQuickT);
+    window._mQuickT=setTimeout(_mQuickSyncFlush, 1200);
+    return;
+  }
+  window._mQuickPending=false;
+  try{ wPush(true); }catch(e){}
+}
 async function wPush(silent){
   if(!_workerUrl||!_projectKey) return;
   var combinedLog=(window._remoteLog||[]).concat(window._activityLog||[]);
@@ -4297,7 +4358,7 @@ async function wPush(silent){
     _saved:new Date().toISOString(),
     _saved_by:window._riggerName?'rigger:'+window._riggerName:'mobile',
     project:Object.assign({},project),
-    // v4.020m: NEVER send stages:null — merged as-is by the worker it could
+    // v4.021m: NEVER send stages:null — merged as-is by the worker it could
     // read as "no stages". Omit the key entirely when this phone has none,
     // so the worker keeps whatever structure the project already has.
     stages:_mStages.length?JSON.parse(JSON.stringify(_mStages)):undefined,
@@ -4455,7 +4516,7 @@ function _dbxSetStatus(msg,col){
   var txt=document.getElementById('dbx-led-txt');
   var bg=ok?'#3ddc84':warn?'#f5a623':'#55606e';
   if(dot){dot.style.background=bg;dot.style.boxShadow=ok?'0 0 4px #3ddc84':warn?'0 0 4px #f5a623':'none';}
-  if(txt){txt.textContent=msg.length>12?msg.slice(0,12)+'…':msg;txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
+  if(txt){txt.textContent=(msg?' · '+(msg.length>14?msg.slice(0,14)+'…':msg):'');txt.style.color=ok?'var(--ok)':warn?'var(--warn)':'var(--muted)';}
 }
 
 function _dbxNormPath(p){
@@ -4927,7 +4988,7 @@ function _maSetSession(tok){
   try { if(tok) localStorage.setItem('brt_account_session', tok); else localStorage.removeItem('brt_account_session'); } catch(e){}
 }
 
-// v4.020m: propagate the ACCOUNT name into the rigger identity used by chat,
+// v4.021m: propagate the ACCOUNT name into the rigger identity used by chat,
 // activity log and XP. Without this every account user posted as "rigger".
 function _maApplyName(user){
   if(!user) return;
@@ -6324,11 +6385,11 @@ function mTodoToggle(id){
   }
   _mSyncAutoTodos(); _renderTodosList();
   updateBanner();
-  autoSave();
+  _mQuickSync();          // v4.021m: ticking a todo reaches the planner now
 }
 
 // ── Career XP: persists on this phone ACROSS projects ───────────────
-// v4.020m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
+// v4.021m: backed by a PER-PROJECT ledger (buildert_xp_ledger) so riggers
 // can see XP per project AND total. Legacy buildert_career_xp is migrated
 // once into a "Earlier projects" entry and then kept in sync as the sum.
 function _xpLedger(){
@@ -6679,7 +6740,7 @@ function _playLaserPew(){
     }
   } catch(e) { /* audio blocked or unsupported — silently skip */ }
 }
-// ── 📅 Mobile calendar (v4.020m) ─────────────────────────────────────
+// ── 📅 Mobile calendar (v4.021m) ─────────────────────────────────────
 // A tap-sized month grid in its own overlay — typing dates on a phone in a
 // dark venue is the worst possible input method. Show days from the project
 // register are marked, exactly like the desktop calendar.
@@ -6741,15 +6802,15 @@ function _mCalRender(){
   box.innerHTML=h;
 }
 function mTodoDelete(id){
-  // v4.020m: remember the deletion so the worker merge can't bring it back
-  // v4.020m: timestamped tombstone — a task CREATED later with the same id
+  // v4.021m: remember the deletion so the worker merge can't bring it back
+  // v4.021m: timestamped tombstone — a task CREATED later with the same id
   // is a new task and must not be killed by this delete.
   window._mTodosDeleted=(window._mTodosDeleted||[]).filter(function(e){
     return (typeof e==='string'? e : (e&&e.id)) !== id;
   });
   window._mTodosDeleted.push({id:id, at:new Date().toISOString()});
   try{ localStorage.setItem('buildert_mtodos_deleted',JSON.stringify(window._mTodosDeleted)); }catch(e){}
-  _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile(); autoSave();
+  _mTodos=_mTodos.filter(function(x){return x.id!==id;}); _mTodosSave(); renderTodosMobile(); _mQuickSync();
 }
 var _mTodoEditId = null; // null = new, string = editing existing
 
@@ -6874,7 +6935,7 @@ function mTodoSave(){
   } else {
     _mTodos.unshift({id:'todo_'+Date.now(),label:full,urgency:urg,day:day,assignee:who,done:false,auto:false,stage_id:(document.getElementById('ta-stage')||{}).value||((_mStages[_mCurrentStageIdx]||{}).id||''),created:new Date().toISOString()});
   }
-  _mTodosSave(); closeSheet('todo'); renderTodosMobile(); autoSave();
+  _mTodosSave(); closeSheet('todo'); renderTodosMobile(); _mQuickSync();
 }
 
 
@@ -7105,7 +7166,7 @@ function submitPackSignoff(){
   renderPack();
 }
 
-// ── Chat — project channel + two company-wide channels (v4.020m) ─────
+// ── Chat — project channel + two company-wide channels (v4.021m) ─────
 // '📌 Project' is per-project as before; 'ℹ️ Info' and '🎉 Fun' are shared
 // across ALL projects (worker v4.18+, pids _global_info / _global_fun).
 // Global channels authenticate via the project you're in (?via=), so the
@@ -7271,7 +7332,7 @@ async function chatSend(){
   if(!text) return;
   inp.value='';
   inp.style.height='88px';
-  // v4.020m: no signal → outbox instead of a lost message
+  // v4.021m: no signal → outbox instead of a lost message
   if(navigator.onLine===false){
     _chatOutboxAdd(_chatChannel, text);
     _chatRender();
@@ -7326,9 +7387,9 @@ document.addEventListener('click',function(e){
   if(_chatOpen && !document.getElementById('sheet-chat').classList.contains('open')) _chatOpen=false;
 });
 
-// ── Chat media — photos & video (v4.020m, worker v4.19+) ─────────────
+// ── Chat media — photos & video (v4.021m, worker v4.19+) ─────────────
 function _chatMediaUrl(id){
-  // v4.020m: evaluation media (em_*) are permanent-scope — fetch needs
+  // v4.021m: evaluation media (em_*) are permanent-scope — fetch needs
   // scope=eval, otherwise the worker 404s and pinned photos "vanish".
   var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id));
   if(String(id).indexOf('em_')===0) u+=(u.indexOf('?')>=0?'&':'?')+'scope=eval';
@@ -7390,7 +7451,7 @@ async function chatMediaPick(file){
   }catch(e){ showToast('Upload failed — offline?','danger'); }
 }
 
-// ── 👥 Who can read this channel (v4.020m, worker v4.19+) ────────────
+// ── 👥 Who can read this channel (v4.021m, worker v4.19+) ────────────
 async function chatMembersOpen(){
   var lbl=_CHAT_CHANNELS[_chatChannel]?_CHAT_CHANNELS[_chatChannel].label:_chatChannel;
   var ov=document.createElement('div');
@@ -7435,7 +7496,7 @@ async function chatMembersOpen(){
   }
 }
 
-// ── 📡 Activity ticker (v4.020m) ─────────────────────────────────────
+// ── 📡 Activity ticker (v4.021m) ─────────────────────────────────────
 // One line of crew awareness on the main screen: the latest action by
 // SOMEONE ELSE when available (your own taps are not news to you), the
 // latest overall otherwise. Tap → the full recent list.
@@ -7496,7 +7557,7 @@ function openActivitySheet(){
   openSheet('activity');
 }
 
-// ── 📴 Offline-first / PWA (v4.020m) ─────────────────────────────────
+// ── 📴 Offline-first / PWA (v4.021m) ─────────────────────────────────
 // Three pieces, deployed alongside this file on the same host:
 //   buildert_sw_1.js        — service worker (app opens with zero signal)
 //   buildert_manifest.json  — installability (Add to homescreen)
@@ -7614,7 +7675,7 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && _chatOutbox().length) setTimeout(_chatOutboxFlush, 1200);
 });
 
-// ── 🔔 Push notifications (v4.020m, worker v4.22+) ───────────────────
+// ── 🔔 Push notifications (v4.021m, worker v4.22+) ───────────────────
 // Requires the service worker (deployed since v4.003m). On iPhone this only
 // works when Buildert is INSTALLED on the homescreen (iOS 16.4+) — Safari
 // tabs cannot receive web push; the UI explains that instead of failing.
@@ -7698,7 +7759,7 @@ if('serviceWorker' in navigator){
   });
 }
 
-// ── ⭐ Project evaluation (v4.020m, worker v4.20+) ────────────────────
+// ── ⭐ Project evaluation (v4.021m, worker v4.20+) ────────────────────
 // Notes + photos meant for the NEXT edition of this show. Entries live in
 // the project payload (evaluation array — merged by id on the worker, so
 // two people can write at once without losing anything). Photos go to the
@@ -7708,7 +7769,7 @@ var _evalPendingMedia = [];   // uploaded ids waiting for the note to be saved
 function _evalMeName(){ return _aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'); }
 function openEvalSheet(){
   if(!_projectKey){ showToast('Open a project first','warn'); return; }
-  // v4.020m: opened from inside the project sheet, the eval sheet landed
+  // v4.021m: opened from inside the project sheet, the eval sheet landed
   // UNDER it — it only became visible after something else (tapping a
   // stage) closed the project sheet. Close it first, always.
   try{ closeSheet('conn'); }catch(e){}
@@ -7983,7 +8044,7 @@ async function submitFeedback(){
     from: from,
     project: (project && project.name) || _projectKey || '',
     client: 'mobile',
-    version: 'v4.020m',
+    version: 'v4.021m',
     message: (_fbAbout ? '['+_fbAbout+'] ' : '') + msg,
   };
   showToast('Sending feedback…','info');
@@ -8142,7 +8203,7 @@ function openRankSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
   if(!body) return;
-  // v4.020m: refresh the account XP quietly; re-render the badge if changed
+  // v4.021m: refresh the account XP quietly; re-render the badge if changed
   if(_maMe&&_maMe.user){
     (async function(){
       try{
@@ -8186,7 +8247,7 @@ function openRankSheet(){
     +    '</div>'
     +  '</div>'
     +  (xpT.bonus?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">incl. '+xpT.bonus+' planner bonus 🎁</div>':'')
-    // v4.020m: the ACCOUNT career XP — the number the planner syncs from all
+    // v4.021m: the ACCOUNT career XP — the number the planner syncs from all
     // scored projects (or hand-tunes). Only shown for logged-in accounts.
     +  ((_maMe&&_maMe.user&&typeof _maMe.user.xp==='number')
         ? '<div id="rank-acct-xp" style="margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed #ffd700;border-radius:10px;padding:7px 12px;display:inline-block">'
@@ -8300,7 +8361,7 @@ function openProjectSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
   if(!body) return;
-  if(title) title.textContent = project.name || 'Project';
+  if(title) title.innerHTML = (project.name||'Project')+' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">v4.021m</span>';
 
   var html = '';
   // Account + project switcher (accounts users only; no-op for share links)
@@ -8353,7 +8414,7 @@ function openProjectSheet(){
     +'</button>'
     +'</div>';
 
-  // v4.020m: the stage list left this sheet — switching stages is what the
+  // v4.021m: the stage list left this sheet — switching stages is what the
   // stage bar on the main screen is for, and the duplicate list made this
   // sheet endless. (The delegation handler below stays; it simply never
   // matches anymore.)
@@ -8380,7 +8441,7 @@ function openProjectSheet(){
         + '<button onclick="_mObQueueClear()" style="margin-top:6px;width:100%;background:var(--warn);border:none;color:#000;border-radius:5px;padding:6px;font-family:var(--cond);font-weight:700;font-size:11px;cursor:pointer">CLEAR QUEUE</button>'
         + '</div>'
       : '')
-    // v4.020m: install as an app — fullscreen, homescreen icon, opens offline
+    // v4.021m: install as an app — fullscreen, homescreen icon, opens offline
     + (!_pwaStandalone()
       ? '<button onclick="pwaInstall()" style="margin-top:10px;width:100%;background:rgba(0,212,255,.10);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer">📲 INSTALL BUILDERT ON THIS PHONE</button>'
         +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Homescreen icon · fullscreen · opens without signal</div>'
@@ -8390,7 +8451,7 @@ function openProjectSheet(){
     +'<div id="mob-diag-out" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text);max-height:300px;overflow-y:auto"></div>';
 
   body.innerHTML = html;
-  // v4.020m: the 🔔 button shows live state (on/off/blocked/needs-install)
+  // v4.021m: the 🔔 button shows live state (on/off/blocked/needs-install)
   try{ _pushRenderBtn(); }catch(e){}
 
   // Event delegation for stage rows
@@ -8473,11 +8534,19 @@ function _renderMobileStageBar(){
   var stageName = _mStages[_mCurrentStageIdx]?_mStages[_mCurrentStageIdx].name:'';
   if(nm) nm.textContent = (project.name||'—') + (stageName?' · '+stageName:'');
   if(vr){
-    // Preserve the net-status pill — it's a child element with id m-net-status
+    // v4.021m: rebuild the status line WITHOUT destroying the two live spans
+    // (m-net-status and dbx-led-txt are updated elsewhere). Only the middle
+    // "extra" part is regenerated, and the rigger name is truncated so it
+    // can never push the sync text off-screen — that clipped "J" in the
+    // screenshot was this line overflowing.
     var netSpan = document.getElementById('m-net-status');
-    var netHtml = netSpan ? netSpan.outerHTML : '<span id="m-net-status" style="color:#3ddc84">🟢 Online</span>';
-    var extra = (_mPeekMode?' 👁 peek':'')+(window._riggerName?' · 👤 '+window._riggerName:'');
-    vr.innerHTML = netHtml + extra;
+    var syncSpan = document.getElementById('dbx-led-txt');
+    var netHtml = netSpan ? netSpan.outerHTML : '<span id="m-net-status" style="color:#3ddc84">online</span>';
+    var syncHtml = syncSpan ? syncSpan.outerHTML : '<span id="dbx-led-txt" style="color:var(--muted)"></span>';
+    var who=(window._riggerName||'').trim();
+    if(who.length>14) who=who.slice(0,13)+'…';
+    var extra = (_mPeekMode?' · 👁 peek':'')+(who?' · '+who:'');
+    vr.innerHTML = netHtml + syncHtml + extra;
   }
 }
 
@@ -8523,7 +8592,7 @@ function _logActivity(deviceId,action){
     action:action||'',
     stage:stageId,
     stage_name:stageName,
-    pid:_projectKey||'',   // v4.020m: explicit project stamp — activity can
+    pid:_projectKey||'',   // v4.021m: explicit project stamp — activity can
                            // never be misattributed across projects again
   };
   window._activityLog.push(entry);
@@ -8846,3 +8915,4 @@ function _addStageDoc(si){
 
 </body>
 </html>
+  
