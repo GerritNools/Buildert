@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.027m</title>
+<title>WTU · Buildert v4.030m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -727,6 +727,18 @@ body.big-touch .pk-row{ -webkit-tap-highlight-color:rgba(0,212,255,.25); }
 #undo-btn:active{background:rgba(245,166,35,.32);}
 body.big-touch #undo-btn{min-width:124px;min-height:64px;font-size:20px;}
 body.big-touch #undo-txt{font-size:15px;}
+
+/* ── Chat sheet: use the whole screen ──
+   .sheet caps every sheet at 92vh and the chat sheet asked for 82vh on top
+   of that, so a third of the screen sat empty above a scrolling thread.
+   Height is now driven by _chatFitViewport() against visualViewport, which
+   also keeps the input above the on-screen keyboard. */
+#sheet-chat{max-height:none;}
+#sheet-chat .sheet-body{padding:8px 14px calc(8px + var(--sb));}
+/* zoom on the flex container fights its own height; scale the thread instead */
+#sheet-chat .sheet-body{zoom:1;}
+#chat-msgs{zoom:var(--a11y-zoom);}
+body.big-touch #chat-input{min-height:80px !important;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
@@ -742,7 +754,7 @@ body.big-touch #undo-txt{font-size:15px;}
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.027m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.030m</span>
     </span>
   </div>
 
@@ -945,7 +957,7 @@ body.big-touch #undo-txt{font-size:15px;}
   <div class="sheet-title">📅 Day schedule</div>
   <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
 </div>
-<div class="sheet" id="sheet-chat" style="height:82vh;height:min(82dvh,82vh)">
+<div class="sheet" id="sheet-chat" style="height:min(94dvh,94vh);max-height:none">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
   <!-- v4.023m: channel tabs — project chat + two company-wide channels -->
@@ -962,9 +974,19 @@ body.big-touch #undo-txt{font-size:15px;}
     <div id="chat-msgs" style="flex:1;min-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
       <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
     </div>
-    <div id="chat-stk-panel" style="display:none;flex-shrink:0;border-top:1px solid var(--border);padding-top:8px;max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch">
-      <div id="chat-stk-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
+    <div id="chat-stk-panel" style="display:none;flex-direction:column;flex-shrink:0;border-top:1px solid var(--border);padding-top:8px;height:min(48vh,360px)">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:8px">
+        <input id="chat-stk-search" type="text" placeholder="Search stickers…" oninput="_stkSearch(this.value)"
+          style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);color:var(--text);
+                 border-radius:9px;padding:9px 11px;font-size:14px;margin-bottom:0 !important;-webkit-appearance:none">
+        <span id="chat-stk-count" style="flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
+        <button onclick="_stkRefresh()" title="Reload from the worker"
+          style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);color:var(--muted);
+                 border-radius:9px;min-width:42px;min-height:42px;font-size:16px;cursor:pointer">↻</button>
+      </div>
+      <div id="chat-stk-grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;align-content:start"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-shrink:0">
         <button class="sb" onclick="_stkUploadPick()" style="flex:1;font-size:12px">＋ Upload</button>
         <button class="sb" onclick="_stkImport()" style="flex:1;font-size:12px">📥 Telegram</button>
         <button class="sb" id="chat-stk-manage-btn" onclick="_stkToggleManage()" style="flex:1;font-size:12px">🗑 Manage</button>
@@ -975,10 +997,10 @@ body.big-touch #undo-txt{font-size:15px;}
       <button onclick="_stkTogglePanel()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Stickers">😀</button>
       <button onclick="document.getElementById('chat-media-file').click()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Photo or video">📎</button>
       <input id="chat-media-file" type="file" accept="image/*,video/*" style="display:none" onchange="chatMediaPick(this.files[0]);this.value=''">
-      <textarea id="chat-input" placeholder="Message the crew…" rows="3"
+      <textarea id="chat-input" placeholder="Message the crew…" rows="1"
         oninput="_chatInputGrow(this)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}"
-        style="flex:1;font-size:16px;resize:none;max-height:160px;min-height:88px !important;line-height:1.45;padding:12px 13px;border-radius:12px;font-family:inherit;overflow-y:auto;margin-bottom:0 !important;box-sizing:border-box"></textarea>
+        style="flex:1;font-size:16px;resize:none;max-height:160px;min-height:56px !important;line-height:1.45;padding:12px 13px;border-radius:12px;font-family:inherit;overflow-y:auto;margin-bottom:0 !important;box-sizing:border-box"></textarea>
       <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
     </div>
   </div>
@@ -7374,6 +7396,7 @@ function openSchedSheet(){
 function closeChatSheet(){
   _chatOpen=false;
   if(_chatPollTimer){ clearInterval(_chatPollTimer); _chatPollTimer=null; }
+  _chatUnbindViewport();
   closeSheet('chat');
 }
 async function openChatSheet(){
@@ -7382,6 +7405,9 @@ async function openChatSheet(){
   _chatStyleTabs();
   _chatUpdateAudience();
   openSheet('chat');
+  _chatBindViewport();
+  _chatFitViewport();
+  setTimeout(_chatFitViewport, 320);   // after the slide-up transition
   var msgs=await _chatFetch();
   if(msgs){ _chatMsgs=msgs; _chatRender(); _chatMarkSeen(); }
   _chatScrollBottom(true);
@@ -7950,44 +7976,94 @@ async function chatPromoteToEval(mediaId){
 }
 
 // ── Stickers — global library on the worker (/stickers) ──────────────
-var _stkList=null, _stkManage=false;
+var _stkList=null, _stkManage=false, _stkErr='', _stkQuery='';
+
 function _stkUrl(id){ return _wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)); }
-async function _stkLoad(force){
-  if(_stkList && !force) return _stkList;
+
+// v4.028m: always hit the worker when the panel opens. The old version
+// cached _stkList for the whole session, so a pack someone else imported
+// stayed invisible until you reloaded the page — and a single failed
+// fetch pinned the list to [] forever, which reads as "no stickers".
+async function _stkLoad(){
   try{
     var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'));
     var d=await r.json();
-    _stkList=Array.isArray(d.stickers)?d.stickers:[];
-  }catch(e){ _stkList=_stkList||[]; }
-  return _stkList;
+    if(Array.isArray(d.stickers)){ _stkList=d.stickers; _stkErr=''; }
+    else {
+      // A worker without sticker routes answers GET with the project
+      // envelope, so "no stickers" and "no sticker support" look identical.
+      _stkErr = d && d._projects
+        ? 'This worker has no /stickers endpoint yet \u2014 update the worker.'
+        : 'Unexpected answer from the worker.';
+    }
+  }catch(e){
+    _stkErr = 'Could not reach the worker \u2014 offline?';
+  }
+  return _stkList||[];
 }
+
 function _stkRenderGrid(){
   var g=document.getElementById('chat-stk-grid'); if(!g) return;
-  var list=_stkList||[];
-  if(!list.length){
-    g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:14px">No stickers yet.<br>Upload one or import a Telegram pack.</div>';
+  var all=_stkList||[];
+  var q=_stkQuery.trim().toLowerCase();
+  var list=q ? all.filter(function(s){ return String(s.name||'').toLowerCase().indexOf(q)>=0; }) : all;
+
+  var head=document.getElementById('chat-stk-count');
+  if(head) head.textContent = all.length
+    ? (q ? list.length+' / '+all.length : all.length+' sticker'+(all.length===1?'':'s'))
+    : '';
+
+  if(_stkErr && !all.length){
+    g.innerHTML='<div style="grid-column:1/-1;color:var(--warn);font-size:12px;text-align:center;'
+      +'padding:18px 10px;line-height:1.6">\u26A0 '+_stkErr
+      +'<br><button class="sb sb-ghost" style="margin-top:10px;font-size:12px" onclick="_stkRefresh()">Try again</button></div>';
     return;
   }
+  if(!all.length){
+    g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:18px 10px;line-height:1.6">'
+      +'No stickers yet.<br>Upload one or import a Telegram pack.</div>';
+    return;
+  }
+  if(!list.length){
+    g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:18px">No match for \u201C'+esc4(_stkQuery)+'\u201D</div>';
+    return;
+  }
+
   g.innerHTML=list.map(function(st){
     return '<button onclick="'+(_stkManage?'_stkDelete':'_stkSend')+'(\''+st.id+'\')" title="'+String(st.name||'').replace(/"/g,'')+'"'
       +' style="background:'+(_stkManage?'rgba(255,77,77,.10)':'var(--panel)')+';border:1px solid '+(_stkManage?'var(--danger)':'var(--border)')+';border-radius:10px;padding:6px;cursor:pointer;position:relative">'
       +'<img src="'+_stkUrl(st.id)+'" style="width:100%;aspect-ratio:1;object-fit:contain" loading="lazy">'
-      +(_stkManage?'<span style="position:absolute;top:2px;right:5px;color:var(--danger);font-size:12px">✕</span>':'')
+      +(_stkManage?'<span style="position:absolute;top:2px;right:5px;color:var(--danger);font-size:12px">\u2715</span>':'')
       +'</button>';
   }).join('');
 }
+
+function _stkSearch(v){ _stkQuery=v||''; _stkRenderGrid(); }
+
+async function _stkRefresh(){
+  var g=document.getElementById('chat-stk-grid');
+  if(g) g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:18px">Loading\u2026</div>';
+  await _stkLoad(); _stkRenderGrid();
+}
+
 async function _stkTogglePanel(){
   var p=document.getElementById('chat-stk-panel'); if(!p) return;
   var show=p.style.display==='none';
-  p.style.display=show?'block':'none';
-  if(show){ await _stkLoad(); _stkRenderGrid(); }
+  p.style.display=show?'flex':'none';
+  if(show){
+    _stkRenderGrid();        // paint whatever we already have, no empty flash
+    await _stkLoad();        // then refresh from the worker every time
+    _stkRenderGrid();
+  }
 }
+
 function _stkToggleManage(){
   _stkManage=!_stkManage;
   var b=document.getElementById('chat-stk-manage-btn');
-  if(b) b.textContent=_stkManage?'✓ Done':'🗑 Manage';
+  if(b) b.textContent=_stkManage?'\u2713 Done':'\u{1F5D1} Manage';
   _stkRenderGrid();
 }
+
 async function _stkSend(id){
   document.getElementById('chat-stk-panel').style.display='none';
   try{
@@ -7996,19 +8072,26 @@ async function _stkSend(id){
       body:JSON.stringify({by:_aliasNameM(window._riggerName||'rigger'),sticker:id})
     });
     var d=await r.json();
-    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
+    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); _chatScrollBottom(true); }
     else showToast('Send failed','danger');
-  }catch(e){ showToast('Send failed — offline?','danger'); }
+  }catch(e){ showToast('Send failed \u2014 offline?','danger'); }
 }
+
 async function _stkDelete(id){
   if(!confirm('Delete this sticker for everyone?')) return;
   try{
     var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/'+encodeURIComponent(id)),{method:'DELETE'});
     var d=await r.json();
-    if(d.ok){ _stkList=d.stickers||[]; _stkRenderGrid(); showToast('Sticker deleted','ok'); }
+    if(d.ok){
+      // Only trust a real array — otherwise re-read, never blank the list
+      if(Array.isArray(d.stickers)) _stkList=d.stickers; else await _stkLoad();
+      _stkRenderGrid(); showToast('Sticker deleted','ok');
+    } else showToast(d.error||'Delete failed','danger');
   }catch(e){ showToast('Delete failed','danger'); }
 }
+
 function _stkUploadPick(){ document.getElementById('chat-stk-file').click(); }
+
 function _stkUpload(file){
   if(!file) return;
   var img=new Image();
@@ -8025,8 +8108,13 @@ function _stkUpload(file){
     fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers'),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({name:(file.name||'sticker').replace(/\.[^.]+$/,''),mime:mime,data:b64})
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.ok){ _stkList=d.stickers||null; _stkRenderGrid(); showToast('Sticker added','ok'); }
+    }).then(function(r){return r.json();}).then(async function(d){
+      if(d.ok){
+        // Never set _stkList to null here — that used to blank the whole
+        // grid right after a successful upload.
+        if(Array.isArray(d.stickers)) _stkList=d.stickers; else await _stkLoad();
+        _stkRenderGrid(); showToast('Sticker added','ok');
+      }
       else showToast(d.error||'Upload failed','danger');
     }).catch(function(){ showToast('Upload failed','danger'); });
     URL.revokeObjectURL(img.src);
@@ -8034,10 +8122,11 @@ function _stkUpload(file){
   img.onerror=function(){ showToast('Could not read image','warn'); URL.revokeObjectURL(img.src); };
   img.src=URL.createObjectURL(file);
 }
+
 async function _stkImport(){
-  var pack=prompt('Telegram pack name\n(the part after t.me/addstickers/…)');
+  var pack=prompt('Telegram pack name\n(the part after t.me/addstickers/\u2026)');
   if(!pack) return;
-  showToast('Importing pack…','info');
+  showToast('Importing pack\u2026','info');
   try{
     var r=await fetch(_wT(_workerUrl.replace(/\/$/,'')+'/stickers/import'),{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -8045,10 +8134,21 @@ async function _stkImport(){
     });
     var d=await r.json();
     if(d.ok){
-      showToast('Imported '+d.added+' sticker(s)'+(d.skipped?' · '+d.skipped+' skipped (animated/video)':''),'ok');
-      await _stkLoad(true); _stkRenderGrid();
+      await _stkLoad(); _stkRenderGrid();
+      var msg='Imported '+d.added+' sticker'+(d.added===1?'':'s');
+      if(d.skipped){
+        // Be explicit: most modern Telegram packs are .tgs/.webm and a
+        // static-only importer drops nearly all of them. Silently saying
+        // "imported 4" hides the fact that the pack held 120.
+        msg+=' \u00b7 '+d.skipped+' skipped';
+        alert('Imported '+d.added+' of '+(d.added+d.skipped)+' stickers.\n\n'
+          +d.skipped+' were skipped because they are animated (.tgs) or video (.webm) \u2014 '
+          +'only static .webp and .png can be shown.\n\n'
+          +'Tip: search Telegram for the static version of the pack, or upload the ones you want by hand.');
+      }
+      showToast(msg,'ok');
     } else showToast(d.error||'Import failed','danger');
-  }catch(e){ showToast('Import failed — offline?','danger'); }
+  }catch(e){ showToast('Import failed \u2014 offline?','danger'); }
 }
 
 // ── Feedback wizard: step 1 (about) → step 2 (kind) → step 3 (message) ──
@@ -9227,6 +9327,53 @@ function _dspRender(){
 _a11yApply();
 
 
+
+// ── Chat sheet sizing ─────────────────────────────────────
+// vh units measure the layout viewport, which does not shrink when the
+// keyboard slides up — so a fixed sheet either wastes space or hides its
+// own input behind the keyboard. visualViewport reports what is actually
+// visible, so the sheet is sized and lifted against that instead.
+var _chatVVBound=false;
+
+function _chatFitViewport(){
+  var sh=document.getElementById('sheet-chat');
+  if(!sh || !sh.classList.contains('open')) return;
+  var vv=window.visualViewport;
+  var vh=vv ? vv.height : window.innerHeight;
+  var lift=vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  sh.style.height=Math.round(vh - 6)+'px';
+  sh.style.bottom=Math.round(lift)+'px';
+}
+
+function _chatBindViewport(){
+  if(_chatVVBound) return;
+  _chatVVBound=true;
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', _chatOnViewport);
+    window.visualViewport.addEventListener('scroll', _chatOnViewport);
+  }
+  window.addEventListener('resize', _chatOnViewport);
+  window.addEventListener('orientationchange', _chatOnViewport);
+}
+function _chatUnbindViewport(){
+  if(!_chatVVBound) return;
+  _chatVVBound=false;
+  if(window.visualViewport){
+    window.visualViewport.removeEventListener('resize', _chatOnViewport);
+    window.visualViewport.removeEventListener('scroll', _chatOnViewport);
+  }
+  window.removeEventListener('resize', _chatOnViewport);
+  window.removeEventListener('orientationchange', _chatOnViewport);
+  var sh=document.getElementById('sheet-chat');
+  if(sh){ sh.style.height=''; sh.style.bottom=''; }
+}
+function _chatOnViewport(){
+  _chatFitViewport();
+  // The keyboard opening must not strand you halfway up the thread
+  var box=document.getElementById('chat-msgs');
+  if(box) box.scrollTop=box.scrollHeight;
+}
+
 // ── Chat: always land on the newest message ───────────────────────
 // Images and videos load after render and push the content taller, so a
 // single scrollTop at render time lands halfway up. Retry as media settles.
@@ -9744,7 +9891,7 @@ function packPrint(){
 (function(){
   var OB_KEY  = 'brt_onboard_v';
   var OB_LANG = 'brt_onboard_lang';
-  var OB_VER  = 2;               // bump to re-show the tour after a big UI change
+  var OB_VER  = 3;               // bump to re-show the tour after a big UI change
   var LANGS   = ['nl','en','pl'];
   var _idx = 0, _open = false, _lang = 'nl', _steps = [], _safeTop = 0;
 
@@ -9814,9 +9961,15 @@ function packPrint(){
 
     { sel:'.hdr-ico',
       t:{nl:'Vier knoppen rechtsboven', en:'Four buttons, top right', pl:'Cztery przyciski w prawym górnym rogu'},
-      b:{nl:'<b>&#128197;</b> dagschema &middot; <b>&#128172;</b> projectchat &middot; <b>&#9728;</b> zonmodus voor fel daglicht &middot; <b>&#128203;</b> specs.',
-         en:'<b>&#128197;</b> day schedule &middot; <b>&#128172;</b> project chat &middot; <b>&#9728;</b> sun mode for bright daylight &middot; <b>&#128203;</b> specs.',
-         pl:'<b>&#128197;</b> harmonogram dnia &middot; <b>&#128172;</b> czat &middot; <b>&#9728;</b> tryb słoneczny &middot; <b>&#128203;</b> specyfikacje. Tryb słoneczny w Holandii uruchamia się średnio dwa razy w roku, ale jest.'} },
+      b:{nl:'<b>&#128197;</b> dagschema &middot; <b>&#128172;</b> projectchat &middot; <b>&#128065;</b> weergave &middot; <b>&#128203;</b> specs.',
+         en:'<b>&#128197;</b> day schedule &middot; <b>&#128172;</b> project chat &middot; <b>&#128065;</b> display &middot; <b>&#128203;</b> specs.',
+         pl:'<b>&#128197;</b> harmonogram dnia &middot; <b>&#128172;</b> czat &middot; <b>&#128065;</b> wygląd &middot; <b>&#128203;</b> specyfikacje.'} },
+
+    { sel:'#btn-sun-mode-hdr',
+      t:{nl:'Te klein? Zelf groter maken', en:'Too small? Make it bigger', pl:'Za małe? Powiększ sobie'},
+      b:{nl:'Achter het oog zit <b>Weergave</b>. Daar zet je de <b>tekstgrootte</b> in vier stappen tot 150%, en met <b>Grote knoppen</b> worden Mounted, Cabled en Pointed brede balken over de volle breedte &mdash; een stuk lastiger mis te tikken met werkhandschoenen.<br><br><b>Zonmodus</b> maakt er zwarte tekst op wit van voor buiten in de zon, en <b>Schudden = ongedaan maken</b> draait een misklik terug door de telefoon te schudden. Er verschijnt sowieso een <b>Undo</b>-knop onderin na elke wijziging.<br><br>Knijpen met twee vingers werkt overal in de app.',
+         en:'The eye opens <b>Display</b>. There you set the <b>text size</b> in four steps up to 150%, and <b>Big buttons</b> turns Mounted, Cabled and Pointed into full-width bars &mdash; far harder to mis-tap with work gloves on.<br><br><b>Sun mode</b> switches to black on white for bright daylight, and <b>Shake to undo</b> reverts a mis-tap when you shake the phone. An <b>Undo</b> button appears at the bottom after every change anyway.<br><br>Pinching with two fingers works everywhere in the app.',
+         pl:'Oko otwiera <b>Wygląd</b>. Tam ustawiasz <b>wielkość tekstu</b> w czterech krokach do 150%, a <b>Duże przyciski</b> zamieniają Mounted, Cabled i Pointed w szerokie belki na całą szerokość &mdash; w rękawicach roboczych trudno je minąć.<br><br><b>Tryb słoneczny</b> to czarny tekst na białym, na zewnątrz. W Holandii przydaje się mniej więcej dwa razy w roku, ale jest. <b>Potrząśnięcie cofa</b> ostatnią zmianę &mdash; na dole i tak pojawia się przycisk <b>Undo</b>.<br><br>Dwa palce = zoom, wszędzie w aplikacji.'} },
 
     { sel:'#mob-stage-bar',
       t:{nl:'Stages', en:'Stages', pl:'Sceny'},
