@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.023m</title>
+<title>WTU · Buildert v4.024m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -575,7 +575,7 @@ body.sun-mode .pack-table td {
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.023m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.024m</span>
     </span>
   </div>
 
@@ -595,6 +595,8 @@ body.sun-mode .pack-table td {
   <button onclick="event.stopPropagation();openChatSheet()" title="Project chat" class="hdr-ico" style="position:relative">💬<span id="chat-unread" style="display:none;position:absolute;top:0;right:0;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
   <button onclick="event.stopPropagation();mToggleSunMode()" id="btn-sun-mode-hdr" title="Sun mode" class="hdr-ico">☀️</button>
   <button onclick="event.stopPropagation();setTab('specs')" title="Specs" class="hdr-ico">📋</button>
+  <button onclick="event.stopPropagation();obStart(0)" title="Help / tour"
+          class="hdr-ico" style="color:var(--accent);font-family:var(--cond);font-weight:900;font-size:20px">?</button>
   <span class="conn-dot" id="conn-dot" style="display:none"></span>
   <span id="dbx-led" style="display:none"></span>
 </header>
@@ -8979,6 +8981,424 @@ function _addStageDoc(si){
     });
   }
 })();
+
+// ── Onboarding wizard & guided tour (mobile) ──────────────────────
+// Self-contained. Exposes window.obStart() / window.obClose().
+(function(){
+  var OB_KEY  = 'brt_onboard_v';
+  var OB_LANG = 'brt_onboard_lang';
+  var OB_VER  = 1;               // bump to re-show the tour after a big UI change
+  var _idx = 0, _open = false, _lang = 'nl', _steps = [], _safeTop = 0;
+
+  function el(id){ return document.getElementById(id); }
+  function has(fn){ return typeof window[fn] === 'function'; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function tab(k){ if(has('setTab')){ try{ setTab(k); }catch(e){} } }
+
+  // Union bounding box of every visible element matching sel (comma list ok).
+  function rectFor(sel){
+    var nodes; try{ nodes = document.querySelectorAll(sel); }catch(e){ return null; }
+    var box = null;
+    for(var i=0;i<nodes.length;i++){
+      var r = nodes[i].getBoundingClientRect();
+      if(r.width < 2 || r.height < 2) continue;          // hidden / collapsed
+      if(!box) box = {top:r.top,left:r.left,right:r.right,bottom:r.bottom};
+      else {
+        box.top = Math.min(box.top, r.top);   box.left = Math.min(box.left, r.left);
+        box.right = Math.max(box.right, r.right); box.bottom = Math.max(box.bottom, r.bottom);
+      }
+    }
+    if(!box) return null;
+    box.width = box.right - box.left; box.height = box.bottom - box.top;
+    return box;
+  }
+  function firstVisible(sel){
+    var nodes; try{ nodes = document.querySelectorAll(sel); }catch(e){ return null; }
+    for(var i=0;i<nodes.length;i++){
+      var r = nodes[i].getBoundingClientRect();
+      if(r.width >= 2 && r.height >= 2) return nodes[i];
+    }
+    return null;
+  }
+
+  // ── Content ─────────────────────────────────────────────────────
+  function buildSteps(){
+    return [
+    { center:true,
+      t:{nl:'Welkom', en:'Welcome'},
+      b:{nl:'Met Buildert zie je op je telefoon wat er hangt, wat er nog moet gebeuren en meld je voortgang terug aan het team. Even kort door de basis &mdash; een halve minuut.',
+         en:'Buildert shows you on your phone what is rigged, what is still open, and lets you report progress back to the team. Quick run through the basics &mdash; about half a minute.'} },
+
+    { center:true, form:'name',
+      t:{nl:'1 &middot; Wie ben je?', en:'1 &middot; Who are you?'},
+      b:{nl:'Je naam komt bij elke afvinking, chatregel en scan te staan, zodat het team ziet wie wat gedaan heeft.',
+         en:'Your name is attached to every check, chat message and scan, so the team can see who did what.'} },
+
+    { center:true, form:'link',
+      t:{nl:'2 &middot; Verbinden', en:'2 &middot; Connect'},
+      b:{nl:'Plak de link die je van de projectleiding kreeg &mdash; of alleen de projectsleutel. Kwam je via die link binnen, dan staat het er al goed in.',
+         en:'Paste the link the project lead sent you &mdash; or just the project key. If you opened the app through that link, it is already filled in.'} },
+
+    { sel:'#mob-proj-name,#mob-proj-ver',
+      t:{nl:'Project &amp; sync', en:'Project &amp; sync'},
+      b:{nl:'Hier staat het project waar je in zit, met daaronder de sync-status. Groen bolletje betekent dat je het actuele plan hebt. Tik erop voor projectinfo, stages en een handmatige sync.',
+         en:'This is the project you are in, with the sync status underneath. A green dot means you have the current plan. Tap it for project info, stages and a manual sync.'} },
+
+    { sel:'.hdr-ico',
+      t:{nl:'Vier knoppen rechtsboven', en:'Four buttons, top right'},
+      b:{nl:'<b>&#128197;</b> dagschema &middot; <b>&#128172;</b> projectchat &middot; <b>&#9728;</b> zonmodus voor fel daglicht &middot; <b>&#128203;</b> specs. Het Buildert-logo linksboven is voor bugs en idee&euml;n.',
+         en:'<b>&#128197;</b> day schedule &middot; <b>&#128172;</b> project chat &middot; <b>&#9728;</b> sun mode for bright daylight &middot; <b>&#128203;</b> specs. The Buildert logo top left is for bugs and ideas.'} },
+
+    { sel:'#mob-stage-bar',
+      t:{nl:'Stages', en:'Stages'},
+      b:{nl:'Een project kan meerdere stages hebben. Tik op een stage om ertussen te wisselen &mdash; je ziet alleen de stages waar je toegang toe hebt.',
+         en:'A project can have several stages. Tap one to switch &mdash; you only see the stages you have access to.'} },
+
+    { sel:'.banner',
+      t:{nl:'Voortgang', en:'Progress'},
+      b:{nl:'De balk loopt mee met wat er afgevinkt is in deze stage. Rechts voeg je met <b>+ Add</b> een apparaat toe dat nog niet in het plan stond.',
+         en:'The bar tracks what has been ticked off in this stage. On the right, <b>+ Add</b> adds a device that was not in the plan yet.'} },
+
+    { sel:'#cat-filter-bar', before:function(){ tab('list'); },
+      t:{nl:'Filters', en:'Filters'},
+      b:{nl:'<b>&#128100; Mine</b> laat alleen de apparaten zien die aan jou zijn toegewezen &mdash; meestal je startpunt. Daarnaast filter je op type.',
+         en:'<b>&#128100; Mine</b> shows only the devices assigned to you &mdash; usually your starting point. Next to it you can filter by type.'} },
+
+    { sel:'#card-list', before:function(){ tab('list'); },
+      t:{nl:'Afvinken', en:'Ticking off'},
+      b:{nl:'Elk apparaat is een kaart. Tik erop om open te klappen en vink af: <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. De balk bovenin loopt meteen mee.',
+         en:'Every device is a card. Tap it to expand and tick off <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. The bar at the top updates right away.'} },
+
+    { sel:'#nt-nodes', before:function(){ tab('nodes'); },
+      t:{nl:'Nodes', en:'Nodes'},
+      b:{nl:'Laat zien wat waarop is aangesloten. Knijp om te zoomen, sleep om te schuiven, tik een node om hem te bewerken. Met <b>&#128260; From FOH</b> spiegel je de weergave zodat links en rechts kloppen als je op het podium staat.',
+         en:'Shows what connects to what. Pinch to zoom, drag to pan, tap a node to edit it. <b>&#128260; From FOH</b> mirrors the view so left and right match when you are standing on stage.'} },
+
+    { sel:'#bottom-nav', before:function(){ tab('list'); },
+      t:{nl:'De balk onderin', en:'The bottom bar'},
+      b:{nl:'<b>Pack</b> is de paklijst inclusief kabels en reserve, <b>Todos</b> zijn de losse taken en onder <b>Docs</b> staan de plattegronden en pdf&rsquo;s van deze stage.',
+         en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Docs</b> holds the floor plans and PDFs for this stage.'} },
+
+    { center:true, last:true,
+      t:{nl:'Klaar', en:'All set'},
+      b:{nl:'Je bent klaar om te beginnen. Deze uitleg start je opnieuw via de <b>?</b>-knop rechtsboven.',
+         en:'You are ready to go. Restart this walkthrough any time with the <b>?</b> button at the top right.'} }
+    ];
+  }
+
+  function T(o){ return (o && (o[_lang] || o.en)) || ''; }
+
+  // ── Forms ───────────────────────────────────────────────────────
+  var FIELD = 'width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);'
+            + 'border-radius:8px;padding:12px;font-family:var(--mono);font-size:16px;'
+            + 'box-sizing:border-box;outline:none;';
+  var LBL   = 'display:block;font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;'
+            + 'text-transform:uppercase;color:var(--muted);margin:14px 0 5px;';
+
+  function formHtml(kind){
+    if(kind==='name'){
+      var n = window._riggerName || '';
+      try{ n = n || localStorage.getItem('brt_rigger_name') || ''; }catch(e){}
+      return '<label style="'+LBL+'">'+(_lang==='nl'?'Je naam':'Your name')+'</label>'
+        + '<input id="ob-rname" type="text" autocomplete="name" autocapitalize="words" '
+        + 'style="'+FIELD+'" placeholder="'+(_lang==='nl'?'bijv. Sander':'e.g. Sam')+'" value="'+esc(n)+'">';
+    }
+    if(kind==='link'){
+      var key='', wu='', ip='';
+      try{
+        key = (typeof _projectKey!=='undefined' && _projectKey) || localStorage.getItem('buildert_project_key') || '';
+        wu  = (typeof _workerUrl !=='undefined' && _workerUrl ) || localStorage.getItem('buildert_worker_url')  || '';
+        ip  = localStorage.getItem('wtu_ip') || '';
+      }catch(e){}
+      var ok = !!(key && wu);
+      return (ok
+          ? '<div style="display:flex;align-items:center;gap:9px;background:rgba(61,220,132,.09);'
+            + 'border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-top:12px">'
+            + '<span style="color:var(--ok);font-size:17px">&#10003;</span>'
+            + '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:0;overflow:hidden">'
+            + (_lang==='nl'?'Verbonden met':'Connected to')+' <span style="color:var(--ok)">'+esc(key)+'</span></div></div>'
+          : '')
+        + '<label style="'+LBL+'">'+(ok ? (_lang==='nl'?'Andere link plakken':'Paste a different link')
+                                        : (_lang==='nl'?'Link of projectsleutel':'Link or project key'))+'</label>'
+        + '<input id="ob-link" type="text" autocomplete="off" autocorrect="off" spellcheck="false" '
+        + 'style="'+FIELD+'font-size:13px" placeholder="https://&hellip;?project=ABCD1234">'
+        + '<div id="ob-link-msg" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px"></div>'
+        + '<label style="'+LBL+'">'+(_lang==='nl'?'Controller-IP (optioneel)':'Controller IP (optional)')+'</label>'
+        + '<input id="ob-ip" type="text" inputmode="decimal" autocomplete="off" '
+        + 'style="'+FIELD+'" placeholder="192.168.1.42" value="'+esc(ip)+'">';
+    }
+    return '';
+  }
+
+  function saveForm(kind){
+    if(kind==='name'){
+      var i = el('ob-rname'); if(!i) return;
+      var v = i.value.trim();
+      if(v){
+        window._riggerName = v;
+        try{ localStorage.setItem('brt_rigger_name', v); }catch(e){}
+        if(has('_updateMobileProjectBadge')) _updateMobileProjectBadge();
+      }
+    }
+    if(kind==='link'){
+      var li = el('ob-link');
+      if(li && li.value.trim()) applyLink(li.value.trim());
+      var ipi = el('ob-ip');
+      if(ipi && ipi.value.trim()){
+        try{ localStorage.setItem('wtu_ip', ipi.value.trim()); }catch(e){}
+        if(has('stopPolling')){ try{ stopPolling(); }catch(e){} }
+        if(has('startPolling')){ try{ startPolling(); }catch(e){} }
+      }
+    }
+  }
+
+  // Accepts a full rigger link, a "?project=..." query, or a bare key.
+  function applyLink(raw){
+    var msg = el('ob-link-msg');
+    var qs  = raw.indexOf('?') >= 0 ? raw.slice(raw.indexOf('?')+1) : '';
+    var p = null;
+    try{ p = new URLSearchParams(qs); }catch(e){}
+
+    var key = p ? (p.get('project')||'') : '';
+    if(!key && /^[A-Za-z0-9_-]{4,16}$/.test(raw)) key = raw;
+    if(!key){
+      if(msg){ msg.style.color='var(--danger)';
+        msg.textContent = (_lang==='nl' ? 'Geen projectsleutel gevonden in die link.'
+                                        : 'No project key found in that link.'); }
+      return false;
+    }
+
+    var wu  = p ? (p.get('w')||p.get('worker')||'') : '';
+    var tok = p ? (p.get('token')||p.get('t')||'') : '';
+    var rig = p ? (p.get('rigger')||'') : '';
+    var stg = p ? (p.get('stage')||'') : '';
+    var stgs= p ? (p.get('stages')||'') : '';
+
+    try{
+      var stored = localStorage.getItem('buildert_project_key')||'';
+      if(stored && stored !== key){          // different project — drop stale cache
+        localStorage.removeItem('wtu_devices');
+        localStorage.removeItem('wtu_project_meta');
+        if(typeof devices !== 'undefined') devices = [];
+      }
+      localStorage.setItem('buildert_project_key', key);
+      if(wu)  localStorage.setItem('buildert_worker_url', wu);
+      if(tok) localStorage.setItem('brt_worker_token', tok);
+    }catch(e){}
+
+    if(typeof _projectKey !== 'undefined') _projectKey = key;
+    if(wu  && typeof _workerUrl !== 'undefined') _workerUrl = wu;
+    if(tok && typeof _mToken    !== 'undefined') _mToken = tok;
+    if(rig){
+      window._riggerMode = true;
+      window._riggerName = decodeURIComponent(rig);
+      try{ localStorage.setItem('brt_rigger_name', window._riggerName); }catch(e){}
+    }
+    if(stg && typeof _mAssignedStageId !== 'undefined') _mAssignedStageId = decodeURIComponent(stg);
+    if(stgs && typeof _mStagePerms !== 'undefined'){
+      stgs.split(',').forEach(function(part){
+        var kv = part.split(':'); if(kv.length===2) _mStagePerms[kv[0]] = kv[1];
+      });
+    }
+
+    if(typeof _workerUrl !== 'undefined' && _workerUrl && key && has('wStartPolling')){
+      try{ wStartPolling(); }catch(e){}
+    }
+    if(msg){ msg.style.color='var(--ok)';
+      msg.textContent = (_lang==='nl' ? 'Gekoppeld aan ' : 'Linked to ') + key; }
+    if(has('_updateMobileProjectBadge')) _updateMobileProjectBadge();
+    return true;
+  }
+
+  // ── DOM scaffold ────────────────────────────────────────────────
+  function mount(){
+    if(el('ob-root')) return;
+
+    var css = document.createElement('style');
+    css.id = 'ob-style';
+    css.textContent =
+      '#ob-root{position:fixed;inset:0;z-index:8500;display:none;font-family:var(--sans);}'
+    + '#ob-root.on{display:block;}'
+    + '#ob-mask{position:absolute;inset:0;touch-action:none;}'
+    + '#ob-hole{position:fixed;border-radius:10px;pointer-events:none;'
+    +   'box-shadow:0 0 0 9999px rgba(4,6,10,.82),0 0 0 2px var(--accent),0 0 20px rgba(0,212,255,.35);'
+    +   'transition:top .26s ease,left .26s ease,width .26s ease,height .26s ease;}'
+    + '#ob-hole.flat{box-shadow:0 0 0 9999px rgba(4,6,10,.88);}'
+    + 'body.sun-mode #ob-hole{box-shadow:0 0 0 9999px rgba(30,26,18,.55),0 0 0 2px var(--accent);}'
+    + 'body.sun-mode #ob-hole.flat{box-shadow:0 0 0 9999px rgba(30,26,18,.62);}'
+    + 'body.sun-mode .ob-btn{color:#fff;}'
+    + 'body.sun-mode #ob-body b{color:#000;}'
+    + '#ob-card{position:fixed;left:12px;right:12px;background:var(--surface);'
+    +   'border:1px solid var(--border);border-radius:14px;padding:18px 16px 14px;'
+    +   'box-shadow:0 14px 44px rgba(0,0,0,.65);'
+    +   'max-height:80vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}'
+    + '#ob-card h3{font-family:var(--cond);font-weight:900;font-size:19px;letter-spacing:1.5px;'
+    +   'text-transform:uppercase;color:var(--accent);margin:0 66px 7px 0;line-height:1.15;}'
+    + '#ob-body{font-size:14px;line-height:1.6;color:var(--text);}'
+    + '#ob-body b{color:#fff;}'
+    + '#ob-foot{display:flex;align-items:center;gap:8px;margin-top:16px;}'
+    + '#ob-dots{display:flex;gap:4px;flex:1;flex-wrap:wrap;}'
+    + '.ob-dot{width:6px;height:6px;border-radius:50%;background:var(--border);}'
+    + '.ob-dot.on{background:var(--accent);}.ob-dot.done{background:var(--muted);}'
+    + '.ob-btn{font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;'
+    +   'text-transform:uppercase;border-radius:8px;padding:11px 18px;cursor:pointer;'
+    +   'border:1px solid var(--accent);background:var(--accent);color:#04070c;'
+    +   '-webkit-tap-highlight-color:transparent;}'
+    + '.ob-btn:active{filter:brightness(.88);}'
+    + '.ob-ghost{background:transparent;color:var(--muted);border-color:var(--border);}'
+    + '#ob-skip{position:absolute;top:14px;right:12px;background:none;border:none;color:var(--muted);'
+    +   'font-family:var(--mono);font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;}'
+    + '#ob-lang{position:absolute;top:14px;right:44px;background:none;border:1px solid var(--border);'
+    +   'color:var(--muted);font-family:var(--mono);font-size:10px;border-radius:5px;'
+    +   'padding:3px 7px;cursor:pointer;}';
+    document.head.appendChild(css);
+
+    // Measure the notch once — keeps the card clear of the status bar.
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);pointer-events:none;opacity:0';
+    document.body.appendChild(probe);
+    _safeTop = probe.getBoundingClientRect().height || 0;
+    probe.remove();
+
+    var root = document.createElement('div');
+    root.id = 'ob-root';
+    root.innerHTML =
+      '<div id="ob-mask"></div>'
+    + '<div id="ob-hole"></div>'
+    + '<div id="ob-card">'
+    +   '<button id="ob-lang" onclick="__obLang()"></button>'
+    +   '<button id="ob-skip" onclick="obClose()">&#10005;</button>'
+    +   '<h3 id="ob-title"></h3>'
+    +   '<div id="ob-body"></div>'
+    +   '<div id="ob-form"></div>'
+    +   '<div id="ob-foot">'
+    +     '<div id="ob-dots"></div>'
+    +     '<button class="ob-btn ob-ghost" id="ob-back" onclick="__obGo(-1)"></button>'
+    +     '<button class="ob-btn" id="ob-next" onclick="__obGo(1)"></button>'
+    +   '</div>'
+    + '</div>';
+    document.body.appendChild(root);
+
+    // Swipe left/right to move through the steps
+    var sx = 0, sy = 0, mask = el('ob-mask');
+    mask.addEventListener('touchstart', function(e){
+      var t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY;
+    }, {passive:true});
+    mask.addEventListener('touchend', function(e){
+      var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)*1.6) __obGo(dx < 0 ? 1 : -1);
+    }, {passive:true});
+
+    window.addEventListener('resize', function(){ if(_open) setTimeout(position, 80); });
+    window.addEventListener('orientationchange', function(){ if(_open) setTimeout(position, 280); });
+  }
+
+  // ── Rendering ───────────────────────────────────────────────────
+  function render(){
+    var s = _steps[_idx]; if(!s) return;
+    if(typeof s.before === 'function'){ try{ s.before(); }catch(e){} }
+
+    el('ob-title').innerHTML  = T(s.t);
+    el('ob-body').innerHTML   = T(s.b);
+    el('ob-form').innerHTML   = s.form ? formHtml(s.form) : '';
+    el('ob-lang').textContent = (_lang==='nl' ? 'EN' : 'NL');
+    el('ob-back').textContent = (_lang==='nl' ? 'Terug' : 'Back');
+    el('ob-back').style.display = _idx===0 ? 'none' : '';
+    el('ob-next').textContent = s.last ? (_lang==='nl'?'Beginnen':'Start')
+                                       : (_lang==='nl'?'Volgende':'Next');
+
+    var dots = '';
+    for(var i=0;i<_steps.length;i++)
+      dots += '<span class="ob-dot'+(i===_idx?' on':(i<_idx?' done':''))+'"></span>';
+    el('ob-dots').innerHTML = dots;
+
+    position();
+    setTimeout(position, 130);   // re-measure once layout settles
+  }
+
+  function position(){
+    var s = _steps[_idx]; if(!s) return;
+    var hole = el('ob-hole'), card = el('ob-card');
+    var vh = window.innerHeight, ch = card.offsetHeight;
+    var minTop = _safeTop + 10;
+
+    var r = (s.sel && !s.center) ? rectFor(s.sel) : null;
+
+    if(!r){                                   // centred card, no spotlight
+      hole.className = 'flat';
+      hole.style.width='0px'; hole.style.height='0px';
+      hole.style.top='50%'; hole.style.left='50%';
+      card.style.top = Math.max(minTop, (vh - ch)/2) + 'px';
+      return;
+    }
+
+    var t = firstVisible(s.sel);
+    if(t){ try{ t.scrollIntoView({block:'center', inline:'center', behavior:'smooth'}); }catch(e){} }
+    r = rectFor(s.sel) || r;
+
+    var pad = 6;
+    hole.className = '';
+    hole.style.top    = (r.top - pad) + 'px';
+    hole.style.left   = (r.left - pad) + 'px';
+    hole.style.width  = (r.width + pad*2) + 'px';
+    hole.style.height = (r.height + pad*2) + 'px';
+
+    var gap = 14, top;
+    if(r.bottom + gap + ch < vh - 10)        top = r.bottom + gap;    // below
+    else if(r.top - gap - ch > minTop)       top = r.top - gap - ch;  // above
+    else                                      top = Math.max(minTop, (vh - ch)/2);
+    card.style.top = Math.max(minTop, Math.min(top, vh - ch - 10)) + 'px';
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────
+  window.__obGo = function(dir){
+    var s = _steps[_idx];
+    if(dir > 0 && s && s.form){ try{ saveForm(s.form); }catch(e){} }
+    var n = _idx + dir;
+    if(n < 0) return;
+    if(n >= _steps.length){ finish(); return; }
+    _idx = n; render();
+  };
+
+  window.__obLang = function(){
+    _lang = (_lang==='nl' ? 'en' : 'nl');
+    try{ localStorage.setItem(OB_LANG, _lang); }catch(e){}
+    render();
+  };
+
+  function finish(){
+    close();
+    tab('list');
+    if(has('showToast')) showToast(_lang==='nl' ? 'Klaar om te beginnen' : 'Ready to go','ok');
+  }
+
+  function close(){
+    _open = false;
+    var r = el('ob-root'); if(r) r.classList.remove('on');
+    try{ localStorage.setItem(OB_KEY, String(OB_VER)); }catch(e){}
+  }
+  window.obClose = close;
+
+  window.obStart = function(fromStep){
+    mount();
+    try{
+      _lang = localStorage.getItem(OB_LANG)
+           || ((navigator.language||'').toLowerCase().indexOf('nl')===0 ? 'nl' : 'en');
+    }catch(e){ _lang = 'en'; }
+    _steps = buildSteps();
+    _idx = fromStep || 0;
+    _open = true;
+    el('ob-root').classList.add('on');
+    render();
+  };
+
+  // ── First run ───────────────────────────────────────────────────
+  try{
+    if(localStorage.getItem(OB_KEY) !== String(OB_VER))
+      setTimeout(function(){ window.obStart(0); }, 900);
+  }catch(e){}
+})();
+
 </script>
 <div id="pdf-overlay" style="display:none;position:fixed;inset:0;z-index:2000;background:#111;flex-direction:column">
   <div style="display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;background:#1a1a1a;flex-shrink:0">
