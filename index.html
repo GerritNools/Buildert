@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 <meta name="theme-color" content="#0a0c0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.025m</title>
+<title>WTU · Buildert v4.027m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -612,6 +612,121 @@ body.sun-mode .pack-table td {
   #pack-print .pp-sign{margin-top:26pt;padding-top:9pt;border-top:1pt solid #000;
     display:flex;gap:26pt;font-size:10pt;page-break-inside:avoid;}
 }
+/* ══ Accessibility v4.026m ══════════════════════════════════════════
+   Two separate problems, two separate levers:
+   · low vision      → --a11y-zoom scales the content area (px-safe)
+   · imprecise touch → body.big-touch enlarges and separates hit areas
+   Plus a set of default bumps: some targets were under 30px for
+   everyone, which is nobody's idea of a good time on a dark stage. */
+
+:root{ --a11y-zoom:1; }
+
+/* Content zoom. Applied per-container so the fixed header, the nav bar and
+   the node canvas (which does its own pinch maths) stay unscaled. */
+#card-list,#cat-filter-bar,.chips,#act-ticker,#next-up,#empty-state,.sheet-body{
+  zoom:var(--a11y-zoom);
+}
+#diagram-wrap,#pack-print{ zoom:1; }
+
+/* ── Default bumps: applied to everyone ───────────────────────────── */
+.stat-chip{ padding:9px 14px; font-size:12px; }
+.cat-chip{ padding:9px 16px; font-size:13px; }
+.hdr-ico{ padding:9px 7px; }
+.edit-btn{ width:34px; height:34px; font-size:15px; }
+.card-top .edit-btn{ width:34px !important; height:34px !important; }
+.card-top{ gap:9px; }
+.cpill,.popt{ padding:13px 18px; font-size:15px; min-height:46px; }
+.card-checks,.popt-wrap{ gap:8px; }
+.card-id{ font-size:20px; }
+
+/* ── Big touch mode ───────────────────────────────────────────────── */
+/* The rigger's real job is Mounted / Cabled / Pointed. In this mode those
+   stop being pills in a row and become full-width bars you cannot miss. */
+body.big-touch .card-checks,
+body.big-touch .popt-wrap{ flex-direction:column; gap:10px; }
+body.big-touch .cpill,
+body.big-touch .popt{
+  width:100%; box-sizing:border-box; justify-content:center;
+  min-height:62px; font-size:20px; letter-spacing:1px; border-width:2px;
+}
+body.big-touch .cpill.ck{ background:rgba(61,220,132,.20); }
+body.big-touch .stat-chip{ padding:13px 18px; font-size:15px; min-height:46px; }
+body.big-touch .card-meta{ gap:9px; }
+body.big-touch .card-id{ font-size:24px; }
+body.big-touch .edit-btn,
+body.big-touch .card-top .edit-btn{ width:48px !important; height:48px !important; font-size:20px; }
+body.big-touch .card-top{ gap:12px; padding:14px 14px 7px 17px; }
+body.big-touch .card-serial{ font-size:14px !important; }
+body.big-touch .hdr-ico{ padding:11px 9px; font-size:23px; }
+body.big-touch .cat-chip{ padding:12px 20px; font-size:16px; }
+body.big-touch .ntab{ font-size:13px; }
+body.big-touch .ntab .ni{ font-size:27px; }
+body.big-touch nav{ height:calc(var(--nav-h) + 14px + var(--sb)); }
+body.big-touch .sb{ padding:18px; font-size:17px; min-height:58px; }
+body.big-touch .hbtn{ width:48px; height:48px; font-size:19px; }
+body.big-touch .sheet-body input,
+body.big-touch .sheet-body select,
+body.big-touch .sheet-body textarea{ font-size:17px; padding:15px 14px; }
+body.big-touch .sheet-body label{ font-size:14px; }
+body.big-touch .sheet-title{ font-size:20px; }
+body.big-touch .pk-row{ min-height:66px; padding:17px 6px; gap:14px; }
+body.big-touch .pk-chk{ width:34px; height:34px; }
+body.big-touch .pk-name{ font-size:20px; }
+body.big-touch .pk-qty{ font-size:23px; min-width:52px; }
+body.big-touch .pk-act,
+body.big-touch .pk-add{ padding:16px; font-size:17px; }
+body.big-touch .pk-sp{ width:44px; height:44px; font-size:21px; }
+body.big-touch .pk-del{ font-size:22px; padding:11px 13px; }
+body.big-touch .cpill,
+body.big-touch .popt,
+body.big-touch .stat-chip,
+body.big-touch .pk-row{ -webkit-tap-highlight-color:rgba(0,212,255,.25); }
+
+/* ── Display settings sheet ───────────────────────────────────────── */
+.dsp-block{ margin-bottom:22px; }
+.dsp-h{ font-family:var(--cond); font-weight:900; font-size:13px; letter-spacing:2px;
+  text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+.dsp-row{ display:flex; gap:9px; }
+.dsp-opt{ flex:1; min-height:64px; border:2px solid var(--border); border-radius:11px;
+  background:var(--panel); color:var(--text); cursor:pointer; display:flex;
+  flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font-family:var(--cond); font-weight:700; -webkit-tap-highlight-color:transparent; }
+.dsp-opt .dsp-a{ font-weight:900; line-height:1; }
+.dsp-opt .dsp-l{ font-size:11px; letter-spacing:1px; color:var(--muted); }
+.dsp-opt.on{ border-color:var(--accent); background:rgba(0,212,255,.13); color:var(--accent); }
+.dsp-opt.on .dsp-l{ color:var(--accent); }
+.dsp-toggle{ display:flex; align-items:center; gap:13px; width:100%; min-height:70px;
+  border:2px solid var(--border); border-radius:11px; background:var(--panel);
+  color:var(--text); padding:13px 15px; cursor:pointer; text-align:left;
+  -webkit-tap-highlight-color:transparent; }
+.dsp-toggle.on{ border-color:var(--ok); background:rgba(61,220,132,.12); }
+.dsp-ico{ font-size:26px; flex-shrink:0; }
+.dsp-txt{ flex:1; min-width:0; }
+.dsp-name{ font-family:var(--cond); font-weight:700; font-size:17px; }
+.dsp-sub{ font-size:12.5px; color:var(--muted); line-height:1.4; margin-top:2px; }
+.dsp-state{ flex-shrink:0; font-family:var(--mono); font-size:12px; color:var(--muted); }
+.dsp-toggle.on .dsp-state{ color:var(--ok); }
+.dsp-demo{ border:1px dashed var(--border); border-radius:11px; padding:13px; margin-top:6px; }
+.dsp-demo-l{ font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:9px; }
+
+/* ── Undo bar ── */
+#undo-bar{position:fixed;left:12px;right:12px;z-index:190;
+  bottom:calc(var(--nav-h) + var(--sb) + 14px);
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:2px solid var(--warn);border-radius:14px;
+  padding:10px 10px 10px 16px;box-shadow:0 6px 26px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(14px);pointer-events:none;
+  transition:opacity .2s,transform .2s;}
+#undo-bar.show{opacity:1;transform:none;pointer-events:auto;}
+#undo-txt{flex:1;min-width:0;font-family:var(--mono);font-size:12.5px;color:var(--text);
+  line-height:1.4;overflow:hidden;}
+#undo-btn{flex-shrink:0;min-width:104px;min-height:52px;border-radius:10px;
+  border:2px solid var(--warn);background:rgba(245,166,35,.15);color:var(--warn);
+  font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1.5px;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#undo-btn:active{background:rgba(245,166,35,.32);}
+body.big-touch #undo-btn{min-width:124px;min-height:64px;font-size:20px;}
+body.big-touch #undo-txt{font-size:15px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
@@ -627,7 +742,7 @@ body.sun-mode .pack-table td {
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.025m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.027m</span>
     </span>
   </div>
 
@@ -645,7 +760,7 @@ body.sun-mode .pack-table td {
 
   <button onclick="event.stopPropagation();openSchedSheet()" title="Day schedule" class="hdr-ico">📅</button>
   <button onclick="event.stopPropagation();openChatSheet()" title="Project chat" class="hdr-ico" style="position:relative">💬<span id="chat-unread" style="display:none;position:absolute;top:0;right:0;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
-  <button onclick="event.stopPropagation();mToggleSunMode()" id="btn-sun-mode-hdr" title="Sun mode" class="hdr-ico">☀️</button>
+  <button onclick="event.stopPropagation();openDisplaySheet()" id="btn-sun-mode-hdr" title="Weergave — tekstgrootte, grote knoppen, zonmodus" class="hdr-ico">👁️</button>
   <button onclick="event.stopPropagation();setTab('specs')" title="Specs" class="hdr-ico">📋</button>
   <button onclick="event.stopPropagation();obStart(0)" title="Help / tour"
           class="hdr-ico" style="color:var(--accent);font-family:var(--cond);font-weight:900;font-size:20px">?</button>
@@ -781,6 +896,14 @@ body.sun-mode .pack-table td {
 
 <button class="fab" id="fab" onclick="openSheet('fab')">+</button>
 <nav id="bottom-nav"></nav>
+
+<!-- Display / accessibility sheet -->
+<div class="ovl" id="ovl-display" onclick="closeSheet('display')"></div>
+<div class="sheet" id="sheet-display" style="max-height:88vh">
+  <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
+  <div class="sheet-title">👁️ Weergave</div>
+  <div class="sheet-body" id="dsp-body"></div>
+</div>
 
 <!-- Pack signoff overlay + sheet -->
 <div class="ovl" id="ovl-packsignoff" onclick="closeSheet('packsignoff')"></div>
@@ -1677,13 +1800,20 @@ function renderCards(){
 
 function tapStatus(gi,status){
   if(_mPeekMode){showToast('Peek mode — read only','warn');return;}
+  var _id=devices[gi].device_id, _prev=devices[gi].status;
   devices[gi].status=status;
-  _logActivity(devices[gi].device_id,'Status: '+status);
+  _logActivity(_id,'Status: '+status);
   renderCards(); autoSave();
-  showToast(devices[gi].device_id+' → '+status,'ok');
+  _undoPush(_id+' → '+status, function(){
+    var i=_undoDev(gi,_id); if(i<0) return;
+    devices[i].status=_prev;
+    _logActivity(_id,'Status: '+(_prev||'Concept')+' (undo)');
+    renderCards(); autoSave();
+  });
 }
 function tapCheck(gi,check){
   if(_mPeekMode){showToast('Read only — no edit rights','warn');return;}
+  var _mtBefore = devices[gi].mounted_at || '';
   if(!devices[gi].checks) devices[gi].checks={};
   devices[gi].checks[check]=!devices[gi].checks[check];
   if(typeof _buzz==='function') _buzz(devices[gi].checks[check]?35:15);
@@ -1700,14 +1830,30 @@ function tapCheck(gi,check){
     if(devices[gi].checks[check]){var n=new Date(),p=function(v){return v<10?'0'+v:''+v;};devices[gi].mounted_at=p(n.getHours())+':'+p(n.getMinutes());}
     else devices[gi].mounted_at='';
   }
-  _logActivity(devices[gi].device_id, check + ': ' + (devices[gi].checks[check]?'✓':'✗'));
+  var _id=devices[gi].device_id, _now=!!devices[gi].checks[check], _prevMt=_mtBefore;
+  _logActivity(_id, check + ': ' + (_now?'✓':'✗'));
   renderCards(); autoSave();
+  _undoPush(_id+' · '+check+' '+(_now?'aangevinkt':'uitgevinkt'), function(){
+    var i=_undoDev(gi,_id); if(i<0) return;
+    if(!devices[i].checks) devices[i].checks={};
+    devices[i].checks[check]=!_now;
+    if(check==='Mounted') devices[i].mounted_at=_prevMt;
+    _logActivity(_id, check + ': ' + (!_now?'✓':'✗') + ' (undo)');
+    renderCards(); autoSave();
+  });
 }
 function tapPointed(gi,val){
   if(_mPeekMode){showToast('Read only — no edit rights','warn');return;}
+  var _id=devices[gi].device_id, _prev=devices[gi].pointed||'';
   devices[gi].pointed=devices[gi].pointed===val?'':val;
-  if(devices[gi].pointed) _logActivity(devices[gi].device_id, 'Pointed: '+devices[gi].pointed);
+  if(devices[gi].pointed) _logActivity(_id, 'Pointed: '+devices[gi].pointed);
   renderCards(); autoSave();
+  _undoPush(_id+' · Pointed '+(devices[gi].pointed||'—'), function(){
+    var i=_undoDev(gi,_id); if(i<0) return;
+    devices[i].pointed=_prev;
+    _logActivity(_id, 'Pointed: '+(_prev||'—')+' (undo)');
+    renderCards(); autoSave();
+  });
 }
 function toggleCard(gi){ expandedGis[gi]=!expandedGis[gi]; renderCards(); }
 
@@ -6920,8 +7066,7 @@ function mToggleSunMode(){
   localStorage.setItem('buildert_sun_mode', on?'1':'0');
   var btn = document.getElementById('btn-sun-mode');
   if(btn) btn.textContent = on ? '🌙' : '☀️';
-  var hb = document.getElementById('btn-sun-mode-hdr');
-  if(hb) hb.textContent = on ? '🌙' : '☀️';
+  // v4.026m: header button is the display sheet now — keep the 👁 icon
   showToast(on ? 'Sun mode — light theme for outdoor use' : 'Dark mode', 'ok');
 }
 // Apply saved preferences on load
@@ -8838,6 +8983,249 @@ function _addStageDoc(si){
     });
   }
 })();
+
+// ── Undo ───────────────────────────────────────────────────────────
+// Thick fingers hit the wrong pill. The fix is not a smaller chance of
+// error, it's a cheap way back. Two ways in: a big button in the undo
+// bar (6s), or a shake (60s, so it still works after the bar is gone).
+var _undoStack = [];
+var UNDO_BAR_MS   = 6000;      // how long the button stays on screen
+var UNDO_SHAKE_MS = 60000;     // how far back a shake can reach
+var _undoTimer = null;
+
+function _undoPush(label, revert){
+  _undoStack.push({label:label, revert:revert, at:Date.now()});
+  if(_undoStack.length > 20) _undoStack.shift();
+  _undoShowBar(label);
+}
+
+function _undoShowBar(label){
+  var bar = document.getElementById('undo-bar');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'undo-bar';
+    bar.innerHTML = '<span id="undo-txt"></span>'
+      + '<button id="undo-btn" onclick="undoLast()">\u21B6 Undo</button>';
+    document.body.appendChild(bar);
+  }
+  document.getElementById('undo-txt').textContent = label;
+  bar.classList.add('show');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(_undoHideBar, UNDO_BAR_MS);
+}
+function _undoHideBar(){
+  var bar = document.getElementById('undo-bar');
+  if(bar) bar.classList.remove('show');
+}
+
+function undoLast(fromShake){
+  var e = _undoStack.pop();
+  if(!e){
+    if(fromShake) showToast('Niets om ongedaan te maken','warn');
+    return false;
+  }
+  // A shake should not reach back into last week's work
+  if(fromShake && Date.now() - e.at > UNDO_SHAKE_MS){
+    _undoStack.push(e);
+    showToast('Te lang geleden om met schudden terug te draaien','warn');
+    return false;
+  }
+  try{ e.revert(); }catch(err){ showToast('Ongedaan maken mislukt','err'); return false; }
+  _undoHideBar();
+  if(typeof _buzz==='function') _buzz([25,60,25]);
+  showToast('\u21B6 Teruggedraaid: '+e.label,'ok');
+  return true;
+}
+
+// Find a device again by id — a sync between the action and the undo can
+// reorder the array, and reverting the wrong row is worse than not reverting.
+function _undoDev(gi, id){
+  if(id){
+    var i = devices.findIndex(function(d){ return d && d.device_id === id; });
+    if(i >= 0) return i;
+  }
+  return (devices[gi] ? gi : -1);
+}
+
+// ── Shake to undo ──────────────────────────────────────────────────
+// iOS 13+ only hands out motion events after an explicit permission
+// prompt, and that prompt has to come from a real tap — hence the
+// toggle in the display sheet rather than switching this on at boot.
+var _shakeOn = false, _shLastT = 0, _shLastSum = 0, _shHits = 0, _shWin = 0, _shCool = 0;
+
+function _shakeHandler(e){
+  var a = e.accelerationIncludingGravity; if(!a) return;
+  var now = Date.now();
+  if(now - _shLastT < 90) return;
+  var dt = now - _shLastT || 1;
+  _shLastT = now;
+  var sum = (a.x||0) + (a.y||0) + (a.z||0);
+  var speed = Math.abs(sum - _shLastSum) / dt * 10000;
+  _shLastSum = sum;
+
+  if(speed > 950){
+    if(now - _shWin > 1000){ _shWin = now; _shHits = 0; }
+    _shHits++;
+    // Three reversals inside a second: that is a deliberate shake, not a
+    // rigger climbing a truss with the phone in his pocket.
+    if(_shHits >= 3 && now - _shCool > 2500){
+      _shCool = now; _shHits = 0;
+      if(_undoStack.length) undoLast(true);
+    }
+  }
+}
+
+function _shakeEnabled(){
+  try{ return localStorage.getItem('brt_shake_undo') === '1'; }catch(e){ return false; }
+}
+function _shakeAttach(){
+  if(_shakeOn) return;
+  window.addEventListener('devicemotion', _shakeHandler);
+  _shakeOn = true;
+}
+function _shakeDetach(){
+  if(!_shakeOn) return;
+  window.removeEventListener('devicemotion', _shakeHandler);
+  _shakeOn = false;
+}
+async function shakeToggle(){
+  if(_shakeEnabled()){
+    try{ localStorage.setItem('brt_shake_undo','0'); }catch(e){}
+    _shakeDetach(); _dspRender();
+    return;
+  }
+  // iOS: ask permission from inside this tap
+  try{
+    if(typeof DeviceMotionEvent !== 'undefined'
+       && typeof DeviceMotionEvent.requestPermission === 'function'){
+      var res = await DeviceMotionEvent.requestPermission();
+      if(res !== 'granted'){
+        showToast('Geen toegang tot de bewegingssensor \u2014 gebruik de Undo-knop','warn');
+        _dspRender();
+        return;
+      }
+    } else if(typeof DeviceMotionEvent === 'undefined'){
+      showToast('Deze telefoon geeft geen bewegingsdata door','warn');
+      return;
+    }
+  }catch(e){
+    showToast('Schudden werkt niet op dit toestel \u2014 gebruik de Undo-knop','warn');
+    return;
+  }
+  try{ localStorage.setItem('brt_shake_undo','1'); }catch(e){}
+  _shakeAttach(); _dspRender();
+  if(typeof _buzz==='function') _buzz([30,70,30]);
+  showToast('Schud om iets terug te draaien','ok');
+}
+
+// Android and desktop need no prompt — restore straight away
+try{
+  if(_shakeEnabled()
+     && !(typeof DeviceMotionEvent !== 'undefined'
+          && typeof DeviceMotionEvent.requestPermission === 'function')){
+    _shakeAttach();
+  }
+}catch(e){}
+
+
+// ── Display / accessibility settings ──────────────────────────────
+// Three levers in one sheet: text size, big touch targets, sun mode.
+var A11Y_STEPS = [
+  {v:1,    label:'Normaal', sz:15},
+  {v:1.15, label:'Groter',  sz:18},
+  {v:1.3,  label:'Groot',   sz:21},
+  {v:1.5,  label:'Extra',   sz:25}
+];
+
+function _a11yGet(){
+  var z=1, big=false;
+  try{
+    z   = parseFloat(localStorage.getItem('brt_a11y_zoom')||'1') || 1;
+    big = localStorage.getItem('brt_a11y_big')==='1';
+  }catch(e){}
+  return {zoom:z, big:big};
+}
+function _a11yApply(){
+  var s=_a11yGet();
+  document.documentElement.style.setProperty('--a11y-zoom', String(s.zoom));
+  document.body.classList.toggle('big-touch', s.big);
+}
+function a11ySetZoom(v){
+  try{ localStorage.setItem('brt_a11y_zoom', String(v)); }catch(e){}
+  _a11yApply(); _dspRender();
+  if(typeof _buzz==='function') _buzz(15);
+}
+function a11yToggleBig(){
+  var s=_a11yGet();
+  try{ localStorage.setItem('brt_a11y_big', s.big?'0':'1'); }catch(e){}
+  _a11yApply(); _dspRender();
+  if(typeof _buzz==='function') _buzz(25);
+  // Cards are built as HTML strings — repaint so the new layout takes hold
+  if(typeof currentTab!=='undefined'){ try{ setTab(currentTab); }catch(e){} }
+}
+
+function openDisplaySheet(){ _dspRender(); openSheet('display'); }
+
+function _dspRender(){
+  var el=document.getElementById('dsp-body'); if(!el) return;
+  var s=_a11yGet();
+  var sun=document.body.classList.contains('sun-mode');
+
+  var sizes=A11Y_STEPS.map(function(o){
+    return '<button class="dsp-opt'+(Math.abs(s.zoom-o.v)<0.01?' on':'')+'" onclick="a11ySetZoom('+o.v+')">'
+      + '<span class="dsp-a" style="font-size:'+o.sz+'px">Aa</span>'
+      + '<span class="dsp-l">'+o.label+'</span></button>';
+  }).join('');
+
+  el.innerHTML =
+      '<div class="dsp-block">'
+    +   '<div class="dsp-h">\u{1F50D} Tekstgrootte</div>'
+    +   '<div class="dsp-row">'+sizes+'</div>'
+    +   '<div class="dsp-demo"><div class="dsp-demo-l">VOORBEELD</div>'
+    +     '<div style="font-family:var(--cond);font-weight:900;font-size:20px;color:var(--laser)">LA-12</div>'
+    +     '<div style="font-size:13px;color:var(--muted)">Mounted \u00b7 \u{1F4CD} stage left truss</div>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div class="dsp-block">'
+    +   '<div class="dsp-h">\u270B Bediening</div>'
+    +   '<button class="dsp-toggle'+(s.big?' on':'')+'" onclick="a11yToggleBig()">'
+    +     '<span class="dsp-ico">'+(s.big?'\u{1F44D}':'\u{1F446}')+'</span>'
+    +     '<span class="dsp-txt"><span class="dsp-name">Grote knoppen</span>'
+    +       '<span class="dsp-sub">Mounted, Cabled en Pointed worden brede balken over de volle breedte. Alles krijgt meer ruimte tussen de knoppen.</span></span>'
+    +     '<span class="dsp-state">'+(s.big?'AAN':'UIT')+'</span>'
+    +   '</button>'
+    + '</div>'
+
+    + '<div class="dsp-block">'
+    +   '<div class="dsp-h">\u21B6 Vergissing</div>'
+    +   '<button class="dsp-toggle'+(_shakeEnabled()?' on':'')+'" onclick="shakeToggle()">'
+    +     '<span class="dsp-ico">\u{1F4F3}</span>'
+    +     '<span class="dsp-txt"><span class="dsp-name">Schudden = ongedaan maken</span>'
+    +       '<span class="dsp-sub">Verkeerde knop geraakt? Schud de telefoon en de laatste wijziging gaat terug. Werkt tot een minuut na de handeling. De Undo-knop onderin doet hetzelfde.</span></span>'
+    +     '<span class="dsp-state">'+(_shakeEnabled()?'AAN':'UIT')+'</span>'
+    +   '</button>'
+    + '</div>'
+
+    + '<div class="dsp-block">'
+    +   '<div class="dsp-h">\u2600 Licht</div>'
+    +   '<button class="dsp-toggle'+(sun?' on':'')+'" onclick="mToggleSunMode();_dspRender()">'
+    +     '<span class="dsp-ico">'+(sun?'\u{1F31E}':'\u{1F311}')+'</span>'
+    +     '<span class="dsp-txt"><span class="dsp-name">Zonmodus</span>'
+    +       '<span class="dsp-sub">Zwarte tekst op wit. Buiten bij fel daglicht een stuk beter leesbaar dan het donkere thema.</span></span>'
+    +     '<span class="dsp-state">'+(sun?'AAN':'UIT')+'</span>'
+    +   '</button>'
+    + '</div>'
+
+    + '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.6;'
+    +   'border-top:1px solid var(--border);padding-top:12px">'
+    +   'Je kunt ook met twee vingers op het scherm knijpen om in te zoomen \u2014 dat werkt nu overal in de app.'
+    + '</div>';
+}
+
+// Apply saved settings as early as possible so nothing flashes at the old size
+_a11yApply();
+
 
 // ── Chat: always land on the newest message ───────────────────────
 // Images and videos load after render and push the content taller, so a
