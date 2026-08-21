@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.024m</title>
+<title>WTU · Buildert v4.025m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -441,39 +441,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   .cat-chip{padding:4px 12px;border:1px solid var(--border);border-radius:16px;background:none;color:var(--muted);font-size:12px;font-family:var(--cond);font-weight:700;cursor:pointer;white-space:nowrap}
   .cat-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
   #cat-filter-bar{display:none}
-/* ── Stage view: mirror nodes/diagram left↔right (rigger ON stage perspective) ─ */
-body.stage-view #mob-node-svg,
-body.stage-view #map-wrap > svg {
-  transform: scaleX(-1);
-  transform-origin: center;
-}
-body.stage-view #mob-node-svg text,
-body.stage-view #map-wrap > svg text {
-  transform: scaleX(-1);
-  transform-box: fill-box;
-  transform-origin: center;
-}
-body.stage-view #btn-stage-view {
-  background: rgba(245,166,35,.15);
-  border-color: var(--warn);
-  color: var(--warn);
-}
-.stage-view-banner {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: linear-gradient(90deg, var(--warn), #ff8800);
-  color: #000;
-  text-align: center;
-  padding: 4px 8px;
-  font-family: var(--cond);
-  font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  display: none;
-}
-body.stage-view .stage-view-banner { display: block; }
 
 /* ── Sun mode: light theme for outdoor visibility ───────────────────── */
 body.sun-mode {
@@ -559,23 +526,108 @@ body.sun-mode .pack-table td {
   border-color: #c8c4ba !important;
   color: #1a1a1a !important;
 }
+/* ── Pack list v4.025m: bigger rows, clear grouping, status header ── */
+.pk-wrap{padding:0 10px 24px;}
+.pk-status{border:2px solid var(--border2);border-radius:12px;padding:12px 14px;margin:10px 0 12px;background:var(--panel);}
+.pk-status-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.pk-badge{font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;
+  color:#04070c;border-radius:6px;padding:4px 10px;white-space:nowrap;}
+.pk-status-meta{flex:1;min-width:0;font-family:var(--mono);font-size:10px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pk-print{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:17px;padding:5px 10px;cursor:pointer;}
+.pk-status-hint{font-size:12.5px;line-height:1.5;color:var(--muted);margin-bottom:10px;}
+.pk-act{width:100%;padding:11px;border-radius:9px;border:1px solid var(--border);background:transparent;
+  color:var(--text);font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.pk-act:active{filter:brightness(1.3);}
+
+.pk-sum{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 4px 14px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:6px;}
+.pk-sum b{font-family:var(--cond);font-size:15px;color:var(--accent);}
+.pk-sum-stage{margin-left:auto;color:var(--accent);}
+
+.pk-sec{margin-bottom:22px;}
+.pk-sec-h{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;
+  background:var(--bg);padding:9px 4px;border-bottom:2px solid var(--border);
+  font-family:var(--cond);font-weight:900;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text);}
+.pk-sec-n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;}
+.pk-grp{border-left:4px solid var(--accent);padding:12px 0 4px 9px;margin-top:8px;
+  font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:2px;}
+.pk-row{display:flex;align-items:center;gap:12px;padding:13px 6px;min-height:52px;
+  border-bottom:1px solid var(--border2);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.pk-row:nth-of-type(even){background:rgba(255,255,255,.014);}
+.pk-row.pk-spare{background:rgba(245,166,35,.05);padding-left:22px;}
+.pk-chk{width:26px;height:26px;flex-shrink:0;accent-color:var(--ok);}
+.pk-chk:checked ~ .pk-name{opacity:.45;text-decoration:line-through;}
+.pk-qty{flex-shrink:0;min-width:44px;font-family:var(--cond);font-weight:900;font-size:19px;color:var(--accent);}
+.pk-name{flex:1;min-width:0;font-family:var(--cond);font-weight:700;font-size:17px;line-height:1.25;}
+.pk-mono{font-family:var(--mono);font-size:14px;font-weight:400;color:var(--text);}
+.pk-sp{flex-shrink:0;background:transparent;border:1px solid var(--border);color:var(--accent);
+  border-radius:7px;width:32px;height:32px;font-size:17px;line-height:1;cursor:pointer;}
+.pk-del{flex-shrink:0;background:none;border:none;color:var(--muted);font-size:17px;padding:6px 8px;cursor:pointer;}
+.pk-qty-in{flex-shrink:0;width:52px;background:var(--bg);border:1px solid var(--border);color:var(--warn);
+  border-radius:6px;padding:7px 4px;font-family:var(--mono);font-weight:700;font-size:14px;text-align:center;}
+.pk-desc-in{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:8px 9px;font-size:15px;}
+.pk-none{font-family:var(--mono);font-size:12px;color:var(--border2);font-style:italic;padding:14px 6px;}
+.pk-add{width:100%;margin-top:10px;padding:11px;border-radius:9px;border:1px solid var(--accent);
+  background:transparent;color:var(--accent);font-family:var(--cond);font-weight:700;font-size:14px;
+  letter-spacing:1px;cursor:pointer;}
+.pk-sign{display:flex;align-items:center;gap:10px;background:rgba(61,220,132,.09);
+  border:1px solid var(--ok);border-radius:9px;padding:10px 12px;margin-top:8px;}
+.pk-sign-name{font-family:var(--cond);font-weight:700;font-size:15px;color:var(--ok);}
+.pk-sign-meta{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.pk-signoff-btn{width:100%;margin-top:12px;padding:15px;border-radius:10px;border:2px solid var(--border2);
+  font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:1px;cursor:pointer;}
+.pk-chk:disabled,.pk-qty-in:disabled,.pk-desc-in:disabled{opacity:.65;}
+
+/* ── Print / PDF: clean black on white ───────────────────────────── */
+#pack-print{display:none;}
+@media print{
+  html,body{height:auto !important;overflow:visible !important;background:#fff !important;}
+  body::before{display:none !important;}
+  body > *{display:none !important;}
+  body > #pack-print{display:block !important;color:#000;background:#fff;
+    font-family:Arial,Helvetica,sans-serif;font-size:11pt;padding:0;}
+  @page{margin:14mm;}
+  #pack-print .pp-head{border-bottom:2.5pt solid #000;padding-bottom:7pt;margin-bottom:12pt;}
+  #pack-print .pp-title{font-size:19pt;font-weight:bold;letter-spacing:.5pt;}
+  #pack-print .pp-sub{font-size:9.5pt;color:#444;margin-top:2pt;}
+  #pack-print .pp-status{display:inline-block;margin-top:6pt;padding:2.5pt 9pt;font-size:9pt;
+    font-weight:bold;letter-spacing:1.2pt;border:1.5pt solid #000;border-radius:3pt;}
+  #pack-print .pp-final{background:#000;color:#fff;}
+  #pack-print h2{font-size:12.5pt;letter-spacing:1.5pt;text-transform:uppercase;
+    border-bottom:1pt solid #000;padding-bottom:3pt;margin:16pt 0 5pt;page-break-after:avoid;}
+  #pack-print .pp-n{float:right;font-weight:normal;font-size:10pt;color:#555;letter-spacing:0;}
+  #pack-print .pp-tbl{width:100%;border-collapse:collapse;}
+  #pack-print .pp-tbl tr{page-break-inside:avoid;}
+  #pack-print .pp-tbl td{padding:5pt 4pt;border-bottom:.5pt solid #bbb;vertical-align:middle;font-size:11pt;}
+  #pack-print .pp-box{width:16pt;}
+  #pack-print .pp-box::before{content:'';display:block;width:11pt;height:11pt;border:1pt solid #000;}
+  #pack-print .pp-qty{width:34pt;font-weight:bold;text-align:right;padding-right:9pt !important;}
+  #pack-print .pp-grp{padding-top:9pt !important;font-size:9pt;font-weight:bold;letter-spacing:1.5pt;
+    color:#000;border-bottom:none !important;}
+  #pack-print .pp-spare{font-style:italic;color:#555;}
+  #pack-print .pp-sign{margin-top:26pt;padding-top:9pt;border-top:1pt solid #000;
+    display:flex;gap:26pt;font-size:10pt;page-break-inside:avoid;}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
-<div class="stage-view-banner">⚠ STAGE VIEW — MIRRORED ← FROM THE STAGE → ⚠</div>
 
 <header>
   <!-- v4.023m: two green LEDs (the emoji in the status line AND the sync dot)
        said the same thing twice, the version had nowhere to live, and the
        project name clipped far too early. Now: tappable BUILDERT block with
        the version · project name with ONE status line · four flat icons. -->
-  <div onclick="openFeedbackSheet()" title="Buildert — tap to report a bug, idea or comment"
+  <div id="hdr-logo" onclick="openFeedbackSheet()" title="Buildert — tap to report a bug, idea or comment"
        style="flex-shrink:0;display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.024m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.025m</span>
     </span>
   </div>
 
@@ -647,7 +699,6 @@ body.sun-mode .pack-table td {
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeFit()">&#8982; Fit</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(1.25)">+</button>
       <button class="sb sb-ghost" style="padding:6px 12px;font-size:12px" onclick="mNodeZoom(0.8)">&minus;</button>
-      <button id="btn-stage-view" class="sb sb-ghost" style="padding:6px 10px;font-size:12px" onclick="mToggleStageView()" title="Mirror left/right — view as if standing on stage">🔄 <span id="stage-view-label">From FOH</span></button>
       <button id="btn-sun-mode" class="sb sb-ghost" style="padding:6px 10px;font-size:12px" onclick="mToggleSunMode()" title="Light theme for outdoor / sunny day visibility">☀️</button>
     </div>
     <div id="mob-node-outer" style="flex:1;overflow:hidden;position:relative;min-height:200px">
@@ -781,6 +832,9 @@ body.sun-mode .pack-table td {
     <button id="chat-tab-fun" onclick="chatSwitch('fun')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">🎉 Fun<span class="chat-tab-dot" id="chat-dot-fun" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
     <button onclick="chatMembersOpen()" title="Who can read this channel" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer">👥</button>
   </div>
+  <div id="chat-audience" style="display:flex;align-items:center;gap:7px;flex-shrink:0;margin-bottom:8px;
+    border:1px solid var(--border);border-left-width:3px;border-radius:7px;padding:6px 10px;
+    font-family:var(--mono);font-size:11px;line-height:1.35;color:var(--muted)"></div>
   <div class="sheet-body" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden">
     <div id="chat-msgs" style="flex:1;min-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
       <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
@@ -1759,184 +1813,6 @@ var _packWorkflow = 'Checkout';
 var _packWorkflows = ['Checkout','Onsite','LoadOut','CheckIn'];
 var _packSignatures = {}; // workflow -> name
 
-function renderPack(){
-  document.querySelector('.chips').style.display='none';
-  var cont=document.getElementById('card-list');
-  var empty=document.getElementById('empty-state');
-  updateBanner();
-  empty.style.display='none';
-
-  var catCols={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
-  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros',psu:'Power Supplies'};
-
-  var stageHtml='';
-
-  var stageDevs=_mStages.length?(_mStages[_mCurrentStageIdx].devices||devices):devices;
-
-  // Group by category
-  var byType={},typeOrder=[];
-  stageDevs.forEach(function(d){
-    var sp=specFor(d)||{};
-    var cat=(sp.category||d.type||'other').toLowerCase();
-    if(!byType[cat]){byType[cat]=[];typeOrder.push(cat);}
-    byType[cat].push(d);
-  });
-
-  var devHtml='<div style="padding:0 12px"><div class="pack-section"><div class="pack-section-title">Devices</div>'
-    +'<table class="pack-table"><thead><tr><th></th><th style="width:40px">Qty</th><th>Model</th></tr></thead><tbody>';
-  typeOrder.forEach(function(cat){
-    var grp=byType[cat];if(!grp.length)return;
-    var col=catCols[cat]||'var(--accent)';
-    var lbl=catLabels[cat]||(cat.charAt(0).toUpperCase()+cat.slice(1)+'s');
-    devHtml+='<tr><td colspan="3" style="padding:6px 8px 3px;font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;color:'+col+';border-top:1px solid var(--border)">'+lbl.toUpperCase()+'</td></tr>';
-    var byM={},mOrd=[];
-    grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
-    mOrd.forEach(function(m){
-      var items=byM[m];
-      // v4.023m: cable in/out kolommen weg — kabels pak je via de Cables-
-      // sectie; per-device connectors maakten de paklijst onleesbaar.
-      var parentKey='model:'+m;
-      var safeM=m.replace(/'/g,"\\'");
-      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+items.length+'x</td><td style="font-family:var(--cond);font-weight:700;color:'+col+'">'+m
-        +' <button onclick="mPackAddSpareFor(\''+parentKey+'\',\''+safeM+'\')" style="background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;cursor:pointer;font-family:var(--mono);margin-left:4px">+sp</button>'
-        +'</td></tr>';
-      // Spare rows under this device model
-      (_packSpares||[]).forEach(function(s){
-        if(!s || s.parent !== parentKey) return;
-        var sDesc=(s.desc||('spare '+m)).replace(/"/g,'&quot;');
-        devHtml+='<tr style="background:rgba(255,215,0,.04)">'
-          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="mPackSpareCheck2(\''+s.id+'\',this.checked)"></td>'
-          +'<td class="pack-qty" style="color:var(--warn)"><input type="number" min="1" value="'+(s.qty||1)+'" onchange="mPackSpareQty2(\''+s.id+'\',this.value)" style="width:34px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 2px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:700"></td>'
-          +'<td style="font-size:11px;color:var(--warn);font-style:italic;padding-left:18px">'
-          +  '<span style="color:var(--border2)">↳</span> '
-          +  '<input type="text" value="'+sDesc+'" onchange="mPackSpareDesc2(\''+s.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;width:60%">'
-          +  ' <button onclick="mPackSpareDel2(\''+s.id+'\')" style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;margin-left:6px">✕</button>'
-          +'</td></tr>';
-      });
-    });
-  });
-  devHtml+='</tbody></table></div>';
-
-  // Cables
-  var cc={};
-  stageDevs.forEach(function(d){var cabs=[];if(d.cable_in||d.cable){cabs.push(d.cable_in||d.cable);}else{if(d.cable_power_in)cabs.push(d.cable_power_in);if(d.cable_data_in)cabs.push(d.cable_data_in);}if(d.cable_power_ext)cabs.push(d.cable_power_ext);cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});});
-  var ckeys=Object.keys(cc).sort();
-  devHtml+='<div class="pack-section"><div class="pack-section-title">Cables</div>';
-  if(ckeys.length){
-    devHtml+='<table class="pack-table"><thead><tr><th></th><th>Qty</th><th>Type</th></tr></thead><tbody>';
-    ckeys.forEach(function(k){
-      var ct=CABLE_TYPES.find(function(c){return k.indexOf(c.key+'-')===0;});
-      var lv=parseFloat(k.split('-').slice(1).join('-'));
-      var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
-      var lbl=ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
-      var cableParentKey='cable:'+k;
-      var safeLbl=lbl.replace(/'/g,"\\'");
-      devHtml+='<tr><td><input type="checkbox" class="pack-check"></td><td class="pack-qty">'+cc[k]+'x</td><td style="font-family:var(--mono);font-size:12px">'+lbl
-        +' <button onclick="mPackAddSpareFor(\''+cableParentKey+'\',\''+safeLbl+'\')" style="background:transparent;border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;cursor:pointer;font-family:var(--mono);margin-left:4px">+sp</button>'
-        +'</td></tr>';
-      // Spare rows under this cable
-      (_packSpares||[]).forEach(function(s){
-        if(!s || s.parent !== cableParentKey) return;
-        var sDesc=(s.desc||('spare '+lbl)).replace(/"/g,'&quot;');
-        devHtml+='<tr style="background:rgba(255,215,0,.04)">'
-          +'<td><input type="checkbox" '+(s.checked?'checked':'')+' onchange="mPackSpareCheck2(\''+s.id+'\',this.checked)"></td>'
-          +'<td class="pack-qty" style="color:var(--warn)"><input type="number" min="1" value="'+(s.qty||1)+'" onchange="mPackSpareQty2(\''+s.id+'\',this.value)" style="width:34px;background:var(--bg);border:1px solid var(--border);color:var(--warn);padding:1px 2px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:700"></td>'
-          +'<td style="font-size:11px;color:var(--warn);font-style:italic;padding-left:18px">'
-          +  '<span style="color:var(--border2)">↳</span> '
-          +  '<input type="text" value="'+sDesc+'" onchange="mPackSpareDesc2(\''+s.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:11px;width:60%">'
-          +  ' <button onclick="mPackSpareDel2(\''+s.id+'\')" style="background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;margin-left:6px">✕</button>'
-          +'</td></tr>';
-      });
-    });
-    devHtml+='</tbody></table>';
-  } else { devHtml+='<p style="color:var(--muted);font-size:13px;padding:6px 0">No cables yet.</p>'; }
-  devHtml+='</div></div>';
-
-  // Shared section — disabled (user doesn't use this)
-  var sharedHtml='';
-
-  // Extra items — only standalone spares for THIS stage
-  _mMigrateExtrasToStage();
-  var _curMobStage = (_mStages && _mStages[_mCurrentStageIdx]) ? (_mStages[_mCurrentStageIdx].name||'') : '';
-  var standaloneSpares = (_packSpares||[]).filter(function(x){
-    return !x.parent && (x.stage||'') === _curMobStage;
-  });
-  var extraDone = standaloneSpares.filter(function(x){return x.checked;}).length;
-  var extraTotal = standaloneSpares.length;
-  var extraHtml = '<div class="pack-section" style="padding:0 12px 16px;margin-top:6px">'
-    + '<div class="pack-section-title" style="display:flex;align-items:center;gap:6px;color:var(--accent)">'
-    +   '🧰 Extra items'
-    +   ' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">— '+(_curMobStage||'this stage')+'</span>'
-    +   (extraTotal?' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">'+extraDone+'/'+extraTotal+'</span>':'')
-    +   '<button onclick="packAddSpare()" style="margin-left:auto;background:var(--accent);border:none;color:#000;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:var(--cond);font-weight:700">+ Add</button>'
-    + '</div>';
-  if(extraTotal){
-    extraHtml += '<table class="pack-table"><thead><tr><th></th><th style="width:44px">Qty</th><th>Description</th><th style="width:28px"></th></tr></thead><tbody>';
-    standaloneSpares.forEach(function(s){
-      var realIdx = _packSpares.indexOf(s);
-      var safeDesc = (s.desc||'').replace(/"/g,'&quot;');
-      extraHtml += '<tr>'
-        + '<td><input type="checkbox" '+(s.checked?'checked':'')+' data-pidx="'+realIdx+'" onclick="mPackSpareCheck(+this.dataset.pidx,this.checked)"></td>'
-        + '<td><input type="number" min="1" value="'+(s.qty||1)+'" data-pidx="'+realIdx+'" style="width:42px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 4px;border-radius:4px" onchange="mPackSpareQty(+this.dataset.pidx,this.value)"></td>'
-        + '<td><input type="text" value="'+safeDesc+'" data-pidx="'+realIdx+'" placeholder="Item…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:2px 6px;border-radius:4px" onchange="mPackSpareDesc(+this.dataset.pidx,this.value)"></td>'
-        + '<td><button data-pidx="'+realIdx+'" onclick="mPackSpareDel(+this.dataset.pidx)" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">x</button></td>'
-        + '</tr>';
-    });
-    extraHtml += '</tbody></table>';
-  } else {
-    extraHtml += '<div style="font-family:var(--mono);font-size:11px;color:var(--border2);padding:6px 0;font-style:italic">No extra items — tap + Add</div>';
-  }
-  extraHtml += '</div>';
-  sharedHtml = extraHtml;
-
-  // ── Sign-off section ────────────────────────────────────────────
-  var signoffs = (window._packSignoffs || []);
-  var stageId = _mStages[_mCurrentStageIdx] ? _mStages[_mCurrentStageIdx].id : '';
-  var stageSignoffs = signoffs.filter(function(s){ return s.stageId === stageId; });
-  var signoffHtml = '<div style="padding:14px 12px 30px;border-top:1px solid var(--border)">'
-    + '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);padding:6px 0 10px">SIGN-OFF</div>';
-
-  if(stageSignoffs.length){
-    signoffHtml += '<div style="margin-bottom:12px">';
-    stageSignoffs.forEach(function(s){
-      var dt = s.at ? new Date(s.at).toLocaleString() : '';
-      var safeId = (s.id||'').replace(/'/g,"");
-      signoffHtml += '<div style="background:rgba(61,220,132,.1);border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-bottom:6px">'
-        + '<div style="display:flex;align-items:center;gap:8px"><span style="color:var(--ok);font-size:18px">✓</span>'
-        +   '<div style="flex:1"><div style="font-family:var(--cond);font-weight:700;color:var(--ok);font-size:14px">'+s.name+'</div>'
-        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+dt+(s.note?' · '+s.note:'')+'</div>'
-        +     '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">'+(s.checked||0)+'/'+(s.total||0)+' devices · '+(s.check_summary||((s.checks_made||0)+' check(s)'))+'</div>'
-        +   '</div>'
-        +   '<button onclick="mDeleteSignoff(\''+safeId+'\')" title="Delete this sign-off" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:5px;padding:4px 8px;font-size:14px;cursor:pointer">🗑</button>'
-        + '</div></div>';
-    });
-    if(stageSignoffs.length > 1){
-      signoffHtml += '<button onclick="mClearStageSignoffs()" style="width:100%;padding:8px;background:transparent;border:1px dashed var(--border2);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--mono)">🗑 Clear all sign-offs for this stage</button>';
-    }
-    signoffHtml += '</div>';
-  }
-
-  // Calculate counts to show what's being signed off (cables only — shared section disabled)
-  var totalItems = 0, checkedItems = 0;
-  var stage = _mStages[_mCurrentStageIdx];
-  if(stage){
-    (stage.devices||[]).forEach(function(d){
-      if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
-    });
-  }
-
-  var ready = (totalItems > 0 && checkedItems === totalItems);
-  signoffHtml += '<button onclick="openPackSignoffSheet()" '
-    + 'style="width:100%;padding:14px;border-radius:10px;border:2px solid '+(ready?'var(--ok)':'var(--border2)')+';'
-    + 'background:'+(ready?'rgba(61,220,132,.15)':'var(--panel)')+';'
-    + 'color:'+(ready?'var(--ok)':'var(--muted)')+';'
-    + 'font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer">'
-    + (ready?'✓ Ready — sign off now':'✎ Sign off pack list ('+checkedItems+'/'+totalItems+')')
-    + '</button>';
-
-  signoffHtml += '</div>';
-  cont.innerHTML=stageHtml+devHtml+sharedHtml+signoffHtml;
-}
 function mPackSetStage(idx){if(!_mStages[idx])return;_mCurrentStageIdx=idx;devices=_mStages[idx].devices||[];_renderMobileStageBar();renderPack();}
 function _packPersist(){
   try{ localStorage.setItem('brt_psh', JSON.stringify(_packShared)); }catch(e){}
@@ -2038,7 +1914,7 @@ function packAddSpare(){
   renderPack();
   // Focus the new description input
   setTimeout(function(){
-    var rows = document.querySelectorAll('table.pack-table tbody tr');
+    var rows = document.querySelectorAll('.pk-row');
     if(rows.length){
       var last = rows[rows.length-1];
       var inp = last.querySelector('input[type="text"]');
@@ -7038,16 +6914,6 @@ function wForceClear(){
 
 
 // ── Stage view + Sun mode (visibility for riggers on stage / in sunlight) ───
-function mToggleStageView(){
-  document.body.classList.toggle('stage-view');
-  var on = document.body.classList.contains('stage-view');
-  localStorage.setItem('buildert_stage_view', on?'1':'0');
-  var label = document.getElementById('stage-view-label');
-  if(label) label.textContent = on ? 'From STAGE ✓' : 'From FOH';
-  // Re-render so node touch handlers continue working with the flipped coords
-  if(typeof _mNodeRender === 'function') _mNodeRender();
-  showToast(on ? 'Stage view — mirrored' : 'Audience view (FOH)', on?'warn':'ok');
-}
 function mToggleSunMode(){
   document.body.classList.toggle('sun-mode');
   var on = document.body.classList.contains('sun-mode');
@@ -7061,13 +6927,7 @@ function mToggleSunMode(){
 // Apply saved preferences on load
 (function _mApplySavedView(){
   try {
-    if(localStorage.getItem('buildert_stage_view') === '1'){
-      document.body.classList.add('stage-view');
-      setTimeout(function(){
-        var label = document.getElementById('stage-view-label');
-        if(label) label.textContent = 'From STAGE ✓';
-      }, 50);
-    }
+    localStorage.removeItem('buildert_stage_view');  // v4.025m: feature removed
     if(localStorage.getItem('buildert_sun_mode') === '1'){
       document.body.classList.add('sun-mode');
       setTimeout(function(){
@@ -7288,6 +7148,7 @@ async function chatSwitch(ch){
   if(!_CHAT_CHANNELS[ch]) return;
   _chatChannel=ch;
   _chatStyleTabs();
+  _chatUpdateAudience();
   _chatMsgs=[];
   _chatRender();
   var box=document.getElementById('chat-msgs');
@@ -7334,7 +7195,8 @@ function _chatRender(){
         +'</div></div>';
     }).join(''));
   }
-  box.scrollTop=box.scrollHeight;
+  _chatScrollBottom(true);
+  _chatUpdateAudience();
 }
 function openSchedSheet(){
   var el=document.getElementById('sched-body');
@@ -7373,9 +7235,11 @@ async function openChatSheet(){
   if(!_workerUrl || !_projectKey){ showToast('Connect to a project first','warn'); return; }
   _chatOpen=true;
   _chatStyleTabs();
+  _chatUpdateAudience();
   openSheet('chat');
   var msgs=await _chatFetch();
   if(msgs){ _chatMsgs=msgs; _chatRender(); _chatMarkSeen(); }
+  _chatScrollBottom(true);
   // Poll faster while sheet is open (active channel only)
   if(_chatPollTimer) clearInterval(_chatPollTimer);
   _chatPollTimer=setInterval(async function(){
@@ -7423,7 +7287,7 @@ async function chatSend(){
       body:JSON.stringify({by:_aliasNameM(window._riggerName||(_maMe&&_maMe.user&&(_maMe.user.name||_maMe.user.email))||'rigger'),text:text})
     });
     var d=await r.json();
-    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); }
+    if(d.ok){ _chatMsgs=d.messages; _chatRender(); _chatMarkSeen(); _chatScrollBottom(true); }
     else showToast('Send failed','danger');
   }catch(e){
     _chatOutboxAdd(_chatChannel, text);
@@ -7472,13 +7336,6 @@ function _chatMediaUrl(id){
   var u=_wT(_workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id));
   if(String(id).indexOf('em_')===0) u+=(u.indexOf('?')>=0?'&':'?')+'scope=eval';
   return u;
-}
-function chatMediaView(id){
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center';
-  ov.onclick=function(){ ov.remove(); };
-  ov.innerHTML='<img src="'+_chatMediaUrl(id)+'" style="max-width:96vw;max-height:92vh;object-fit:contain">';
-  document.body.appendChild(ov);
 }
 // Shrink photos on the phone before upload: max 1600px, JPEG q0.82.
 // Keeps uploads fast on venue wifi and well under the worker's 6MB cap.
@@ -8982,12 +8839,525 @@ function _addStageDoc(si){
   }
 })();
 
+// ── Chat: always land on the newest message ───────────────────────
+// Images and videos load after render and push the content taller, so a
+// single scrollTop at render time lands halfway up. Retry as media settles.
+function _chatScrollBottom(force){
+  var box=document.getElementById('chat-msgs'); if(!box) return;
+  var jump=function(){ box.scrollTop = box.scrollHeight; };
+  jump();
+  requestAnimationFrame(jump);
+  [60,180,400,900].forEach(function(ms){ setTimeout(jump, ms); });
+  if(force){
+    // Re-pin once every image/video in the thread has its real height
+    var media=box.querySelectorAll('img,video');
+    for(var i=0;i<media.length;i++){
+      media[i].addEventListener('load', jump, {once:true});
+      media[i].addEventListener('loadedmetadata', jump, {once:true});
+    }
+  }
+}
+
+// Who actually reads this channel — spelled out under the tabs.
+var _CHAT_AUDIENCE={
+  project:{nl:'Iedereen in dit project leest dit mee.',
+           en:'Everyone in this project can read this.',
+           pl:'Czyta to każdy w tym projekcie.'},
+  info:   {nl:'Bedrijfsbreed — iedereen bij Wintravel leest dit mee.',
+           en:'Company-wide — everyone at Wintravel can read this.',
+           pl:'Cała firma — czyta to każdy w Wintravel.'},
+  fun:    {nl:'Bedrijfsbreed — iedereen bij Wintravel leest dit mee.',
+           en:'Company-wide — everyone at Wintravel can read this.',
+           pl:'Cała firma — czyta to każdy w Wintravel.'}
+};
+function _chatAudienceText(ch){
+  var o=_CHAT_AUDIENCE[ch]||_CHAT_AUDIENCE.project;
+  var l='en';
+  try{ l=localStorage.getItem('brt_onboard_lang')||'en'; }catch(e){}
+  return o[l]||o.en;
+}
+function _chatUpdateAudience(){
+  var el=document.getElementById('chat-audience');
+  if(el){
+    var global=(_chatChannel!=='project');
+    el.innerHTML='<span style="font-size:12px">'+(global?'\u{1F310}':'\u{1F465}')+'</span>'
+      +'<span>'+_chatAudienceText(_chatChannel)+'</span>';
+    el.style.borderColor=global?'var(--warn)':'var(--border)';
+    el.style.color=global?'var(--warn)':'var(--muted)';
+  }
+  var inp=document.getElementById('chat-input');
+  if(inp) inp.placeholder=(_chatChannel==='project')
+    ? 'Message everyone in this project\u2026'
+    : 'Message everyone at Wintravel\u2026';
+}
+
+// ── Chat photo viewer: pinch-zoom, save and share ─────────────────
+function chatMediaView(id){
+  var url=_chatMediaUrl(id);
+  var ov=document.createElement('div');
+  ov.id='chat-lightbox';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9990;'
+    +'display:flex;flex-direction:column;touch-action:none;overscroll-behavior:contain';
+
+  var bar=document.createElement('div');
+  bar.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'
+    +'padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;background:rgba(0,0,0,.55)';
+  var btn='background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;'
+    +'border-radius:8px;padding:9px 14px;font-size:14px;font-family:var(--cond);font-weight:700;'
+    +'letter-spacing:1px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+  bar.innerHTML='<button id="clb-save" style="'+btn+'">\u2913 Save</button>'
+    +'<button id="clb-share" style="'+btn+'">\u21AA Share</button>'
+    +'<span id="clb-hint" style="flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:#888">'
+    +'double-tap or pinch to zoom</span>'
+    +'<button id="clb-close" style="'+btn+'">\u2715</button>';
+
+  var stage=document.createElement('div');
+  stage.style.cssText='flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative';
+  var img=document.createElement('img');
+  img.src=url;
+  img.alt='photo';
+  img.style.cssText='max-width:100%;max-height:100%;object-fit:contain;'
+    +'transform-origin:center center;transition:transform .18s ease;will-change:transform;user-select:none;-webkit-user-drag:none';
+  stage.appendChild(img);
+
+  ov.appendChild(bar); ov.appendChild(stage);
+  document.body.appendChild(ov);
+
+  // ── zoom / pan state ──
+  var sc=1, tx=0, ty=0;
+  function apply(smooth){
+    img.style.transition = smooth ? 'transform .18s ease' : 'none';
+    img.style.transform  = 'translate('+tx+'px,'+ty+'px) scale('+sc+')';
+  }
+  function clamp(){
+    if(sc<=1){ sc=1; tx=0; ty=0; return; }
+    var r=stage.getBoundingClientRect();
+    var maxX=(r.width*(sc-1))/2, maxY=(r.height*(sc-1))/2;
+    tx=Math.max(-maxX,Math.min(maxX,tx));
+    ty=Math.max(-maxY,Math.min(maxY,ty));
+  }
+
+  var pts={}, startDist=0, startSc=1, panX=0, panY=0, startTx=0, startTy=0, lastTap=0;
+
+  stage.addEventListener('touchstart', function(e){
+    for(var i=0;i<e.changedTouches.length;i++){
+      var t=e.changedTouches[i]; pts[t.identifier]={x:t.clientX,y:t.clientY};
+    }
+    var ids=Object.keys(pts);
+    if(ids.length===2){
+      var a=pts[ids[0]], b=pts[ids[1]];
+      startDist=Math.hypot(a.x-b.x, a.y-b.y); startSc=sc;
+    } else if(ids.length===1){
+      panX=pts[ids[0]].x; panY=pts[ids[0]].y; startTx=tx; startTy=ty;
+      var now=Date.now();
+      if(now-lastTap < 300){                    // double tap toggles zoom
+        sc = (sc > 1.2) ? 1 : 2.5; tx=0; ty=0; clamp(); apply(true);
+        lastTap=0;
+      } else lastTap=now;
+    }
+  }, {passive:true});
+
+  stage.addEventListener('touchmove', function(e){
+    for(var i=0;i<e.changedTouches.length;i++){
+      var t=e.changedTouches[i]; if(pts[t.identifier]) pts[t.identifier]={x:t.clientX,y:t.clientY};
+    }
+    var ids=Object.keys(pts);
+    if(ids.length===2 && startDist){
+      var a=pts[ids[0]], b=pts[ids[1]];
+      sc=Math.max(1, Math.min(6, startSc * (Math.hypot(a.x-b.x, a.y-b.y)/startDist)));
+      clamp(); apply(false);
+      e.preventDefault();
+    } else if(ids.length===1 && sc>1){
+      tx=startTx+(pts[ids[0]].x-panX);
+      ty=startTy+(pts[ids[0]].y-panY);
+      clamp(); apply(false);
+      e.preventDefault();
+    }
+  }, {passive:false});
+
+  stage.addEventListener('touchend', function(e){
+    for(var i=0;i<e.changedTouches.length;i++) delete pts[e.changedTouches[i].identifier];
+    if(Object.keys(pts).length<2) startDist=0;
+    if(sc<=1){ sc=1; tx=0; ty=0; apply(true); }
+  }, {passive:true});
+
+  // Desktop / trackpad
+  stage.addEventListener('wheel', function(e){
+    e.preventDefault();
+    sc=Math.max(1, Math.min(6, sc * (e.deltaY<0 ? 1.12 : 0.89)));
+    clamp(); apply(false);
+  }, {passive:false});
+  stage.addEventListener('dblclick', function(){ sc=(sc>1.2)?1:2.5; tx=0; ty=0; apply(true); });
+
+  // ── save / share ──
+  function fileName(){ return 'buildert-'+String(id).replace(/[^A-Za-z0-9_-]/g,'')+'.jpg'; }
+  async function getBlob(){
+    var r=await fetch(url);
+    if(!r.ok) throw new Error('fetch failed');
+    return await r.blob();
+  }
+  document.getElementById('clb-save').onclick=async function(){
+    try{
+      var b=await getBlob();
+      var u=URL.createObjectURL(b);
+      var a=document.createElement('a');
+      a.href=u; a.download=fileName();
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+      showToast('Photo saved','ok');
+    }catch(e){
+      window.open(url,'_blank');
+      showToast('Opened in a new tab \u2014 press and hold to save','warn');
+    }
+  };
+  document.getElementById('clb-share').onclick=async function(){
+    try{
+      var b=await getBlob();
+      var f=new File([b], fileName(), {type:b.type||'image/jpeg'});
+      if(navigator.canShare && navigator.canShare({files:[f]})){
+        await navigator.share({files:[f]});
+        return;
+      }
+      if(navigator.share){ await navigator.share({url:url}); return; }
+      throw new Error('no share');
+    }catch(e){
+      if(e && e.name === 'AbortError') return;      // user cancelled — not an error
+      document.getElementById('clb-save').click();
+    }
+  };
+
+  var close=function(){ ov.remove(); };
+  document.getElementById('clb-close').onclick=close;
+  stage.addEventListener('click', function(e){ if(e.target===stage && sc<=1) close(); });
+}
+
+// ── Pack list status (draft → review → final) ─────────────────────
+var PK_STATES = {
+  draft:  {label:'DRAFT',      icon:'\u270E', col:'var(--muted)'},
+  review: {label:'IN REVIEW',  icon:'\u{1F441}', col:'var(--warn)'},
+  final:  {label:'FINAL',      icon:'\u2713', col:'var(--ok)'}
+};
+function _pkStage(){ return _mStages[_mCurrentStageIdx] || null; }
+function _pkStatus(){
+  var s = _pkStage(); if(!s) return {state:'draft'};
+  if(!s.pack_status || !PK_STATES[s.pack_status.state]) s.pack_status = {state:'draft'};
+  return s.pack_status;
+}
+function _pkLocked(){ return _pkStatus().state === 'final'; }
+function _pkSetState(next){
+  var s = _pkStage(); if(!s){ showToast('No stage selected','warn'); return; }
+  if(next === 'final' && !confirm('Set this pack list to FINAL?\n\nIt locks for everyone until a planner reopens it.')) return;
+  if(next === 'draft' && _pkLocked() && !confirm('Reopen this pack list for editing?')) return;
+  s.pack_status = {
+    state: next,
+    by: window._riggerName || 'planner',
+    at: new Date().toISOString()
+  };
+  try{ _logActivity('Pack list', 'Status \u2192 ' + PK_STATES[next].label); }catch(e){}
+  autoSave();
+  _lastLocalEdit = Date.now();
+  if(_workerUrl && _projectKey){
+    clearTimeout(window._packPushTimer);
+    window._packPushTimer = setTimeout(function(){ wPush(true); }, 800);
+  }
+  showToast('Pack list: ' + PK_STATES[next].label, next==='final' ? 'ok' : 'warn');
+  renderPack();
+}
+
+// ── Pack list ─────────────────────────────────────────────────────
+function renderPack(){
+  document.querySelector('.chips').style.display='none';
+  var cont=document.getElementById('card-list');
+  var empty=document.getElementById('empty-state');
+  updateBanner();
+  empty.style.display='none';
+
+  var catCols={laser:'var(--laser)',smoke:'var(--smoke)',distro:'var(--distro)',psu:'var(--psu)'};
+  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros',psu:'Power Supplies'};
+
+  var stage      = _pkStage();
+  var stageDevs  = _mStages.length ? (_mStages[_mCurrentStageIdx].devices||devices) : devices;
+  var locked     = _pkLocked();
+  var st         = _pkStatus();
+  var dis        = locked ? ' disabled' : '';
+  var _curMobStage = stage ? (stage.name||'') : '';
+
+  // ── Status header ────────────────────────────────────────────
+  var meta = PK_STATES[st.state] || PK_STATES.draft;
+  var when = st.at ? new Date(st.at).toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  var h = '<div class="pk-wrap">';
+  h += '<div class="pk-status" style="border-color:'+meta.col+'">'
+    +   '<div class="pk-status-top">'
+    +     '<span class="pk-badge" style="background:'+meta.col+'">'+meta.icon+' '+meta.label+'</span>'
+    +     '<span class="pk-status-meta">'+(st.by ? esc4(st.by)+(when?' \u00b7 '+when:'') : 'not reviewed yet')+'</span>'
+    +     '<button class="pk-print" onclick="packPrint()" title="Print or save as PDF">\u{1F5A8}</button>'
+    +   '</div>';
+  if(st.state === 'draft'){
+    h += '<div class="pk-status-hint">Still being packed. When everything is on the truck, hand it to the planner.</div>'
+      +  '<button class="pk-act" style="border-color:var(--warn);color:var(--warn)" onclick="_pkSetState(\'review\')">Ready for the planner \u2192</button>';
+  } else if(st.state === 'review'){
+    h += '<div class="pk-status-hint">Waiting for a planner to walk through it once more and set it final.</div>'
+      +  '<div style="display:flex;gap:8px">'
+      +    '<button class="pk-act" style="flex:1" onclick="_pkSetState(\'draft\')">\u2190 Back to draft</button>'
+      +    '<button class="pk-act" style="flex:2;border-color:var(--ok);color:var(--ok);background:rgba(61,220,132,.12)" onclick="_pkSetState(\'final\')">\u2713 Set final</button>'
+      +  '</div>';
+  } else {
+    h += '<div class="pk-status-hint" style="color:var(--ok)">Locked \u2014 checked and approved. Reopen if something still has to change.</div>'
+      +  '<button class="pk-act" onclick="_pkSetState(\'draft\')">\u{1F513} Reopen</button>';
+  }
+  h += '</div>';
+
+  // ── Build the sections ───────────────────────────────────────
+  var byType={},typeOrder=[];
+  stageDevs.forEach(function(d){
+    var sp=specFor(d)||{};
+    var cat=(sp.category||d.type||'other').toLowerCase();
+    if(!byType[cat]){byType[cat]=[];typeOrder.push(cat);}
+    byType[cat].push(d);
+  });
+
+  var nDev=0, nCab=0;
+  var body='';
+
+  // Devices
+  var devRows='';
+  typeOrder.forEach(function(cat){
+    var grp=byType[cat]; if(!grp.length) return;
+    var col=catCols[cat]||'var(--accent)';
+    var lbl=catLabels[cat]||(cat.charAt(0).toUpperCase()+cat.slice(1)+'s');
+    devRows+='<div class="pk-grp" style="border-left-color:'+col+';color:'+col+'">'+lbl.toUpperCase()+'</div>';
+    var byM={},mOrd=[];
+    grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
+    mOrd.forEach(function(m){
+      var items=byM[m], parentKey='model:'+m, safeM=m.replace(/'/g,"\\'");
+      nDev+=items.length;
+      devRows+='<label class="pk-row">'
+        +'<input type="checkbox" class="pk-chk"'+dis+'>'
+        +'<span class="pk-qty">'+items.length+'&times;</span>'
+        +'<span class="pk-name" style="color:'+col+'">'+esc4(m)+'</span>'
+        +(locked?'':'<button class="pk-sp" onclick="event.preventDefault();mPackAddSpareFor(\''+parentKey+'\',\''+safeM+'\')" title="Add a spare">+</button>')
+        +'</label>';
+      devRows+=_pkSpareRows(parentKey, 'spare '+m, locked);
+    });
+  });
+  body += _pkSection('\u{1F4E6} Devices', nDev, devRows || '<div class="pk-none">Nothing in this stage yet.</div>');
+
+  // Cables
+  var cc={};
+  stageDevs.forEach(function(d){
+    var cabs=[];
+    if(d.cable_in||d.cable){ cabs.push(d.cable_in||d.cable); }
+    else { if(d.cable_power_in)cabs.push(d.cable_power_in); if(d.cable_data_in)cabs.push(d.cable_data_in); }
+    if(d.cable_power_ext)cabs.push(d.cable_power_ext);
+    cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});
+  });
+  var ckeys=Object.keys(cc).sort(), cabRows='';
+  ckeys.forEach(function(k){
+    var lbl=_pkCableLabel(k), cableParentKey='cable:'+k, safeLbl=lbl.replace(/'/g,"\\'");
+    nCab+=cc[k];
+    cabRows+='<label class="pk-row">'
+      +'<input type="checkbox" class="pk-chk"'+dis+'>'
+      +'<span class="pk-qty">'+cc[k]+'&times;</span>'
+      +'<span class="pk-name pk-mono">'+esc4(lbl)+'</span>'
+      +(locked?'':'<button class="pk-sp" onclick="event.preventDefault();mPackAddSpareFor(\''+cableParentKey+'\',\''+safeLbl+'\')" title="Add a spare">+</button>')
+      +'</label>';
+    cabRows+=_pkSpareRows(cableParentKey, 'spare '+lbl, locked);
+  });
+  body += _pkSection('\u{1F50C} Cables', nCab, cabRows || '<div class="pk-none">No cables yet.</div>');
+
+  // Extra items
+  _mMigrateExtrasToStage();
+  var standalone = (_packSpares||[]).filter(function(x){ return !x.parent && (x.stage||'') === _curMobStage; });
+  var exRows='';
+  standalone.forEach(function(s){
+    var realIdx=_packSpares.indexOf(s), safeDesc=(s.desc||'').replace(/"/g,'&quot;');
+    exRows+='<div class="pk-row">'
+      +'<input type="checkbox" class="pk-chk" '+(s.checked?'checked ':'')+dis+' data-pidx="'+realIdx+'" onclick="mPackSpareCheck(+this.dataset.pidx,this.checked)">'
+      +'<input type="number" min="1" class="pk-qty-in" value="'+(s.qty||1)+'"'+dis+' data-pidx="'+realIdx+'" onchange="mPackSpareQty(+this.dataset.pidx,this.value)">'
+      +'<input type="text" class="pk-desc-in" value="'+safeDesc+'" placeholder="Item\u2026"'+dis+' data-pidx="'+realIdx+'" onchange="mPackSpareDesc(+this.dataset.pidx,this.value)">'
+      +(locked?'':'<button class="pk-del" data-pidx="'+realIdx+'" onclick="mPackSpareDel(+this.dataset.pidx)">\u2715</button>')
+      +'</div>';
+  });
+  var exHead = '\u{1F9F0} Extra items';
+  body += _pkSection(exHead, standalone.length,
+    (exRows || '<div class="pk-none">Nothing extra \u2014 add anything that is not in the plan.</div>')
+    + (locked?'':'<button class="pk-add" onclick="packAddSpare()">+ Add item</button>'));
+
+  // Summary strip
+  h += '<div class="pk-sum">'
+    +   '<span><b>'+nDev+'</b> devices</span>'
+    +   '<span><b>'+nCab+'</b> cables</span>'
+    +   '<span><b>'+standalone.length+'</b> extra</span>'
+    +   '<span class="pk-sum-stage">'+esc4(_curMobStage||'this stage')+'</span>'
+    + '</div>';
+
+  h += body;
+
+  // ── Sign-offs (kept: individual crew confirmations) ──────────
+  var signoffs = (window._packSignoffs || []);
+  var stageId = stage ? stage.id : '';
+  var stageSignoffs = signoffs.filter(function(s){ return s.stageId === stageId; });
+  var so = '<div class="pk-sec"><div class="pk-sec-h">\u270D Sign-off</div>';
+  if(stageSignoffs.length){
+    stageSignoffs.forEach(function(s){
+      var dt = s.at ? new Date(s.at).toLocaleString() : '';
+      var safeId = (s.id||'').replace(/'/g,"");
+      so += '<div class="pk-sign">'
+        + '<span style="color:var(--ok);font-size:18px">\u2713</span>'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div class="pk-sign-name">'+esc4(s.name||'')+'</div>'
+        +   '<div class="pk-sign-meta">'+dt+(s.note?' \u00b7 '+esc4(s.note):'')+'</div>'
+        +   '<div class="pk-sign-meta">'+(s.checked||0)+'/'+(s.total||0)+' devices \u00b7 '+esc4(s.check_summary||((s.checks_made||0)+' check(s)'))+'</div>'
+        + '</div>'
+        + '<button class="pk-del" onclick="mDeleteSignoff(\''+safeId+'\')" title="Delete this sign-off">\u{1F5D1}</button>'
+        + '</div>';
+    });
+    if(stageSignoffs.length > 1)
+      so += '<button class="pk-add" style="border-style:dashed" onclick="mClearStageSignoffs()">\u{1F5D1} Clear all sign-offs for this stage</button>';
+  }
+  var totalItems=0, checkedItems=0;
+  if(stage) (stage.devices||[]).forEach(function(d){
+    if(d.cable_in){ totalItems++; if(d.checks && d.checks.Cabled) checkedItems++; }
+  });
+  var ready = (totalItems > 0 && checkedItems === totalItems);
+  so += '<button class="pk-signoff-btn" style="border-color:'+(ready?'var(--ok)':'var(--border2)')+';'
+     +  'background:'+(ready?'rgba(61,220,132,.15)':'var(--panel)')+';color:'+(ready?'var(--ok)':'var(--muted)')+'"'
+     +  ' onclick="openPackSignoffSheet()">'
+     +  (ready?'\u2713 Ready \u2014 sign off now':'\u270E Sign off pack list ('+checkedItems+'/'+totalItems+')')
+     +  '</button></div>';
+
+  h += so + '</div>';
+  cont.innerHTML = h;
+}
+
+function esc4(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function _pkSection(title, count, inner){
+  return '<div class="pk-sec">'
+    + '<div class="pk-sec-h">'+title+'<span class="pk-sec-n">'+count+'</span></div>'
+    + inner + '</div>';
+}
+
+function _pkCableLabel(k){
+  var ct=CABLE_TYPES.find(function(c){return k.indexOf(c.key+'-')===0;});
+  var lv=parseFloat(k.split('-').slice(1).join('-'));
+  var ld=ct?ct.lengths.find(function(l){return Math.abs((l.val||l.v)-lv)<0.01;}):null;
+  return ct?(ct.label+' '+(ld?(ld.lbl||ld.l):lv+'m')):k;
+}
+
+function _pkSpareRows(parentKey, fallbackDesc, locked){
+  var out='', dis = locked ? ' disabled' : '';
+  (_packSpares||[]).forEach(function(s){
+    if(!s || s.parent !== parentKey) return;
+    var sDesc=(s.desc||fallbackDesc).replace(/"/g,'&quot;');
+    out+='<div class="pk-row pk-spare">'
+      +'<input type="checkbox" class="pk-chk" '+(s.checked?'checked ':'')+dis+' onchange="mPackSpareCheck2(\''+s.id+'\',this.checked)">'
+      +'<input type="number" min="1" class="pk-qty-in" value="'+(s.qty||1)+'"'+dis+' onchange="mPackSpareQty2(\''+s.id+'\',this.value)">'
+      +'<input type="text" class="pk-desc-in" value="'+sDesc+'"'+dis+' onchange="mPackSpareDesc2(\''+s.id+'\',this.value)">'
+      +(locked?'':'<button class="pk-del" onclick="mPackSpareDel2(\''+s.id+'\')">\u2715</button>')
+      +'</div>';
+  });
+  return out;
+}
+
+// ── Print / PDF ───────────────────────────────────────────────────
+function packPrint(){
+  var stage = _pkStage();
+  var stageDevs = _mStages.length ? (_mStages[_mCurrentStageIdx].devices||devices) : devices;
+  var st = _pkStatus(), meta = PK_STATES[st.state] || PK_STATES.draft;
+  var catLabels={laser:'Laser Projectors',smoke:'Smoke Machines',distro:'Distros',psu:'Power Supplies'};
+
+  var root = document.getElementById('pack-print');
+  if(!root){ root = document.createElement('div'); root.id='pack-print'; document.body.appendChild(root); }
+
+  var rows = function(cells){ return '<tr>'+cells+'</tr>'; };
+  var box = '<td class="pp-box"></td>';
+
+  // Devices
+  var byType={}, typeOrder=[];
+  stageDevs.forEach(function(d){
+    var sp=specFor(d)||{};
+    var cat=(sp.category||d.type||'other').toLowerCase();
+    if(!byType[cat]){byType[cat]=[];typeOrder.push(cat);}
+    byType[cat].push(d);
+  });
+  var devTbl='', nDev=0;
+  typeOrder.forEach(function(cat){
+    var grp=byType[cat]; if(!grp.length) return;
+    devTbl += rows('<td colspan="3" class="pp-grp">'+(catLabels[cat]||cat).toUpperCase()+'</td>');
+    var byM={}, mOrd=[];
+    grp.forEach(function(d){var m=d.model||modelFromId(d.device_id)||'?';if(!byM[m]){byM[m]=[];mOrd.push(m);}byM[m].push(d);});
+    mOrd.forEach(function(m){
+      nDev += byM[m].length;
+      devTbl += rows(box+'<td class="pp-qty">'+byM[m].length+'&times;</td><td>'+esc4(m)+'</td>');
+      (_packSpares||[]).forEach(function(s){
+        if(s && s.parent === 'model:'+m)
+          devTbl += rows(box+'<td class="pp-qty">'+(s.qty||1)+'&times;</td><td class="pp-spare">spare \u2014 '+esc4(s.desc||m)+'</td>');
+      });
+    });
+  });
+
+  // Cables
+  var cc={};
+  stageDevs.forEach(function(d){
+    var cabs=[];
+    if(d.cable_in||d.cable){ cabs.push(d.cable_in||d.cable); }
+    else { if(d.cable_power_in)cabs.push(d.cable_power_in); if(d.cable_data_in)cabs.push(d.cable_data_in); }
+    if(d.cable_power_ext)cabs.push(d.cable_power_ext);
+    cabs.filter(Boolean).forEach(function(cv){cc[cv]=(cc[cv]||0)+1;});
+  });
+  var cabTbl='', nCab=0;
+  Object.keys(cc).sort().forEach(function(k){
+    var lbl=_pkCableLabel(k); nCab+=cc[k];
+    cabTbl += rows(box+'<td class="pp-qty">'+cc[k]+'&times;</td><td>'+esc4(lbl)+'</td>');
+    (_packSpares||[]).forEach(function(s){
+      if(s && s.parent === 'cable:'+k)
+        cabTbl += rows(box+'<td class="pp-qty">'+(s.qty||1)+'&times;</td><td class="pp-spare">spare \u2014 '+esc4(s.desc||lbl)+'</td>');
+    });
+  });
+
+  // Extras
+  var stName = stage ? (stage.name||'') : '';
+  var extras = (_packSpares||[]).filter(function(x){ return !x.parent && (x.stage||'') === stName; });
+  var exTbl='';
+  extras.forEach(function(s){
+    exTbl += rows(box+'<td class="pp-qty">'+(s.qty||1)+'&times;</td><td>'+esc4(s.desc||'item')+'</td>');
+  });
+
+  var sec = function(title, n, tbl){
+    if(!tbl) return '';
+    return '<h2>'+title+' <span class="pp-n">'+n+'</span></h2><table class="pp-tbl">'+tbl+'</table>';
+  };
+
+  root.innerHTML =
+      '<div class="pp-head">'
+    +   '<div class="pp-title">'+esc4((project&&project.name)||'Buildert')+'</div>'
+    +   '<div class="pp-sub">'+esc4(stName||'')
+    +     (project&&project.venue?' \u00b7 '+esc4(project.venue):'')
+    +     (project&&project.date?' \u00b7 '+esc4(project.date):'')+'</div>'
+    +   '<div class="pp-status pp-'+st.state+'">'+meta.label
+    +     (st.by?' \u2014 '+esc4(st.by):'')
+    +     (st.at?' \u00b7 '+new Date(st.at).toLocaleDateString():'')+'</div>'
+    +   '<div class="pp-sub">Printed '+new Date().toLocaleString()+'</div>'
+    + '</div>'
+    + sec('Devices', nDev, devTbl)
+    + sec('Cables', nCab, cabTbl)
+    + sec('Extra items', extras.length, exTbl)
+    + '<div class="pp-sign"><div>Packed by ______________________</div>'
+    +   '<div>Checked by ______________________</div>'
+    +   '<div>Date ______________</div></div>';
+
+  setTimeout(function(){ window.print(); }, 60);
+}
+
+
 // ── Onboarding wizard & guided tour (mobile) ──────────────────────
 // Self-contained. Exposes window.obStart() / window.obClose().
 (function(){
   var OB_KEY  = 'brt_onboard_v';
   var OB_LANG = 'brt_onboard_lang';
-  var OB_VER  = 1;               // bump to re-show the tour after a big UI change
+  var OB_VER  = 2;               // bump to re-show the tour after a big UI change
+  var LANGS   = ['nl','en','pl'];
   var _idx = 0, _open = false, _lang = 'nl', _steps = [], _safeTop = 0;
 
   function el(id){ return document.getElementById(id); }
@@ -9001,10 +9371,10 @@ function _addStageDoc(si){
     var box = null;
     for(var i=0;i<nodes.length;i++){
       var r = nodes[i].getBoundingClientRect();
-      if(r.width < 2 || r.height < 2) continue;          // hidden / collapsed
+      if(r.width < 2 || r.height < 2) continue;
       if(!box) box = {top:r.top,left:r.left,right:r.right,bottom:r.bottom};
       else {
-        box.top = Math.min(box.top, r.top);   box.left = Math.min(box.left, r.left);
+        box.top = Math.min(box.top, r.top);       box.left = Math.min(box.left, r.left);
         box.right = Math.max(box.right, r.right); box.bottom = Math.max(box.bottom, r.bottom);
       }
     }
@@ -9025,64 +9395,82 @@ function _addStageDoc(si){
   function buildSteps(){
     return [
     { center:true,
-      t:{nl:'Welkom', en:'Welcome'},
-      b:{nl:'Met Buildert zie je op je telefoon wat er hangt, wat er nog moet gebeuren en meld je voortgang terug aan het team. Even kort door de basis &mdash; een halve minuut.',
-         en:'Buildert shows you on your phone what is rigged, what is still open, and lets you report progress back to the team. Quick run through the basics &mdash; about half a minute.'} },
+      t:{nl:'Welkom bij Buildert', en:'Welcome to Buildert', pl:'Witaj w Buildert'},
+      b:{nl:'<b>Welcome to Buildert</b>, onderdeel van <b>The Wintravel Horizon Suite</b> &mdash; je zakmes voor lasershows.<br><br>Even kort door de basis: een halve minuut, dan weet je waar alles zit.',
+         en:'<b>Welcome to Buildert</b>, part of <b>The Wintravel Horizon Suite</b> &mdash; your Swiss army knife for lasershows.<br><br>Quick run through the basics: half a minute and you know where everything lives.',
+         pl:'<b>Welcome to Buildert</b>, część <b>The Wintravel Horizon Suite</b> &mdash; scyzoryk szwajcarski do pokazów laserowych.<br><br>Holendrzy napisali aplikację. Plan zawsze jest piękny. Potem przyjeżdża <b>Poolse Kracht</b> i nagle wszystko wisi na swoim miejscu. Pół minuty i wiesz, gdzie co jest.'} },
 
     { center:true, form:'name',
-      t:{nl:'1 &middot; Wie ben je?', en:'1 &middot; Who are you?'},
+      t:{nl:'1 &middot; Wie ben je?', en:'1 &middot; Who are you?', pl:'1 &middot; Kim jesteś?'},
       b:{nl:'Je naam komt bij elke afvinking, chatregel en scan te staan, zodat het team ziet wie wat gedaan heeft.',
-         en:'Your name is attached to every check, chat message and scan, so the team can see who did what.'} },
+         en:'Your name is attached to every check, chat message and scan, so the team can see who did what.',
+         pl:'Twoje imię trafia przy każdym odhaczeniu, wiadomości i skanie. Holender po trzech kawach zapomni, kto co zrobił &mdash; aplikacja nie zapomni.'} },
 
     { center:true, form:'link',
-      t:{nl:'2 &middot; Verbinden', en:'2 &middot; Connect'},
+      t:{nl:'2 &middot; Verbinden', en:'2 &middot; Connect', pl:'2 &middot; Połączenie'},
       b:{nl:'Plak de link die je van de projectleiding kreeg &mdash; of alleen de projectsleutel. Kwam je via die link binnen, dan staat het er al goed in.',
-         en:'Paste the link the project lead sent you &mdash; or just the project key. If you opened the app through that link, it is already filled in.'} },
+         en:'Paste the link the project lead sent you &mdash; or just the project key. If you opened the app through that link, it is already filled in.',
+         pl:'Wklej link od kierownika projektu &mdash; albo sam klucz. Link Holender wyśle chętnie: jest darmowy. Jeśli wszedłeś przez ten link, wszystko jest już wpisane.'} },
 
     { sel:'#mob-proj-name,#mob-proj-ver',
-      t:{nl:'Project &amp; sync', en:'Project &amp; sync'},
+      t:{nl:'Project &amp; sync', en:'Project &amp; sync', pl:'Projekt i synchronizacja'},
       b:{nl:'Hier staat het project waar je in zit, met daaronder de sync-status. Groen bolletje betekent dat je het actuele plan hebt. Tik erop voor projectinfo, stages en een handmatige sync.',
-         en:'This is the project you are in, with the sync status underneath. A green dot means you have the current plan. Tap it for project info, stages and a manual sync.'} },
+         en:'This is the project you are in, with the sync status underneath. A green dot means you have the current plan. Tap it for project info, stages and a manual sync.',
+         pl:'Tu jest twój projekt, a pod spodem status synchronizacji. Zielona kropka = masz aktualny plan. Dotknij, żeby zobaczyć projekt, sceny i zsynchronizować ręcznie.'} },
+
+    { sel:'#hdr-logo',
+      t:{nl:'Feedback &amp; ideeën', en:'Feedback &amp; ideas', pl:'Uwagi i pomysły'},
+      b:{nl:'Tik op het Buildert-logo om iets door te geven. Je kiest eerst waar het over gaat &mdash; <b>&#128241; Buildert</b>, <b>&#128295; Equipment</b>, <b>&#128101; Collega&rsquo;s</b> of <b>&#127914; Project</b> &mdash; en daarna wat voor soort: <b>&#128161; idee</b>, <b>&#128030; storing of bug</b>, <b>&#128172; feedback</b> of een <b>&#128221; evaluatiepuntje</b> voor na de show. Anoniem mag ook.',
+         en:'Tap the Buildert logo to report something. First pick what it is about &mdash; <b>&#128241; Buildert</b>, <b>&#128295; Equipment</b>, <b>&#128101; Colleagues</b> or <b>&#127914; Project</b> &mdash; then the kind: <b>&#128161; idea</b>, <b>&#128030; failure or bug</b>, <b>&#128172; feedback</b>, or an <b>&#128221; evaluation point</b> for after the show. Anonymous is fine too.',
+         pl:'Dotknij logo Buildert, żeby coś zgłosić. Najpierw czego dotyczy &mdash; <b>&#128241; Buildert</b>, <b>&#128295; sprzęt</b>, <b>&#128101; koledzy</b> czy <b>&#127914; projekt</b> &mdash; potem rodzaj: <b>&#128161; pomysł</b>, <b>&#128030; awaria</b>, <b>&#128172; uwaga</b> albo <b>&#128221; punkt do oceny</b> po pokazie. Można anonimowo. Holendrzy mówią, że są bezpośredni, ale anonimowo jednak wygodniej.'} },
 
     { sel:'.hdr-ico',
-      t:{nl:'Vier knoppen rechtsboven', en:'Four buttons, top right'},
-      b:{nl:'<b>&#128197;</b> dagschema &middot; <b>&#128172;</b> projectchat &middot; <b>&#9728;</b> zonmodus voor fel daglicht &middot; <b>&#128203;</b> specs. Het Buildert-logo linksboven is voor bugs en idee&euml;n.',
-         en:'<b>&#128197;</b> day schedule &middot; <b>&#128172;</b> project chat &middot; <b>&#9728;</b> sun mode for bright daylight &middot; <b>&#128203;</b> specs. The Buildert logo top left is for bugs and ideas.'} },
+      t:{nl:'Vier knoppen rechtsboven', en:'Four buttons, top right', pl:'Cztery przyciski w prawym górnym rogu'},
+      b:{nl:'<b>&#128197;</b> dagschema &middot; <b>&#128172;</b> projectchat &middot; <b>&#9728;</b> zonmodus voor fel daglicht &middot; <b>&#128203;</b> specs.',
+         en:'<b>&#128197;</b> day schedule &middot; <b>&#128172;</b> project chat &middot; <b>&#9728;</b> sun mode for bright daylight &middot; <b>&#128203;</b> specs.',
+         pl:'<b>&#128197;</b> harmonogram dnia &middot; <b>&#128172;</b> czat &middot; <b>&#9728;</b> tryb słoneczny &middot; <b>&#128203;</b> specyfikacje. Tryb słoneczny w Holandii uruchamia się średnio dwa razy w roku, ale jest.'} },
 
     { sel:'#mob-stage-bar',
-      t:{nl:'Stages', en:'Stages'},
+      t:{nl:'Stages', en:'Stages', pl:'Sceny'},
       b:{nl:'Een project kan meerdere stages hebben. Tik op een stage om ertussen te wisselen &mdash; je ziet alleen de stages waar je toegang toe hebt.',
-         en:'A project can have several stages. Tap one to switch &mdash; you only see the stages you have access to.'} },
+         en:'A project can have several stages. Tap one to switch &mdash; you only see the stages you have access to.',
+         pl:'Projekt może mieć kilka scen. Dotknij, żeby przełączyć &mdash; widzisz tylko te, do których masz dostęp.'} },
 
     { sel:'.banner',
-      t:{nl:'Voortgang', en:'Progress'},
+      t:{nl:'Voortgang', en:'Progress', pl:'Postęp'},
       b:{nl:'De balk loopt mee met wat er afgevinkt is in deze stage. Rechts voeg je met <b>+ Add</b> een apparaat toe dat nog niet in het plan stond.',
-         en:'The bar tracks what has been ticked off in this stage. On the right, <b>+ Add</b> adds a device that was not in the plan yet.'} },
+         en:'The bar tracks what has been ticked off in this stage. On the right, <b>+ Add</b> adds a device that was not in the plan yet.',
+         pl:'Pasek pokazuje, ile już odhaczono na tej scenie. Po prawej <b>+ Add</b> dodaje urządzenie, którego nie było w planie &mdash; a nigdy nie ma wszystkiego w planie.'} },
 
     { sel:'#cat-filter-bar', before:function(){ tab('list'); },
-      t:{nl:'Filters', en:'Filters'},
+      t:{nl:'Filters', en:'Filters', pl:'Filtry'},
       b:{nl:'<b>&#128100; Mine</b> laat alleen de apparaten zien die aan jou zijn toegewezen &mdash; meestal je startpunt. Daarnaast filter je op type.',
-         en:'<b>&#128100; Mine</b> shows only the devices assigned to you &mdash; usually your starting point. Next to it you can filter by type.'} },
+         en:'<b>&#128100; Mine</b> shows only the devices assigned to you &mdash; usually your starting point. Next to it you can filter by type.',
+         pl:'<b>&#128100; Mine</b> pokazuje tylko urządzenia przypisane do ciebie. Czyli, jak zwykle, mniej więcej wszystkie. Obok filtrujesz po typie.'} },
 
     { sel:'#card-list', before:function(){ tab('list'); },
-      t:{nl:'Afvinken', en:'Ticking off'},
+      t:{nl:'Afvinken', en:'Ticking off', pl:'Odhaczanie'},
       b:{nl:'Elk apparaat is een kaart. Tik erop om open te klappen en vink af: <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. De balk bovenin loopt meteen mee.',
-         en:'Every device is a card. Tap it to expand and tick off <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. The bar at the top updates right away.'} },
+         en:'Every device is a card. Tap it to expand and tick off <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. The bar at the top updates right away.',
+         pl:'Każde urządzenie to karta. Dotknij, rozwiń i odhacz: <b>Mounted</b>, <b>Cabled</b>, <b>Pointed</b>. Pasek u góry reaguje od razu. Holenderski planista widzi to na swoim ekranie i jest szczęśliwy.'} },
 
     { sel:'#nt-nodes', before:function(){ tab('nodes'); },
-      t:{nl:'Nodes', en:'Nodes'},
-      b:{nl:'Laat zien wat waarop is aangesloten. Knijp om te zoomen, sleep om te schuiven, tik een node om hem te bewerken. Met <b>&#128260; From FOH</b> spiegel je de weergave zodat links en rechts kloppen als je op het podium staat.',
-         en:'Shows what connects to what. Pinch to zoom, drag to pan, tap a node to edit it. <b>&#128260; From FOH</b> mirrors the view so left and right match when you are standing on stage.'} },
+      t:{nl:'Nodes', en:'Nodes', pl:'Schemat'},
+      b:{nl:'Laat zien wat waarop is aangesloten. Knijp om te zoomen, sleep om te schuiven, tik een node om hem te bewerken.',
+         en:'Shows what connects to what. Pinch to zoom, drag to pan, tap a node to edit it.',
+         pl:'Pokazuje, co jest do czego podłączone. Szczypnij, żeby przybliżyć, przeciągnij, żeby przesunąć, dotknij węzła, żeby go edytować.'} },
 
     { sel:'#bottom-nav', before:function(){ tab('list'); },
-      t:{nl:'De balk onderin', en:'The bottom bar'},
+      t:{nl:'De balk onderin', en:'The bottom bar', pl:'Pasek na dole'},
       b:{nl:'<b>Pack</b> is de paklijst inclusief kabels en reserve, <b>Todos</b> zijn de losse taken en onder <b>Docs</b> staan de plattegronden en pdf&rsquo;s van deze stage.',
-         en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Docs</b> holds the floor plans and PDFs for this stage.'} },
+         en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Docs</b> holds the floor plans and PDFs for this stage.',
+         pl:'<b>Pack</b> to lista pakowania z kablami i zapasem, <b>Todos</b> to zadania, a w <b>Docs</b> są plany i pliki PDF tej sceny.'} },
 
     { center:true, last:true,
-      t:{nl:'Klaar', en:'All set'},
+      t:{nl:'Klaar', en:'All set', pl:'Gotowe'},
       b:{nl:'Je bent klaar om te beginnen. Deze uitleg start je opnieuw via de <b>?</b>-knop rechtsboven.',
-         en:'You are ready to go. Restart this walkthrough any time with the <b>?</b> button at the top right.'} }
+         en:'You are ready to go. Restart this walkthrough any time with the <b>?</b> button at the top right.',
+         pl:'Możesz zaczynać. Holendrzy zrobili plan, arkusz i trzy spotkania o tym planie &mdash; resztę załatwia <b>Poolse Kracht</b>. Ten przewodnik uruchomisz ponownie przyciskiem <b>?</b> w prawym górnym rogu.'} }
     ];
   }
 
@@ -9095,13 +9483,15 @@ function _addStageDoc(si){
   var LBL   = 'display:block;font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;'
             + 'text-transform:uppercase;color:var(--muted);margin:14px 0 5px;';
 
+  function L(nl,en,pl){ return _lang==='nl'?nl:(_lang==='pl'?pl:en); }
+
   function formHtml(kind){
     if(kind==='name'){
       var n = window._riggerName || '';
       try{ n = n || localStorage.getItem('brt_rigger_name') || ''; }catch(e){}
-      return '<label style="'+LBL+'">'+(_lang==='nl'?'Je naam':'Your name')+'</label>'
+      return '<label style="'+LBL+'">'+L('Je naam','Your name','Twoje imię')+'</label>'
         + '<input id="ob-rname" type="text" autocomplete="name" autocapitalize="words" '
-        + 'style="'+FIELD+'" placeholder="'+(_lang==='nl'?'bijv. Sander':'e.g. Sam')+'" value="'+esc(n)+'">';
+        + 'style="'+FIELD+'" placeholder="'+L('bijv. Sander','e.g. Sam','np. Kamil')+'" value="'+esc(n)+'">';
     }
     if(kind==='link'){
       var key='', wu='', ip='';
@@ -9116,14 +9506,14 @@ function _addStageDoc(si){
             + 'border:1px solid var(--ok);border-radius:8px;padding:10px 12px;margin-top:12px">'
             + '<span style="color:var(--ok);font-size:17px">&#10003;</span>'
             + '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:0;overflow:hidden">'
-            + (_lang==='nl'?'Verbonden met':'Connected to')+' <span style="color:var(--ok)">'+esc(key)+'</span></div></div>'
+            + L('Verbonden met','Connected to','Połączono z')+' <span style="color:var(--ok)">'+esc(key)+'</span></div></div>'
           : '')
-        + '<label style="'+LBL+'">'+(ok ? (_lang==='nl'?'Andere link plakken':'Paste a different link')
-                                        : (_lang==='nl'?'Link of projectsleutel':'Link or project key'))+'</label>'
+        + '<label style="'+LBL+'">'+(ok ? L('Andere link plakken','Paste a different link','Wklej inny link')
+                                        : L('Link of projectsleutel','Link or project key','Link lub klucz projektu'))+'</label>'
         + '<input id="ob-link" type="text" autocomplete="off" autocorrect="off" spellcheck="false" '
         + 'style="'+FIELD+'font-size:13px" placeholder="https://&hellip;?project=ABCD1234">'
         + '<div id="ob-link-msg" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px"></div>'
-        + '<label style="'+LBL+'">'+(_lang==='nl'?'Controller-IP (optioneel)':'Controller IP (optional)')+'</label>'
+        + '<label style="'+LBL+'">'+L('Controller-IP (optioneel)','Controller IP (optional)','IP kontrolera (opcjonalnie)')+'</label>'
         + '<input id="ob-ip" type="text" inputmode="decimal" autocomplete="off" '
         + 'style="'+FIELD+'" placeholder="192.168.1.42" value="'+esc(ip)+'">';
     }
@@ -9163,8 +9553,9 @@ function _addStageDoc(si){
     if(!key && /^[A-Za-z0-9_-]{4,16}$/.test(raw)) key = raw;
     if(!key){
       if(msg){ msg.style.color='var(--danger)';
-        msg.textContent = (_lang==='nl' ? 'Geen projectsleutel gevonden in die link.'
-                                        : 'No project key found in that link.'); }
+        msg.textContent = L('Geen projectsleutel gevonden in die link.',
+                            'No project key found in that link.',
+                            'Nie znaleziono klucza projektu w tym linku.'); }
       return false;
     }
 
@@ -9176,7 +9567,7 @@ function _addStageDoc(si){
 
     try{
       var stored = localStorage.getItem('buildert_project_key')||'';
-      if(stored && stored !== key){          // different project — drop stale cache
+      if(stored && stored !== key){
         localStorage.removeItem('wtu_devices');
         localStorage.removeItem('wtu_project_meta');
         if(typeof devices !== 'undefined') devices = [];
@@ -9205,7 +9596,7 @@ function _addStageDoc(si){
       try{ wStartPolling(); }catch(e){}
     }
     if(msg){ msg.style.color='var(--ok)';
-      msg.textContent = (_lang==='nl' ? 'Gekoppeld aan ' : 'Linked to ') + key; }
+      msg.textContent = L('Gekoppeld aan ','Linked to ','Połączono z ') + key; }
     if(has('_updateMobileProjectBadge')) _updateMobileProjectBadge();
     return true;
   }
@@ -9279,7 +9670,6 @@ function _addStageDoc(si){
     + '</div>';
     document.body.appendChild(root);
 
-    // Swipe left/right to move through the steps
     var sx = 0, sy = 0, mask = el('ob-mask');
     mask.addEventListener('touchstart', function(e){
       var t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY;
@@ -9301,11 +9691,11 @@ function _addStageDoc(si){
     el('ob-title').innerHTML  = T(s.t);
     el('ob-body').innerHTML   = T(s.b);
     el('ob-form').innerHTML   = s.form ? formHtml(s.form) : '';
-    el('ob-lang').textContent = (_lang==='nl' ? 'EN' : 'NL');
-    el('ob-back').textContent = (_lang==='nl' ? 'Terug' : 'Back');
+    el('ob-lang').textContent = LANGS[(LANGS.indexOf(_lang)+1) % LANGS.length].toUpperCase();
+    el('ob-back').textContent = L('Terug','Back','Wstecz');
     el('ob-back').style.display = _idx===0 ? 'none' : '';
-    el('ob-next').textContent = s.last ? (_lang==='nl'?'Beginnen':'Start')
-                                       : (_lang==='nl'?'Volgende':'Next');
+    el('ob-next').textContent = s.last ? L('Beginnen','Start','Zaczynamy')
+                                       : L('Volgende','Next','Dalej');
 
     var dots = '';
     for(var i=0;i<_steps.length;i++)
@@ -9313,7 +9703,7 @@ function _addStageDoc(si){
     el('ob-dots').innerHTML = dots;
 
     position();
-    setTimeout(position, 130);   // re-measure once layout settles
+    setTimeout(position, 130);
   }
 
   function position(){
@@ -9324,7 +9714,7 @@ function _addStageDoc(si){
 
     var r = (s.sel && !s.center) ? rectFor(s.sel) : null;
 
-    if(!r){                                   // centred card, no spotlight
+    if(!r){
       hole.className = 'flat';
       hole.style.width='0px'; hole.style.height='0px';
       hole.style.top='50%'; hole.style.left='50%';
@@ -9344,8 +9734,8 @@ function _addStageDoc(si){
     hole.style.height = (r.height + pad*2) + 'px';
 
     var gap = 14, top;
-    if(r.bottom + gap + ch < vh - 10)        top = r.bottom + gap;    // below
-    else if(r.top - gap - ch > minTop)       top = r.top - gap - ch;  // above
+    if(r.bottom + gap + ch < vh - 10)        top = r.bottom + gap;
+    else if(r.top - gap - ch > minTop)       top = r.top - gap - ch;
     else                                      top = Math.max(minTop, (vh - ch)/2);
     card.style.top = Math.max(minTop, Math.min(top, vh - ch - 10)) + 'px';
   }
@@ -9361,7 +9751,7 @@ function _addStageDoc(si){
   };
 
   window.__obLang = function(){
-    _lang = (_lang==='nl' ? 'en' : 'nl');
+    _lang = LANGS[(LANGS.indexOf(_lang)+1) % LANGS.length];
     try{ localStorage.setItem(OB_LANG, _lang); }catch(e){}
     render();
   };
@@ -9369,7 +9759,7 @@ function _addStageDoc(si){
   function finish(){
     close();
     tab('list');
-    if(has('showToast')) showToast(_lang==='nl' ? 'Klaar om te beginnen' : 'Ready to go','ok');
+    if(has('showToast')) showToast(L('Klaar om te beginnen','Ready to go','Można zaczynać'),'ok');
   }
 
   function close(){
@@ -9382,8 +9772,10 @@ function _addStageDoc(si){
   window.obStart = function(fromStep){
     mount();
     try{
-      _lang = localStorage.getItem(OB_LANG)
-           || ((navigator.language||'').toLowerCase().indexOf('nl')===0 ? 'nl' : 'en');
+      var saved = localStorage.getItem(OB_LANG);
+      _lang = (LANGS.indexOf(saved) >= 0) ? saved
+            : ((navigator.language||'').toLowerCase().indexOf('pl')===0 ? 'pl'
+            : ((navigator.language||'').toLowerCase().indexOf('nl')===0 ? 'nl' : 'en'));
     }catch(e){ _lang = 'en'; }
     _steps = buildSteps();
     _idx = fromStep || 0;
