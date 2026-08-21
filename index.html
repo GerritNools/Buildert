@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.030m</title>
+<title>WTU · Buildert v4.031m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -754,7 +754,7 @@ body.big-touch #chat-input{min-height:80px !important;}
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.030m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.031m</span>
     </span>
   </div>
 
@@ -3141,6 +3141,7 @@ function setConn(ok){
 
 // ── Save / Load JSON ────────────────────────────────────────────
 function _updateMobileProjectBadge(){
+  try{ _maRememberProjectDate(); }catch(e){}
   // Use _renderMobileStageBar if stages loaded, otherwise simple display
   if(_mStages.length){ _renderMobileStageBar(); return; }
   var nm=document.getElementById('mob-proj-name');
@@ -5255,33 +5256,171 @@ async function _maDoLogin(){
 }
 
 // ── My projects (assignments) ────────────────────────────────────────
+// ── Project dates ─────────────────────────────────────────────────
+// /projects does not reliably carry a show date, and which field it uses
+// has changed between worker versions. Read whatever is there, and cache
+// the date of every project we actually open so the list stays correct
+// even when the endpoint gives us nothing.
+var _MA_DATE_FIELDS = ['date','show_date','showDate','project_date','start','start_date',
+                       'from','_date','updated_at','_pushed_at','_last_updated'];
+
+function _maDateCache(){
+  try{ return JSON.parse(localStorage.getItem('brt_proj_dates')||'{}')||{}; }catch(e){ return {}; }
+}
+function _maDateCacheSet(pid, iso){
+  if(!pid || !iso) return;
+  try{
+    var c=_maDateCache(); c[pid]=iso;
+    localStorage.setItem('brt_proj_dates', JSON.stringify(c));
+  }catch(e){}
+}
+// Called whenever the open project's data lands — keeps the cache warm.
+function _maRememberProjectDate(){
+  try{
+    var pid=localStorage.getItem('buildert_project_key')||'';
+    var d=(typeof project!=='undefined' && project && project.date)||'';
+    if(pid && d) _maDateCacheSet(pid, d);
+  }catch(e){}
+}
+
+function _maPickDate(p, pid){
+  for(var i=0;i<_MA_DATE_FIELDS.length;i++){
+    var v=p && p[_MA_DATE_FIELDS[i]];
+    if(v){ var t=_maParseDate(v); if(t) return {iso:String(v), t:t}; }
+  }
+  var c=_maDateCache()[pid];
+  if(c){ var t2=_maParseDate(c); if(t2) return {iso:String(c), t:t2}; }
+  return null;
+}
+function _maParseDate(v){
+  if(v==null) return 0;
+  if(typeof v==='number') return v > 1e12 ? v : v*1000;      // s or ms epoch
+  var s=String(v).trim(); if(!s) return 0;
+  // dd-mm-yyyy / dd/mm/yyyy — Date.parse reads these as US or not at all
+  var m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]).getTime();
+  var t=Date.parse(s);
+  return isNaN(t) ? 0 : t;
+}
+function _maDayDiff(t){
+  var a=new Date(t); a.setHours(0,0,0,0);
+  var b=new Date();  b.setHours(0,0,0,0);
+  return Math.round((a - b) / 86400000);
+}
+function _maWhen(days){
+  if(days === 0)  return {txt:'vandaag',              col:'#3ddc84'};
+  if(days === 1)  return {txt:'morgen',               col:'#00d4ff'};
+  if(days === -1) return {txt:'gisteren',             col:'#8891a5'};
+  if(days > 1 && days < 14)  return {txt:'over '+days+' dagen',   col:'#00d4ff'};
+  if(days >= 14) return {txt:'over '+Math.round(days/7)+' weken', col:'#8891a5'};
+  return {txt:Math.abs(days)+' dagen geleden', col:'#8891a5'};
+}
+function _maFmtDate(t){
+  try{ return new Date(t).toLocaleDateString([], {day:'numeric', month:'short', year:'numeric'}); }
+  catch(e){ return ''; }
+}
+
+// ── My projects: newest first, upcoming split from finished ───────
 async function _maRenderProjects(){
-  _maOverlay(_maHead('Loading…',''));
+  _maOverlay(_maHead('Loading\u2026',''));
   var me = _maMe;
-  if(!me){ var r=await _maApi('GET','/accounts/me'); if(r.status===200 && r.data && r.data.ok){ me=_maMe={user:r.data.user,memberships:r.data.memberships||{}}; _maApplyName(r.data.user); } }
+  if(!me){
+    var r=await _maApi('GET','/accounts/me');
+    if(r.status===200 && r.data && r.data.ok){
+      me=_maMe={user:r.data.user,memberships:r.data.memberships||{}}; _maApplyName(r.data.user);
+    }
+  }
   if(!me){ _maSetSession(''); return _maRenderLogin(); }
+
   var mems = me.memberships || {};
   var pids = Object.keys(mems);
-  // Resolve friendly names via /projects (only returns ones this account can see).
-  var names = {};
-  try { var pl=await _maApi('GET','/projects'); (pl.data && pl.data.projects || []).forEach(function(p){ names[p.key]=p.name||p.key; }); } catch(e){}
+  var names = {}, meta = {};
+  try{
+    var pl=await _maApi('GET','/projects');
+    (pl.data && pl.data.projects || []).forEach(function(p){
+      names[p.key]=p.name||p.key;
+      meta[p.key]=p;
+    });
+  }catch(e){}
   window.__maNames = names;
-  var rows = pids.length ? pids.map(function(pid){
-    var role = mems[pid];
-    var isOpen = (String(pid)===String((function(){try{return localStorage.getItem('buildert_project_key')||'';}catch(e){return '';}})()));
-    return '<button onclick="_maPickProject(\''+_maJs(pid)+'\')" style="width:100%;box-sizing:border-box;text-align:left;'
-      + 'background:#12161c;border:1px solid #2a2f3a;border-radius:11px;padding:16px;margin-bottom:10px;color:#e8ecf3;display:flex;align-items:center;gap:12px">'
-      + '<span style="font-size:22px">📂</span>'
-      + '<span style="flex:1"><span style="display:block;font-weight:800;font-size:16px">'+_maEsc(names[pid]||pid)+'</span>'
-      + '<span style="display:block;color:#8891a5;font-size:11px;font-family:monospace">'+_maEsc(pid)+'</span></span>'
-      + '<span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:'+(role==='admin'?'#ffd700':'#00d4ff')+'">'+_maEsc(role)+'</span>'
-      + (isOpen?'<span style="font-size:9px;background:#00d4ff;color:#001018;padding:2px 7px;border-radius:3px;font-weight:800">OPEN</span>':'<span style="color:#5a6270;font-size:20px">›</span>')
-      + '</button>';
-  }).join('') : '<div style="color:#8891a5;text-align:center;padding:30px 0;font-size:14px">You are not assigned to any project yet.<br>Ask your manager to add you.</div>';
+
   var bound=''; try{ bound=localStorage.getItem('buildert_project_key')||''; }catch(e){}
-  _maOverlay(_maHead('Your projects', 'Hi '+_maEsc(me.user.name||me.user.email)+' — tap a project to open it.')
+
+  var items = pids.map(function(pid){
+    var d=_maPickDate(meta[pid]||{}, pid);
+    return {
+      pid: pid,
+      name: names[pid] || pid,
+      role: mems[pid],
+      venue: (meta[pid] && (meta[pid].venue || meta[pid].location)) || '',
+      t: d ? d.t : 0,
+      open: String(pid) === String(bound)
+    };
+  });
+
+  var upcoming=[], past=[], undated=[];
+  items.forEach(function(it){
+    if(!it.t){ undated.push(it); return; }
+    (_maDayDiff(it.t) >= 0 ? upcoming : past).push(it);
+  });
+  upcoming.sort(function(a,b){ return a.t - b.t; });   // soonest first
+  past.sort(function(a,b){ return b.t - a.t; });       // most recent first
+  undated.sort(function(a,b){ return a.name.localeCompare(b.name); });
+
+  function row(it, dim){
+    var days = it.t ? _maDayDiff(it.t) : null;
+    var w    = days===null ? null : _maWhen(days);
+    return '<button onclick="_maPickProject(\'' + _maJs(it.pid) + '\')" '
+      + 'style="width:100%;box-sizing:border-box;text-align:left;background:'
+      + (it.open ? 'rgba(0,212,255,.10)' : '#12161c') + ';border:1px solid '
+      + (it.open ? '#00d4ff' : '#2a2f3a') + ';border-radius:11px;padding:14px 16px;'
+      + 'margin-bottom:9px;color:#e8ecf3;display:flex;align-items:center;gap:12px;'
+      + (dim ? 'opacity:.68;' : '') + '">'
+      +   '<span style="font-size:21px;flex-shrink:0">' + (dim ? '\u2713' : '\u{1F4C2}') + '</span>'
+      +   '<span style="flex:1;min-width:0">'
+      +     '<span style="display:block;font-weight:800;font-size:16px;overflow:hidden;'
+      +       'text-overflow:ellipsis;white-space:nowrap">' + _maEsc(it.name) + '</span>'
+      +     '<span style="display:block;color:#8891a5;font-size:11px;font-family:monospace;'
+      +       'margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      +       (it.t ? '\u{1F4C5} ' + _maFmtDate(it.t) : 'geen datum')
+      +       (it.venue ? ' \u00b7 ' + _maEsc(it.venue) : '')
+      +     '</span>'
+      +     (w ? '<span style="display:block;font-size:11px;color:' + w.col + ';margin-top:2px">'
+      +          w.txt + '</span>' : '')
+      +   '</span>'
+      +   '<span style="flex-shrink:0;text-align:right">'
+      +     '<span style="display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:'
+      +       (it.role === 'admin' ? '#ffd700' : '#00d4ff') + '">' + _maEsc(it.role) + '</span>'
+      +     (it.open
+        ? '<span style="display:inline-block;margin-top:4px;font-size:9px;background:#00d4ff;color:#001018;padding:2px 7px;border-radius:3px;font-weight:800">OPEN</span>'
+        : '<span style="color:#5a6270;font-size:19px">\u203A</span>')
+      +   '</span>'
+      + '</button>';
+  }
+
+  function group(title, list, dim){
+    if(!list.length) return '';
+    return '<div style="display:flex;align-items:center;gap:9px;margin:16px 0 9px">'
+      +   '<span style="font-family:var(--cond,sans-serif);font-weight:900;font-size:11px;'
+      +     'letter-spacing:2px;text-transform:uppercase;color:#8891a5">' + title + '</span>'
+      +   '<span style="font-family:monospace;font-size:10px;color:#5a6270">' + list.length + '</span>'
+      +   '<span style="flex:1;height:1px;background:#2a2f3a"></span>'
+      + '</div>'
+      + list.map(function(it){ return row(it, dim); }).join('');
+  }
+
+  var rows = pids.length
+    ? (group('\u{1F53C} Komend', upcoming, false)
+     + group('\u{1F4C1} Zonder datum', undated, false)
+     + group('\u2713 Afgerond', past, true))
+    : '<div style="color:#8891a5;text-align:center;padding:30px 0;font-size:14px">'
+      + 'You are not assigned to any project yet.<br>Ask your manager to add you.</div>';
+
+  _maOverlay(_maHead('Your projects',
+      'Hi ' + _maEsc(me.user.name || me.user.email) + ' \u2014 tap a project to open it.')
     + rows
-    + (bound ? '<button style="'+_maBtnGhost+'" onclick="_maCloseOverlay()">← Back to '+_maEsc(_maProjLabel(bound))+'</button>' : '')
+    + (bound ? '<button style="'+_maBtnGhost+'" onclick="_maCloseOverlay()">\u2190 Back to '
+        + _maEsc(_maProjLabel(bound)) + '</button>' : '')
     + '<button style="'+_maBtnGhost+'" onclick="_maLogout()">Log out</button>'
     + '</div>');
 }
