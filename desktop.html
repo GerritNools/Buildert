@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.122</title>
+<title>WTUniverse · Buildert Editor v4.123</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.122</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.123</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3838,11 +3838,18 @@ var qrcode = function() {
 
     <div class="modal-section">Sync (Cloudflare Worker)</div>
     <label>Worker URL <span style="color:var(--muted);font-size:10px">— from Cloudflare dashboard</span></label>
+    <!-- v4.123: this tag was malformed (the legacy token field had been pasted INSIDE
+         the worker-url <input>), so neither field rendered as intended. -->
     <input id="worker-url-inp" type="url" placeholder="https://buildert.yourname.workers.dev"
            value="https://buildert.untitledtechnologies.workers.dev"
-      <label style="font-size:11px;margin-top:10px;display:block;color:var(--muted)">Access Token <span style="font-size:10px">— set in Cloudflare Worker env vars</span></label>
-      <input id="worker-token-inp" type="password" placeholder="your BUILDERT_TOKEN value" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 10px;font-family:var(--mono);font-size:12px;box-sizing:border-box;margin-top:4px">
            style="font-family:var(--mono);font-size:12px;margin-bottom:8px">
+    <label style="font-size:11px;margin-top:2px;display:block;color:var(--muted)">Mobile app URL <span style="font-size:10px">— where invite &amp; share links open (the deployed rigger app)</span></label>
+    <input id="mobile-url-inp" type="url" placeholder="https://gerritnools.github.io/Buildert/index.html"
+           style="font-family:var(--mono);font-size:12px;margin-bottom:8px"
+           onchange="try{localStorage.setItem('buildert_mobile_url',this.value.trim());}catch(e){}">
+    <details style="margin-bottom:8px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">Legacy access token (pre-accounts)</summary>
+      <input id="worker-token-inp" type="password" placeholder="your BUILDERT_TOKEN value" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 10px;font-family:var(--mono);font-size:12px;box-sizing:border-box;margin-top:4px">
+    </details>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
       <div id="proj-key-display" style="font-family:var(--mono);font-size:14px;letter-spacing:3px;
            background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:8px 12px;flex:1"></div>
@@ -6110,7 +6117,7 @@ function exportCsv() {
 }
 
 // ── Server version check ─────────────────────────────────────────────
-var WEBAPP_VERSION    = '4.122';
+var WEBAPP_VERSION    = '4.123';
 var MIN_SERVER_VERSION = 2;  // server must return server_version >= 2
 
 function checkServerVersion(baseUrl) {
@@ -11722,6 +11729,8 @@ _renderStageBar();
     if(ei) ei.value=wu;
     _workerUrl=wu; // always set workerUrl so push works without explicit key
   }
+  // v4.123: mobile app URL (where invite/share links open) is now a visible setting
+  try{ var mi=document.getElementById('mobile-url-inp'); if(mi) mi.value=(localStorage.getItem('buildert_mobile_url')||'').trim(); }catch(e){}
   // v4.121: a stored binding to 'default' is always an accident from old
   // versions — auto-loading it was pure confusion. Unbind; if a real
   // 'default' slot holds data it is still visible in the Manager to rescue.
@@ -14316,9 +14325,9 @@ var _xpAll=null;   // [{pid, name, riggers:{name:{pts,bonus}}}]
 // name (account name vs merged rigger name, case-insensitive); a preview
 // shows exactly what will change and what could not be matched. Only
 // matched accounts are written; unmatched ones are left untouched.
-async function _xpSyncToGlobal(){
-  showToast('Computing scored totals…','muted');
-  await _histLoadAll(false);
+// v4.123: the matching logic is shared by the manual (preview) sync and the
+// automatic one. Returns null when the worker refuses (not owner / old worker).
+async function _xpSyncPlan(){
   var scored={};
   (_histAll||[]).forEach(function(h){
     Object.keys(h.riggers||{}).forEach(function(nRaw){
@@ -14327,7 +14336,7 @@ async function _xpSyncToGlobal(){
     });
   });
   var r=await _mgrApi('GET','/accounts/xp');
-  if(r.status!==200||!r.data||!r.data.ok){ showToast((r.data&&r.data.error)||'Global XP list failed (owner only)','danger'); return; }
+  if(r.status!==200||!r.data||!r.data.ok) return { error:(r.data&&r.data.error)||'Global XP list failed (owner only)', status:r.status };
   var accounts=r.data.xp||[];
   var norm=function(x){ return String(x||'').trim().toLowerCase(); };
   var scoredByNorm={}; Object.keys(scored).forEach(function(n){ scoredByNorm[norm(n)]={name:n,val:scored[n]}; });
@@ -14338,6 +14347,44 @@ async function _xpSyncToGlobal(){
     else unmatchedAcc.push(a.name||a.email);
   });
   var unmatchedScored=Object.keys(scored).filter(function(n){ return !usedScored[n]; });
+  return { plan:plan, unmatchedAcc:unmatchedAcc, unmatchedScored:unmatchedScored };
+}
+// Auto-sync: owner only, opt-out via the XP tab. Runs after every History
+// load (which is the moment the scored totals are fresh) and writes ONLY the
+// accounts whose number actually changed. Same numbers the preview would
+// show — just without asking every time.
+function _xpAutoSyncOn(){ try{ return localStorage.getItem('brt_xp_autosync')!=='0'; }catch(e){ return true; } }
+var _xpAutoSyncBusy=false;
+async function _xpAutoSync(){
+  if(_xpAutoSyncBusy || !_xpAutoSyncOn()) return;
+  if(!((_mgrMe&&_mgrMe.user)||{}).is_owner) return;
+  if(!(_histAll&&_histAll.length)) return;
+  _xpAutoSyncBusy=true;
+  try{
+    var res=await _xpSyncPlan();
+    if(!res||res.error) return;
+    var changed=res.plan.filter(function(p2){ return p2.cur!==p2.next; });
+    var okN=0;
+    for(var i=0;i<changed.length;i++){
+      var r=await _mgrApi('POST','/accounts/xp',{user_id:changed[i].user_id,xp:changed[i].next});
+      if(r.status===200&&r.data&&r.data.ok){
+        okN++;
+        // Update the number in place if the XP table is on screen — a full
+        // re-render here would wipe the per-project table that was just loaded.
+        var cell=document.getElementById('mgr-xp-val-'+changed[i].user_id);
+        if(cell) cell.textContent=r.data.xp;
+      }
+    }
+    if(okN) showToast('Global XP auto-synced for '+okN+' account'+(okN===1?'':'s'),'muted');
+  }finally{ _xpAutoSyncBusy=false; }
+}
+async function _xpSyncToGlobal(){
+  showToast('Computing scored totals…','muted');
+  await _histLoadAll(false);
+  var res=await _xpSyncPlan();
+  if(!res||res.error){ showToast((res&&res.error)||'Global XP list failed (owner only)','danger'); return; }
+  var plan=res.plan, unmatchedAcc=res.unmatchedAcc, unmatchedScored=res.unmatchedScored;
+  var norm=function(x){ return String(x||'').trim().toLowerCase(); };
   var rows=plan.map(function(p2,i){
     var same=(p2.cur===p2.next);
     return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border2);font-size:12px;'+(same?'opacity:.5':'')+'">'
@@ -15075,7 +15122,8 @@ async function _pwzCreate(){
   var invList=(_pwz.invites||[]).filter(function(v){ return v.email; });
   for(var iv=0;iv<invList.length;iv++){
     try{
-      var vr=await _mgrApi('POST','/accounts/invite',{email:invList[iv].email,name:invList[iv].name||'',pid:slot,role:invList[iv].role||'edit'});
+      var vr=await _mgrApi('POST','/accounts/invite',{email:invList[iv].email,name:invList[iv].name||'',pid:slot,role:invList[iv].role||'edit',direct:true});
+      if(vr.status===200&&vr.data&&vr.data.granted){ crewOk++; crewIds.push(vr.data.user_id); continue; }   // v4.123: existing account → no link
       if(vr.status===200&&vr.data&&vr.data.code){
         var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
         invDone.push({who:invList[iv].name||invList[iv].email, email:invList[iv].email,
@@ -15345,6 +15393,7 @@ async function _histLoadAll(force){
     _histAll=out;
   } finally { _histLoading=false; }
   _histRender();
+  try{ _xpAutoSync(); }catch(e){}   // v4.123: keep account Global XP in step with the scored truth
 }
 function _mgrRenderHistory(){
   if(!document.getElementById('mgr-sub')) return;
@@ -16431,11 +16480,16 @@ async function _mgrRenderPeople(){
           var exp = i.expires_at ? String(i.expires_at).slice(0,10) : '?';
           return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border2);font-size:12px">'
             + '<div style="flex:1;min-width:0"><b>'+_escHtml(i.name||i.email)+'</b> <span style="color:var(--muted)">'+_escHtml(i.email)+'</span>'
-            +   '<div style="font-size:10px;color:var(--muted)">'+(i.pid?_escHtml(_mgrProjName(i.pid))+' · '+_escHtml(i.role):'password reset — roles untouched')+' · expires '+exp+'</div></div>'
+            +   '<div style="font-size:10px;color:var(--muted)">'+(i.pid?_escHtml(_mgrProjName(i.pid))+' · '+_escHtml(i.role):'password reset — roles untouched')+' · expires '+exp
+            +   (i.has_account&&i.pid?' · <span style="color:var(--warn)">already has an account</span>':'')+'</div></div>'
+            + (i.has_account&&i.pid&&i.user_id
+                ? '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--ok);border-color:var(--ok)" title="They already have an account — give them the project now, no link needed" onclick="_mgrGrantInvite(\''+_mgrJs(i.id)+'\')">✓ Grant directly</button>'
+                : '')
             + '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px" title="Old link keeps its own expiry; this creates a fresh one" onclick="_mgrResendInvite(\''+_mgrJs(i.id)+'\')">🔗 Resend</button>'
             + '<button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--danger)" onclick="_mgrRevokeInvite(\''+_mgrJs(i.id)+'\',false)">Revoke</button>'
             + '</div>';
         }).join('') : '<div style="font-size:11px;color:var(--muted);padding:6px 0">No open invites — everyone you invited has signed up (or links expired).</div>')
+      + (pend.length?'<div style="font-size:10px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border2);padding-top:6px">A link stays <i>pending</i> until the person opens it and either creates an account or (v4.032m+) taps <b>Join project</b>. If they already have an account, <b>Grant directly</b> skips the link entirely.</div>':'')
       + '</div>';
   } else {
     invHtml = '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Pending-invite overview, resend & delete need worker v4.14+.</div>';
@@ -16536,7 +16590,7 @@ async function _mgrResendInvite(id){
   if(!inv) return;
   // Fresh code for the same person + same assignment; revoke the old one so
   // exactly one live link exists per resend.
-  var r=await _mgrApi('POST','/accounts/invite',{email:inv.email,name:inv.name||'',pid:inv.pid||undefined,role:inv.role||'rigger'});
+  var r=await _mgrApi('POST','/accounts/invite',{email:inv.email,name:inv.name||'',pid:inv.pid||undefined,role:(inv.role==='rigger'?'edit':(inv.role||'edit'))});
   if(r.status!==200 || !r.data || !r.data.code){
     showToast((r.data&&r.data.error)||'Could not create new link','danger'); return;
   }
@@ -16554,6 +16608,19 @@ async function _mgrResendInvite(id){
     + '<button class="btn" onclick="document.getElementById(\'mgr-resend-modal\').remove()" style="width:100%">Done</button></div>';
   document.body.appendChild(box);
   setTimeout(function(){ _mgrCopy('mgr-resend-link'); },100);
+  _mgrRenderPeople();
+}
+// v4.123: the invite is for someone who already has an account — write the
+// membership straight away and retire the link. This is the fix for invites
+// that sat "pending" while the rigger had long since logged in.
+async function _mgrGrantInvite(id){
+  var inv=(_mgrCache.invites||[]).filter(function(i){return i.id===id;})[0];
+  if(!inv||!inv.user_id||!inv.pid) return;
+  var role=(inv.role==='rigger')?'edit':(inv.role||'edit');
+  var r=await _mgrApi('POST','/accounts/membership',{user_id:inv.user_id,pid:inv.pid,role:role});
+  if(!(r.status===200&&r.data&&r.data.ok)){ showToast((r.data&&r.data.error)||'Grant failed','danger'); return; }
+  await _mgrRevokeInvite(id,true);
+  showToast((inv.name||inv.email)+' added to '+_mgrProjName(inv.pid)+' ✓','ok');
   _mgrRenderPeople();
 }
 async function _mgrRevokeInvite(id, silent){
@@ -16728,7 +16795,20 @@ async function _mgrDoInvite(){
   var res=document.getElementById('mgr-inv-result');
   if(!email){ res.innerHTML='<span style="color:var(--warn);font-size:12px">Email required.</span>'; return; }
   res.innerHTML='<span style="color:var(--muted);font-size:12px">Creating…</span>';
-  var r=await _mgrApi('POST','/accounts/invite',{email:email,name:name,pid:pid,role:role});
+  // v4.123: direct:true — if this email already has an account, the worker
+  // (v4.30+) writes the membership right away and returns granted:true. No
+  // link, nothing pending, nothing for the rigger to do.
+  var r=await _mgrApi('POST','/accounts/invite',{email:email,name:name,pid:pid,role:role,direct:true});
+  if(r.status===200 && r.data && r.data.granted){
+    res.innerHTML='<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:12px">'
+      + '<b>'+_escHtml(r.data.name||email)+'</b> already has an account — added to <b>'+_escHtml(_mgrProjName(pid))+'</b> as '+_escHtml(role)+'. '
+      + 'No link needed: the project shows up on their phone on the next open.'
+      + (r.data.status==='disabled'?' <span style="color:var(--danger)">Their account is disabled — enable it under People.</span>':'')
+      + '</div>';
+    showToast('Added to project ✓ (existing account)','ok');
+    _mgrLoadPeople().then(function(){ _mgrRenderPeople(); });
+    return;
+  }
   if(r.status!==200 || !r.data || !r.data.code){
     res.innerHTML='<span style="color:var(--danger);font-size:12px">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</span>'; return;
   }
@@ -16799,9 +16879,13 @@ async function _mgrRenderXp(){
     + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Every project on the worker, scored from its own activity log and bonus XP.</div>'
     + '<div id="xp-proj-body"></div>'
     + '</div>'
-    + '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">'
-    + '<b style="color:#ffd700">Global XP</b> is a career total per account, across every project. '
-    + '<b>Per-project bonus XP</b> is scored inside the current project by rigger name. Both are editable — set any number you like.</p>'
+    + '<div style="border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.55">'
+    + '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;font-size:12px;margin-bottom:6px">HOW XP FITS TOGETHER</div>'
+    + '<div><b>1 · Project XP</b> — computed, never stored. Points from the activity log (tick 1 · status 2 · todo 5 · feedback 10 · sign-off 50) plus the <b>bonus</b> you hand out in 🏆 Rewards for that project. The same rule runs on phones (v4.032m+) and in History, so all three agree.</div>'
+    + '<div style="margin-top:4px"><b style="color:#ffd700">2 · Global XP</b> — one stored number per <i>account</i> = the sum of project XP over every project, name merges applied. It is what a rigger sees as <b>Career XP</b> on their phone. '
+    + 'It is written by <b>⇄ Sync</b>, and since v4.123 also automatically each time History loads (owner only, changed accounts only). You can still overrule any number by hand below.</div>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" '+(_xpAutoSyncOn()?'checked':'')+' onchange="try{localStorage.setItem(\'brt_xp_autosync\',this.checked?\'1\':\'0\')}catch(e){}"> Auto-sync Global XP when History loads</label>'
+    + '</div>'
     + '<div style="margin-bottom:14px"><button class="btn btn-ghost" onclick="openRewardsModal()" style="font-size:12px">🏆 Per-project bonus XP for '+_escHtml(_projectKey||'current project')+'…</button></div>';
   if(r.status===404){
     host.innerHTML = head + '<div style="padding:16px;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:13px">Global XP needs worker v4.9+.</div>';
