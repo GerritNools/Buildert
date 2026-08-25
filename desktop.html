@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.121</title>
+<title>WTUniverse · Buildert Editor v4.122</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.121</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.122</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -4035,6 +4035,11 @@ var _currentStageIdx = 0;
 
 function _stageColors(){ return ['#5b8fff','#4de6b8','#f5a623','#c77dff','#ff6b6b','#3ddc84','#ffd93d','#00d4ff','#a8e6cf','#ff8b94','#b4a7d6']; }
 
+// v4.122: when this invents a stage it flags it PROVISIONAL. Boot restores a
+// flat device cache with _stages empty, so this fabricated a single "Stage 1"
+// — and from then on _stages.length was 1, which made the pull's fresh-
+// adoption test (_stages.length===0) fail forever. A project pulled from a
+// rigger's push then kept the fake stage and never showed the real names.
 function _ensureStages(){
   if(!_stages.length){
     var np='{}';try{np=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
@@ -4042,10 +4047,52 @@ function _ensureStages(){
     _stages=[{id:'stage_main',name:_projectMeta.name||'Stage 1',color:_stageColors()[0],
       devices:devices.slice(),nodePositions:JSON.parse(np),diagPositions:JSON.parse(dp)}];
     _currentStageIdx=0;
+    window._stagesProvisional=true;
   }
   devices=_stages[_currentStageIdx].devices;
   _nodePositions=_stages[_currentStageIdx].nodePositions||{};
   _diagPositions=_stages[_currentStageIdx].diagPositions||{};
+}
+
+// v4.122 ── stage helpers ─────────────────────────────────────
+// Local structure counts as "ours" only if the user actually made it. A lone
+// fabricated stage_main with no local edits is a placeholder, not ownership.
+function _stagesAreProvisional(){
+  if(!_stages.length) return true;
+  if(window._stagesProvisional && !_unsaved) return true;
+  return (_stages.length===1 && _stages[0] && _stages[0].id==='stage_main' && !_unsaved);
+}
+
+// Never let a malformed entry through — _renderStageBar empties the bar before
+// it loops, so a throw halfway leaves the user with no stages at all.
+function _stagesSanitize(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(function(st){ return st && typeof st==='object'; }).map(function(st,i){
+    return {
+      id:            st.id || ('stage_'+i+'_'+Math.random().toString(36).slice(2,7)),
+      name:          (st.name!=null && String(st.name).trim()) || ('Stage '+(i+1)),
+      color:         st.color || _stageColors()[i % _stageColors().length],
+      devices:       Array.isArray(st.devices) ? st.devices : [],
+      nodePositions: st.nodePositions || {},
+      diagPositions: st.diagPositions || {},
+      pack_status:   st.pack_status
+    };
+  });
+}
+
+// One place that adopts a stage structure and leaves the app consistent.
+function _stagesAdopt(incoming, why){
+  var next = _stagesSanitize(JSON.parse(JSON.stringify(incoming)));
+  if(!next.length) return false;
+  _stages = next;
+  window._stagesProvisional = false;
+  _currentStageIdx = Math.max(0, Math.min(_currentStageIdx, _stages.length-1));
+  devices        = _stages[_currentStageIdx].devices;
+  _nodePositions = _stages[_currentStageIdx].nodePositions||{};
+  _diagPositions = _stages[_currentStageIdx].diagPositions||{};
+  try{ _renderStageBar(); }catch(e){}
+  try{ addSyncLog('Adopted '+_stages.length+' stage(s) — '+(why||''),'info'); }catch(e){}
+  return true;
 }
 
 function _saveCurrentStageLayout(){
@@ -4549,7 +4596,13 @@ function deleteStage(idx){
 function _renderStageBar(){
   var bar=document.getElementById('stage-bar');if(!bar)return;
   bar.innerHTML='';
+  // v4.122: a null or half-formed stage used to throw here, and because the
+  // bar was already emptied the user was left with no stages at all.
   _stages.forEach(function(s,i){
+    if(!s || typeof s!=='object') return;
+    if(!Array.isArray(s.devices)) s.devices=[];
+    if(s.name==null || !String(s.name).trim()) s.name='Stage '+(i+1);
+    if(!s.color) s.color=_stageColors()[i % _stageColors().length];
     var active=(i===_currentStageIdx);
     var btn=document.createElement('button');
     btn.style.cssText='padding:4px 14px;border-radius:20px;border:2px solid '+(active?s.color:'var(--border2)')+';'
@@ -6057,7 +6110,7 @@ function exportCsv() {
 }
 
 // ── Server version check ─────────────────────────────────────────────
-var WEBAPP_VERSION    = '3.983';
+var WEBAPP_VERSION    = '4.122';
 var MIN_SERVER_VERSION = 2;  // server must return server_version >= 2
 
 function checkServerVersion(baseUrl) {
@@ -6801,10 +6854,13 @@ function _mergeProjectNoConflict(data) {
     //   • incoming has stages, local has none → adopt the stages
     //     (a flat local snapshot is a subset view, not ownership)
     //   • incoming is flat, local fully empty → adopt the flat list
-    if(Array.isArray(data.stages) && data.stages.length && _stages.length===0){
-      _stages = JSON.parse(JSON.stringify(data.stages.filter(function(st){ return !!st; })));
-      _currentStageIdx = 0;
-      addSyncLog('Adopted '+_stages.length+' stage(s) from worker (local had none)','info');
+    // v4.122: adopt when local structure is EMPTY *or* PROVISIONAL. The old
+    // test was _stages.length===0, which _ensureStages() had already made
+    // impossible at boot. Adoption now also repoints devices/positions and
+    // redraws the bar — it used to do none of those, so even when it did
+    // fire the stage names never appeared and the table stayed empty.
+    if(Array.isArray(data.stages) && data.stages.length && _stagesAreProvisional()){
+      _stagesAdopt(data.stages, 'worker copy, local was empty or provisional');
     } else if((!Array.isArray(data.stages) || !data.stages.length)
               && Array.isArray(data.devices) && data.devices.length
               && _stages.length===0 && (devices||[]).length===0){
@@ -6991,6 +7047,7 @@ function _mergeProjectNoConflict(data) {
       showToast((data._saved_by||'Rigger')+' updated '+cnt+' device'+(cnt===1?'':'s'), 'ok');
       _updateProjectBadge();
     }
+    try{ _renderStageBar(); }catch(e){}   // v4.122: names/counts were never refreshed here
     if(currentTab==='shares'){ _spRenderLog(); _spRenderShares(); }
     if(currentTab==='node' && !_nodeDrag) renderNodeView();
     if(currentTab==='todos') renderTodosPanel();
@@ -7000,7 +7057,11 @@ function _mergeProjectNoConflict(data) {
   // ── DESKTOP / FILE MERGE: full replace ─────────────────────────
   // Called from file open or wPull of desktop-saved data
   if(Array.isArray(data.stages) && data.stages.length){
-    _stages = data.stages;
+    // v4.122: sanitize (nulls, missing names/devices) and take our own copy —
+    // this branch used to bind straight to the payload object.
+    _stages = _stagesSanitize(JSON.parse(JSON.stringify(data.stages)));
+    window._stagesProvisional = false;
+    if(!_stages.length){ _ensureStages(); }
     _currentStageIdx = Math.max(0, Math.min(_currentStageIdx, _stages.length-1));
     devices = _stages[_currentStageIdx].devices;
     // Don't overwrite node/diag positions from remote if user is actively in node view
