@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.031m</title>
+<title>WTU · Buildert v4.032m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -754,7 +754,7 @@ body.big-touch #chat-input{min-height:80px !important;}
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.031m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.032m</span>
     </span>
   </div>
 
@@ -1601,6 +1601,11 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.032m: INVITES for existing accounts — ?redeem= now offers
+//   "Join project" (one tap) when logged in as the invited person, or logs
+//   you in and joins automatically; "Create account" only for new people.
+//   XP: one scoring rule (log points + planner bonus, per project); the
+//   phone-local award bucket no longer double-counts; career XP = account XP.
 // FEATURES ADDED v4.023m: per-project XP ledger (localStorage
 //   buildert_xp_ledger) — riggers see XP per project AND total career XP.
 //   • Rank sheet: THIS PROJECT / TOTAL XP hero split + "XP BY PROJECT" list
@@ -5180,7 +5185,7 @@ function _maRenderRedeem(code, email){
     + '<label style="display:block;color:#8891a5;font-size:12px;margin-bottom:4px">Confirm password</label>'
     + '<input id="ma-pass2" name="confirm-password" type="password" autocomplete="new-password" style="'+_maField+'">'
     + '<button style="'+_maBtn+'" onclick="_maDoRedeem(\''+_maJs(code)+'\')">Create account</button>'
-    + '<button style="'+_maBtnGhost+'" onclick="_maStripInviteParams();_maRenderLogin(window.__maInviteEmail||\'\')">Already set a password? Log in</button>'
+    + '<button style="'+_maBtnGhost+'" onclick="_maStripInviteParams();window.__maPendingInvite=\''+_maJs(code)+'\';_maRenderLogin(window.__maInviteEmail||\'\',\'Log in — the project from your invite is added automatically.\')">Already have an account? Log in</button>'
     + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
     + '<div style="color:#5a6270;font-size:11px;margin-top:16px;line-height:1.5;text-align:center">Your password never leaves this phone — it is stretched locally before anything is sent.</div>'
     + '</div>');
@@ -5223,6 +5228,52 @@ async function _maDoRedeem(code){
   }catch(e){ msg.style.color='#ff6b6b'; msg.textContent='Error: '+(e.message||e); }
 }
 
+// ── Accept screen (v4.032m) — invite for someone who ALREADY has an account ──
+// No password form: one button that writes the membership. This is the path
+// that used to leave invites "pending" forever on the desktop, because the
+// only alternative was a password reset the rigger (rightly) skipped.
+function _maRenderAccept(code, info){
+  var projName = (info && info.pid) ? (info.pid) : '';
+  try{ if(window.__maNames && info && info.pid && window.__maNames[info.pid]) projName=window.__maNames[info.pid]; }catch(e){}
+  var who = (_maMe && _maMe.user && (_maMe.user.name||_maMe.user.email)) || (info && info.email) || '';
+  _maOverlay(_maHead('You\u2019re invited', 'This link adds a project to your existing account. Your password stays the same.')
+    + '<div style="background:#12161c;border:1px solid #2a2f3a;border-radius:12px;padding:14px;margin-bottom:14px">'
+    +   '<div style="color:#8891a5;font-size:11px;letter-spacing:1px;text-transform:uppercase">Project</div>'
+    +   '<div style="color:#e8ecf3;font-size:18px;font-weight:700;margin:2px 0 8px">'+_maEsc(projName||'(project)')+'</div>'
+    +   '<div style="color:#8891a5;font-size:12px">Access: <b style="color:#e8ecf3">'+_maEsc((info&&info.role)||'edit')+'</b> · as <b style="color:#e8ecf3">'+_maEsc(who)+'</b></div>'
+    + '</div>'
+    + '<button style="'+_maBtn+'" onclick="_maDoAccept(\''+_maJs(code)+'\')">Join project</button>'
+    + '<button style="'+_maBtnGhost+'" onclick="_maStripInviteParams();_maRenderProjects()">Not now — my projects</button>'
+    + '<div id="ma-msg" style="color:#8891a5;font-size:13px;margin-top:12px;min-height:18px;text-align:center"></div>'
+    + '</div>');
+}
+async function _maDoAccept(code){
+  var msg=document.getElementById('ma-msg');
+  if(msg){ msg.style.color='#8891a5'; msg.textContent='Joining\u2026'; }
+  try{
+    var r=await _maApi('POST','/accounts/invite/accept',{ code:code });
+    if(r.status===200 && r.data && r.data.ok){
+      window.__maPendingInvite='';
+      _maMe = _maMe || {};
+      _maMe.user = r.data.user || (_maMe.user||null);
+      _maMe.memberships = r.data.memberships || _maMe.memberships || {};
+      _maStripInviteParams();
+      showToast && showToast('Project added \u2713','ok');
+      _maRenderProjects();
+      return true;
+    }
+    if(r.status===404){
+      // Worker older than v4.30 — fall back to the old set-password path.
+      if(msg){ msg.style.color='#ffb454'; msg.textContent='Worker update needed for one-tap join; set a password instead.'; }
+      setTimeout(function(){ _maRenderRedeem(code, (_maMe&&_maMe.user&&_maMe.user.email)||''); }, 1200);
+      return false;
+    }
+    if(msg){ msg.style.color='#ff6b6b'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')'); }
+    if(r.data && r.data.reason && r.data.reason!=='mismatch'){ _maStripInviteParams(); window.__maPendingInvite=''; }
+  }catch(e){ if(msg){ msg.style.color='#ff6b6b'; msg.textContent='Error: '+(e.message||e); } }
+  return false;
+}
+
 // ── Login screen ─────────────────────────────────────────────────────
 function _maRenderLogin(prefillEmail, note){
   _maOverlay(_maHead('Log in', note || 'Sign in to see the projects you are assigned to.')
@@ -5248,6 +5299,18 @@ async function _maDoLogin(){
       _maMe = { user:r.data.user, memberships:r.data.memberships||{} };
       _maApplyName(r.data.user);
       showToast && showToast('Logged in ✓','ok');
+      // v4.032m: came here from an invite link? Take the invite now, silently.
+      var pend = window.__maPendingInvite || '';
+      if(pend){
+        var acc = await _maApi('POST','/accounts/invite/accept',{ code:pend });
+        window.__maPendingInvite='';
+        if(acc.status===200 && acc.data && acc.data.ok){
+          _maMe.memberships = acc.data.memberships || _maMe.memberships;
+          showToast && showToast('Project added ✓','ok');
+        } else if(acc.status!==404 && acc.data && acc.data.reason==='mismatch'){
+          showToast && showToast('That invite was for '+(acc.data.email||'someone else'),'warn');
+        }
+      }
       _maRenderProjects();
     } else {
       msg.style.color='#ff6b6b'; msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
@@ -5483,6 +5546,44 @@ async function _maBoot(){
     try{ info=await _maApi('GET','/accounts/invite/'+encodeURIComponent(redeem)); }
     catch(e){ reachable=false; }
     if(info && info.status===200 && info.data && info.data.ok){
+      var invEmail = String(info.data.email||'').toLowerCase();
+      // v4.032m: three doors instead of one.
+      // a) Already logged in as the invited person → one-tap "Join project".
+      if(_maSession){
+        var meA = await _maApi('GET','/accounts/me');
+        if(meA.status===200 && meA.data && meA.data.ok){
+          _maMe={user:meA.data.user,memberships:meA.data.memberships||{}};
+          _maApplyName(meA.data.user);
+          if(String(meA.data.user.email||'').toLowerCase()===invEmail){
+            try{ var plA=await _maApi('GET','/projects'); window.__maNames={};
+                 (plA.data&&plA.data.projects||[]).forEach(function(p){ window.__maNames[p.key]=p.name||p.key; }); }catch(e){}
+            _maRenderAccept(redeem, info.data);
+            return true;
+          }
+          // Logged in as someone else: say so, then offer the normal path.
+          _maRenderRedeem(redeem, info.data.email);
+          var mX=document.getElementById('ma-msg');
+          if(mX){ mX.style.color='#ffb454'; mX.textContent='This phone is logged in as '+(meA.data.user.email||'another account')+'. This invite is for '+info.data.email+'.'; }
+          return true;
+        }
+        _maSetSession('');
+      }
+      // b) Has an account but not logged in here → log in; invite is taken after login.
+      if(info.data.has_account){
+        window.__maPendingInvite=redeem;
+        _maStripInviteParams();
+        _maRenderLogin(info.data.email, 'You already have a Buildert account. Log in and the project from this invite is added to it.');
+        // Escape hatch: forgot the password → the link can still set a new one.
+        var host=document.getElementById('ma-overlay');
+        if(host){
+          var extra=document.createElement('div');
+          extra.style.cssText='max-width:420px;margin:0 auto';
+          extra.innerHTML='<button style="'+_maBtnGhost+'" onclick="_maRenderRedeem(\''+_maJs(redeem)+'\',\''+_maJs(info.data.email||'')+'\')">Forgot your password? Set a new one with this link</button>';
+          host.firstChild && host.firstChild.appendChild(extra);
+        }
+        return true;
+      }
+      // c) New person → set password, create account.
       _maRenderRedeem(redeem, info.data.email);
       return true;
     }
@@ -6712,6 +6813,16 @@ function _xpSnapshotLogPts(){
   }catch(e){}
 }
 // One place that answers: this project / per project / grand total
+//
+// v4.032m: ONE scoring rule. A project's XP = points scored from the activity
+// log (the same rule the planner's History/XP tabs use) + the planner's bonus
+// for that project. The old "local awards" bucket (e.xp: +1 per tick, +5 per
+// todo, +10 per feedback) counted every action a SECOND time, because each of
+// those actions is also written to the log and scored there. That is why the
+// phone showed roughly double what the planner showed, and why "Sync scored →
+// Global" always looked like it took XP away. e.xp is now ignored (kept on
+// disk, never summed). The +XP beam/chip still fires — it is feedback, not a
+// second ledger. The pre-ledger "Earlier projects" bucket is kept as-is.
 function _xpTotals(){
   var me = _aliasNameM(window._riggerName||'');
   var bonus = (_xpBonusMap()[me]|0);
@@ -6719,12 +6830,20 @@ function _xpTotals(){
   var l = _xpLedgerEnsure();
   var curKey = _xpProjKey();
   var livePts = me ? (_calcRiggerStats(me).points|0) : 0;
+  // Remember this project's planner bonus in the ledger so it still counts
+  // after the phone moves on to another project (xp_bonus is per project).
+  try{ var ce=_xpProjEntry(l); if((ce.bonus|0)!==bonus){ ce.bonus=bonus; _xpLedgerSave(l); } }catch(e){}
   var perProject = [];
-  var total = bonus;
+  var total = 0;
   Object.keys(l).forEach(function(k){
     var e = l[k];
-    var logPts = (k === curKey) ? Math.max(livePts, e.logPts|0) : (e.logPts|0);
-    var sub = logPts + (e.xp|0);
+    var sub;
+    if(k==='_legacy'){ sub = (e.xp|0); }
+    else {
+      var logPts = (k === curKey) ? Math.max(livePts, e.logPts|0) : (e.logPts|0);
+      var b = (k === curKey) ? bonus : (e.bonus|0);
+      sub = logPts + b;
+    }
     total += sub;
     perProject.push({ key:k, name:e.name || (k==='_legacy'?'Earlier projects':k), xp:sub, last:e.last||'', current:(k===curKey) });
   });
@@ -8531,7 +8650,7 @@ function openRankSheet(){
         if(d&&d.ok&&d.user&&typeof d.user.xp==='number'){
           _maMe.user.xp=d.user.xp;
           var el=document.getElementById('rank-acct-xp');
-          if(el) el.firstChild.textContent=(d.user.xp|0);
+          if(el) el.textContent=(d.user.xp|0);
         }
       }catch(e){}
     })();
@@ -8541,7 +8660,12 @@ function openRankSheet(){
   var me = _aliasNameM(window._riggerName||'');
   var myStats = _calcRiggerStats(me);
   var xpT = _xpTotals();                 // {total, bonus, project, perProject}
-  var combined = xpT.total;
+  // v4.032m: when logged in, the ACCOUNT career XP (kept on the worker, synced
+  // by the planner from every project) is the one true total — the same on
+  // every phone. Only riggers on a legacy share link fall back to what this
+  // phone has counted. Tier follows the same number.
+  var hasAcct = !!(_maMe&&_maMe.user&&typeof _maMe.user.xp==='number');
+  var combined = hasAcct ? (_maMe.user.xp|0) : xpT.total;
   var tier = _tierFromPoints(combined);
   var nextTier = _nextTier(tier);
   var board = _getLeaderboard();
@@ -8561,18 +8685,18 @@ function openRankSheet(){
     +      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">THIS PROJECT</div>'
     +    '</div>'
     +    '<div style="background:rgba(0,0,0,.25);border:1px solid #ffd700;border-radius:10px;padding:8px 14px;min-width:100px">'
-    +      '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#ffd700">'+xpT.total+'</div>'
-    +      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">🌍 TOTAL XP</div>'
+    +      '<div id="rank-acct-xp" style="font-family:var(--mono);font-size:22px;font-weight:700;color:#ffd700">'+combined+'</div>'
+    +      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">'+(hasAcct?'🏅 CAREER XP':'🌍 TOTAL · THIS PHONE')+'</div>'
     +    '</div>'
     +  '</div>'
-    +  (xpT.bonus?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">incl. '+xpT.bonus+' planner bonus 🎁</div>':'')
-    // v4.023m: the ACCOUNT career XP — the number the planner syncs from all
-    // scored projects (or hand-tunes). Only shown for logged-in accounts.
-    +  ((_maMe&&_maMe.user&&typeof _maMe.user.xp==='number')
-        ? '<div id="rank-acct-xp" style="margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed #ffd700;border-radius:10px;padding:7px 12px;display:inline-block">'
-          +'<span style="font-family:var(--mono);font-size:16px;font-weight:700;color:#ffd700">'+(_maMe.user.xp|0)+'</span>'
-          +'<span style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px"> 🏅 ACCOUNT CAREER XP</span></div>'
-        : '');
+    +  (xpT.bonus?'<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">this project incl. '+xpT.bonus+' planner bonus 🎁</div>':'')
+    // v4.032m: one career number. For accounts it is the worker's Global XP,
+    // which the planner recomputes from every scored project. If the planner
+    // has not synced since your last shift, it lags a little — that is normal.
+    +  (hasAcct
+        ? '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:8px">career total across all your projects · updated by the planner'
+          +(xpT.total!==combined?' · this phone counts '+xpT.total:'')+'</div>'
+        : '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:8px">log in with your account to keep XP across phones</div>');
 
   if(nextTier){
     var pct = Math.round((combined - tier.min) / (nextTier.min - tier.min) * 100);
@@ -8621,7 +8745,7 @@ function openRankSheet(){
         +'</div>'
         +'</div>';
     });
-    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;padding:4px 0 12px">stored on this phone · project pts + local awards</div>';
+    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;padding:4px 0 12px">per project: log points + planner bonus · same rule as the planner</div>';
   }
 
   // Stats breakdown
