@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.032m</title>
+<title>WTU · Buildert v4.033m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -285,6 +285,75 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   margin-bottom:12px;-webkit-appearance:none;}
 .sheet-body input:focus,.sheet-body select:focus{border-color:var(--accent);}
 .sheet-body textarea{resize:vertical;font-family:var(--sans);min-height:58px;}
+/* ── Chat (v4.033m) ──────────────────────────────────────────────
+   Column layout the composer can never fall out of: header + tabs are
+   fixed, the thread takes what is left (min-height:0 so it may shrink to
+   nothing), the sticker tray is a bounded drawer ABOVE the composer, and
+   the composer is the last, non-shrinking row. */
+#sheet-chat{height:min(94dvh,94vh);max-height:none;}
+#sheet-chat .sheet-title{display:flex;align-items:center;gap:10px;border-bottom:none;padding-bottom:6px;}
+.chat-tabs{display:flex;gap:4px;margin:0 14px 8px;padding:4px;background:var(--panel);border:1px solid var(--border);border-radius:12px;flex-shrink:0;}
+.chat-tab{flex:1;position:relative;background:transparent;border:none;border-radius:9px;padding:8px 4px;
+  font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.5px;color:var(--muted);cursor:pointer;
+  -webkit-tap-highlight-color:rgba(0,0,0,0);transition:background .15s,color .15s;}
+.chat-tab.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.chat-tab .chat-tab-dot{display:none;position:absolute;top:5px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--panel);}
+.chat-tab-ico{flex:0 0 auto;background:transparent;border:none;border-radius:9px;padding:8px 10px;font-size:15px;color:var(--muted);cursor:pointer;}
+.chat-aud{display:flex;align-items:center;gap:7px;margin:0 14px 6px;padding:5px 10px;border-radius:8px;flex-shrink:0;
+  font-family:var(--mono);font-size:10.5px;line-height:1.35;color:var(--muted);background:rgba(255,255,255,.03);}
+.chat-aud.global{color:var(--warn);background:rgba(255,180,84,.07);}
+.chat-body{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;padding:0 !important;}
+#chat-msgs{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:6px 14px 10px;display:flex;flex-direction:column;gap:2px;}
+.chat-day{align-self:center;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);
+  background:var(--panel);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;margin:10px 0 6px;}
+.chat-msg{position:relative;max-width:82%;padding:7px 11px 5px;border-radius:16px;font-size:14.5px;line-height:1.4;word-break:break-word;
+  background:var(--panel);border:1px solid var(--border2);align-self:flex-start;}
+.chat-msg.mine{align-self:flex-end;background:rgba(0,212,255,.13);border-color:rgba(0,212,255,.35);}
+.chat-msg.first{margin-top:8px;}
+.chat-msg.first:not(.mine){border-top-left-radius:6px;}
+.chat-msg.first.mine{border-top-right-radius:6px;}
+.chat-msg.stk{background:transparent;border-color:transparent;padding:2px 4px;}
+.chat-msg.media{padding:4px;}
+.chat-msg .who{font-family:var(--cond);font-weight:700;font-size:11.5px;letter-spacing:.5px;color:var(--accent);margin-bottom:1px;}
+.chat-msg .when{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px;opacity:.85;}
+.chat-msg.stk .when,.chat-msg.media .when{position:absolute;right:8px;bottom:6px;background:rgba(0,0,0,.45);color:#fff;padding:1px 5px;border-radius:6px;opacity:1;}
+.chat-msg img.stkimg{width:128px;height:128px;object-fit:contain;display:block;}
+.chat-msg img.photo,.chat-msg video{max-width:100%;max-height:260px;border-radius:12px;display:block;}
+.chat-msg .del{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;border:none;background:var(--danger);color:#fff;
+  font-size:10px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.chat-msg.mine.sel .del{display:flex;}
+.chat-msg.queued{opacity:.55;border-style:dashed;}
+.chat-msg .qnote{font-family:var(--mono);font-size:9px;color:var(--warn);margin-top:2px;}
+.chat-empty{color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;line-height:1.6;}
+.chat-tray{display:none;flex-direction:column;flex:0 0 auto;max-height:min(42vh,320px);margin:0 10px;
+  background:var(--panel);border:1px solid var(--border);border-bottom:none;border-radius:14px 14px 0 0;overflow:hidden;}
+.chat-tray.open{display:flex;}
+.chat-tray-head{display:flex;align-items:center;gap:8px;padding:8px 8px 6px 10px;flex-shrink:0;}
+.chat-tray-head input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:8px 10px;font-size:14px;margin:0 !important;-webkit-appearance:none;}
+.chat-tray-head .cnt{flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted);}
+.chat-tray-x{flex-shrink:0;width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;}
+#chat-stk-grid{flex:1 1 auto;min-height:90px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;align-content:start;padding:0 8px 8px;}
+#chat-stk-grid button{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:5px;cursor:pointer;position:relative;}
+#chat-stk-grid button.manage{background:rgba(255,77,77,.10);border-color:var(--danger);}
+#chat-stk-grid button:active{transform:scale(.94);}
+.chat-tray-foot{display:flex;gap:6px;padding:6px 8px 8px;border-top:1px solid var(--border2);flex-shrink:0;}
+.chat-tray-foot button{flex:1;background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:7px 4px;
+  font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;}
+.chat-composer{display:flex;align-items:flex-end;gap:6px;padding:8px 10px;padding-bottom:calc(8px + var(--sb));
+  border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.chat-tool{flex-shrink:0;width:40px;height:40px;border-radius:50%;border:1px solid transparent;background:transparent;font-size:19px;
+  line-height:1;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);opacity:.6;}
+.chat-tool.on{opacity:1;background:rgba(0,212,255,.14);border-color:var(--accent);}
+#chat-input{flex:1;font-size:16px;resize:none;max-height:140px;min-height:40px !important;line-height:1.35;padding:9px 13px;
+  border-radius:20px;font-family:var(--sans);overflow-y:auto;margin:0 !important;box-sizing:border-box;
+  background:var(--panel);border:1px solid var(--border);color:var(--text);outline:none;-webkit-appearance:none;}
+#chat-input:focus{border-color:var(--accent);}
+.chat-send{flex-shrink:0;width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#000;font-size:17px;
+  font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s;}
+.chat-send:active{transform:scale(.92);}
 .sheet-footer{padding:10px 18px;padding-bottom:calc(10px + var(--sb));
   display:flex;gap:8px;border-top:1px solid var(--border);flex-shrink:0;}
 .sb{flex:1;padding:13px;border-radius:10px;font-family:var(--cond);font-weight:700;
@@ -754,7 +823,7 @@ body.big-touch #chat-input{min-height:80px !important;}
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.032m</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.033m</span>
     </span>
   </div>
 
@@ -957,51 +1026,45 @@ body.big-touch #chat-input{min-height:80px !important;}
   <div class="sheet-title">📅 Day schedule</div>
   <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
 </div>
-<div class="sheet" id="sheet-chat" style="height:min(94dvh,94vh);max-height:none">
+<div class="sheet" id="sheet-chat">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
-  <!-- v4.023m: channel tabs — project chat + two company-wide channels -->
-  <div id="chat-tabs" style="display:flex;gap:6px;padding:0 0 8px;flex-shrink:0">
-    <button id="chat-tab-project" onclick="chatSwitch('project')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">📌 Project<span class="chat-tab-dot" id="chat-dot-project" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
-    <button id="chat-tab-info" onclick="chatSwitch('info')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
-    <button id="chat-tab-fun" onclick="chatSwitch('fun')" style="flex:1;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">🎉 Fun<span class="chat-tab-dot" id="chat-dot-fun" style="display:none;position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></button>
-    <button onclick="chatMembersOpen()" title="Who can read this channel" style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer">👥</button>
+  <!-- v4.033m: segmented channel switch -->
+  <div class="chat-tabs" id="chat-tabs">
+    <button class="chat-tab" id="chat-tab-project" onclick="chatSwitch('project')">📌 Project<span class="chat-tab-dot" id="chat-dot-project"></span></button>
+    <button class="chat-tab" id="chat-tab-info" onclick="chatSwitch('info')">ℹ️ Info<span class="chat-tab-dot" id="chat-dot-info"></span></button>
+    <button class="chat-tab" id="chat-tab-fun" onclick="chatSwitch('fun')">🎉 Fun<span class="chat-tab-dot" id="chat-dot-fun"></span></button>
+    <button class="chat-tab-ico" onclick="chatMembersOpen()" title="Who can read this channel">👥</button>
   </div>
-  <div id="chat-audience" style="display:flex;align-items:center;gap:7px;flex-shrink:0;margin-bottom:8px;
-    border:1px solid var(--border);border-left-width:3px;border-radius:7px;padding:6px 10px;
-    font-family:var(--mono);font-size:11px;line-height:1.35;color:var(--muted)"></div>
-  <div class="sheet-body" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden">
-    <div id="chat-msgs" style="flex:1;min-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 2px;display:flex;flex-direction:column;gap:8px">
-      <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Loading…</div>
-    </div>
-    <div id="chat-stk-panel" style="display:none;flex-direction:column;flex-shrink:0;border-top:1px solid var(--border);padding-top:8px;height:min(48vh,360px)">
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:8px">
-        <input id="chat-stk-search" type="text" placeholder="Search stickers…" oninput="_stkSearch(this.value)"
-          style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);color:var(--text);
-                 border-radius:9px;padding:9px 11px;font-size:14px;margin-bottom:0 !important;-webkit-appearance:none">
-        <span id="chat-stk-count" style="flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
-        <button onclick="_stkRefresh()" title="Reload from the worker"
-          style="flex-shrink:0;background:var(--panel);border:1px solid var(--border);color:var(--muted);
-                 border-radius:9px;min-width:42px;min-height:42px;font-size:16px;cursor:pointer">↻</button>
+  <div class="chat-aud" id="chat-audience"></div>
+  <div class="sheet-body chat-body">
+    <div id="chat-msgs"><div class="chat-empty">Loading…</div></div>
+    <!-- Sticker tray: a drawer above the composer. It can always be closed —
+         with ✕ here, with the 😀 button, by tapping the text field, or by sending a sticker. -->
+    <div class="chat-tray" id="chat-stk-panel">
+      <div class="chat-tray-head">
+        <input id="chat-stk-search" type="text" placeholder="Search stickers…" oninput="_stkSearch(this.value)">
+        <span class="cnt" id="chat-stk-count"></span>
+        <button class="chat-tray-x" onclick="_stkRefresh()" title="Reload from the worker">↻</button>
+        <button class="chat-tray-x" onclick="_stkTogglePanel(false)" title="Close stickers">✕</button>
       </div>
-      <div id="chat-stk-grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;
-        grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;align-content:start"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-shrink:0">
-        <button class="sb" onclick="_stkUploadPick()" style="flex:1;font-size:12px">＋ Upload</button>
-        <button class="sb" onclick="_stkImport()" style="flex:1;font-size:12px">📥 Telegram</button>
-        <button class="sb" id="chat-stk-manage-btn" onclick="_stkToggleManage()" style="flex:1;font-size:12px">🗑 Manage</button>
+      <div id="chat-stk-grid"></div>
+      <div class="chat-tray-foot">
+        <button onclick="_stkUploadPick()">＋ Upload</button>
+        <button onclick="_stkImport()">📥 Telegram</button>
+        <button id="chat-stk-manage-btn" onclick="_stkToggleManage()">🗑 Manage</button>
       </div>
       <input id="chat-stk-file" type="file" accept="image/*" style="display:none" onchange="_stkUpload(this.files[0]);this.value=''">
     </div>
-    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
-      <button onclick="_stkTogglePanel()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Stickers">😀</button>
-      <button onclick="document.getElementById('chat-media-file').click()" style="background:none;border:none;padding:6px;font-size:19px;opacity:.5;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)" title="Photo or video">📎</button>
+    <div class="chat-composer">
+      <button class="chat-tool" id="chat-stk-btn" onclick="_stkTogglePanel()" title="Stickers">😀</button>
+      <button class="chat-tool" onclick="document.getElementById('chat-media-file').click()" title="Photo or video">📎</button>
       <input id="chat-media-file" type="file" accept="image/*,video/*" style="display:none" onchange="chatMediaPick(this.files[0]);this.value=''">
       <textarea id="chat-input" placeholder="Message the crew…" rows="1"
         oninput="_chatInputGrow(this)"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}"
-        style="flex:1;font-size:16px;resize:none;max-height:160px;min-height:56px !important;line-height:1.45;padding:12px 13px;border-radius:12px;font-family:inherit;overflow-y:auto;margin-bottom:0 !important;box-sizing:border-box"></textarea>
-      <button class="sb" onclick="chatSend()" style="background:var(--accent);color:#000;font-weight:700;padding:10px 18px">➤</button>
+        onfocus="_stkTogglePanel(false)"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}"></textarea>
+      <button class="chat-send" onclick="chatSend()" title="Send">➤</button>
     </div>
   </div>
 </div>
@@ -1601,6 +1664,11 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.033m: CHAT REBUILT. Sticker tray is a bounded drawer
+//   above the composer with its own \u2715 (the old fixed-height panel pushed
+//   the input row \u2014 and the only close button \u2014 off screen). Segmented
+//   channel tabs, grouped bubbles with day pills, tap-your-own-message to
+//   delete, one-line composer that grows.
 // FEATURES ADDED v4.032m: INVITES for existing accounts — ?redeem= now offers
 //   "Join project" (one tap) when logged in as the invited person, or logs
 //   you in and joins automatically; "Create account" only for new people.
@@ -7564,9 +7632,7 @@ function _chatStyleTabs(){
   Object.keys(_CHAT_CHANNELS).forEach(function(ch){
     var b=document.getElementById('chat-tab-'+ch); if(!b) return;
     var on=(ch===_chatChannel);
-    b.style.background=on?'rgba(0,212,255,.16)':'var(--panel)';
-    b.style.borderColor=on?'var(--accent)':'var(--border)';
-    b.style.color=on?'var(--accent)':'var(--text)';
+    b.classList.toggle('on', on);    // v4.033m: styling lives in CSS now
   });
 }
 async function chatSwitch(ch){
@@ -7585,41 +7651,57 @@ async function chatSwitch(ch){
 function _chatRender(){
   var box=document.getElementById('chat-msgs'); if(!box) return;
   var me=_aliasNameM(window._riggerName||'');
-  if(!_chatMsgs.length){
-    box.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No messages yet. Say hi. 👋</div>';
+  var ob=_chatOutbox().filter(function(q){ return q.ch===_chatChannel; });
+  if(!_chatMsgs.length && !ob.length){
+    box.innerHTML='<div class="chat-empty">No messages yet.<br>Say hi. \ud83d\udc4b</div>';
+    _chatUpdateAudience();
     return;
   }
-  box.innerHTML=_chatMsgs.map(function(m){
-    var mine=_aliasNameM(m.by||'')===me && me;
+  // v4.033m: WhatsApp-style grouping — one name per run of messages from
+  // the same person within 5 minutes, and a pill for every new day.
+  var html='', lastDay='', lastBy='', lastT=0;
+  var dayLabel=function(iso){
+    var d=String(iso||'').slice(0,10); if(!d) return '';
+    var today=new Date().toISOString().slice(0,10);
+    if(d===today) return 'Today';
+    var y=new Date(Date.now()-86400000).toISOString().slice(0,10);
+    if(d===y) return 'Yesterday';
+    try{ return new Date(d+'T12:00').toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return d; }
+  };
+  _chatMsgs.forEach(function(m){
+    var mine=!!(me && _aliasNameM(m.by||'')===me);
+    var day=String(m.at||'').slice(0,10);
+    var ts=Date.parse(m.at||'')||0;
+    if(day && day!==lastDay){ html+='<div class="chat-day">'+dayLabel(m.at)+'</div>'; lastDay=day; lastBy=''; }
+    var first=!(lastBy && lastBy===(m.by||'') && (ts-lastT)<5*60000);
+    lastBy=(m.by||''); lastT=ts;
     var t=(m.at||'').slice(11,16);
-    return '<div style="position:relative;max-width:82%;align-self:'+(mine?'flex-end':'flex-start')+';'
-      +'background:'+(mine?'rgba(0,212,255,.16)':'var(--panel)')+';'
-      +'border:1px solid '+(mine?'var(--accent)':'var(--border)')+';'
-      +'border-radius:12px;padding:8px 12px">'
-      +(mine&&m.id?'<button onclick="chatDelete(\''+m.id+'\')" title="Delete message" style="position:absolute;top:-8px;left:-8px;background:var(--danger);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4)">✕</button>':'')
-      +(mine?'':'<div style="font-family:var(--cond);font-weight:700;font-size:11px;color:var(--accent)">'+(m.by||'?')+'</div>')
-      +(m.sticker
-        ?'<img src="'+_stkUrl(m.sticker)+'" alt="sticker" style="max-width:128px;max-height:128px;display:block;margin:2px 0" loading="lazy">'
-        :m.media
-        ?(m.media_type==='video'
-          ?'<video src="'+_chatMediaUrl(m.media)+'" controls playsinline preload="metadata" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:2px 0"></video>'
-          :'<div style="position:relative"><img src="'+_chatMediaUrl(m.media)+'" alt="photo" onclick="chatMediaView(\''+m.media+'\')" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:2px 0;cursor:pointer" loading="lazy">'
-            +'<button onclick="event.stopPropagation();chatPromoteToEval(\''+m.media+'\')" title="Save to project evaluation" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);border:1px solid var(--border);border-radius:6px;color:#ffd700;font-size:13px;padding:3px 7px;cursor:pointer">📌</button></div>')
-        :'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(m.text||'').replace(/</g,'&lt;')+'</div>')
-      +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px">'+t+'</div>'
+    var kind=m.sticker?' stk':(m.media?' media':'');
+    var body;
+    if(m.sticker){
+      body='<img class="stkimg" src="'+_stkUrl(m.sticker)+'" alt="sticker" loading="lazy">';
+    } else if(m.media){
+      body=(m.media_type==='video')
+        ?'<video src="'+_chatMediaUrl(m.media)+'" controls playsinline preload="metadata"></video>'
+        :'<div style="position:relative"><img class="photo" src="'+_chatMediaUrl(m.media)+'" alt="photo" onclick="event.stopPropagation();chatMediaView(\''+m.media+'\')" loading="lazy">'
+          +'<button onclick="event.stopPropagation();chatPromoteToEval(\''+m.media+'\')" title="Save to project evaluation" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);border:1px solid var(--border);border-radius:6px;color:#ffd700;font-size:13px;padding:3px 7px;cursor:pointer">\ud83d\udccc</button></div>';
+    } else {
+      body='<div>'+String(m.text||'').replace(/</g,'&lt;')+'</div>';
+    }
+    html+='<div class="chat-msg'+(mine?' mine':'')+(first?' first':'')+kind+'"'
+      +(mine&&m.id?' onclick="this.classList.toggle(\'sel\')" title="Tap to show delete"':'')+'>'
+      +(mine&&m.id?'<button class="del" onclick="event.stopPropagation();chatDelete(\''+m.id+'\')" title="Delete message">\u2715</button>':'')
+      +(!mine&&first&&!m.sticker?'<div class="who">'+String(m.by||'?').replace(/</g,'&lt;')+'</div>':'')
+      +body
+      +'<div class="when">'+t+'</div>'
       +'</div>';
-  }).join('');
-  // ⏳ Queued (offline) messages for this channel — optimistic, dimmed
-  var ob=_chatOutbox().filter(function(q){ return q.ch===_chatChannel; });
-  if(ob.length){
-    box.insertAdjacentHTML('beforeend', ob.map(function(q){
-      return '<div style="margin:6px 0;text-align:right;opacity:.55">'
-        +'<div style="display:inline-block;background:rgba(0,212,255,.10);border:1px dashed var(--accent);border-radius:10px;padding:6px 10px;max-width:82%;text-align:left">'
-        +'<div style="font-size:14px;line-height:1.4;word-break:break-word">'+String(q.text||'').replace(/</g,'&lt;')+'</div>'
-        +'<div style="font-family:var(--mono);font-size:9px;color:var(--warn);margin-top:2px">⏳ queued — sends when online</div>'
-        +'</div></div>';
-    }).join(''));
-  }
+  });
+  // \u23f3 Queued (offline) messages for this channel — optimistic, dimmed
+  ob.forEach(function(q){
+    html+='<div class="chat-msg mine first queued"><div>'+String(q.text||'').replace(/</g,'&lt;')+'</div>'
+      +'<div class="qnote">\u23f3 queued \u2014 sends when online</div></div>';
+  });
+  box.innerHTML=html;
   _chatScrollBottom(true);
   _chatUpdateAudience();
 }
@@ -7653,6 +7735,7 @@ function openSchedSheet(){
 }
 function closeChatSheet(){
   _chatOpen=false;
+  try{ _stkTogglePanel(false); }catch(e){}
   if(_chatPollTimer){ clearInterval(_chatPollTimer); _chatPollTimer=null; }
   _chatUnbindViewport();
   closeSheet('chat');
@@ -7681,7 +7764,7 @@ async function openChatSheet(){
 }
 function _chatInputGrow(el){
   el.style.height='auto';
-  el.style.height=Math.max(88,Math.min(el.scrollHeight,160))+'px';
+  el.style.height=Math.max(40,Math.min(el.scrollHeight,140))+'px';   // v4.033m: one line, grows as you type
 }
 async function chatDelete(id){
   if(!id) return;
@@ -7702,7 +7785,7 @@ async function chatSend(){
   var text=(inp.value||'').trim();
   if(!text) return;
   inp.value='';
-  inp.style.height='88px';
+  inp.style.height='40px';
   // v4.023m: no signal → outbox instead of a lost message
   if(navigator.onLine===false){
     _chatOutboxAdd(_chatChannel, text);
@@ -8288,8 +8371,7 @@ function _stkRenderGrid(){
   }
 
   g.innerHTML=list.map(function(st){
-    return '<button onclick="'+(_stkManage?'_stkDelete':'_stkSend')+'(\''+st.id+'\')" title="'+String(st.name||'').replace(/"/g,'')+'"'
-      +' style="background:'+(_stkManage?'rgba(255,77,77,.10)':'var(--panel)')+';border:1px solid '+(_stkManage?'var(--danger)':'var(--border)')+';border-radius:10px;padding:6px;cursor:pointer;position:relative">'
+    return '<button class="'+(_stkManage?'manage':'')+'" onclick="'+(_stkManage?'_stkDelete':'_stkSend')+'(\''+st.id+'\')" title="'+String(st.name||'').replace(/"/g,'')+'">'
       +'<img src="'+_stkUrl(st.id)+'" style="width:100%;aspect-ratio:1;object-fit:contain" loading="lazy">'
       +(_stkManage?'<span style="position:absolute;top:2px;right:5px;color:var(--danger);font-size:12px">\u2715</span>':'')
       +'</button>';
@@ -8304,14 +8386,26 @@ async function _stkRefresh(){
   await _stkLoad(); _stkRenderGrid();
 }
 
-async function _stkTogglePanel(){
+// v4.033m: the tray is a class-driven drawer ABOVE the composer, so the
+// composer (and this toggle) stays on screen no matter what. Before, the
+// panel had a fixed 48vh height inside an overflow:hidden column — on
+// most phones that pushed the input row off the bottom, and with it the
+// only button that could close the panel again.
+async function _stkTogglePanel(force){
   var p=document.getElementById('chat-stk-panel'); if(!p) return;
-  var show=p.style.display==='none';
-  p.style.display=show?'flex':'none';
+  var show=(typeof force==='boolean') ? force : !p.classList.contains('open');
+  if(show===p.classList.contains('open')) return;
+  p.classList.toggle('open', show);
+  var b=document.getElementById('chat-stk-btn'); if(b) b.classList.toggle('on', show);
   if(show){
+    try{ document.getElementById('chat-input').blur(); }catch(e){}   // keyboard away, tray in
     _stkRenderGrid();        // paint whatever we already have, no empty flash
+    _chatScrollBottom(false);
     await _stkLoad();        // then refresh from the worker every time
     _stkRenderGrid();
+  } else {
+    _stkManage=false;
+    var mb=document.getElementById('chat-stk-manage-btn'); if(mb) mb.textContent='\u{1F5D1} Manage';
   }
 }
 
@@ -8323,7 +8417,7 @@ function _stkToggleManage(){
 }
 
 async function _stkSend(id){
-  document.getElementById('chat-stk-panel').style.display='none';
+  _stkTogglePanel(false);
   try{
     var r=await fetch(_chatUrl(),{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -9680,8 +9774,7 @@ function _chatUpdateAudience(){
     var global=(_chatChannel!=='project');
     el.innerHTML='<span style="font-size:12px">'+(global?'\u{1F310}':'\u{1F465}')+'</span>'
       +'<span>'+_chatAudienceText(_chatChannel)+'</span>';
-    el.style.borderColor=global?'var(--warn)':'var(--border)';
-    el.style.color=global?'var(--warn)':'var(--muted)';
+    el.classList.toggle('global', global);
   }
   var inp=document.getElementById('chat-input');
   if(inp) inp.placeholder=(_chatChannel==='project')
