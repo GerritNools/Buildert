@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.034m</title>
+<title>WTU · Buildert v4.037m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -94,9 +94,20 @@ header{position:fixed;top:0;left:0;right:0;z-index:100;
 .id-smoke{color:var(--smoke);}
 .id-distro{color:var(--distro);}
 .id-psu{color:var(--psu);}
+/* v4.037m: the serial IS the app on the floor — it gets its OWN line on the
+   card, full width, XXL. (v4.035m made it 19px inside the top row; still not
+   enough — in the top row it competed with the ID and the buttons.) */
+.card-sn{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:1px;
+  color:var(--accent);padding:1px 12px 3px 14px;line-height:1.15;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
+  display:flex;align-items:baseline;gap:8px;}
+.card-sn .sn-lbl{font-size:10px;font-weight:400;letter-spacing:2px;color:var(--muted);flex-shrink:0;}
+.card-sn.serial-missing{color:var(--danger);font-size:15px;font-weight:400;letter-spacing:.5px;}
+body.big-touch .card-sn{font-size:30px !important;}
+/* legacy class kept for other views */
 .card-serial{font-family:var(--mono);font-size:15px;color:var(--accent);
   min-width:50px;text-align:right;flex-shrink:0;}
-.serial-missing{color:var(--danger);font-size:13px;}
+.serial-missing{color:var(--danger);}
 .badge{font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.7px;
   padding:1px 5px;border-radius:3px;flex-shrink:0;}
 .badge-laser{background:rgba(91,143,255,.2);color:var(--laser);}
@@ -749,7 +760,7 @@ body.big-touch .card-id{ font-size:24px; }
 body.big-touch .edit-btn,
 body.big-touch .card-top .edit-btn{ width:48px !important; height:48px !important; font-size:20px; }
 body.big-touch .card-top{ gap:12px; padding:14px 14px 7px 17px; }
-body.big-touch .card-serial{ font-size:14px !important; }
+body.big-touch .card-serial{ font-size:16px !important; }
 body.big-touch .hdr-ico{ padding:11px 9px; font-size:23px; }
 body.big-touch .cat-chip{ padding:12px 20px; font-size:16px; }
 body.big-touch .ntab{ font-size:13px; }
@@ -1694,6 +1705,19 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.037m: serial gets its OWN XXL line on every list card
+//   (26px, 30px in big-touch; "no serial — tap to add" in red when missing).
+//   Tutorial gained an "add to home screen" step (iOS Safari / Android
+//   Chrome instructions, all three languages).
+// FEATURES ADDED v4.036m: contact can be tied to a STAGE (stage manager of
+//   the club stage, LD of mainstage …). Optional pick when adding/editing;
+//   Info list shows project-wide people first, then per-stage groups.
+// FEATURES ADDED v4.035m: serials in List view are BIG (19px bold, 22px in
+//   big-touch) — they are the most important field on the floor. Project
+//   switch now also resets the in-memory collections (sign-offs, todos,
+//   shared pack, evaluation, schedule, contacts, logs): only localStorage
+//   was cleared before, so the first push carried the previous show's
+//   pack sign-offs into the new project.
 // FEATURES ADDED v4.034m: INFO TAB replaces Docs. ℹ️ Info = project meta +
 //   "who is who" contacts (quick-add role chips: Client, Designer, Producer,
 //   Stage Manager, LD, Barchick, …; tap to edit, tel: link to call) + the
@@ -1858,9 +1882,13 @@ function renderCards(){
       +    '</div>'
       +    '<div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'+(d.status==='Online'||d.status==='Mounted'?'var(--ok)':d.status==='GoAndCheck'||d.status==='Swap'?'var(--warn)':d.status==='Offline'||d.status==='Swapped'?'var(--danger)':'var(--muted)')+'">'+( d.status||'Concept')+(d.location?' · 📍'+d.location:'')+'</div>'
       +  '</div>'
-      +  '<div class="card-serial'+(hasSerial?'':' serial-missing')+'" style="font-size:10px;flex-shrink:0">'+(hasSerial?d.serial:'-')+'</div>'
       +  '<button class="edit-btn" style="width:26px;height:26px;flex-shrink:0" onclick="event.stopPropagation();openSpecSheet('+gi+')" title="Specs">📋</button>'
       +  '<button class="edit-btn" style="width:26px;height:26px;flex-shrink:0" onclick="event.stopPropagation();openEdit('+gi+')" title="Edit">✏</button>'
+      +'</div>'
+      // v4.037m: the serial on its own XXL line — readable at arm's length,
+      // ladder included. Tap = edit (that's where you assign one).
+      +'<div class="card-sn'+(hasSerial?'':' serial-missing')+'" onclick="openEdit('+gi+')">'
+      +  (hasSerial?'<span class="sn-lbl">SN</span>'+d.serial:'⊘ no serial — tap to add')
       +'</div>'
       // Cable/source — only in expanded view
       +(expanded ? (function(){
@@ -5620,7 +5648,18 @@ function _maPickProject(pid){
   try{ if(typeof _mStages!=='undefined') _mStages=[]; }catch(e){}
   try{ if(typeof project!=='undefined' && project) { project.name=''; } }catch(e){}
   try{ if(typeof window._projectLog!=='undefined') window._projectLog=[]; }catch(e){}
-  try{ if(typeof todos!=='undefined') todos=[]; }catch(e){}
+  // v4.035m: clearing localStorage was only half the job — these live in
+  // MEMORY too, and the first push after a switch sent the previous show's
+  // sign-offs (and friends) straight into the new project. (The old line
+  // reset a variable called `todos`, which doesn't exist on mobile.)
+  try{ _mTodos=[]; window._mTodosDeleted=[]; }catch(e){}
+  try{ window._packSignoffs=[]; window._packSignoffsDeleted=[]; }catch(e){}
+  try{ _packShared={toolcase:[],office:[],spares:[]}; }catch(e){}
+  try{ _packSpares=[]; }catch(e){}
+  try{ window._mEvaluation=[]; window._mEvaluationDeleted=[]; }catch(e){}
+  try{ window._mSchedule=[]; }catch(e){}
+  try{ window._remoteLog=[]; window._activityLog=[]; }catch(e){}
+  try{ _mContacts=[]; _mContactsDeleted=[]; }catch(e){}
   if(typeof _projectVersion!=='undefined') _projectVersion=0;
   if(typeof _projectBaseVersion!=='undefined') _projectBaseVersion=0;
   if(typeof wStartPolling==='function') wStartPolling();
@@ -8417,7 +8456,8 @@ function _piRender(){
   // ── Who is who ──
   h+='<div class="pi-sec">👥 Who is who</div><div class="pi-card">';
   if(_mContacts.length){
-    h+=_mContacts.map(function(c){
+    // v4.036m: project-wide people first, then grouped per stage.
+    var row=function(c){
       var tel=String(c.phone||'').replace(/[^+0-9]/g,'');
       return '<div class="pi-contact" onclick="_piEdit(\''+_piEsc(c.id)+'\')">'
         +'<span class="pi-role">'+_piEsc(c.role||'—')+'</span>'
@@ -8426,7 +8466,17 @@ function _piRender(){
         +'</span>'
         +(tel?'<a class="pi-call" href="tel:'+tel+'" onclick="event.stopPropagation()" title="Call">📞</a>':'')
         +'</div>';
-    }).join('');
+    };
+    var general=_mContacts.filter(function(c){ return !c.stage; });
+    var byStage={};
+    _mContacts.filter(function(c){ return c.stage; }).forEach(function(c){
+      (byStage[c.stage]=byStage[c.stage]||[]).push(c);
+    });
+    h+=general.map(row).join('');
+    Object.keys(byStage).forEach(function(st){
+      h+='<div style="font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);padding:9px 2px 2px'+(general.length?';border-top:1px solid var(--border2);margin-top:4px':'')+'">🎪 '+_piEsc(st)+'</div>';
+      h+=byStage[st].map(row).join('');
+    });
   } else {
     h+='<div class="pi-empty">No names yet. Met someone? Tap their role below and add the name — future-you will thank you.</div>';
   }
@@ -8453,13 +8503,30 @@ function _piRender(){
 
   el.innerHTML=h;
 }
+// v4.036m: a contact can belong to ONE stage (stage manager of the club
+// stage, LD of mainstage, …) or to the whole project. Stored as the stage
+// NAME so it stays readable on every device, whatever the stage ids do.
+function _piPickStage(current){
+  var names=(_mStages||[]).map(function(st){ return st.name||''; }).filter(Boolean);
+  if(names.length<2) return current||'';   // one stage → nothing to pick
+  var msg='Stage? (empty = whole project)\n'+names.map(function(n,i){ return (i+1)+' '+n; }).join('\n');
+  var a=prompt(msg, current||'');
+  if(a==null) return (current===undefined?'':current);   // cancel keeps what was there
+  a=a.trim();
+  if(!a) return '';
+  var n=parseInt(a,10);
+  if(n>=1 && n<=names.length) return names[n-1];
+  var hit=names.find(function(x){ return x.toLowerCase()===a.toLowerCase(); });
+  return hit||a;   // free text allowed — e.g. a stage that isn't built yet
+}
 function _piAdd(role){
   if(!role){ role=prompt('Role (e.g. Rigger local, Caterer):')||''; role=role.trim(); if(!role) return; }
   var name=prompt(role+' — name:'); if(name==null) return;
   name=name.trim(); if(!name) return;
   var phone=prompt('Phone (optional):')||'';
+  var stage=_piPickStage('');
   var c={ id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-          role:role, name:name, phone:phone.trim(), note:'',
+          role:role, name:name, phone:phone.trim(), note:'', stage:stage||'',
           by:_aliasNameM(window._riggerName||'')||'mobile', _ts:new Date().toISOString() };
   _mContacts.push(c); _mContactsSave(); _piRender();
   try{ _logActivity('Contact added: '+role+' '+name); }catch(e){}
@@ -8478,7 +8545,8 @@ function _piEdit(id){
     _mContactsSave(); _piRender(); autoSave(); return;
   }
   var phone=prompt('Phone (optional):', c.phone||''); if(phone==null) phone=c.phone||'';
-  c.name=name; c.phone=phone.trim(); c._ts=new Date().toISOString();
+  var stage=_piPickStage(c.stage||'');
+  c.name=name; c.phone=phone.trim(); c.stage=stage||''; c._ts=new Date().toISOString();
   _mContactsSave(); _piRender(); autoSave();
 }
 
@@ -10528,6 +10596,18 @@ function packPrint(){
       b:{nl:'<b>Pack</b> is de paklijst inclusief kabels en reserve, <b>Todos</b> zijn de losse taken en onder <b>Info</b> vind je de plattegronden, pdf&rsquo;s en wie-is-wie van dit project.',
          en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Info</b> holds the floor plans, PDFs and who-is-who of this project.',
          pl:'<b>Pack</b> to lista pakowania z kablami i zapasem, <b>Todos</b> to zadania, a w <b>Info</b> są plany, pliki PDF i kto-jest-kim tego projektu.'} },
+
+    { center:true,
+      t:{nl:'Op je beginscherm', en:'On your home screen', pl:'Na ekranie głównym'},
+      b:{nl:'Zet Buildert op je <b>beginscherm</b>, dan opent hij als app &mdash; volledig scherm, altijd &eacute;&eacute;n tik weg, en je project blijft gewoon staan.<br><br>'
+          +'<b>iPhone / iPad (Safari):</b> tik op <b>Deel</b> (het vierkantje met de pijl omhoog) en kies <b>&ldquo;Zet op beginscherm&rdquo;</b>.<br>'
+          +'<b>Android (Chrome):</b> tik op <b>&#8942;</b> rechtsboven en kies <b>&ldquo;App installeren&rdquo;</b> of <b>&ldquo;Toevoegen aan startscherm&rdquo;</b>.',
+         en:'Put Buildert on your <b>home screen</b> and it opens like an app &mdash; full screen, one tap away, and your project stays connected.<br><br>'
+          +'<b>iPhone / iPad (Safari):</b> tap <b>Share</b> (the square with the arrow) and pick <b>&ldquo;Add to Home Screen&rdquo;</b>.<br>'
+          +'<b>Android (Chrome):</b> tap <b>&#8942;</b> top right and pick <b>&ldquo;Install app&rdquo;</b> or <b>&ldquo;Add to Home screen&rdquo;</b>.',
+         pl:'Dodaj Buildert do <b>ekranu głównego</b> &mdash; otwiera się jak aplikacja, na pełnym ekranie, zawsze jedno dotknięcie, a projekt zostaje połączony.<br><br>'
+          +'<b>iPhone / iPad (Safari):</b> dotknij <b>Udostępnij</b> (kwadrat ze strzałką) i wybierz <b>&bdquo;Do ekranu początkowego&rdquo;</b>.<br>'
+          +'<b>Android (Chrome):</b> dotknij <b>&#8942;</b> w prawym górnym rogu i wybierz <b>&bdquo;Zainstaluj aplikację&rdquo;</b> albo <b>&bdquo;Dodaj do ekranu głównego&rdquo;</b>.'} },
 
     { center:true, last:true,
       t:{nl:'Klaar', en:'All set', pl:'Gotowe'},
