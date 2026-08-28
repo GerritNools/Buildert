@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.033m</title>
+<title>WTU · Buildert v4.034m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -285,6 +285,30 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
   margin-bottom:12px;-webkit-appearance:none;}
 .sheet-body input:focus,.sheet-body select:focus{border-color:var(--accent);}
 .sheet-body textarea{resize:vertical;font-family:var(--sans);min-height:58px;}
+/* ── Project info (v4.034m) ── */
+.pi-sec{font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--accent);margin:16px 0 8px;display:flex;align-items:center;gap:8px;}
+.pi-sec:first-child{margin-top:2px;}
+.pi-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+.pi-meta{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;}
+.pi-meta b{font-family:var(--cond);font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;font-size:11px;padding-top:2px;}
+.pi-contact{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border2);}
+.pi-contact:last-child{border-bottom:none;}
+.pi-role{flex-shrink:0;min-width:86px;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;
+  text-transform:uppercase;color:#ffd700;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.4);
+  border-radius:7px;padding:4px 8px;text-align:center;}
+.pi-name{flex:1;min-width:0;font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;}
+.pi-name small{display:block;font-weight:400;font-size:11px;color:var(--muted);font-family:var(--mono);}
+.pi-call{flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);
+  font-size:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;}
+.pi-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px;}
+.pi-chip{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px;
+  padding:7px 13px;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.5px;cursor:pointer;}
+.pi-chip:active{border-color:var(--accent);color:var(--accent);}
+.pi-doc{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border2);}
+.pi-doc:last-child{border-bottom:none;}
+.pi-empty{color:var(--muted);font-size:12.5px;padding:6px 2px;line-height:1.5;}
+
 /* ── Chat (v4.033m) ──────────────────────────────────────────────
    Column layout the composer can never fall out of: header + tabs are
    fixed, the thread takes what is left (min-height:0 so it may shrink to
@@ -1026,6 +1050,12 @@ body.big-touch #chat-input{min-height:80px !important;}
   <div class="sheet-title">📅 Day schedule</div>
   <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
 </div>
+<div class="ovl" id="ovl-pinfo" onclick="closeSheet('pinfo')"></div>
+<div class="sheet" id="sheet-pinfo" style="height:min(90dvh,90vh);max-height:none">
+  <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
+  <div class="sheet-title">ℹ️ Project info</div>
+  <div class="sheet-body" id="pinfo-body" style="max-height:none"></div>
+</div>
 <div class="sheet" id="sheet-chat">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
@@ -1664,6 +1694,11 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.034m: INFO TAB replaces Docs. ℹ️ Info = project meta +
+//   "who is who" contacts (quick-add role chips: Client, Designer, Producer,
+//   Stage Manager, LD, Barchick, …; tap to edit, tel: link to call) + the
+//   planner's docs, all stages together. Contacts sync both ways
+//   (worker v4.31 contacts/contacts_deleted; desktop v4.124 editor).
 // FEATURES ADDED v4.033m: CHAT REBUILT. Sticker tray is a bounded drawer
 //   above the composer with its own \u2715 (the old fixed-height panel pushed
 //   the input row \u2014 and the only close button \u2014 off screen). Segmented
@@ -1713,7 +1748,7 @@ var TABS=[
   {k:'pack',    icon:'📦', label:'Pack'},
   // {k:'specs', icon:'📋', label:'Specs'},   // moved to top-right header v3.976m — see DEV BACKLOG
   {k:'todos',   icon:'✅', label:'Todos'},
-  {k:'docs',    icon:'📄', label:'Docs'},
+  {k:'info',    icon:'ℹ️', label:'Info'},   // v4.034m: Docs lives inside Info now
 ];
 function buildNav(){
   document.getElementById('bottom-nav').innerHTML=TABS.map(function(t){
@@ -1731,6 +1766,7 @@ function setTab(tab){
   // Special tabs that don't change the main view
   if(tab==='scan'){ openScan(); return; }
   if(tab==='docs'){ currentTab=_prevTab||'list'; _openDocsSheet(_mCurrentStageIdx); return; }
+  if(tab==='info'){ currentTab=_prevTab||'list'; openInfoSheet(); return; }
 
   // diagram-wrap holds BOTH the node canvas and the diagram map
   var dw  = document.getElementById('diagram-wrap');
@@ -3532,6 +3568,7 @@ function _mergeProjectNoConflictImpl(data){
   }
   // Apply stage permissions from server shares list (no URL needed after first load)
   if(Array.isArray(data.schedule)){ window._mSchedule = data.schedule; if(typeof _nextUpTick==='function') setTimeout(_nextUpTick,200); }
+  try{ _mContactsAbsorb(data); }catch(e){}   // v4.034m: who-is-who list
   if(_maIsAccountMember() && Array.isArray(data.shares)){
     window._mShares=data.shares;
     Object.keys(_mStagePerms).forEach(function(k){delete _mStagePerms[k];});
@@ -3591,6 +3628,7 @@ function _mergeProjectNoConflictImpl(data){
 
 function _mergeSmartFromFile(data){
   console.log('[SYNC] _mergeSmartFromFile v3.962m running');
+  try{ _mContactsAbsorb(data); }catch(e){}   // v4.034m: who-is-who list
   // SAFETY NET: same snapshot/restore as _mergeProjectNoConflict
   var _preMergeChecks2 = {};
   try {
@@ -4567,6 +4605,8 @@ async function wPush(silent){
     pack_signoffs_deleted:window._packSignoffsDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
     todos_deleted:window._mTodosDeleted||[],
+    contacts:(_mContactsLoad(),_mContacts),                    // v4.034m: who-is-who
+    contacts_deleted:_mContactsDeleted.slice(-200),
     _log:combinedLog,
   };
   _projectVersion++;_projectBaseVersion=_projectVersion;
@@ -4833,6 +4873,8 @@ async function _dbxPush(silent){
     evaluation_deleted: window._mEvaluationDeleted||[],
     todos:_mTodos.filter(function(t){return !t.auto;}),
     todos_deleted:window._mTodosDeleted||[],
+    contacts:(_mContactsLoad(),_mContacts),                    // v4.034m: who-is-who
+    contacts_deleted:_mContactsDeleted.slice(-200),
     _log:combinedLog,
   };
   _projectVersion++;
@@ -8316,6 +8358,130 @@ async function chatPromoteToEval(mediaId){
   }catch(e){ showToast('Could not save — offline?','danger'); }
 }
 
+// ── Project info: contacts ("who is who") + docs + meta (v4.034m) ────
+// Contacts are a synced project collection: [{id,role,name,phone,note,by,_ts}].
+// Same lifecycle as todos — kept per project in localStorage, unioned by id
+// on pull (newest _ts wins), deletions travel as contacts_deleted tombstones
+// so the worker (v4.31+) and desktop (v4.124+) never resurrect them.
+var _mContacts=[], _mContactsDeleted=[];
+function _mContactsKey(){ return 'buildert_contacts_'+_mobGetProjectId(); }
+function _mContactsLoad(){
+  try{ var s=localStorage.getItem(_mContactsKey());
+       if(s){ var o=JSON.parse(s); _mContacts=o.list||[]; _mContactsDeleted=o.deleted||[]; } }catch(e){}
+}
+function _mContactsSave(){
+  try{ localStorage.setItem(_mContactsKey(),
+       JSON.stringify({list:_mContacts,deleted:_mContactsDeleted.slice(-200)})); }catch(e){}
+}
+function _mContactsAbsorb(data){
+  // Merge remote into local: union by id, newest _ts wins, honour tombstones.
+  if(!data) return;
+  _mContactsLoad();
+  (data.contacts_deleted||[]).forEach(function(id){
+    if(id && _mContactsDeleted.indexOf(id)<0) _mContactsDeleted.push(id);
+  });
+  var del={}; _mContactsDeleted.forEach(function(id){ del[id]=1; });
+  var map={};
+  _mContacts.forEach(function(c){ if(c&&c.id&&!del[c.id]) map[c.id]=c; });
+  (Array.isArray(data.contacts)?data.contacts:[]).forEach(function(c){
+    if(!c||!c.id||del[c.id]) return;
+    var prev=map[c.id];
+    if(!prev || String(c._ts||'')>=String(prev._ts||'')) map[c.id]=c;
+  });
+  _mContacts=Object.keys(map).map(function(k){return map[k];})
+    .sort(function(a,b){ return String(a._ts||'').localeCompare(String(b._ts||'')); });
+  _mContactsSave();
+}
+
+// The roles you meet on the floor — quick-add chips, free text always possible.
+var _PI_ROLES=['Client','Designer','Producer','Production','Stage Manager','LD','Light tech','Sound tech','Video','Barchick','Local crew','Venue tech'];
+
+function openInfoSheet(){
+  _mContactsLoad();
+  _piRender();
+  openSheet('pinfo');
+}
+function _piEsc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function _piRender(){
+  var el=document.getElementById('pinfo-body'); if(!el) return;
+  var h='';
+
+  // ── Project meta (desktop is the editor; shown read-only here) ──
+  var pm=(typeof project==='object'&&project)||{};
+  h+='<div class="pi-sec">📋 Project</div><div class="pi-card"><div class="pi-meta">';
+  h+='<b>Name</b><span>'+_piEsc(pm.name||_mobGetProjectId())+'</span>';
+  if(pm.venue) h+='<b>Venue</b><span>'+_piEsc(pm.venue)+'</span>';
+  if(pm.date)  h+='<b>Date</b><span>'+_piEsc(pm.date)+'</span>';
+  h+='</div></div>';
+
+  // ── Who is who ──
+  h+='<div class="pi-sec">👥 Who is who</div><div class="pi-card">';
+  if(_mContacts.length){
+    h+=_mContacts.map(function(c){
+      var tel=String(c.phone||'').replace(/[^+0-9]/g,'');
+      return '<div class="pi-contact" onclick="_piEdit(\''+_piEsc(c.id)+'\')">'
+        +'<span class="pi-role">'+_piEsc(c.role||'—')+'</span>'
+        +'<span class="pi-name">'+_piEsc(c.name||'?')
+        +((c.phone||c.note)?'<small>'+_piEsc([c.phone,c.note].filter(Boolean).join(' · '))+'</small>':'')
+        +'</span>'
+        +(tel?'<a class="pi-call" href="tel:'+tel+'" onclick="event.stopPropagation()" title="Call">📞</a>':'')
+        +'</div>';
+    }).join('');
+  } else {
+    h+='<div class="pi-empty">No names yet. Met someone? Tap their role below and add the name — future-you will thank you.</div>';
+  }
+  h+='</div>';
+  h+='<div class="pi-chips">'
+    +_PI_ROLES.map(function(r){ return '<button class="pi-chip" onclick="_piAdd(\''+r+'\')">＋ '+r+'</button>'; }).join('')
+    +'<button class="pi-chip" onclick="_piAdd(\'\')" style="border-style:dashed">＋ Other…</button>'
+    +'</div>';
+
+  // ── Docs (planner-curated, read-only on mobile) ──
+  h+='<div class="pi-sec">📄 Docs</div><div class="pi-card">';
+  var any=false;
+  (_mStages||[]).forEach(function(st){
+    (st.docs||[]).forEach(function(doc){
+      any=true;
+      h+='<div class="pi-doc"><span style="flex:1;font-weight:600;font-size:13.5px">'+_piEsc(doc.label||'Document')
+        +'<small style="display:block;font-weight:400;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_piEsc(st.name||'')+'</small></span>'
+        +'<button data-url="'+_piEsc(doc.url)+'" data-lbl="'+_piEsc(doc.label||'Document')+'" onclick="closeSheet(\'pinfo\');_pdfOpen(this.dataset.url,this.dataset.lbl)" '
+        +'style="background:var(--accent);border:none;color:#000;padding:7px 15px;border-radius:7px;font-weight:700;font-size:12px">Open</button></div>';
+    });
+  });
+  if(!any) h+='<div class="pi-empty">No documents yet — the planner adds floor plans and PDFs from the desktop.</div>';
+  h+='</div>';
+
+  el.innerHTML=h;
+}
+function _piAdd(role){
+  if(!role){ role=prompt('Role (e.g. Rigger local, Caterer):')||''; role=role.trim(); if(!role) return; }
+  var name=prompt(role+' — name:'); if(name==null) return;
+  name=name.trim(); if(!name) return;
+  var phone=prompt('Phone (optional):')||'';
+  var c={ id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+          role:role, name:name, phone:phone.trim(), note:'',
+          by:_aliasNameM(window._riggerName||'')||'mobile', _ts:new Date().toISOString() };
+  _mContacts.push(c); _mContactsSave(); _piRender();
+  try{ _logActivity('Contact added: '+role+' '+name); }catch(e){}
+  autoSave();
+  showToast('Saved: '+role+' — '+name,'ok');
+}
+function _piEdit(id){
+  var c=_mContacts.find(function(x){return x.id===id;}); if(!c) return;
+  var name=prompt(c.role+' — name (empty = delete):', c.name||'');
+  if(name==null) return;
+  name=name.trim();
+  if(!name){
+    if(!confirm('Remove '+(c.name||'this contact')+'?')) return;
+    _mContacts=_mContacts.filter(function(x){return x.id!==id;});
+    if(_mContactsDeleted.indexOf(id)<0) _mContactsDeleted.push(id);
+    _mContactsSave(); _piRender(); autoSave(); return;
+  }
+  var phone=prompt('Phone (optional):', c.phone||''); if(phone==null) phone=c.phone||'';
+  c.name=name; c.phone=phone.trim(); c._ts=new Date().toISOString();
+  _mContactsSave(); _piRender(); autoSave();
+}
+
 // ── Stickers — global library on the worker (/stickers) ──────────────
 var _stkList=null, _stkManage=false, _stkErr='', _stkQuery='';
 
@@ -10359,9 +10525,9 @@ function packPrint(){
 
     { sel:'#bottom-nav', before:function(){ tab('list'); },
       t:{nl:'De balk onderin', en:'The bottom bar', pl:'Pasek na dole'},
-      b:{nl:'<b>Pack</b> is de paklijst inclusief kabels en reserve, <b>Todos</b> zijn de losse taken en onder <b>Docs</b> staan de plattegronden en pdf&rsquo;s van deze stage.',
-         en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Docs</b> holds the floor plans and PDFs for this stage.',
-         pl:'<b>Pack</b> to lista pakowania z kablami i zapasem, <b>Todos</b> to zadania, a w <b>Docs</b> są plany i pliki PDF tej sceny.'} },
+      b:{nl:'<b>Pack</b> is de paklijst inclusief kabels en reserve, <b>Todos</b> zijn de losse taken en onder <b>Info</b> vind je de plattegronden, pdf&rsquo;s en wie-is-wie van dit project.',
+         en:'<b>Pack</b> is the packing list, cables and spares included, <b>Todos</b> are the loose tasks, and <b>Info</b> holds the floor plans, PDFs and who-is-who of this project.',
+         pl:'<b>Pack</b> to lista pakowania z kablami i zapasem, <b>Todos</b> to zadania, a w <b>Info</b> są plany, pliki PDF i kto-jest-kim tego projektu.'} },
 
     { center:true, last:true,
       t:{nl:'Klaar', en:'All set', pl:'Gotowe'},
