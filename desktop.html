@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.123</title>
+<title>WTUniverse · Buildert Editor v4.124</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.123</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.124</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -533,7 +533,7 @@
     <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
   </div>
   <button id="quicksave-btn" onclick="fileQuickSave()" title="Save to browser (Cmd+S)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>  <button onclick="fileDownload()" title="Download .buildert file" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#8681; DL</button>
-  <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
+  <button onclick="document.getElementById('modal-project').classList.add('open');try{_pcRender()}catch(e){}" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
@@ -3836,6 +3836,17 @@ var qrcode = function() {
       &nbsp;·&nbsp; Last saved by: <span id="modal-savedby-display" style="color:var(--muted)">—</span>
     </div>
 
+    <div class="modal-section">Who is who <span style="font-weight:400;color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">— contacts, synced to every rigger's ℹ️ Info tab</span></div>
+    <div id="proj-contacts" style="margin-bottom:6px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <select id="pc-role" style="flex:0 0 150px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
+      <input id="pc-name" type="text" placeholder="Name" style="flex:1;margin-bottom:0"
+             onkeydown="if(event.key==='Enter')_pcAdd()">
+      <input id="pc-phone" type="text" placeholder="Phone (opt.)" style="flex:0 0 130px;margin-bottom:0;font-family:var(--mono);font-size:12px"
+             onkeydown="if(event.key==='Enter')_pcAdd()">
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="_pcAdd()">＋ Add</button>
+    </div>
+
     <div class="modal-section">Sync (Cloudflare Worker)</div>
     <label>Worker URL <span style="color:var(--muted);font-size:10px">— from Cloudflare dashboard</span></label>
     <!-- v4.123: this tag was malformed (the legacy token field had been pasted INSIDE
@@ -6632,6 +6643,8 @@ function _injectProjectIntoMobile(html) {
     evaluation_deleted: window._evaluationDeleted || [],
     rigger_aliases: window._riggerAliases || {},
     rigger_aliases_removed: window._riggerAliasesRemoved || [],
+    contacts: window._contacts||[],                     // v4.124: who-is-who
+    contacts_deleted: (window._contactsDeleted||[]).slice(-200),
   };
 
   // Strip any old preload block
@@ -6668,6 +6681,69 @@ var _projectVersion    = 0;   // current local version
 var _projectBaseVersion= 0;   // version when we last loaded from file
 var _projectMeta = {name:'', venue:'', date:'', anbernic_ip:''};
 
+// ── Who is who (v4.124): project contacts, synced with phones ────────
+// [{id, role, name, phone, note, by, _ts}] + tombstone id list. Union by id
+// on load (newest _ts wins) — worker v4.31 merges the same way, so desktop
+// and any number of phones can add names without stepping on each other.
+var _pcRoles=['Client','Designer','Producer','Production','Stage Manager','LD','Light tech','Sound tech','Video','Barchick','Local crew','Venue tech','Other…'];
+window._contacts=window._contacts||[];
+window._contactsDeleted=window._contactsDeleted||[];
+function _pcAbsorb(data){
+  if(!data) return;
+  (data.contacts_deleted||[]).forEach(function(id){
+    if(id && window._contactsDeleted.indexOf(id)<0) window._contactsDeleted.push(id);
+  });
+  var del={}; window._contactsDeleted.forEach(function(id){ del[id]=1; });
+  var map={};
+  (window._contacts||[]).forEach(function(c){ if(c&&c.id&&!del[c.id]) map[c.id]=c; });
+  (Array.isArray(data.contacts)?data.contacts:[]).forEach(function(c){
+    if(!c||!c.id||del[c.id]) return;
+    var prev=map[c.id];
+    if(!prev || String(c._ts||'')>=String(prev._ts||'')) map[c.id]=c;
+  });
+  window._contacts=Object.keys(map).map(function(k){return map[k];})
+    .sort(function(a,b){ return String(a._ts||'').localeCompare(String(b._ts||'')); });
+  _pcRender();
+}
+function _pcRender(){
+  var el=document.getElementById('proj-contacts');
+  var sel=document.getElementById('pc-role');
+  if(sel && !sel.options.length) sel.innerHTML=_pcRoles.map(function(r){return '<option>'+r+'</option>';}).join('');
+  if(!el) return;
+  var list=window._contacts||[];
+  if(!list.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:2px 0 4px">No names yet. Client, designer, producer — add what you already know; riggers add the rest on the floor.</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(c){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:12px">'
+      +'<span style="flex:0 0 120px;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#ffd700">'+_escHtml(c.role||'—')+'</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis"><b>'+_escHtml(c.name||'?')+'</b>'
+      +(c.phone?' <span style="font-family:var(--mono);color:var(--muted)">'+_escHtml(c.phone)+'</span>':'')
+      +'</span>'
+      +(c.by&&c.by!=='desktop'?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted)" title="Added on the floor">+'+_escHtml(c.by)+'</span>':'')
+      +'<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--danger)" onclick="_pcRemove(\''+c.id+'\')">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function _pcAdd(){
+  var role=(document.getElementById('pc-role')||{}).value||'';
+  var nm=document.getElementById('pc-name'), ph=document.getElementById('pc-phone');
+  var name=(nm&&nm.value||'').trim(); if(!name){ if(nm)nm.focus(); return; }
+  if(role==='Other…'){ role=prompt('Role:')||''; role=role.trim(); if(!role) return; }
+  window._contacts.push({ id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    role:role, name:name, phone:(ph&&ph.value||'').trim(), note:'', by:'desktop', _ts:new Date().toISOString() });
+  if(nm)nm.value=''; if(ph)ph.value='';
+  _pcRender(); autoSave();
+  if(typeof wPush==='function') wPush(true);
+}
+function _pcRemove(id){
+  window._contacts=(window._contacts||[]).filter(function(c){return c.id!==id;});
+  if(window._contactsDeleted.indexOf(id)<0) window._contactsDeleted.push(id);
+  _pcRender(); autoSave();
+  if(typeof wPush==='function') wPush(true);
+}
+
 function _buildProjectPayload() {
   return {
     _format:   'wtu-project',
@@ -6691,6 +6767,8 @@ function _buildProjectPayload() {
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:  window._todosDeleted||[],
+    contacts:          window._contacts||[],            // v4.124: who-is-who
+    contacts_deleted:  (window._contactsDeleted||[]).slice(-200),
     _log:           window._projectLog || [],
   };
 }
@@ -7143,6 +7221,7 @@ function _mergeProjectNoConflict(data) {
     data.todos_deleted.forEach(function(id){ if(id&&window._todosDeleted.indexOf(id)<0) window._todosDeleted.push(id); });
   }
   if(Array.isArray(data.schedule)) { _schedule = data.schedule; if(currentTab==='schedule') renderSchedulePanel(); }
+  try{ _pcAbsorb(data); }catch(e){}   // v4.124: who-is-who contacts
   if(Array.isArray(data.schedulePrev)) _schedulePrev = data.schedulePrev;
   if(Array.isArray(data.todos) && data.todos.length){
     if(!_todos) _todos=[];
@@ -15073,6 +15152,7 @@ async function _pwzCreate(){
   // v4.121: a NEW project starts truly empty — todos, pack sign-offs, pack
   // lists and schedule from the previous project must never leak in.
   _todos=[];
+  window._contacts=[]; window._contactsDeleted=[];   // v4.124: contacts are per-project too
   window._packSignoffs=[]; window._packSignoffsDeleted=null;
   try{ localStorage.removeItem('brt_packsigns_desktop'); }catch(e){}
   _packSpares=[]; _packShared={toolcase:[],controller:[],office:[],spares:[]};
@@ -17215,6 +17295,7 @@ async function pmOpenProject(pid){
   // up in brand-new shows). The pull re-populates every one of these from
   // the incoming project.
   _todos=[];
+  window._contacts=[]; window._contactsDeleted=[];   // v4.124: contacts are per-project too
   window._packSignoffs=[]; window._packSignoffsDeleted=null;
   try{ localStorage.removeItem('brt_packsigns_desktop'); }catch(e){}
   _packSpares=[]; _packShared={toolcase:[],controller:[],office:[],spares:[]};
