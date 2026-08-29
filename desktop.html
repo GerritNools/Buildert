@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.133</title>
+<title>WTUniverse · Buildert Editor v4.134</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.133</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.134</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -8288,6 +8288,10 @@ async function _dbxPush(silent){
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:  window._todosDeleted||[],
+    contacts:          window._contacts||[],            // v4.134: was missing here —
+    contacts_deleted:  (window._contactsDeleted||[]).slice(-200),   // desktop→mobile never arrived
+    info_pins:         window._infoPins||[],
+    info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
     _log:           window._projectLog || [],
     _node_positions: JSON.parse(_npRaw),
     _diag_positions: JSON.parse(_dpRaw),
@@ -18320,6 +18324,10 @@ async function _wPushImpl(silent){
     pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:window._todosDeleted||[],
+    contacts:window._contacts||[],                      // v4.134: was missing here —
+    contacts_deleted:(window._contactsDeleted||[]).slice(-200),     // desktop→mobile never arrived
+    info_pins:window._infoPins||[],
+    info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
@@ -19090,6 +19098,10 @@ function wPushLayout(){
     pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:window._todosDeleted||[],
+    contacts:window._contacts||[],                      // v4.134: was missing here —
+    contacts_deleted:(window._contactsDeleted||[]).slice(-200),     // desktop→mobile never arrived
+    info_pins:window._infoPins||[],
+    info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
@@ -19183,6 +19195,10 @@ function _buildFilePayload(){
     pack_shared:_packShared, pack_signoffs:(window._packSignoffs||[]), pack_signoffs_deleted:(window._packSignoffsDeleted||[]),
     todos:(_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:window._todosDeleted||[],
+    contacts:window._contacts||[],                      // v4.134: was missing here —
+    contacts_deleted:(window._contactsDeleted||[]).slice(-200),     // desktop→mobile never arrived
+    info_pins:window._infoPins||[],
+    info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
