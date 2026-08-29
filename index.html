@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.045m</title>
+<title>WTU · Buildert v4.046m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -6982,6 +6982,27 @@ function _mTodosDedupe(){
     _mTodosSave(); autoSave();
   }
 }
+// v4.046m: one-time recovery — drop LOCAL todo tombstones younger than 48h
+// (the over-eager v4.34 dedupe stamped these; without this purge a phone
+// that still HAS the todos would re-kill them right after the server-side
+// 🚑 undelete). Runs once per install, guarded by a flag.
+(function(){
+  try{
+    if(localStorage.getItem('brt_ts_purge_1')) return;
+    var cut=Date.now()-48*3600000;
+    var l=window._mTodosDeleted||[];
+    var kept=l.filter(function(e){
+      if(!e || typeof e==='string') return true;
+      var at=Date.parse(e.at||'')||0;
+      return !(at && at>=cut);
+    });
+    if(kept.length!==l.length){
+      window._mTodosDeleted=kept;
+      localStorage.setItem('buildert_mtodos_deleted',JSON.stringify(kept.slice(-500)));
+    }
+    localStorage.setItem('brt_ts_purge_1','1');
+  }catch(e){}
+})();
 function renderTodosMobile(){
   updateBanner();
   document.querySelector('.chips').style.display='none';
