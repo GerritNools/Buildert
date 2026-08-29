@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.124</title>
+<title>WTUniverse · Buildert Editor v4.127</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.124</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.127</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -533,7 +533,7 @@
     <span id="specs-badge" style="display:none;font-family:var(--mono);font-size:9px;background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;flex-shrink:0">SPECS</span>
   </div>
   <button id="quicksave-btn" onclick="fileQuickSave()" title="Save to browser (Cmd+S)" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#128190; Save</button>  <button onclick="fileDownload()" title="Download .buildert file" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#8681; DL</button>
-  <button onclick="document.getElementById('modal-project').classList.add('open');try{_pcRender()}catch(e){}" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
+  <button onclick="document.getElementById('modal-project').classList.add('open')" title="Project Settings / Worker sync key" style="background:var(--panel);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;font-family:var(--mono)">&#9881; Settings</button>
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
@@ -622,7 +622,7 @@
       <span style="display:inline-block;width:1px;background:var(--border);align-self:stretch;margin:4px 6px"></span>
       <span style="align-self:center;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;font-family:var(--cond);font-weight:700;padding:0 4px">Review</span>
       <button class="tab-btn" id="tab-overview" onclick="setTab('overview')">📊 Overview</button>
-      <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">📄 Docs</button>
+      <button class="tab-btn" id="tab-docs"     onclick="setTab('docs')">ℹ️ Info</button>
       <span style="flex:1"></span>
       <!-- v4.121: Workshop group — everything here is YOURS, not the open
            project's: the Manager, the cross-project activity view, the device
@@ -1118,9 +1118,29 @@
     <tbody id="activity-log-body"></tbody>
   </table>
 </div>
-<div id="docs-panel" style="display:none;padding:20px;max-width:800px">
-  <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px">📄 Stage Documents</h2>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:16px">Add PDF drawings or other document links per stage. They open in a persistent tab so your zoom and scroll position are saved when you switch back.</p>
+<div id="docs-panel" style="display:none;padding:20px;max-width:800px;overflow-y:auto;height:calc(100vh - 130px)">
+  <!-- v4.125: this tab is ℹ️ Info now — project facts, who-is-who and the
+       stage documents in one place, mirroring the phones' Info tab. -->
+  <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px">ℹ️ Project info</h2>
+  <div id="info-meta-line" style="color:var(--muted);font-size:12px;margin-bottom:18px"></div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px">
+    <div style="font-family:var(--cond);font-weight:900;font-size:15px;color:#ffd700;margin-bottom:4px">👥 Who is who</div>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Client, designer, producer — fill in what you already know; riggers add the rest from their ℹ️ Info tab on the floor. Synced both ways.</p>
+    <div id="proj-contacts" style="margin-bottom:8px"></div>
+    <div style="display:flex;gap:6px">
+      <select id="pc-role" style="flex:0 0 150px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
+      <input id="pc-name" type="text" placeholder="Name" style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-size:13px"
+             onkeydown="if(event.key==='Enter')_pcAdd()">
+      <input id="pc-phone" type="text" placeholder="Phone (opt.)" style="flex:0 0 130px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-family:var(--mono);font-size:12px"
+             onkeydown="if(event.key==='Enter')_pcAdd()">
+      <select id="pc-stage" title="Tie this person to one stage, or the whole project" style="flex:0 0 140px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="_pcAdd()">＋ Add</button>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--cond);font-size:15px;margin:0 0 4px">📄 Stage documents</h3>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:16px">Add PDF drawings or other document links per stage. They open in a persistent tab so your zoom and scroll position are saved when you switch back. Riggers see them under ℹ️ Info.</p>
   <div id="docs-stage-list"></div>
 </div>
 <div id="overview-panel" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 130px)"></div>
@@ -3834,17 +3854,6 @@ var qrcode = function() {
     <div style="font-family:var(--mono);font-size:12px;color:var(--muted);padding:4px 0 8px">
       Version: <span id="modal-ver-display" style="color:var(--accent);font-weight:700"></span>
       &nbsp;·&nbsp; Last saved by: <span id="modal-savedby-display" style="color:var(--muted)">—</span>
-    </div>
-
-    <div class="modal-section">Who is who <span style="font-weight:400;color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">— contacts, synced to every rigger's ℹ️ Info tab</span></div>
-    <div id="proj-contacts" style="margin-bottom:6px"></div>
-    <div style="display:flex;gap:6px;margin-bottom:12px">
-      <select id="pc-role" style="flex:0 0 150px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
-      <input id="pc-name" type="text" placeholder="Name" style="flex:1;margin-bottom:0"
-             onkeydown="if(event.key==='Enter')_pcAdd()">
-      <input id="pc-phone" type="text" placeholder="Phone (opt.)" style="flex:0 0 130px;margin-bottom:0;font-family:var(--mono);font-size:12px"
-             onkeydown="if(event.key==='Enter')_pcAdd()">
-      <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="_pcAdd()">＋ Add</button>
     </div>
 
     <div class="modal-section">Sync (Cloudflare Worker)</div>
@@ -6709,13 +6718,22 @@ function _pcRender(){
   var el=document.getElementById('proj-contacts');
   var sel=document.getElementById('pc-role');
   if(sel && !sel.options.length) sel.innerHTML=_pcRoles.map(function(r){return '<option>'+r+'</option>';}).join('');
+  // v4.126: stage dropdown mirrors the current stages; free choice stays
+  // possible on mobile, this select is just the fast path.
+  var ss=document.getElementById('pc-stage');
+  if(ss){
+    var cur=ss.value;
+    var names=[]; try{ _ensureStages(); names=(_stages||[]).map(function(st){return st.name||'';}).filter(Boolean); }catch(e){}
+    ss.innerHTML='<option value="">whole project</option>'
+      +names.map(function(n){ return '<option'+(n===cur?' selected':'')+'>'+_escHtml(n)+'</option>'; }).join('');
+  }
   if(!el) return;
   var list=window._contacts||[];
   if(!list.length){
     el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:2px 0 4px">No names yet. Client, designer, producer — add what you already know; riggers add the rest on the floor.</div>';
     return;
   }
-  el.innerHTML=list.map(function(c){
+  var row=function(c){
     return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:12px">'
       +'<span style="flex:0 0 120px;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#ffd700">'+_escHtml(c.role||'—')+'</span>'
       +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis"><b>'+_escHtml(c.name||'?')+'</b>'
@@ -6724,15 +6742,25 @@ function _pcRender(){
       +(c.by&&c.by!=='desktop'?'<span style="font-family:var(--mono);font-size:9px;color:var(--muted)" title="Added on the floor">+'+_escHtml(c.by)+'</span>':'')
       +'<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--danger)" onclick="_pcRemove(\''+c.id+'\')">✕</button>'
       +'</div>';
-  }).join('');
+  };
+  var general=list.filter(function(c){ return !c.stage; });
+  var byStage={};
+  list.filter(function(c){ return c.stage; }).forEach(function(c){ (byStage[c.stage]=byStage[c.stage]||[]).push(c); });
+  var h=general.map(row).join('');
+  Object.keys(byStage).forEach(function(st){
+    h+='<div style="font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);padding:8px 0 2px">🎪 '+_escHtml(st)+'</div>'
+      +byStage[st].map(row).join('');
+  });
+  el.innerHTML=h;
 }
 function _pcAdd(){
   var role=(document.getElementById('pc-role')||{}).value||'';
   var nm=document.getElementById('pc-name'), ph=document.getElementById('pc-phone');
   var name=(nm&&nm.value||'').trim(); if(!name){ if(nm)nm.focus(); return; }
   if(role==='Other…'){ role=prompt('Role:')||''; role=role.trim(); if(!role) return; }
+  var stage=((document.getElementById('pc-stage')||{}).value||'').trim();   // v4.126: '' = whole project
   window._contacts.push({ id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    role:role, name:name, phone:(ph&&ph.value||'').trim(), note:'', by:'desktop', _ts:new Date().toISOString() });
+    role:role, name:name, phone:(ph&&ph.value||'').trim(), note:'', stage:stage, by:'desktop', _ts:new Date().toISOString() });
   if(nm)nm.value=''; if(ph)ph.value='';
   _pcRender(); autoSave();
   if(typeof wPush==='function') wPush(true);
@@ -7528,6 +7556,34 @@ function _persistProjectMeta() {
 
 // ── Dropbox sync ──────────────────────────────────────────────────────
 var _workerUrl='', _projectKey='';
+// ── v4.127: keep tokens OUT of URLs ──────────────────────────────────
+// All call sites still append ?t=/&t= (incl. the comma-separated multi-
+// project token list); this wrapper moves it into the X-Buildert-Token
+// header right before the request leaves — the worker parses both the
+// same way. No tokens in Cloudflare logs or browser history.
+(function(){
+  var _f=window.fetch;
+  window.fetch=function(input,init){
+    try{
+      var u=(typeof input==='string')?input:((input&&input.url)||'');
+      var base=(typeof _workerUrl!=='undefined'&&_workerUrl)?_workerUrl.replace(/\/$/,''):'';
+      if(base && u.indexOf(base)===0 && u.indexOf('t=')>0){
+        var ur=new URL(u);
+        var t=ur.searchParams.get('t');
+        if(t){
+          ur.searchParams.delete('t');
+          init=init||{};
+          var h=new Headers(init.headers||{});
+          if(!h.has('X-Buildert-Token')) h.set('X-Buildert-Token',t);
+          init.headers=h;
+          if(typeof input==='string') input=ur.toString();
+          else input=new Request(ur.toString(),input);
+        }
+      }
+    }catch(e){}
+    return _f.call(this,input,init);
+  };
+})();
 var _workerToken='';try{_workerToken=localStorage.getItem('buildert_worker_token')||'';}catch(e){}
 
 // ── PROJECT PROTECTION (worker-enforced tokens) ─────────────────────
@@ -19000,6 +19056,18 @@ function _stagePctDesktop(devs){
 }
 function _docOpen(btn){ window.open(btn.dataset.url,'_blank'); }
 function renderDocsPanel(){
+  // v4.125: Info tab = meta line + who-is-who + stage docs
+  try{
+    var ml=document.getElementById('info-meta-line');
+    if(ml){
+      var pm=_projectMeta||{};
+      var bits=[pm.name,pm.client,pm.venue,pm.city,
+        (pm.date?pm.date+(pm.date_to?' → '+pm.date_to:''):'')].filter(Boolean);
+      ml.innerHTML=(bits.length?bits.map(_escHtml).join(' · '):'No project details yet')
+        +' — edit in <b>⚙ Settings</b>.';
+    }
+    _pcRender();
+  }catch(e){}
   var el=document.getElementById('docs-stage-list'); if(!el) return;
   _ensureStages();
   var html='';
