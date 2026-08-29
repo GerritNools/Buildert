@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.132</title>
+<title>WTUniverse · Buildert Editor v4.133</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.132</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.133</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -7531,6 +7531,7 @@ function _mergeProjectNoConflict(data) {
   if(Array.isArray(data.schedule)) { _schedule = data.schedule; if(currentTab==='schedule') renderSchedulePanel(); }
   try{ _pcAbsorb(data); }catch(e){}   // v4.124: who-is-who contacts
   try{ _pinAbsorb(data); }catch(e){}  // v4.128: info pins
+  // (todo dedupe runs inside the todos absorb below)
   if(Array.isArray(data.schedulePrev)) _schedulePrev = data.schedulePrev;
   if(Array.isArray(data.todos) && data.todos.length){
     if(!_todos) _todos=[];
@@ -7552,6 +7553,7 @@ function _mergeProjectNoConflict(data) {
         _todos.push(t); existingMap[t.id]=t;
       }
     });
+    _todosDedupe();   // v4.133: fold content-identical copies (see function)
     _todosSave();
     if(currentTab==='todos') renderTodosPanel();
   }
@@ -18689,6 +18691,32 @@ function _schedSave(id){
 }
 
 var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}]
+// v4.133: collapse content-identical todos living under different ids —
+// re-seeded slots / re-imports ADDED a full copy each time (the union is
+// id-keyed and additive by design). Earliest-created id survives, done is
+// OR-ed, dropped ids are tombstoned so the worker (v4.34 does the same
+// server-side) and every phone forget them too.
+function _todosDedupe(){
+  var sig=function(t){ return [String(t.label||'').trim().toLowerCase(), t.stage_id||'',
+    t.device_id||'', t.day||'', t.assignee||''].join('|'); };
+  var bySig={}, out=[], dropped=[];
+  (_todos||[]).forEach(function(t){
+    if(t.auto){ out.push(t); return; }
+    var k=sig(t), prev=bySig[k];
+    if(!prev){ bySig[k]=t; out.push(t); return; }
+    var a=Date.parse(prev.created||'')||0, b=Date.parse(t.created||'')||0;
+    var keep=(b&&(!a||b<a))?t:prev, drop=(keep===t)?prev:t;
+    keep.done=!!(prev.done||t.done);
+    if(keep!==prev){ out[out.indexOf(prev)]=keep; bySig[k]=keep; }
+    dropped.push(drop.id);
+  });
+  if(dropped.length){
+    _todos=out;
+    window._todosDeleted=window._todosDeleted||[];
+    dropped.forEach(function(id){ if(window._todosDeleted.indexOf(id)<0) window._todosDeleted.push(id); });
+    showToast('🧹 '+dropped.length+' duplicate todo'+(dropped.length===1?'':'s')+' folded','muted');
+  }
+}
 window._todosDeleted = (function(){ try{ return JSON.parse(localStorage.getItem('buildert_todos_deleted')||'[]'); }catch(e){ return []; } })();
 var _schedule = [];      // [{id, day:'YYYY-MM-DD', time:'HH:MM', label, note}] — day timetable
 var _schedulePrev = [];  // last year's schedule (archived by New edition)
