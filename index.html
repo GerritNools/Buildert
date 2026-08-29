@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.040m</title>
+<title>WTU · Buildert v4.041m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -861,7 +861,7 @@ body.big-touch #chat-input{min-height:80px !important;}
     <span style="font-size:24px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>
     <span style="display:flex;flex-direction:column;line-height:1.05">
       <span style="font-family:var(--cond);font-weight:900;font-size:13px;letter-spacing:1.5px;color:var(--text)">BUILDERT</span>
-      <span style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.033m</span>
+      <span id="app-ver" style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.5px">v4.041m</span>
     </span>
   </div>
 
@@ -1744,6 +1744,9 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.041m: version badge fixed (header said v4.033m while the
+//   file was newer — the badge is now id="app-ver" and syncs itself from the
+//   <title>, the single version source, at boot).
 // FEATURES ADDED v4.040m: SCHEDULE REMINDERS (local: 15-min-before + at-start
 //   notifications from the day schedule, toggle in the 📅 sheet, no server).
 //   INFO TAB AS STARTING POINT: 📍 Venue card with Navigate (Google Maps),
@@ -7177,6 +7180,15 @@ function _schedNotifTick(){
 setInterval(_schedNotifTick, 30000);
 setTimeout(_schedNotifTick, 4000);
 
+// v4.041m: the on-screen version badge follows the <title> — one source.
+(function(){
+  try{
+    var m=/v4\.\d+m/.exec(document.title);
+    var el=document.getElementById('app-ver');
+    if(m && el) el.textContent=m[0];
+  }catch(e){}
+})();
+
 // ── Keep screen on (Wake Lock) ──────────────────────────────────────
 // On a lift or behind FOH you don't want the phone locking every minute.
 var _wakeLock=null;
@@ -9482,7 +9494,8 @@ function openProjectSheet(){
   var body  = document.getElementById('conn-sheet-body');
   var title = document.getElementById('conn-sheet-title');
   if(!body) return;
-  if(title) title.innerHTML = (project.name||'Project')+' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">v4.023m</span>';
+  var _ver=(function(){ var m=/v4\.\d+m/.exec(document.title); return m?m[0]:''; })();   // v4.041m: single version source
+  if(title) title.innerHTML = (project.name||'Project')+' <span style="font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400">'+_ver+'</span>';
 
   var html = '';
   // Account + project switcher (accounts users only; no-op for share links)
