@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.043m</title>
+<title>WTU · Buildert v4.044m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1740,6 +1740,9 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.044m: todo de-duplication — content-identical todos under
+//   different ids collapse (earliest id wins, done OR-ed, dropped ids get
+//   tombstones). Pairs with worker v4.34 doing the same server-side.
 // FEATURES ADDED v4.043m: Info tab is full-height (progress banner + stage
 //   chips collapse there; both are device things). Weather/Navigate prefer
 //   exact coordinates from the planner (project.lat/lon). Info shows a
@@ -3567,6 +3570,7 @@ function _mergeProjectNoConflictImpl(data){
         }
       }
     });
+    _mTodosDedupe();
     _mTodosSave();
   }
   _projectVersion=data._version||0;
@@ -3810,6 +3814,7 @@ function _mergeSmartFromFile(data){
         }
       }
     });
+    _mTodosDedupe();
     _mTodosSave();
   }
   // Ingest remote activity log (other riggers!) — merge, dedupe, never replace
@@ -6943,11 +6948,39 @@ function _attachTodoSwipe(cont){
     });
   });
 }
+// v4.044m: collapse content-identical todos that arrived under different
+// ids (re-seeded slots / re-imports made every push ADD a copy — the id-
+// keyed union never folded them back). Earliest-created id wins, done is
+// OR-ed, dropped ids get tombstones so the copies die on the worker too.
+// The worker (v4.34+) does the same server-side; this makes it instant.
+function _mTodosDedupe(){
+  var sig=function(t){ return [String(t.label||'').trim().toLowerCase(), t.stage_id||'',
+    t.device_id||'', t.day||'', t.assignee||''].join('|'); };
+  var bySig={}, out=[], changed=false;
+  window._mTodosDeleted=window._mTodosDeleted||[];
+  _mTodos.forEach(function(t){
+    if(t.auto){ out.push(t); return; }
+    var k=sig(t), prev=bySig[k];
+    if(!prev){ bySig[k]=t; out.push(t); return; }
+    var a=Date.parse(prev.created||'')||0, b=Date.parse(t.created||'')||0;
+    var keep=(b&&(!a||b<a))?t:prev, drop=(keep===t)?prev:t;
+    keep.done=!!(prev.done||t.done);
+    keep._localEdit=prev._localEdit||t._localEdit;
+    if(keep!==prev){ out[out.indexOf(prev)]=keep; bySig[k]=keep; }
+    window._mTodosDeleted.push({id:drop.id, at:new Date().toISOString()});
+    changed=true;
+  });
+  if(changed){
+    _mTodos=out;
+    try{ localStorage.setItem('buildert_mtodos_deleted',JSON.stringify(window._mTodosDeleted.slice(-500))); }catch(e){}
+    _mTodosSave(); autoSave();
+  }
+}
 function renderTodosMobile(){
   updateBanner();
   document.querySelector('.chips').style.display='none';
   document.getElementById('empty-state').style.display='none';
-  _mTodosLoad(); _mSyncAutoTodos(); _mTodosSave();
+  _mTodosLoad(); _mTodosDedupe(); _mSyncAutoTodos(); _mTodosSave();
   _renderTodosList();
 }
 function mTodoToggle(id){
