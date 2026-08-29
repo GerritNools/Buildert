@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.129</title>
+<title>WTUniverse · Buildert Editor v4.130</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.129</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.130</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -1121,7 +1121,10 @@
 <div id="docs-panel" style="display:none;padding:20px;max-width:800px;overflow-y:auto;height:calc(100vh - 130px)">
   <!-- v4.125: this tab is ℹ️ Info now — project facts, who-is-who and the
        stage documents in one place, mirroring the phones' Info tab. -->
-  <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px">ℹ️ Project info</h2>
+  <div style="display:flex;align-items:center;gap:12px">
+    <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px;flex:1">ℹ️ Project info</h2>
+    <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="_evalReportOpen()" title="Evaluation notes + photos, sign-offs, crew points and the log as one printable report">🖨 Evaluation report (PDF)</button>
+  </div>
   <div id="info-meta-line" style="color:var(--muted);font-size:12px;margin-bottom:18px"></div>
 
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px">
@@ -6780,6 +6783,89 @@ function _pinRenderDesk(){
     h+='</div>';
   }
   el.innerHTML=h;
+}
+// ── 🖨 Evaluation report (v4.130) ────────────────────────────────────
+// One click after the show: project header, evaluation notes with their
+// photos, pack sign-offs, crew points and a compact activity summary in a
+// print-styled window. The browser's print dialog turns it into the PDF
+// (Save as PDF) — no libraries, same pattern as the mobile pack print.
+function _evalMediaSrc(id){
+  var tk=(typeof _brtAllTokens==='function')?_brtAllTokens():'';
+  return _workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)
+    +'?scope=eval'+(tk?'&t='+encodeURIComponent(tk):'');
+}
+function _evalReportOpen(){
+  var pm=_projectMeta||{};
+  var esc=_escHtml;
+  var evs=(window._evaluation||[]).slice().sort(function(a,b){ return String(a.at||'').localeCompare(String(b.at||'')); });
+  var sigs=(window._packSignoffs||[]).slice().sort(function(a,b){ return String(a.at||'').localeCompare(String(b.at||'')); });
+  var log=window._projectLog||[];
+  var aliases={}; try{ aliases=Object.assign({}, _gAliasMap(), window._riggerAliases||{}); }catch(e){}
+  var scored={}; try{ scored=_histScoreLog(log, aliases); }catch(e){}
+  var bonus=window._xpBonus||{};
+  var crew=Object.keys(scored).sort(function(a,b){ return (scored[b].pts|0)-(scored[a].pts|0); });
+  var dt=function(x){ return String(x||'').slice(0,16).replace('T',' '); };
+
+  var h='<!doctype html><html><head><meta charset="utf-8"><title>Evaluation — '+esc(pm.name||_projectKey||'Project')+'</title><style>'
+    +'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:36px 44px;font-size:12.5px;line-height:1.5}'
+    +'h1{font-size:22px;margin:0 0 2px} h2{font-size:14px;text-transform:uppercase;letter-spacing:1.5px;border-bottom:2px solid #111;padding-bottom:3px;margin:26px 0 10px}'
+    +'.meta{color:#555;margin-bottom:4px}'
+    +'.ev{margin:0 0 14px;padding:10px 12px;border:1px solid #ccc;border-radius:6px;page-break-inside:avoid}'
+    +'.ev .who{font-size:10px;color:#666;margin-bottom:3px}'
+    +'.ev .imgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}'
+    +'.ev img{max-width:230px;max-height:170px;border-radius:4px;border:1px solid #ddd}'
+    +'table{border-collapse:collapse;width:100%} th,td{border:1px solid #bbb;padding:5px 8px;text-align:left;font-size:11.5px}'
+    +'th{background:#f0f0f0;text-transform:uppercase;letter-spacing:.5px;font-size:10px}'
+    +'.foot{margin-top:30px;color:#888;font-size:10px;border-top:1px solid #ccc;padding-top:8px}'
+    +'.pbtn{position:fixed;top:12px;right:12px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer}'
+    +'@media print{.pbtn{display:none}}'
+    +'</style></head><body>'
+    +'<button class="pbtn" onclick="window.print()">🖨 Print / Save as PDF</button>'
+    +'<h1>'+esc(pm.name||_projectKey||'Project')+' — evaluation report</h1>'
+    +'<div class="meta">'+[pm.client&&('Client: '+esc(pm.client)), pm.venue&&esc(pm.venue), pm.city&&esc(pm.city),
+        pm.date&&esc(pm.date+(pm.date_to?' → '+pm.date_to:''))].filter(Boolean).join(' · ')+'</div>'
+    +'<div class="meta">Generated '+dt(new Date().toISOString())+' · Buildert</div>';
+
+  h+='<h2>Evaluation notes ('+evs.length+')</h2>';
+  if(!evs.length) h+='<p>No evaluation entries.</p>';
+  evs.forEach(function(ev){
+    h+='<div class="ev"><div class="who">'+esc(ev.by||'?')+' · '+dt(ev.at)+'</div>'
+      +(ev.text?'<div>'+esc(ev.text).replace(/\n/g,'<br>')+'</div>':'<div style="color:#888">(photo only)</div>')
+      +(((ev.media||[]).length)?'<div class="imgs">'+ev.media.map(function(id){
+          return '<img src="'+_evalMediaSrc(id)+'" loading="eager">';
+        }).join('')+'</div>':'')
+      +'</div>';
+  });
+
+  h+='<h2>Pack sign-offs ('+sigs.length+')</h2>';
+  if(!sigs.length) h+='<p>No sign-offs recorded.</p>';
+  else{
+    h+='<table><tr><th>Stage</th><th>Signed by</th><th>When</th><th>Note</th></tr>'
+      +sigs.map(function(sg){
+        return '<tr><td>'+esc(sg.stageName||sg.stageId||'')+'</td><td>'+esc(sg.name||'')+'</td><td>'+dt(sg.at)+'</td><td>'+esc(sg.note||'')+'</td></tr>';
+      }).join('')+'</table>';
+  }
+
+  h+='<h2>Crew</h2>';
+  if(!crew.length) h+='<p>No scored activity in the log.</p>';
+  else{
+    h+='<table><tr><th>Name</th><th>Actions</th><th>Points</th><th>Bonus</th><th>Total</th></tr>'
+      +crew.map(function(n){
+        var b=bonus[n]|0;
+        return '<tr><td>'+esc(n)+'</td><td>'+(scored[n].actions|0)+'</td><td>'+(scored[n].pts|0)+'</td><td>'+(b||'')+'</td><td><b>'+((scored[n].pts|0)+b)+'</b></td></tr>';
+      }).join('')+'</table>';
+  }
+
+  h+='<h2>Activity</h2>'
+    +'<p>'+log.length+' log entries'
+    +(log.length?(' · first '+dt(log[log.length-1]&&log[log.length-1].at||log[0].at)+' · last '+dt(log[0]&&log[0].at||'')):'')
+    +'.</p>'
+    +'<div class="foot">Buildert · '+esc(_projectKey||'')+' · points: tick 1 · status 2 · todo 5 · feedback 10 · sign-off 50</div>'
+    +'</body></html>';
+
+  var w=window.open('','_blank');
+  if(!w){ showToast('Pop-up blocked — allow pop-ups for this page','warn'); return; }
+  w.document.open(); w.document.write(h); w.document.close();
 }
 function _pcRender(){
   var el=document.getElementById('proj-contacts');
