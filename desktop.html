@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.131</title>
+<title>WTUniverse · Buildert Editor v4.132</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.131</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.132</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3859,6 +3859,18 @@ var qrcode = function() {
     <label>City</label>
     <input id="proj-city" type="text" placeholder="Amsterdam"
            oninput="_projectMeta.city=this.value.trim();_persistProjectMeta()">
+    <!-- v4.132: exact location. Venue names rarely geocode well from text —
+         with pinned coordinates, weather and Navigate hit the actual site
+         (festival field, harbour pier), on desktop AND every phone. -->
+    <label>Location <span style="font-size:10px;color:var(--muted)">— paste "lat, lon" or a Google Maps link, or use the buttons</span></label>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="proj-latlon" type="text" placeholder="52.3702, 4.8952 or https://maps.google.com/…"
+             style="flex:1;margin-bottom:0;font-family:var(--mono);font-size:12px"
+             onchange="_locParse(this.value)">
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Look up venue + city (OpenStreetMap)" onclick="_locLookup()">🔎 Lookup</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Use this computer's position — handy when you're at the venue" onclick="_locHere()">📍 Here</button>
+    </div>
+    <div id="proj-latlon-msg" style="font-size:10px;color:var(--muted);margin:-4px 0 8px;min-height:13px"></div>
     <div style="display:flex;gap:8px">
       <div style="flex:1"><label>Show date — from</label>
         <input id="proj-date" type="date" style="width:100%;box-sizing:border-box"
@@ -6169,6 +6181,7 @@ function checkServerVersion(baseUrl) {
       try {
         var info = JSON.parse(xhr.responseText);
         var sv = info.server_version || 0;
+        try{ window._srvVerNum=parseFloat(info.version)||0; }catch(e){}   // v4.132: numeric worker version
         if (sv < MIN_SERVER_VERSION) {
           showVersionWarning('Server v' + sv + ' is too old for web app ' + WEBAPP_VERSION
             + '. Update main.py on the Anbernic before using Push — old server will corrupt buildert.json.');
@@ -6769,6 +6782,12 @@ function _pinMediaSrc(id){
 }
 function _pinRenderDesk(){
   var el=document.getElementById('info-pins'); if(!el) return;
+  // v4.132: an old worker silently drops contacts/pins on every push —
+  // that presents as "doesn't sync". Say it out loud instead.
+  if(typeof window._srvVerNum==='number' && window._srvVerNum>0 && window._srvVerNum<4.32){
+    el.innerHTML='<div style="color:var(--warn);font-size:12px">⚠ Worker v'+window._srvVerNum+' is too old for pins &amp; contacts (needs v4.32+). Deploy the new worker file — until then, every push discards these lists.</div>';
+    return;
+  }
   var list=window._infoPins||[];
   if(!list.length){ el.innerHTML='<div style="font-size:11px;color:var(--muted)">Nothing pinned yet — in the phone chat, 📌 on a photo or a tapped message pins it here (catering times, lock codes, lineups).</div>'; return; }
   var h='';
@@ -6801,6 +6820,48 @@ function _pinRenderDesk(){
 // print-styled window. The browser's print dialog turns it into the PDF
 // (Save as PDF) — no libraries, same pattern as the mobile pack print.
 // ── Venue & weather in the Info tab (v4.131, mirrors the phones) ─────
+// ── v4.132: exact project location ───────────────────────────────────
+function _locSet(lat,lon,how){
+  _projectMeta.lat=+(+lat).toFixed(5); _projectMeta.lon=+(+lon).toFixed(5);
+  _persistProjectMeta(); autoSave();
+  try{ localStorage.removeItem('brt_wx_desk_'+(_projectKey||'')); }catch(e){}
+  var i=document.getElementById('proj-latlon'); if(i) i.value=_projectMeta.lat+', '+_projectMeta.lon;
+  var m=document.getElementById('proj-latlon-msg'); if(m) m.textContent='📍 pinned ('+how+') — weather & Navigate use this exact spot, phones included.';
+  if(typeof wPush==='function') wPush(true);
+  _infoWeather();
+}
+function _locParse(v){
+  v=String(v||'').trim();
+  var m=document.getElementById('proj-latlon-msg');
+  if(!v){ delete _projectMeta.lat; delete _projectMeta.lon; _persistProjectMeta(); autoSave(); if(m) m.textContent='Location cleared — back to city-level weather.'; return; }
+  // Google Maps link: …@52.37,4.89,15z…  or  ?q=52.37,4.89  /  plain "52.37, 4.89"
+  var mt=/@(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v) || /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v)
+       || /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/.exec(v);
+  if(mt && Math.abs(+mt[1])<=90 && Math.abs(+mt[2])<=180){ _locSet(mt[1],mt[2],'pasted'); }
+  else if(m){ m.textContent='Couldn\u2019t read coordinates from that — expected "lat, lon" or a Maps link containing @lat,lon.'; }
+}
+async function _locLookup(){
+  var m=document.getElementById('proj-latlon-msg');
+  var q=[_projectMeta.venue,_projectMeta.city].filter(Boolean).join(', ');
+  if(!q){ if(m) m.textContent='Fill in venue and/or city first.'; return; }
+  if(m) m.textContent='Looking up "'+q+'"…';
+  try{
+    // Nominatim (OpenStreetMap): venue-level hits, free, attribution in title
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    var d=await r.json();
+    if(d && d[0]){ _locSet(d[0].lat, d[0].lon, 'OpenStreetMap: '+(d[0].display_name||'').split(',').slice(0,2).join(',')); }
+    else if(m){ m.textContent='No hit for "'+q+'" — try pasting coordinates or a Maps link instead.'; }
+  }catch(e){ if(m) m.textContent='Lookup failed (offline?).'; }
+}
+function _locHere(){
+  var m=document.getElementById('proj-latlon-msg');
+  if(!navigator.geolocation){ if(m) m.textContent='No geolocation in this browser.'; return; }
+  if(m) m.textContent='Getting position…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos){ _locSet(pos.coords.latitude, pos.coords.longitude, 'this device'); },
+    function(err){ if(m) m.textContent='Position refused: '+err.message; },
+    { enableHighAccuracy:true, timeout:10000 });
+}
 async function _infoWeather(){
   var pm=_projectMeta||{};
   var card=document.getElementById('info-venue-card'); if(!card) return;
@@ -6809,14 +6870,17 @@ async function _infoWeather(){
   card.style.display='block';
   document.getElementById('info-venue-name').textContent=pm.venue||pm.city||'';
   document.getElementById('info-venue-city').textContent=(pm.venue&&pm.city)?pm.city:'';
-  document.getElementById('info-venue-nav').href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr);
+  document.getElementById('info-venue-nav').href='https://www.google.com/maps/search/?api=1&query='
+    +encodeURIComponent((isFinite(pm.lat)&&isFinite(pm.lon))?(pm.lat+','+pm.lon):addr);
   var el=document.getElementById('info-wx');
   el.textContent='Loading weather…';
   try{
     var ck='brt_wx_desk_'+(_projectKey||addr);
     var cache=null; try{ cache=JSON.parse(localStorage.getItem(ck)||'null'); }catch(e){}
     if(cache && cache.addr===addr && (Date.now()-cache.at)<30*60000){ _infoWxRender(el,cache.d); return; }
-    var coords=(cache&&cache.addr===addr)?{lat:cache.lat,lon:cache.lon}:null;
+    var coords=null;
+    if(isFinite(pm.lat)&&isFinite(pm.lon)) coords={lat:+pm.lat,lon:+pm.lon};   // v4.132: pinned spot wins
+    if(!coords && cache && cache.addr===addr) coords={lat:cache.lat,lon:cache.lon};
     if(!coords){
       var q=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(addr));
       var gd=await q.json(); var hit=gd&&gd.results&&gd.results[0];
@@ -12083,6 +12147,7 @@ _renderStageBar();
   }
   // v4.123: mobile app URL (where invite/share links open) is now a visible setting
   try{ var mi=document.getElementById('mobile-url-inp'); if(mi) mi.value=(localStorage.getItem('buildert_mobile_url')||'').trim(); }catch(e){}
+  try{ var li=document.getElementById('proj-latlon'); if(li&&isFinite(_projectMeta.lat)&&isFinite(_projectMeta.lon)) li.value=_projectMeta.lat+', '+_projectMeta.lon; }catch(e){}
   // v4.121: a stored binding to 'default' is always an accident from old
   // versions — auto-loading it was pure confusion. Unbind; if a real
   // 'default' slot holds data it is still visible in the Manager to rescue.
