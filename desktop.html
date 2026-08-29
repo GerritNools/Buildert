@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.127</title>
+<title>WTUniverse · Buildert Editor v4.129</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.127</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.129</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -1123,6 +1123,12 @@
        stage documents in one place, mirroring the phones' Info tab. -->
   <h2 style="font-family:var(--cond);font-size:18px;margin-bottom:4px">ℹ️ Project info</h2>
   <div id="info-meta-line" style="color:var(--muted);font-size:12px;margin-bottom:18px"></div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px">
+    <div style="font-family:var(--cond);font-weight:900;font-size:15px;color:var(--accent);margin-bottom:4px">📌 Pinned from chat</div>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Photos and messages the crew pinned in chat — catering times, programming schedules, lineups, lock codes.</p>
+    <div id="info-pins"></div>
+  </div>
 
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px">
     <div style="font-family:var(--cond);font-weight:900;font-size:15px;color:#ffd700;margin-bottom:4px">👥 Who is who</div>
@@ -6654,6 +6660,8 @@ function _injectProjectIntoMobile(html) {
     rigger_aliases_removed: window._riggerAliasesRemoved || [],
     contacts: window._contacts||[],                     // v4.124: who-is-who
     contacts_deleted: (window._contactsDeleted||[]).slice(-200),
+    info_pins: window._infoPins||[],                    // v4.128: pinned chat
+    info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
   };
 
   // Strip any old preload block
@@ -6713,6 +6721,65 @@ function _pcAbsorb(data){
   window._contacts=Object.keys(map).map(function(k){return map[k];})
     .sort(function(a,b){ return String(a._ts||'').localeCompare(String(b._ts||'')); });
   _pcRender();
+}
+// ── Info pins (v4.128): chat messages pinned to Info by the crew ─────
+window._infoPins=window._infoPins||[];
+window._infoPinsDeleted=window._infoPinsDeleted||[];
+function _pinAbsorb(data){
+  if(!data) return;
+  (data.info_pins_deleted||[]).forEach(function(id){
+    if(id && window._infoPinsDeleted.indexOf(id)<0) window._infoPinsDeleted.push(id);
+  });
+  var del={}; window._infoPinsDeleted.forEach(function(id){ del[id]=1; });
+  var map={};
+  (window._infoPins||[]).forEach(function(x){ if(x&&x.id&&!del[x.id]) map[x.id]=x; });
+  (Array.isArray(data.info_pins)?data.info_pins:[]).forEach(function(x){
+    if(!x||!x.id||del[x.id]) return;
+    var prev=map[x.id];
+    if(!prev || String(x._ts||'')>=String(prev._ts||'')) map[x.id]=x;
+  });
+  window._infoPins=Object.keys(map).map(function(k){return map[k];})
+    .sort(function(a,b){ return String(a._ts||'').localeCompare(String(b._ts||'')); });
+  if(typeof _pinRenderDesk==='function') _pinRenderDesk();
+}
+function _pinRemoveDesk(id){
+  window._infoPins=(window._infoPins||[]).filter(function(x){return x.id!==id;});
+  if(window._infoPinsDeleted.indexOf(id)<0) window._infoPinsDeleted.push(id);
+  _pinRenderDesk(); autoSave();
+  if(typeof wPush==='function') wPush(true);
+}
+function _pinMediaSrc(id){
+  var tk=(typeof _brtAllTokens==='function')?_brtAllTokens():'';
+  return _workerUrl.replace(/\/$/,'')+'/chat-media/'+encodeURIComponent(id)
+    +'?scope=eval'+(tk?'&t='+encodeURIComponent(tk):'');
+}
+function _pinRenderDesk(){
+  var el=document.getElementById('info-pins'); if(!el) return;
+  var list=window._infoPins||[];
+  if(!list.length){ el.innerHTML='<div style="font-size:11px;color:var(--muted)">Nothing pinned yet — in the phone chat, 📌 on a photo or a tapped message pins it here (catering times, lock codes, lineups).</div>'; return; }
+  var h='';
+  list.filter(function(x){return x.kind==='text';}).forEach(function(x){
+    h+='<div style="position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 34px 8px 12px;margin-bottom:8px">'
+      +'<div style="font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word">'+_escHtml(x.text||'')+'</div>'
+      +'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px">'+_escHtml(x.by||'')+' · '+_escHtml(String(x.at||'').slice(0,16).replace('T',' '))+'</div>'
+      +'<button class="btn btn-ghost" style="position:absolute;top:6px;right:6px;font-size:10px;padding:2px 7px;color:var(--danger)" onclick="if(confirm(\'Unpin this?\'))_pinRemoveDesk(\''+x.id+'\')">✕</button>'
+      +'</div>';
+  });
+  var med=list.filter(function(x){return x.kind==='media';});
+  if(med.length){
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
+    med.forEach(function(x){
+      h+='<div style="position:relative">'
+        +(x.media_type==='video'
+          ?'<video src="'+_pinMediaSrc(x.media)+'" controls preload="metadata" style="width:100%;border-radius:8px;border:1px solid var(--border)"></video>'
+          :'<a href="'+_pinMediaSrc(x.media)+'" target="_blank" rel="noopener"><img src="'+_pinMediaSrc(x.media)+'" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border)"></a>')
+        +'<button class="btn btn-ghost" style="position:absolute;top:4px;right:4px;font-size:10px;padding:2px 7px;color:#fff;background:rgba(0,0,0,.55)" onclick="if(confirm(\'Unpin this?\'))_pinRemoveDesk(\''+x.id+'\')">✕</button>'
+        +'<div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px">'+_escHtml(x.by||'')+' · '+_escHtml(String(x.at||'').slice(5,16).replace('T',' '))+'</div>'
+        +'</div>';
+    });
+    h+='</div>';
+  }
+  el.innerHTML=h;
 }
 function _pcRender(){
   var el=document.getElementById('proj-contacts');
@@ -6797,6 +6864,8 @@ function _buildProjectPayload() {
     todos_deleted:  window._todosDeleted||[],
     contacts:          window._contacts||[],            // v4.124: who-is-who
     contacts_deleted:  (window._contactsDeleted||[]).slice(-200),
+    info_pins:         window._infoPins||[],            // v4.128: pinned chat
+    info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
     _log:           window._projectLog || [],
   };
 }
@@ -7250,6 +7319,7 @@ function _mergeProjectNoConflict(data) {
   }
   if(Array.isArray(data.schedule)) { _schedule = data.schedule; if(currentTab==='schedule') renderSchedulePanel(); }
   try{ _pcAbsorb(data); }catch(e){}   // v4.124: who-is-who contacts
+  try{ _pinAbsorb(data); }catch(e){}  // v4.128: info pins
   if(Array.isArray(data.schedulePrev)) _schedulePrev = data.schedulePrev;
   if(Array.isArray(data.todos) && data.todos.length){
     if(!_todos) _todos=[];
@@ -15209,6 +15279,7 @@ async function _pwzCreate(){
   // lists and schedule from the previous project must never leak in.
   _todos=[];
   window._contacts=[]; window._contactsDeleted=[];   // v4.124: contacts are per-project too
+  window._infoPins=[]; window._infoPinsDeleted=[];   // v4.128: pins too
   window._packSignoffs=[]; window._packSignoffsDeleted=null;
   try{ localStorage.removeItem('brt_packsigns_desktop'); }catch(e){}
   _packSpares=[]; _packShared={toolcase:[],controller:[],office:[],spares:[]};
@@ -15297,6 +15368,7 @@ async function _mgrRenderProjects(){
   var _h=document.getElementById('mgr-sub');
   if(_h) _h.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     +'<button class="btn" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:12px;padding:6px 14px" onclick="_pwzOpen()">🪄 New project…</button>'
+    +'<button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="_bkOpen()" title="Daily snapshots on the worker — download or restore">🗄 Backups</button>'
     +'<span style="font-size:12px;color:var(--muted)">Loading projects…</span></div>';
   var list = await _mgrLoadProjects();
   var dupCount = list.filter(function(p){ return p._dupName; }).length;
@@ -16759,6 +16831,72 @@ async function _mgrGrantInvite(id){
   showToast((inv.name||inv.email)+' added to '+_mgrProjName(inv.pid)+' ✓','ok');
   _mgrRenderPeople();
 }
+// ── v4.129: backups browser (worker v4.33+) ──────────────────────────
+// Daily snapshots live in the worker's KV (14 per project, cron-driven).
+// This modal lists them, downloads one as JSON, restores one (the worker
+// snapshots the current state first, so a restore is always undoable),
+// or runs a snapshot sweep on demand.
+async function _bkOpen(){
+  var old=document.getElementById('bk-modal'); if(old) old.remove();
+  var w=document.createElement('div');
+  w.id='bk-modal';
+  w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:5000;display:flex;align-items:center;justify-content:center';
+  w.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(640px,92vw);max-height:84vh;display:flex;flex-direction:column">'
+    +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">'
+    +'<b style="font-family:var(--cond);font-size:15px;letter-spacing:1px">🗄 BACKUPS</b>'
+    +'<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_bkRun()">▶ Snapshot now</button>'
+    +'<span id="bk-msg" style="font-size:11px;color:var(--muted);flex:1"></span>'
+    +'<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="document.getElementById(\'bk-modal\').remove()">✕</button>'
+    +'</div>'
+    +'<div id="bk-body" style="padding:14px 18px;overflow-y:auto;font-size:12px">Loading…</div>'
+    +'<div style="padding:10px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">Daily automatic snapshots need a <b>Cron Trigger</b> on the worker (Cloudflare dashboard → your worker → Settings → Triggers → Cron, e.g. <code>0 3 * * *</code>). Without it, use ▶ Snapshot now.</div>'
+    +'</div>';
+  document.body.appendChild(w);
+  _bkLoad();
+}
+async function _bkLoad(){
+  var el=document.getElementById('bk-body'); if(!el) return;
+  var r=await _mgrApi('GET','/backups');
+  if(r.status!==200||!r.data||!r.data.ok){
+    el.innerHTML='<span style="color:var(--danger)">'+_escHtml((r.data&&r.data.error)||('Failed ('+r.status+')'))
+      +(r.status===404?' — worker v4.33+ required.':'')+'</span>';
+    return;
+  }
+  var b=r.data.backups||{};
+  var pids=Object.keys(b).sort();
+  if(!pids.length){ el.innerHTML='No snapshots yet — press <b>▶ Snapshot now</b> to make the first sweep.'; return; }
+  el.innerHTML=pids.map(function(pid){
+    return '<div style="margin-bottom:14px"><div style="font-family:var(--cond);font-weight:900;letter-spacing:.5px;margin-bottom:4px">'+_escHtml(_mgrProjName(pid)||pid)+' <span style="color:var(--muted);font-weight:400;font-size:10px">'+_escHtml(pid)+'</span></div>'
+      +b[pid].map(function(x){
+        return '<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--border2)">'
+          +'<span style="font-family:var(--mono);flex:1">'+_escHtml(x.label)+'</span>'
+          +'<a class="btn btn-ghost" style="font-size:10px;padding:2px 9px;text-decoration:none" href="'+_workerUrl.replace(/\/$/,'')+'/backups/get?key='+encodeURIComponent(x.key)+'&t='+encodeURIComponent(_mgrSession||'')+'" target="_blank" rel="noopener">⬇ Download</a>'
+          +'<button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;color:var(--warn)" onclick="_bkRestore(\''+_mgrJs(x.key)+'\',\''+_mgrJs(pid)+'\')">♻ Restore</button>'
+          +'</div>';
+      }).join('')+'</div>';
+  }).join('');
+}
+async function _bkRun(){
+  var m=document.getElementById('bk-msg'); if(m) m.textContent='Running…';
+  var r=await _mgrApi('POST','/backups/run');
+  if(m) m.textContent=(r.status===200&&r.data&&r.data.ok)
+    ? ('Done: '+r.data.report.made+' made, '+r.data.report.skipped+' already had today\u2019s')
+    : ((r.data&&r.data.error)||('Failed ('+r.status+')'));
+  _bkLoad();
+}
+async function _bkRestore(key, pid){
+  if(!confirm('Restore '+(_mgrProjName(pid)||pid)+' from '+key.split('__').pop()+'?\n\nThe CURRENT state is snapshotted first (prerestore), so this can be undone by restoring that one.')) return;
+  var m=document.getElementById('bk-msg'); if(m) m.textContent='Restoring…';
+  var r=await _mgrApi('POST','/backups/restore',{key:key});
+  if(r.status===200&&r.data&&r.data.ok){
+    showToast('Restored '+(_mgrProjName(pid)||pid)+' ✓ — reload the project to see it','ok');
+    if(m) m.textContent='Restored. Safety copy: '+(r.data.prerestore||'');
+  } else {
+    showToast((r.data&&r.data.error)||'Restore failed','danger');
+    if(m) m.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+  }
+  _bkLoad();
+}
 async function _mgrRevokeInvite(id, silent){
   var r=await _mgrApi('DELETE','/accounts/invites/'+encodeURIComponent(id));
   if(silent) return;
@@ -17019,7 +17157,7 @@ async function _mgrRenderXp(){
     + '<div style="font-family:var(--cond);font-weight:900;letter-spacing:1px;font-size:12px;margin-bottom:6px">HOW XP FITS TOGETHER</div>'
     + '<div><b>1 · Project XP</b> — computed, never stored. Points from the activity log (tick 1 · status 2 · todo 5 · feedback 10 · sign-off 50) plus the <b>bonus</b> you hand out in 🏆 Rewards for that project. The same rule runs on phones (v4.032m+) and in History, so all three agree.</div>'
     + '<div style="margin-top:4px"><b style="color:#ffd700">2 · Global XP</b> — one stored number per <i>account</i> = the sum of project XP over every project, name merges applied. It is what a rigger sees as <b>Career XP</b> on their phone. '
-    + 'It is written by <b>⇄ Sync</b>, and since v4.123 also automatically each time History loads (owner only, changed accounts only). You can still overrule any number by hand below.</div>'
+    + 'Since worker v4.33 it is scored <b>by the worker itself, moments after every push</b> — a rigger\u2019s Career XP ticks up right after their shift, no planner action needed. Hand-set numbers below persist as an adjustment on top of the scored total (they no longer get overwritten by the next sync). ⇄ Sync and the auto-sync on History load remain as a manual check.</div>'
     + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" '+(_xpAutoSyncOn()?'checked':'')+' onchange="try{localStorage.setItem(\'brt_xp_autosync\',this.checked?\'1\':\'0\')}catch(e){}"> Auto-sync Global XP when History loads</label>'
     + '</div>'
     + '<div style="margin-bottom:14px"><button class="btn btn-ghost" onclick="openRewardsModal()" style="font-size:12px">🏆 Per-project bonus XP for '+_escHtml(_projectKey||'current project')+'…</button></div>';
@@ -17352,6 +17490,7 @@ async function pmOpenProject(pid){
   // the incoming project.
   _todos=[];
   window._contacts=[]; window._contactsDeleted=[];   // v4.124: contacts are per-project too
+  window._infoPins=[]; window._infoPinsDeleted=[];   // v4.128: pins too
   window._packSignoffs=[]; window._packSignoffsDeleted=null;
   try{ localStorage.removeItem('brt_packsigns_desktop'); }catch(e){}
   _packSpares=[]; _packShared={toolcase:[],controller:[],office:[],spares:[]};
@@ -19067,6 +19206,7 @@ function renderDocsPanel(){
         +' — edit in <b>⚙ Settings</b>.';
     }
     _pcRender();
+    _pinRenderDesk();
   }catch(e){}
   var el=document.getElementById('docs-stage-list'); if(!el) return;
   _ensureStages();
