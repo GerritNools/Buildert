@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.042m</title>
+<title>WTU · Buildert v4.043m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -887,10 +887,10 @@ body.big-touch #chat-input{min-height:80px !important;}
   <span id="dbx-led" style="display:none"></span>
 </header>
 
-<div style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + var(--st));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden">
+<div id="stage-bar-row" style="position:fixed;top:calc(var(--hdr-h) + var(--ban-h) + var(--st));left:0;right:0;z-index:98;height:var(--stg-h);display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden">
   <div id="mob-stage-bar" style="flex:1;padding:4px 6px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch"></div>
 </div>
-<div class="banner">
+<div class="banner" id="prog-banner">
   <div class="ban-bar"><div class="ban-fill" id="ban-fill" style="width:0%"></div></div>
   <div class="ban-pct" id="ban-pct" style="color:var(--muted)">—</div>
   <div class="ban-segs" id="ban-segs"></div>
@@ -1740,6 +1740,10 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.043m: Info tab is full-height (progress banner + stage
+//   chips collapse there; both are device things). Weather/Navigate prefer
+//   exact coordinates from the planner (project.lat/lon). Info shows a
+//   warning when the worker is too old to sync contacts/pins (<v4.32).
 // FEATURES ADDED v4.042m: Info is a REAL tab — renders in the main view with
 //   the bottom tab bar visible, like Pack and Todos. The old sheet is gone;
 //   openInfoSheet() forwards to setTab('info') for old call sites.
@@ -1844,6 +1848,7 @@ function setTab(tab){
     var b=document.getElementById('nt-'+t.k);
     if(b) b.className='ntab'+(t.k===tab?' active-'+t.k:'');
   });
+  if(tab!=='info') _infoChrome(false);   // v4.043m
   // Special tabs that don't change the main view
   if(tab==='scan'){ openScan(); return; }
   if(tab==='docs'){ currentTab=_prevTab||'list'; _openDocsSheet(_mCurrentStageIdx); return; }
@@ -1903,6 +1908,7 @@ function renderMain(){
   if(currentTab==='map'){   renderMap();   return; }
   if(currentTab==='todos'){  renderTodosMobile(); return; }
   if(currentTab==='info'){   renderInfoTab();     return; }   // v4.042m
+  _infoChrome(false);
   renderCards();
 }
 
@@ -8628,7 +8634,11 @@ async function _piWeather(addr){
     var ck='brt_wx_'+_mobGetProjectId();
     var cache=null; try{ cache=JSON.parse(localStorage.getItem(ck)||'null'); }catch(e){}
     if(cache && cache.addr===addr && (Date.now()-cache.at)<30*60000){ _piWxRender(el,cache.d); return; }
-    var coords=(cache&&cache.addr===addr)?{lat:cache.lat,lon:cache.lon}:null;
+    // v4.043m: if the planner pinned exact coordinates (⚙ Settings →
+    // Location), those win — no geocoding guesswork.
+    var coords=null;
+    if(typeof project==='object' && isFinite(project.lat) && isFinite(project.lon)) coords={lat:+project.lat,lon:+project.lon};
+    if(!coords && cache && cache.addr===addr) coords={lat:cache.lat,lon:cache.lon};
     if(!coords){
       var q=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(addr));
       var gd=await q.json();
@@ -8721,7 +8731,34 @@ var _PI_ROLES=['Client','Designer','Producer','Production','Stage Manager','LD',
 
 // v4.042m: Info is a tab. The container (#pinfo-body) is created inside
 // #card-list, so everything below (_piRender and friends) works unchanged.
+// v4.043m: the progress banner and stage chips are about DEVICES; on the
+// Info tab they only eat vertical space. Collapse them (layout runs on the
+// --ban-h/--stg-h vars, so zeroing those shifts everything up cleanly) and
+// restore on any other tab.
+// v4.043m: one cheap /health probe → numeric worker version for diagnostics
+(function(){
+  setTimeout(async function(){
+    try{
+      if(!_workerUrl) return;
+      var r=await fetch(_workerUrl.replace(/\/$/,'')+'/health');
+      var d=await r.json();
+      if(d && d.version) window._srvVer=parseFloat(d.version)||0;
+      if(currentTab==='info') _piRender();
+    }catch(e){}
+  }, 2500);
+})();
+function _infoChrome(on){
+  try{
+    var r=document.documentElement.style;
+    var sb=document.getElementById('stage-bar-row'), bn=document.getElementById('prog-banner');
+    if(on){ r.setProperty('--ban-h','0px'); r.setProperty('--stg-h','0px');
+            if(sb) sb.style.display='none'; if(bn) bn.style.display='none'; }
+    else  { r.removeProperty('--ban-h');    r.removeProperty('--stg-h');
+            if(sb) sb.style.display='flex'; if(bn) bn.style.display=''; }
+  }catch(e){}
+}
 function renderInfoTab(){
+  _infoChrome(true);
   var cl=document.getElementById('card-list'); if(!cl) return;
   cl.innerHTML='<div id="pinfo-body" style="padding:10px 14px calc(90px + var(--sb))">'
     +'<div style="font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1px;padding:4px 0 2px">ℹ️ PROJECT INFO</div>'
@@ -8752,7 +8789,7 @@ function _piRender(){
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">'+_piEsc(pm.venue||'')+'</div>'
       +(pm.city?'<div style="font-size:12px;color:var(--muted)">'+_piEsc(pm.city)+'</div>':'')+'</div>'
-      +'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr)+'" target="_blank" rel="noopener" '
+      +'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((isFinite(project.lat)&&isFinite(project.lon))?(project.lat+','+project.lon):addr)+'" target="_blank" rel="noopener" '
       +'style="flex-shrink:0;background:var(--accent);color:#000;text-decoration:none;font-weight:800;border-radius:10px;padding:11px 16px;font-size:13px">🧭 Navigate</a>'
       +'</div>'
       +'<div id="pi-wx" style="margin-top:10px;border-top:1px solid var(--border2);padding-top:8px;font-size:12px;color:var(--muted)">Loading weather…</div>'
@@ -8789,6 +8826,10 @@ function _piRender(){
   }
 
   // ── Who is who ──
+  // v4.043m: contacts/pins need worker v4.31/v4.32+. An older worker DROPS
+  // the fields on every push — that looks exactly like "doesn't sync".
+  var srvOld=(typeof window._srvVer==='number' && window._srvVer>0 && window._srvVer<4.32);
+  if(srvOld) h+='<div class="pi-card" style="border-color:var(--warn);color:var(--warn);font-size:12px">⚠ Worker v'+window._srvVer+' — contacts &amp; pins need v4.32+. Ask the planner to deploy the new worker; until then these lists stay on this phone only.</div>';
   h+='<div class="pi-sec">👥 Who is who</div><div class="pi-card">';
   if(_mContacts.length){
     // v4.036m: project-wide people first, then grouped per stage.
