@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.134</title>
+<title>WTUniverse · Buildert Editor v4.135</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.134</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.135</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6690,6 +6690,7 @@ function _injectProjectIntoMobile(html) {
     info_pins: window._infoPins||[],                    // v4.128: pinned chat
     info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
   };
+  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
 
   // Strip any old preload block
   html = html.replace(/<!--WTU-PRELOAD-->[\s\S]*?<!--\/WTU-PRELOAD-->/g, '');
@@ -6724,6 +6725,36 @@ function _injectProjectIntoMobile(html) {
 var _projectVersion    = 0;   // current local version
 var _projectBaseVersion= 0;   // version when we last loaded from file
 var _projectMeta = {name:'', venue:'', date:'', anbernic_ip:''};
+
+// ── v4.135: ONE source of truth for every synced collection ──────────
+// The desktop has six payload builders (live push, dropbox push, file save,
+// file payload, mobile inject, share push). Twice now a new collection was
+// added to some but not all of them, and the symptom was always the same
+// maddening "doesn't sync one way". Every builder now finishes with
+// Object.assign(payload, _brtSyncedCollections()) — so a future collection
+// is added HERE, once, and automatically travels through every path.
+function _brtSyncedCollections(){
+  var out={
+    evaluation:           window._evaluation||[],
+    evaluation_deleted:   window._evaluationDeleted||[],
+    todos:                (_todos||[]).filter(function(t){return !t.auto;}),
+    todos_deleted:        window._todosDeleted||[],
+    contacts:             window._contacts||[],
+    contacts_deleted:     (window._contactsDeleted||[]).slice(-200),
+    info_pins:            window._infoPins||[],
+    info_pins_deleted:    (window._infoPinsDeleted||[]).slice(-200),
+    pack_signoffs:        window._packSignoffs||[],
+    xp_bonus:             window._xpBonus||{},
+    schedule:             (typeof _schedule!=='undefined'&&_schedule)||[],
+    schedulePrev:         (typeof _schedulePrev!=='undefined'&&_schedulePrev)||[],
+    _clears:              window._brtClears||[],
+  };
+  if(window._packSignoffsDeleted) out.pack_signoffs_deleted=window._packSignoffsDeleted;
+  if(typeof _packShared!=='undefined'&&_packShared) out.pack_shared=_packShared;
+  if(window._riggerAliases) out.rigger_aliases=window._riggerAliases;
+  if(window._riggerAliasesRemoved) out.rigger_aliases_removed=window._riggerAliasesRemoved;
+  return out;
+}
 
 // ── Who is who (v4.124): project contacts, synced with phones ────────
 // [{id, role, name, phone, note, by, _ts}] + tombstone id list. Union by id
@@ -7051,7 +7082,7 @@ function _pcRemove(id){
 }
 
 function _buildProjectPayload() {
-  return {
+  return Object.assign({
     _format:   'wtu-project',
     _version:  _projectVersion + 1,
     _saved:    new Date().toISOString(),
@@ -7073,12 +7104,8 @@ function _buildProjectPayload() {
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:  window._todosDeleted||[],
-    contacts:          window._contacts||[],            // v4.124: who-is-who
-    contacts_deleted:  (window._contactsDeleted||[]).slice(-200),
-    info_pins:         window._infoPins||[],            // v4.128: pinned chat
-    info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
     _log:           window._projectLog || [],
-  };
+  }, _brtSyncedCollections());   // v4.135: canonical synced fields
 }
 
 function saveProject() {
@@ -8296,6 +8323,7 @@ async function _dbxPush(silent){
     _node_positions: JSON.parse(_npRaw),
     _diag_positions: JSON.parse(_dpRaw),
   };
+  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
@@ -18337,6 +18365,7 @@ async function _wPushImpl(silent){
     _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
   };
+  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   // ── KV size guard: Cloudflare caps a value at ~25MB. Background images
   // (base64) are the usual culprit. Above 9MB we strip them from the PUSH
   // only — they stay in the local project & saved .buildert files.
@@ -19110,6 +19139,7 @@ function wPushLayout(){
     _node_positions:np_parsed,
     _diag_positions:dp_parsed,
   };
+  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
@@ -19178,7 +19208,7 @@ function _buildFilePayload(){
   _saveCurrentStageLayout();
   // If in Total view, sync devices back to their respective stages before push
   if(_currentStageIdx>=0) _stages[_currentStageIdx].devices = devices;
-  return {
+  return Object.assign({
     _format:'wtu-project',
     _version:_projectVersion,
     _saved:new Date().toISOString(),
@@ -19206,7 +19236,7 @@ function _buildFilePayload(){
     _log: _activityLog || [],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
     _diag_positions:_stages[_currentStageIdx].diagPositions||{},
-  };
+  }, _brtSyncedCollections());   // v4.135: canonical synced fields
 }
 
 // ── New ───────────────────────────────────────────────────────────
