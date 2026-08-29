@@ -1,5 +1,18 @@
 /**
- * Buildert Service Worker — v2 (adds 🔔 push)
+ * Buildert Service Worker — v3  (file stays named buildert_sw_1.js)
+ *
+ * v3 is YOUR v2 with three small touches — the structure and strategy were
+ * already right, so this is a polish pass, not a rebuild:
+ *   1. A network response that arrives AFTER the 4s timeout (slow backstage
+ *      wifi) now still refreshes the cache, so the NEXT open is up to date.
+ *      v2 discarded it.
+ *   2. Tapping a notification when the app was fully closed now also opens
+ *      the chat: openWindow() gets the {type:'open-chat'} message too, after
+ *      a short boot delay. v2 only messaged already-open windows.
+ *   3. A 'skip-waiting' message hook, so a future in-app "update now" button
+ *      can activate a fresh worker without closing all tabs.
+ * Cache name stays 'buildert-shell-v2' ON PURPOSE: the offline copy phones
+ * already hold remains valid — a rename would throw it away for nothing.
  *
  * Job: make the mobile app OPEN with zero signal. Strategy:
  *   • Navigations (opening the app): network-first with a 4s timeout,
@@ -24,10 +37,21 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
-function networkWithTimeout(req, ms) {
+// v3: on timeout the promise rejects (caller falls back to cache), but the
+// in-flight fetch keeps going and refreshes the cache when it lands — a slow
+// first open still means a fresh SECOND open.
+function networkWithTimeout(req, ms, cache) {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('timeout')), ms);
-    fetch(req).then(r => { clearTimeout(t); resolve(r); }, e => { clearTimeout(t); reject(e); });
+    let timedOut = false;
+    const t = setTimeout(() => { timedOut = true; reject(new Error('timeout')); }, ms);
+    fetch(req).then(r => {
+      clearTimeout(t);
+      if (timedOut) {
+        if (r && r.ok && cache) cache.put(req, r.clone()).catch(() => {});
+        return;
+      }
+      resolve(r);
+    }, e => { clearTimeout(t); if (!timedOut) reject(e); });
   });
 }
 
@@ -41,7 +65,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       try {
-        const fresh = await networkWithTimeout(e.request, 4000);
+        const fresh = await networkWithTimeout(e.request, 4000, cache);
         if (fresh && fresh.ok) cache.put(e.request, fresh.clone());
         return fresh;
       } catch (err) {
@@ -81,7 +105,7 @@ self.addEventListener('fetch', (e) => {
   }
 });
 
-// ── 🔔 Push (v2) ─────────────────────────────────────────────────────
+// ── 🔔 Push ──────────────────────────────────────────────────────────
 // Pushes arrive without payload (VAPID-only design), so the notification is
 // generic; the app's own channel badges take over once opened. The tag makes
 // a burst of messages collapse into one notification instead of ten.
@@ -101,6 +125,13 @@ self.addEventListener('notificationclick', (e) => {
     for (const c of clientsArr) {
       if ('focus' in c) { await c.focus(); c.postMessage({ type: 'open-chat' }); return; }
     }
-    await self.clients.openWindow('./index.html');
+    // v3: app fully closed → open it AND still land in the chat
+    const w = await self.clients.openWindow('./index.html');
+    if (w) setTimeout(() => { try { w.postMessage({ type: 'open-chat' }); } catch (err) {} }, 2500);
   })());
+});
+
+// v3: lets the page activate a freshly-installed worker on demand
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'skip-waiting') self.skipWaiting();
 });
