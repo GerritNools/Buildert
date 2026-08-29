@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Buildert">
 <link rel="manifest" href="buildert_manifest.json">
 <link rel="apple-touch-icon" href="buildert_icon_180.png">
-<title>WTU · Buildert v4.041m</title>
+<title>WTU · Buildert v4.042m</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@400;700;900&display=swap');
 :root{
@@ -1064,12 +1064,8 @@ body.big-touch #chat-input{min-height:80px !important;}
   <div class="sheet-title">📅 Day schedule</div>
   <div class="sheet-body" style="max-height:70vh;overflow-y:auto" id="sched-body"></div>
 </div>
-<div class="ovl" id="ovl-pinfo" onclick="closeSheet('pinfo')"></div>
-<div class="sheet" id="sheet-pinfo" style="height:min(90dvh,90vh);max-height:none">
-  <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
-  <div class="sheet-title">ℹ️ Project info</div>
-  <div class="sheet-body" id="pinfo-body" style="max-height:none"></div>
-</div>
+<!-- v4.042m: Project info is a REAL tab now (bottom bar stays visible);
+     its content renders inside #card-list like Pack and Todos do. -->
 <div class="sheet" id="sheet-chat">
   <button class="sheet-back" onclick="_sheetBack()"><span class="bk-chev">‹</span> Back</button>
   <div class="sheet-title">💬 Chat</div>
@@ -1744,6 +1740,9 @@ function updateLocDl(){
 //   planner bonus XP sync (xp_bonus payload key, desktop Rewards modal),
 //   general sun-mode inline-style overrides, Motivator™ tier popups.
 //
+// FEATURES ADDED v4.042m: Info is a REAL tab — renders in the main view with
+//   the bottom tab bar visible, like Pack and Todos. The old sheet is gone;
+//   openInfoSheet() forwards to setTab('info') for old call sites.
 // FEATURES ADDED v4.041m: version badge fixed (header said v4.033m while the
 //   file was newer — the badge is now id="app-ver" and syncs itself from the
 //   <title>, the single version source, at boot).
@@ -1848,7 +1847,7 @@ function setTab(tab){
   // Special tabs that don't change the main view
   if(tab==='scan'){ openScan(); return; }
   if(tab==='docs'){ currentTab=_prevTab||'list'; _openDocsSheet(_mCurrentStageIdx); return; }
-  if(tab==='info'){ currentTab=_prevTab||'list'; openInfoSheet(); return; }
+
 
   // diagram-wrap holds BOTH the node canvas and the diagram map
   var dw  = document.getElementById('diagram-wrap');
@@ -1903,6 +1902,7 @@ function renderMain(){
   if(currentTab==='specs'){ renderSpecs(); return; }
   if(currentTab==='map'){   renderMap();   return; }
   if(currentTab==='todos'){  renderTodosMobile(); return; }
+  if(currentTab==='info'){   renderInfoTab();     return; }   // v4.042m
   renderCards();
 }
 
@@ -8713,21 +8713,29 @@ function _mContactsAbsorb(data){
   _mContacts=Object.keys(map).map(function(k){return map[k];})
     .sort(function(a,b){ return String(a._ts||'').localeCompare(String(b._ts||'')); });
   _mContactsSave();
+  try{ if(currentTab==='info' && !_piForm) _piRender(); }catch(e){}   // v4.042m: live refresh
 }
 
 // The roles you meet on the floor — quick-add chips, free text always possible.
 var _PI_ROLES=['Client','Designer','Producer','Production','Stage Manager','LD','Light tech','Sound tech','Video','Barchick','Local crew','Venue tech'];
 
-function openInfoSheet(){
+// v4.042m: Info is a tab. The container (#pinfo-body) is created inside
+// #card-list, so everything below (_piRender and friends) works unchanged.
+function renderInfoTab(){
+  var cl=document.getElementById('card-list'); if(!cl) return;
+  cl.innerHTML='<div id="pinfo-body" style="padding:10px 14px calc(90px + var(--sb))">'
+    +'<div style="font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1px;padding:4px 0 2px">ℹ️ PROJECT INFO</div>'
+    +'</div>';
   _mContactsLoad();
   _piForm=null;
   _piRender();
-  openSheet('pinfo');
 }
+function openInfoSheet(){ setTab('info'); }   // compat for older call sites
 function _piEsc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function _piRender(){
-  var el=document.getElementById('pinfo-body'); if(!el) return;
-  var h='';
+  var el=document.getElementById('pinfo-body');
+  if(!el){ if(currentTab==='info') renderInfoTab(); return; }
+  var h='<div style="font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1px;padding:4px 0 2px">ℹ️ PROJECT INFO</div>';
 
   // ── Project meta (desktop is the editor; shown read-only here) ──
   var pm=(typeof project==='object'&&project)||{};
@@ -8825,7 +8833,7 @@ function _piRender(){
       any=true;
       h+='<div class="pi-doc"><span style="flex:1;font-weight:600;font-size:13.5px">'+_piEsc(doc.label||'Document')
         +'<small style="display:block;font-weight:400;font-size:10px;color:var(--muted);font-family:var(--mono)">'+_piEsc(st.name||'')+'</small></span>'
-        +'<button data-url="'+_piEsc(doc.url)+'" data-lbl="'+_piEsc(doc.label||'Document')+'" onclick="closeSheet(\'pinfo\');_pdfOpen(this.dataset.url,this.dataset.lbl)" '
+        +'<button data-url="'+_piEsc(doc.url)+'" data-lbl="'+_piEsc(doc.label||'Document')+'" onclick="_pdfOpen(this.dataset.url,this.dataset.lbl)" '
         +'style="background:var(--accent);border:none;color:#000;padding:7px 15px;border-radius:7px;font-weight:700;font-size:12px">Open</button></div>';
     });
   });
