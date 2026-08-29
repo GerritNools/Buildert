@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.135</title>
+<title>WTUniverse · Buildert Editor v4.136</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.135</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.136</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6747,8 +6747,10 @@ function _brtSyncedCollections(){
     xp_bonus:             window._xpBonus||{},
     schedule:             (typeof _schedule!=='undefined'&&_schedule)||[],
     schedulePrev:         (typeof _schedulePrev!=='undefined'&&_schedulePrev)||[],
-    _clears:              window._brtClears||[],
   };
+  // NOTE: _clears deliberately NOT in here. Only the flows that consciously
+  // set a clear flag (quick-sync) may send it — a stale flag riding along on
+  // every push would let empty collections through the worker's guard.
   if(window._packSignoffsDeleted) out.pack_signoffs_deleted=window._packSignoffsDeleted;
   if(typeof _packShared!=='undefined'&&_packShared) out.pack_shared=_packShared;
   if(window._riggerAliases) out.rigger_aliases=window._riggerAliases;
@@ -18736,17 +18738,22 @@ var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}
 function _todosDedupe(){
   var sig=function(t){ return [String(t.label||'').trim().toLowerCase(), t.stage_id||'',
     t.device_id||'', t.day||'', t.assignee||''].join('|'); };
-  var bySig={}, out=[], dropped=[];
+  // v4.136: fold only clear pathologies — 3+ identical copies with a real
+  // label. Pairs and short labels ("go", "fix") are often legitimate reuse,
+  // and the tombstones made a wrong fold permanent.
+  var groups={}, dropped=[];
   (_todos||[]).forEach(function(t){
-    if(t.auto){ out.push(t); return; }
-    var k=sig(t), prev=bySig[k];
-    if(!prev){ bySig[k]=t; out.push(t); return; }
-    var a=Date.parse(prev.created||'')||0, b=Date.parse(t.created||'')||0;
-    var keep=(b&&(!a||b<a))?t:prev, drop=(keep===t)?prev:t;
-    keep.done=!!(prev.done||t.done);
-    if(keep!==prev){ out[out.indexOf(prev)]=keep; bySig[k]=keep; }
-    dropped.push(drop.id);
+    if(t.auto || String(t.label||'').trim().length<4) return;
+    var k=sig(t); (groups[k]=groups[k]||[]).push(t);
   });
+  var dropSet={};
+  Object.keys(groups).forEach(function(k){
+    var g=groups[k]; if(g.length<3) return;
+    g.sort(function(a,b){ return (Date.parse(a.created||'')||9e15)-(Date.parse(b.created||'')||9e15); });
+    g[0].done=g.some(function(t){return !!t.done;});
+    g.slice(1).forEach(function(t){ dropSet[t.id]=1; dropped.push(t.id); });
+  });
+  var out=(_todos||[]).filter(function(t){ return !dropSet[t.id]; });
   if(dropped.length){
     _todos=out;
     window._todosDeleted=window._todosDeleted||[];
