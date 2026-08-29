@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.137</title>
+<title>WTUniverse · Buildert Editor v4.134</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.137</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.134</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6690,7 +6690,6 @@ function _injectProjectIntoMobile(html) {
     info_pins: window._infoPins||[],                    // v4.128: pinned chat
     info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
   };
-  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
 
   // Strip any old preload block
   html = html.replace(/<!--WTU-PRELOAD-->[\s\S]*?<!--\/WTU-PRELOAD-->/g, '');
@@ -6725,38 +6724,6 @@ function _injectProjectIntoMobile(html) {
 var _projectVersion    = 0;   // current local version
 var _projectBaseVersion= 0;   // version when we last loaded from file
 var _projectMeta = {name:'', venue:'', date:'', anbernic_ip:''};
-
-// ── v4.135: ONE source of truth for every synced collection ──────────
-// The desktop has six payload builders (live push, dropbox push, file save,
-// file payload, mobile inject, share push). Twice now a new collection was
-// added to some but not all of them, and the symptom was always the same
-// maddening "doesn't sync one way". Every builder now finishes with
-// Object.assign(payload, _brtSyncedCollections()) — so a future collection
-// is added HERE, once, and automatically travels through every path.
-function _brtSyncedCollections(){
-  var out={
-    evaluation:           window._evaluation||[],
-    evaluation_deleted:   window._evaluationDeleted||[],
-    todos:                (_todos||[]).filter(function(t){return !t.auto;}),
-    todos_deleted:        window._todosDeleted||[],
-    contacts:             window._contacts||[],
-    contacts_deleted:     (window._contactsDeleted||[]).slice(-200),
-    info_pins:            window._infoPins||[],
-    info_pins_deleted:    (window._infoPinsDeleted||[]).slice(-200),
-    pack_signoffs:        window._packSignoffs||[],
-    xp_bonus:             window._xpBonus||{},
-    schedule:             (typeof _schedule!=='undefined'&&_schedule)||[],
-    schedulePrev:         (typeof _schedulePrev!=='undefined'&&_schedulePrev)||[],
-  };
-  // NOTE: _clears deliberately NOT in here. Only the flows that consciously
-  // set a clear flag (quick-sync) may send it — a stale flag riding along on
-  // every push would let empty collections through the worker's guard.
-  if(window._packSignoffsDeleted) out.pack_signoffs_deleted=window._packSignoffsDeleted;
-  if(typeof _packShared!=='undefined'&&_packShared) out.pack_shared=_packShared;
-  if(window._riggerAliases) out.rigger_aliases=window._riggerAliases;
-  if(window._riggerAliasesRemoved) out.rigger_aliases_removed=window._riggerAliasesRemoved;
-  return out;
-}
 
 // ── Who is who (v4.124): project contacts, synced with phones ────────
 // [{id, role, name, phone, note, by, _ts}] + tombstone id list. Union by id
@@ -7084,7 +7051,7 @@ function _pcRemove(id){
 }
 
 function _buildProjectPayload() {
-  return Object.assign({
+  return {
     _format:   'wtu-project',
     _version:  _projectVersion + 1,
     _saved:    new Date().toISOString(),
@@ -7106,8 +7073,12 @@ function _buildProjectPayload() {
     pack_shared:    _packShared,
     todos:          (_todos||[]).filter(function(t){return !t.auto;}),
     todos_deleted:  window._todosDeleted||[],
+    contacts:          window._contacts||[],            // v4.124: who-is-who
+    contacts_deleted:  (window._contactsDeleted||[]).slice(-200),
+    info_pins:         window._infoPins||[],            // v4.128: pinned chat
+    info_pins_deleted: (window._infoPinsDeleted||[]).slice(-200),
     _log:           window._projectLog || [],
-  }, _brtSyncedCollections());   // v4.135: canonical synced fields
+  };
 }
 
 function saveProject() {
@@ -8325,7 +8296,6 @@ async function _dbxPush(silent){
     _node_positions: JSON.parse(_npRaw),
     _diag_positions: JSON.parse(_dpRaw),
   };
-  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
@@ -17097,11 +17067,6 @@ async function _bkOpen(){
     +'<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="document.getElementById(\'bk-modal\').remove()">✕</button>'
     +'</div>'
     +'<div id="bk-body" style="padding:14px 18px;overflow-y:auto;font-size:12px">Loading…</div>'
-    +'<div style="padding:10px 18px;border-top:1px solid var(--border);background:rgba(255,77,77,.05)">'
-    +'<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:1px;margin-bottom:4px">🚑 RECOVERY</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Todos vanished in the last two days? This removes the recent todo-deletion markers for the <b>current project</b> on the worker and on this browser — after that, any device that still has the todos (a phone that hasn\u2019t synced, a restored database, an old saved file) pushes them back and they STAY. Genuinely old deletions are untouched.</div>'
-    +'<button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--warn);border-color:var(--warn)" onclick="_bkUndeleteTodos()">🚑 Undo todo deletions (48h) for this project</button>'
-    +'</div>'
     +'<div style="padding:10px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">Daily automatic snapshots need a <b>Cron Trigger</b> on the worker (Cloudflare dashboard → your worker → Settings → Triggers → Cron, e.g. <code>0 3 * * *</code>). Without it, use ▶ Snapshot now.</div>'
     +'</div>';
   document.body.appendChild(w);
@@ -17128,21 +17093,6 @@ async function _bkLoad(){
           +'</div>';
       }).join('')+'</div>';
   }).join('');
-}
-// v4.137: strip recent todo tombstones (worker v4.37+) + local list, then pull
-async function _bkUndeleteTodos(){
-  if(!_projectKey){ showToast('Open a project first','warn'); return; }
-  if(!confirm('Remove todo-deletion markers of the last 48h for "'+(_mgrProjName(_projectKey)||_projectKey)+'"?\n\nDeliberately deleted todos from that window may reappear — you can simply delete those again.')) return;
-  var r=await _mgrApi('POST','/project-admin/undelete-todos',{pid:_projectKey,hours:48});
-  if(!(r.status===200&&r.data&&r.data.ok)){
-    showToast((r.data&&r.data.error)||(r.status===404?'Worker v4.37+ required':'Failed'),'danger'); return;
-  }
-  // Local tombstones are plain ids without timestamps; clearing them all is
-  // safe: genuinely old deletions are still tombstoned SERVER-side and get
-  // re-applied on the next pull.
-  window._todosDeleted=[];
-  showToast('🚑 '+r.data.tombstones_removed+' deletion marker(s) removed — now sync a device that still has the todos','ok');
-  if(typeof wPull==='function') wPull(true);
 }
 async function _bkRun(){
   var m=document.getElementById('bk-msg'); if(m) m.textContent='Running…';
@@ -18387,7 +18337,6 @@ async function _wPushImpl(silent){
     _node_memos:_nodeMemos,
     _diag_positions:JSON.parse(dp),
   };
-  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   // ── KV size guard: Cloudflare caps a value at ~25MB. Background images
   // (base64) are the usual culprit. Above 9MB we strip them from the PUSH
   // only — they stay in the local project & saved .buildert files.
@@ -18758,22 +18707,17 @@ var _todos = [];  // [{id, type, label, device_id, urgency, done, auto, created}
 function _todosDedupe(){
   var sig=function(t){ return [String(t.label||'').trim().toLowerCase(), t.stage_id||'',
     t.device_id||'', t.day||'', t.assignee||''].join('|'); };
-  // v4.136: fold only clear pathologies — 3+ identical copies with a real
-  // label. Pairs and short labels ("go", "fix") are often legitimate reuse,
-  // and the tombstones made a wrong fold permanent.
-  var groups={}, dropped=[];
+  var bySig={}, out=[], dropped=[];
   (_todos||[]).forEach(function(t){
-    if(t.auto || String(t.label||'').trim().length<4) return;
-    var k=sig(t); (groups[k]=groups[k]||[]).push(t);
+    if(t.auto){ out.push(t); return; }
+    var k=sig(t), prev=bySig[k];
+    if(!prev){ bySig[k]=t; out.push(t); return; }
+    var a=Date.parse(prev.created||'')||0, b=Date.parse(t.created||'')||0;
+    var keep=(b&&(!a||b<a))?t:prev, drop=(keep===t)?prev:t;
+    keep.done=!!(prev.done||t.done);
+    if(keep!==prev){ out[out.indexOf(prev)]=keep; bySig[k]=keep; }
+    dropped.push(drop.id);
   });
-  var dropSet={};
-  Object.keys(groups).forEach(function(k){
-    var g=groups[k]; if(g.length<3) return;
-    g.sort(function(a,b){ return (Date.parse(a.created||'')||9e15)-(Date.parse(b.created||'')||9e15); });
-    g[0].done=g.some(function(t){return !!t.done;});
-    g.slice(1).forEach(function(t){ dropSet[t.id]=1; dropped.push(t.id); });
-  });
-  var out=(_todos||[]).filter(function(t){ return !dropSet[t.id]; });
   if(dropped.length){
     _todos=out;
     window._todosDeleted=window._todosDeleted||[];
@@ -19166,7 +19110,6 @@ function wPushLayout(){
     _node_positions:np_parsed,
     _diag_positions:dp_parsed,
   };
-  Object.assign(payload, _brtSyncedCollections());   // v4.135: canonical synced fields
   _projectVersion++;
   _projectBaseVersion=_projectVersion;
   _persistProjectMeta();
@@ -19235,7 +19178,7 @@ function _buildFilePayload(){
   _saveCurrentStageLayout();
   // If in Total view, sync devices back to their respective stages before push
   if(_currentStageIdx>=0) _stages[_currentStageIdx].devices = devices;
-  return Object.assign({
+  return {
     _format:'wtu-project',
     _version:_projectVersion,
     _saved:new Date().toISOString(),
@@ -19263,7 +19206,7 @@ function _buildFilePayload(){
     _log: _activityLog || [],
     _node_positions:_stages[_currentStageIdx].nodePositions||{},
     _diag_positions:_stages[_currentStageIdx].diagPositions||{},
-  }, _brtSyncedCollections());   // v4.135: canonical synced fields
+  };
 }
 
 // ── New ───────────────────────────────────────────────────────────
