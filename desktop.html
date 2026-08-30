@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.138</title>
+<title>WTUniverse · Buildert Editor v4.139</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.138</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.139</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -15716,6 +15716,8 @@ async function _mgrRenderProjects(){
     +     '<option value="client"'+(_mgrProjSort==='client'?' selected':'')+'>↕ client A–Z</option>'
     +   '</select>'
     +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" title="Drop backup files, review, and import them as organised projects" onclick="_impOpen()">📥 Import backups…</button>'
+    +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="_bkOpen()" title="Daily snapshots on the worker — download or restore">🗄 Backups</button>'
+    +   '<button class="btn btn-ghost" style="font-size:12px;white-space:nowrap" onclick="_ahOpen()" title="Serve the rigger app from the worker — no public GitHub repo needed">📱 App hosting</button>'
     + '</div>'
     + (function(){
         var orph=[];
