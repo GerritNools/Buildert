@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.141</title>
+<title>WTUniverse · Buildert Editor v4.142</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.141</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.142</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6168,7 +6168,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.141';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.142';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.32;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -17810,8 +17810,20 @@ async function wPull(silent){
     if(!silent) showToast('No worker URL configured','warn');
     return;
   }
-  // Auto-pulls (silent=true) are blocked when auto-pull toggle is off; manual pulls always work
-  if(silent && !_autoPullOn) return;
+  // v4.142: this used to be `if(silent && !_autoPullOn) return;` — a blanket
+  // block on every silent pull. It killed far more than the 10s polling it
+  // was aimed at: v4.121's one-fresh-pull-per-boot, the pull after opening a
+  // file, the one after switching project, the import merge refresh, the todo
+  // recovery refresh and the automatic retry after a failed pull. Worse, boot
+  // and project-switch set window._brtAwaitingPull = true first and only a
+  // landed pull clears it, so with auto-pull off (the default Edit mode) that
+  // latch stayed up for the whole session — which held every silent push,
+  // stopped _brtLightSync from ever adopting todos or schedule, and left
+  // _brtQuickSyncFlush retrying itself forever.
+  //
+  // The toggle is not lost: the polling loop in _wStartAutoPull() already
+  // checks _autoPullOn itself, so continuous auto-pull stays off in Edit
+  // mode. Only the deliberate one-off pulls run again, as intended.
   if(_dbxSyncing){
     if(!silent) showToast('Sync already in progress','warn');
     return;
