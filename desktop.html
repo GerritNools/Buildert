@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.139</title>
+<title>WTUniverse · Buildert Editor v4.140</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.139</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.140</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -17164,9 +17164,12 @@ async function _bkOpen(){
     +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">'
     +'<b style="font-family:var(--cond);font-size:15px;letter-spacing:1px">🗄 BACKUPS</b>'
     +'<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_bkRun()">▶ Snapshot now</button>'
+    +'<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_bkExport()" title="Download every snapshot as one file — keep a copy off Cloudflare">⬇ Export all</button>'
+    +'<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="_bkTest()" title="Verify a restore actually works — safe, changes nothing">🧪 Test restore</button>'
     +'<span id="bk-msg" style="font-size:11px;color:var(--muted);flex:1"></span>'
     +'<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="document.getElementById(\'bk-modal\').remove()">✕</button>'
     +'</div>'
+    +'<div id="bk-status" style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:12px">Checking backup health…</div>'
     +'<div id="bk-body" style="padding:14px 18px;overflow-y:auto;font-size:12px">Loading…</div>'
     +'<div style="padding:10px 18px;border-top:1px solid var(--border);background:rgba(255,77,77,.05)">'
     +'<div style="font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:1px;margin-bottom:4px">🚑 RECOVERY</div>'
@@ -17176,6 +17179,7 @@ async function _bkOpen(){
     +'<div style="padding:10px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">Daily automatic snapshots need a <b>Cron Trigger</b> on the worker (Cloudflare dashboard → your worker → Settings → Triggers → Cron, e.g. <code>0 3 * * *</code>). Without it, use ▶ Snapshot now.</div>'
     +'</div>';
   document.body.appendChild(w);
+  _bkStatus();
   _bkLoad();
 }
 async function _bkLoad(){
@@ -17190,12 +17194,15 @@ async function _bkLoad(){
   var pids=Object.keys(b).sort();
   if(!pids.length){ el.innerHTML='No snapshots yet — press <b>▶ Snapshot now</b> to make the first sweep.'; return; }
   el.innerHTML=pids.map(function(pid){
-    return '<div style="margin-bottom:14px"><div style="font-family:var(--cond);font-weight:900;letter-spacing:.5px;margin-bottom:4px">'+_escHtml(_mgrProjName(pid)||pid)+' <span style="color:var(--muted);font-weight:400;font-size:10px">'+_escHtml(pid)+'</span></div>'
+    return '<div style="margin-bottom:14px"><div style="font-family:var(--cond);font-weight:900;letter-spacing:.5px;margin-bottom:4px">'
+      +_escHtml(pid==='ACCOUNTS'?'👤 Accounts (users · memberships · invites · XP)':(_mgrProjName(pid)||pid))+' <span style="color:var(--muted);font-weight:400;font-size:10px">'+_escHtml(pid)+'</span></div>'
       +b[pid].map(function(x){
         return '<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--border2)">'
           +'<span style="font-family:var(--mono);flex:1">'+_escHtml(x.label)+'</span>'
           +'<a class="btn btn-ghost" style="font-size:10px;padding:2px 9px;text-decoration:none" href="'+_workerUrl.replace(/\/$/,'')+'/backups/get?key='+encodeURIComponent(x.key)+'&t='+encodeURIComponent(_mgrSession||'')+'" target="_blank" rel="noopener">⬇ Download</a>'
-          +'<button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;color:var(--warn)" onclick="_bkRestore(\''+_mgrJs(x.key)+'\',\''+_mgrJs(pid)+'\')">♻ Restore</button>'
+          +(pid==='ACCOUNTS'
+             ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;color:var(--warn)" onclick="_bkRestoreAccounts(\''+_mgrJs(x.key)+'\')">♻ Restore accounts</button>'
+             : '<button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;color:var(--warn)" onclick="_bkRestore(\''+_mgrJs(x.key)+'\',\''+_mgrJs(pid)+'\')">♻ Restore</button>')
           +'</div>';
       }).join('')+'</div>';
   }).join('');
@@ -17215,13 +17222,75 @@ async function _bkUndeleteTodos(){
   showToast('🚑 '+r.data.tombstones_removed+' deletion marker(s) removed — now sync a device that still has the todos','ok');
   if(typeof wPull==='function') wPull(true);
 }
+// v4.140: health strip — a cron trigger that quietly stopped is otherwise
+// invisible until the day you need the backup.
+async function _bkStatus(){
+  var el=document.getElementById('bk-status'); if(!el) return;
+  var r=await _mgrApi('GET','/backups/status');
+  if(!(r.status===200&&r.data&&r.data.ok)){
+    el.innerHTML='<span style="color:var(--muted)">'+(r.status===404?'Worker v4.39+ required for backup health.':'Health unavailable.')+'</span>';
+    return;
+  }
+  var d=r.data, h=d.health;
+  if(!h){
+    el.innerHTML='<span style="color:var(--danger);font-weight:700">⚠ No snapshot has ever run.</span> '
+      +'Press <b>▶ Snapshot now</b>, then add a Cron Trigger (see below) so it happens nightly.';
+    return;
+  }
+  var hrs=d.hours_since_last_run;
+  var col=d.stale?'var(--danger)':'var(--ok)';
+  el.innerHTML='<span style="color:'+col+';font-weight:700">'+(d.stale?'⚠':'✅')+'</span> Last run '
+    +_escHtml(String(h.last_run||'').slice(0,16).replace('T',' '))+' ('+(hrs===null?'?':hrs+'h ago')+') · '
+    +(h.projects|0)+' project'+((h.projects|0)===1?'':'s')+' · '+d.snapshot_count+' snapshots stored · '
+    +'accounts: '+(d.newest_accounts_snapshot?('<b>'+_escHtml(d.newest_accounts_snapshot)+'</b>'):'<span style="color:var(--warn)">none yet</span>')
+    +(d.stale?'<div style="color:var(--danger);margin-top:4px">Nothing ran in over 48h — is the Cron Trigger still set?</div>':'');
+}
+async function _bkExport(){
+  var url=_workerUrl.replace(/\/$/,'')+'/backups/export?t='+encodeURIComponent(_mgrSession||'');
+  window.open(url,'_blank');
+  showToast('Downloading all snapshots — store this file off Cloudflare','ok');
+}
+// 🧪 Restore test: a dry run of the ACCOUNTS restore. Touches nothing, but
+// proves the snapshot is readable and complete — the thing you want to know
+// BEFORE an emergency, not during one.
+async function _bkTest(){
+  var m=document.getElementById('bk-msg'); if(m) m.textContent='Testing…';
+  var st=await _mgrApi('GET','/backups/status');
+  var key=st.data&&st.data.newest_accounts_snapshot ? ('backup__ACCOUNTS__'+st.data.newest_accounts_snapshot) : '';
+  if(!key){ if(m) m.textContent='No accounts snapshot yet — press ▶ Snapshot now first.'; return; }
+  var r=await _mgrApi('POST','/backups/restore-accounts',{key:key,dry_run:true});
+  if(r.status===200&&r.data&&r.data.ok){
+    var w=r.data.would_restore||{};
+    if(m) m.textContent='';
+    alert('🧪 Restore test passed\n\nSnapshot: '+key.split('__').pop()
+      +'\nReadable and complete. It would restore:\n'
+      +'• '+(w.users|0)+' accounts\n• '+(w.memberships|0)+' project memberships\n• '+(w.invites|0)+' invites\n• '+(w.user_xp|0)+' XP records'
+      +'\n\nNothing was changed.');
+  } else {
+    if(m) m.textContent=(r.data&&r.data.error)||'Test failed';
+  }
+}
 async function _bkRun(){
   var m=document.getElementById('bk-msg'); if(m) m.textContent='Running…';
   var r=await _mgrApi('POST','/backups/run');
   if(m) m.textContent=(r.status===200&&r.data&&r.data.ok)
     ? ('Done: '+r.data.report.made+' made, '+r.data.report.skipped+' already had today\u2019s')
     : ((r.data&&r.data.error)||('Failed ('+r.status+')'));
+  _bkStatus();
   _bkLoad();
+}
+async function _bkRestoreAccounts(key){
+  if(!confirm('Restore ACCOUNTS from '+key.split('__').pop()+'?\n\nUsers, memberships, invites and XP are written back (passwords included). Current accounts are snapshotted first. Nobody is deleted — this only adds/updates.')) return;
+  var m=document.getElementById('bk-msg'); if(m) m.textContent='Restoring accounts…';
+  var r=await _mgrApi('POST','/backups/restore-accounts',{key:key});
+  if(r.status===200&&r.data&&r.data.ok){
+    showToast('Accounts restored ✓','ok');
+    if(m) m.textContent='Restored '+((r.data.restored&&r.data.restored.users)|0)+' accounts.';
+  } else {
+    showToast((r.data&&r.data.error)||'Restore failed','danger');
+    if(m) m.textContent=(r.data&&r.data.error)||'Failed';
+  }
+  _bkStatus();
 }
 async function _bkRestore(key, pid){
   if(!confirm('Restore '+(_mgrProjName(pid)||pid)+' from '+key.split('__').pop()+'?\n\nThe CURRENT state is snapshotted first (prerestore), so this can be undone by restoring that one.')) return;
