@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.137</title>
+<title>WTUniverse · Buildert Editor v4.138</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -495,7 +495,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.137</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.138</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -15617,6 +15617,7 @@ async function _mgrRenderProjects(){
   if(_h) _h.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     +'<button class="btn" style="background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);font-size:12px;padding:6px 14px" onclick="_pwzOpen()">🪄 New project…</button>'
     +'<button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="_bkOpen()" title="Daily snapshots on the worker — download or restore">🗄 Backups</button>'
+    +'<button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="_ahOpen()" title="Serve the rigger app from the worker — no public GitHub repo needed">📱 App hosting</button>'
     +'<span style="font-size:12px;color:var(--muted)">Loading projects…</span></div>';
   var list = await _mgrLoadProjects();
   var dupCount = list.filter(function(p){ return p._dupName; }).length;
@@ -17084,6 +17085,74 @@ async function _mgrGrantInvite(id){
 // This modal lists them, downloads one as JSON, restores one (the worker
 // snapshots the current state first, so a restore is always undoable),
 // or runs a snapshot sweep on demand.
+// ── 📱 App hosting (v4.138, worker v4.38+) ───────────────────────────
+// Publish the mobile app files to the worker's KV; riggers open
+// <worker>/app/ — same origin as the sync API, private repo not needed.
+async function _ahOpen(){
+  var old=document.getElementById('ah-modal'); if(old) old.remove();
+  var w=document.createElement('div');
+  w.id='ah-modal';
+  w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:5000;display:flex;align-items:center;justify-content:center';
+  var appUrl=_workerUrl.replace(/\/$/,'')+'/app/';
+  w.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,92vw);max-height:84vh;display:flex;flex-direction:column">'
+    +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">'
+    +'<b style="font-family:var(--cond);font-size:15px;letter-spacing:1px">📱 APP HOSTING</b>'
+    +'<span style="flex:1"></span>'
+    +'<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="document.getElementById(\'ah-modal\').remove()">✕</button>'
+    +'</div>'
+    +'<div style="padding:14px 18px;overflow-y:auto;font-size:12px;line-height:1.55">'
+    +'<div id="ah-info" style="color:var(--muted);margin-bottom:10px">Checking what\u2019s published…</div>'
+    +'<p style="margin:0 0 10px">Select the files to publish: the <b>mobile .html</b> (published as index.html), plus <b>buildert_sw_1.js</b>, the <b>manifest</b> and the <b>icons</b> if you have them. The app then lives at:</p>'
+    +'<div style="font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:10px;word-break:break-all">'+_escHtml(appUrl)
+    +' <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_mgrJs(appUrl)+'\');showToast(\'Copied\',\'ok\')">copy</button></div>'
+    +'<input id="ah-files" type="file" multiple accept=".html,.js,.json,.webmanifest,.png,.ico,.svg" style="margin-bottom:10px">'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<button class="btn btn-primary" style="font-size:12px;padding:7px 16px" onclick="_ahPublish()">⬆ Publish</button>'
+    +'<button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="localStorage.setItem(\'buildert_mobile_url\',\''+_mgrJs(appUrl)+'\');var mi=document.getElementById(\'mobile-url-inp\');if(mi)mi.value=\''+_mgrJs(appUrl)+'\';showToast(\'Invite links now use the worker app URL\',\'ok\')">Use as Mobile app URL</button>'
+    +'<span id="ah-msg" style="font-size:11px;color:var(--muted)"></span>'
+    +'</div>'
+    +'<p style="margin:12px 0 0;font-size:10px;color:var(--muted)">Riggers who installed the app from the old GitHub URL keep working, but re-install from the new address to get updates from here. Once everyone is over, the GitHub repo can go private or away.</p>'
+    +'</div></div>';
+  document.body.appendChild(w);
+  var r=await _mgrApi('GET','/app-admin/info');
+  var el=document.getElementById('ah-info'); if(!el) return;
+  if(r.status===200&&r.data&&r.data.ok){
+    el.innerHTML=r.data.meta
+      ? '✅ Published '+_escHtml(String(r.data.meta.at||'').slice(0,16).replace('T',' '))+' by '+_escHtml(r.data.meta.by||'')+' — '+ (r.data.meta.files||[]).map(_escHtml).join(', ')
+      : 'Nothing published yet.';
+  } else {
+    el.innerHTML='<span style="color:var(--danger)">'+_escHtml((r.data&&r.data.error)||(r.status===404?'Worker v4.38+ required':'Failed'))+'</span>';
+  }
+}
+async function _ahPublish(){
+  var inp=document.getElementById('ah-files');
+  var msg=document.getElementById('ah-msg');
+  if(!inp||!inp.files.length){ if(msg) msg.textContent='Pick the files first.'; return; }
+  if(msg) msg.textContent='Reading files…';
+  var files=[]; var CT={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',json:'application/json',webmanifest:'application/manifest+json',png:'image/png',ico:'image/x-icon',svg:'image/svg+xml'};
+  for(var i=0;i<inp.files.length;i++){
+    var f=inp.files[i];
+    var ext=(f.name.split('.').pop()||'').toLowerCase();
+    var isBin=/^(png|ico)$/.test(ext);
+    var data=await new Promise(function(res,rej){
+      var r=new FileReader();
+      r.onload=function(){ res(isBin?String(r.result).split(',')[1]:r.result); };
+      r.onerror=function(){ rej(new Error('read failed')); };
+      isBin?r.readAsDataURL(f):r.readAsText(f);
+    });
+    var name=/\.html?$/i.test(f.name)?'index.html':f.name;   // the app itself becomes index.html
+    files.push({name:name, ct:CT[ext]||'application/octet-stream', b64:isBin, data:data});
+  }
+  if(msg) msg.textContent='Publishing…';
+  var r=await _mgrApi('POST','/app-admin/publish',{files:files});
+  if(r.status===200&&r.data&&r.data.ok){
+    if(msg) msg.textContent='';
+    showToast('📱 Published: '+r.data.stored.join(', ')+' — open '+r.data.url+' on a phone to verify','ok');
+    _ahOpen();
+  } else {
+    if(msg) msg.textContent=(r.data&&r.data.error)||('Failed ('+r.status+')');
+  }
+}
 async function _bkOpen(){
   var old=document.getElementById('bk-modal'); if(old) old.remove();
   var w=document.createElement('div');
