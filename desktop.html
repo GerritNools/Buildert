@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.140</title>
+<title>WTUniverse · Buildert Editor v4.141</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -32,10 +32,8 @@
     font-family:var(--mono);font-size:13px;padding:6px 12px;border-radius:4px;width:190px;
     outline:none;transition:border-color .2s;}
   .conn-bar input:focus{border-color:var(--accent);}
-  .conn-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);transition:background .3s;flex-shrink:0;}
-  .conn-dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok);}
-  .conn-dot.err{background:var(--danger);}
-  #conn-label{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  /* v4.141: .conn-dot / #conn-label styled the controller connection light,
+     removed together with the Anbernic section. */
 
   .progress-banner{position:sticky;top:60px;z-index:99;background:var(--surface);
     border-bottom:1px solid var(--border);padding:0 24px;
@@ -495,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.140</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.141</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -537,23 +535,16 @@
 
   <span id="dbx-led-d" title="Worker sync" style="width:9px;height:9px;border-radius:50%;background:#55606e;display:inline-block;margin-left:6px;flex-shrink:0"></span>
   <div class="conn-bar">
-    <!-- Anbernic controller section — hidden for now (not in use). Elements kept in DOM so device-ip lookups stay safe. -->
-    <div id="anbernic-section" style="display:none;align-items:center;gap:8px">
-      <label style="font-size:11px;color:var(--muted);font-family:var(--mono)">IP</label>
-      <input type="text" id="device-ip" placeholder="192.168.x.x"
-             onkeydown="if(event.key==='Enter'){stopPolling();startPolling();}">
-      <div class="conn-dot" id="conn-dot"></div>
-      <span id="conn-label">not connected</span>
-      <button class="btn btn-ghost" id="poll-btn" onclick="togglePolling()">&#9654; Live sync</button>
-      <button class="btn btn-ok" onclick="pushToDevice()" title="Push to Anbernic controller">&#8593; Anbernic</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
-      <!-- Divider -->
-      <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
-    </div>
+    <!-- v4.141: the Anbernic controller section is GONE. The local device
+         server (main.py on :9002) is no longer used — every sync now runs
+         through the Cloudflare worker. The 📋 sync log button lived inside
+         that section and is kept here, because addSyncLog() is still the
+         shared log for worker/Dropbox sync. -->
 
     <!-- Cloudflare worker section -->
     <button class="btn btn-ghost" onclick="wPush(false)" title="Push to Cloudflare worker" style="font-size:12px">&#9729; Cloud push</button>
     <button class="btn btn-ghost" onclick="wPull(false)" title="Pull from Cloudflare worker" style="font-size:12px">&#8595; Pull</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('modal-conflict').classList.add('open');renderSyncLog()" style="padding:7px 9px" title="Sync log">&#128203;</button>
 
     <!-- Divider -->
     <span style="width:1px;background:var(--border);align-self:stretch;margin:4px 6px;display:inline-block"></span>
@@ -583,12 +574,9 @@
   </div>
 </header>
 
-<div id="https-warn" style="display:none;background:rgba(255,140,0,.15);border-bottom:1px solid rgba(255,140,0,.4);padding:8px 16px;font-size:13px;font-family:var(--mono);color:#ffaa44;align-items:center;gap:12px;">
-  ⚠ <b>Loaded over HTTPS</b> — Push to controller is blocked by the browser (mixed content).
-  <b>Save this file to your desktop and open it as a local file instead.</b>
-  <button style="margin-left:12px;padding:2px 10px;font-size:12px;cursor:pointer;border-radius:4px;border:1px solid #ffaa44;background:transparent;color:#ffaa44"
-    onclick="document.getElementById('https-warn').style.display='none'">Dismiss</button>
-</div>
+<!-- v4.141: the HTTPS mixed-content banner is removed with the Anbernic push —
+     it only ever warned that a plain-http://192.168.x.x POST is blocked from an
+     https page. The worker is https, so nothing left to warn about. -->
 
 <div id="version-warn" style="display:none;background:rgba(255,77,77,.12);border-bottom:1px solid var(--danger);padding:7px 24px;font-family:var(--mono);font-size:12px;color:var(--danger);align-items:center;gap:10px;position:sticky;top:60px;z-index:98;">
   <span>&#9888;</span>
@@ -3582,7 +3570,7 @@ var qrcode = function() {
   <div class="modal" style="max-width:520px">
     <h2>&#128268; Sync Log</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
-      Recent sync events between the web app and the controller device.
+      Recent sync events between the web app and the Cloudflare worker.
     </p>
     <div id="sync-log-full" style="font-family:var(--mono);font-size:12px;
       background:var(--panel);border:1px solid var(--border);border-radius:6px;
@@ -3727,7 +3715,7 @@ var qrcode = function() {
   <div class="modal" style="max-width:860px;width:96vw">
     <h2>&#9881; Model Specs Editor</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:4px">
-      Edit specs for each device model. Changes are saved locally and pushed to the controller with <b>&#8593; Push</b>.
+      Edit specs for each device model. Changes are saved locally and travel with the project on the next &#9729; Cloud push.
       <span style="color:var(--distro)">&#9632;</span> = changed from default.
     </p>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
@@ -4012,7 +4000,7 @@ var qrcode = function() {
     <div style="background:rgba(61,220,132,.06);border:1px solid var(--ok);border-radius:6px;
          padding:10px 12px;margin-bottom:14px;font-size:12px;line-height:1.7;color:var(--muted)">
       <b style="color:var(--ok)">Rigger can:</b> view all devices, mount positions, scan serials, update status &amp; checks<br>
-      <b style="color:var(--danger)">Rigger cannot:</b> see your Dropbox credentials or controller IP
+      <b style="color:var(--danger)">Rigger cannot:</b> see your Dropbox credentials or worker token
     </div>
 
     <div style="display:flex;gap:8px">
@@ -6168,43 +6156,53 @@ function exportCsv() {
   URL.revokeObjectURL(url); showToast('CSV exported','ok');
 }
 
-// ── Server version check ─────────────────────────────────────────────
-var WEBAPP_VERSION    = '4.123';
-var MIN_SERVER_VERSION = 2;  // server must return server_version >= 2
+// ── Worker version check (v4.141) ────────────────────────────────────
+// This used to be checkServerVersion(), and it asked the ANBERNIC
+// (http://<device-ip>:9002/buildert/version) for its version — but the one
+// thing it fed, window._srvVerNum, was read by _pinRenderDesk() to judge the
+// CLOUDFLARE WORKER ("Worker v… is too old for pins & contacts"). Two
+// different machines. In practice device-ip was empty, so getBaseUrl()
+// returned null, the request never landed, _srvVerNum stayed undefined and
+// that safety warning could never fire at all. Fill in an Anbernic IP and it
+// fired with the wrong box's number.
+//
+// Now it asks the worker itself. GET <worker>/health returns
+// {version:'4.39', schema:'v2', …} — the only version that matters here.
+var WEBAPP_VERSION     = '4.141';   // keep in step with the <title> badge
+var MIN_WORKER_VERSION = 4.32;      // below this the worker drops pins/contacts on push
 
-function checkServerVersion(baseUrl) {
+function checkWorkerVersion() {
+  if (!_workerUrl) return;
+  var base = _workerUrl.replace(/\/$/, '');
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', baseUrl + '/buildert/version', true);
-  xhr.timeout = 3000;
+  xhr.open('GET', base + '/health?_=' + Date.now(), true);
+  xhr.timeout = 5000;
   xhr.onload = function() {
-    if (xhr.status === 200) {
-      try {
-        var info = JSON.parse(xhr.responseText);
-        var sv = info.server_version || 0;
-        try{ window._srvVerNum=parseFloat(info.version)||0; }catch(e){}   // v4.132: numeric worker version
-        if (sv < MIN_SERVER_VERSION) {
-          showVersionWarning('Server v' + sv + ' is too old for web app ' + WEBAPP_VERSION
-            + '. Update main.py on the Anbernic before using Push — old server will corrupt buildert.json.');
-        } else {
-          hideVersionWarning();
-          addSyncLog('Server version OK (v' + sv + ')', 'ok');
-        }
-      } catch(e) {
-        showVersionWarning('Could not read server version. Update main.py before using Push.');
-      }
-    } else {
-      // 404 = old server without /buildert/version
-      showVersionWarning(
-        'Server is outdated (no version endpoint). ' +
-        'Update main.py on the Anbernic before using Push — Push is DISABLED until server is updated.');
-      _serverVersionOk = false;
+    if (xhr.status !== 200) {
+      addSyncLog('Worker /health returned HTTP ' + xhr.status, 'warn');
+      return;
     }
+    var info; try { info = JSON.parse(xhr.responseText); } catch (e) {
+      addSyncLog('Worker /health unreadable', 'warn'); return;
+    }
+    var wv = parseFloat(info.version) || 0;
+    window._workerVerNum = wv;
+    if (wv > 0 && wv < MIN_WORKER_VERSION) {
+      showVersionWarning('Worker v' + info.version + ' is too old for web app ' + WEBAPP_VERSION
+        + ' — every push silently discards contacts and pinned messages. Deploy the current worker file.');
+    } else {
+      hideVersionWarning();
+      addSyncLog('Worker version OK (v' + (info.version || '?') + ')', 'ok');
+    }
+    // The pins panel prints its own inline warning from this number, so it
+    // has to re-render once the answer is actually in.
+    try { if (typeof _pinRenderDesk === 'function') _pinRenderDesk(); } catch (e) {}
   };
-  xhr.onerror = xhr.ontimeout = function() {};
+  xhr.onerror = xhr.ontimeout = function() {
+    addSyncLog('Worker /health unreachable — version unknown', 'warn');
+  };
   xhr.send();
 }
-
-var _serverVersionOk = true;  // flipped false if server has no version endpoint
 
 function showVersionWarning(msg) {
   var el = document.getElementById('version-warn');
@@ -6222,7 +6220,7 @@ var syncLog = [];
 // Add startup entry
 (function(){
   var t=new Date(),pad=function(v){return v<10?'0'+v:''+v;};
-  syncLog.push({ts:pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()),type:'info',msg:'App loaded — open 📋 log, then click ▶ Live Sync to see poll events'});
+  syncLog.push({ts:pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()),type:'info',msg:'App loaded — open 📋 log to follow worker push/pull events'});
 })();
 var _localDirty = false; // true when user has unsaved local changes not yet pushed
 var MAX_LOG = 80;
@@ -6240,9 +6238,6 @@ function addSyncLog(msg, type) {
 
 
 function _diagTest() {
-  var url = document.getElementById('device-ip')
-             ? 'http://'+(document.getElementById('device-ip').value||'').trim()+':9002/buildert'
-             : null;
   var wurl = _workerUrl || '';
   var pid  = _getProjectId();
   var out  = document.getElementById('diag-out');
@@ -6251,7 +6246,7 @@ function _diagTest() {
   out.innerHTML = '<b>Running diagnostics...</b><br>';
   out.innerHTML += '🔑 Project ID: <b>'+pid+'</b><br>';
   out.innerHTML += '🌐 Worker URL: <b>'+(wurl||'(not set)')+'</b><br>';
-  out.innerHTML += '📡 Device IP: <b>'+(url||'(not set)')+'</b><br><br>';
+  out.innerHTML += '🧩 Worker version: <b>'+(window._workerVerNum||'unknown')+'</b><br><br>';
 
   // Test worker
   if(wurl) {
@@ -6294,14 +6289,19 @@ function _diagTest() {
     out.innerHTML += '  ⚠️ No worker URL set — go to Shares tab to configure<br>';
   }
 
-  // Test device IP
-  if(url) {
-    out.innerHTML += '<br>⏳ Testing Anbernic device...<br>';
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url+'?_='+Date.now(), true); xhr.timeout=3000;
-    xhr.onload = function(){ out.innerHTML += '  HTTP: <b>'+xhr.status+'</b> — Device reachable ✅<br>'; };
-    xhr.onerror = xhr.ontimeout = function(){ out.innerHTML += '  ❌ Device unreachable (check WiFi/IP)<br>'; };
-    xhr.send();
+  // v4.141: the Anbernic reachability test that used to run here is gone.
+  // /health is the useful second probe now — it is what decides whether the
+  // worker is new enough for pins and contacts.
+  if(wurl) {
+    out.innerHTML += '<br>⏳ Testing worker GET /health...<br>';
+    fetch(wurl.replace(/\/$/,'')+'/health?_='+Date.now(), {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(h){
+        out.innerHTML += '  Worker version: <b>'+(h.version||'?')+'</b>'
+          + (parseFloat(h.version) < MIN_WORKER_VERSION ? ' ❌ too old (needs v'+MIN_WORKER_VERSION+'+)' : ' ✅')+'<br>';
+        out.innerHTML += '  Backend: <b>'+(h.backend||'?')+'</b>, projects: <b>'+(h.project_count!=null?h.project_count:'?')+'</b><br>';
+      })
+      .catch(function(e){ out.innerHTML += '  ❌ /health failed: '+e.message+'<br>'; });
   }
 }
 function renderSyncLog() {
@@ -6446,196 +6446,17 @@ function modalDeleteDevice() {
 }
 
 
-var _pollTimer=null, _lastRemoteHash='';
-// Fields the CONTROLLER writes (device is source of truth for these)
-var DEVICE_OWNED=['checks','status','serial','pointed','source'];
-// Fields the WEBAPP owns (never overwritten by sync)
-var LOCAL_OWNED=['device_id','location','notes','date','note_opts','type','model','source_power','source_data','cable_power_in','cable_data_in','source','cable_in'];
-
-// Hash only device-owned fields so local-field changes don't confuse the sync loop
-function _remoteHash(arr) {
-  return JSON.stringify(arr.map(function(d){
-    var h={_id:d.device_id||d.serial||''};
-    DEVICE_OWNED.forEach(function(f){h[f]=d[f];});
-    return h;
-  }));
-}
-
-function getDeviceUrl(){
-  var ip=document.getElementById('device-ip').value.trim();
-  return ip?'http://'+ip+':9002/buildert':null;
-}
-
-function getBaseUrl(){
-  var ip=document.getElementById('device-ip').value.trim();
-  return ip?'http://'+ip+':9002':null;
-}
-
-function togglePolling(){if(_pollTimer)stopPolling();else startPolling();}
-
-function startPolling(){
-  stopPolling();
-  var url=getDeviceUrl();
-  if(!url){showToast('Enter device IP first','warn');return;}
-  _serverVersionOk = true;
-  checkServerVersion(getBaseUrl());
-  // Pull specs.json from Anbernic if we have no local overrides
-  if (!Object.keys(_specsOverrides).length) {
-    var sx=new XMLHttpRequest();
-    sx.open('GET',getBaseUrl()+'/buildert/specs',true); sx.timeout=3000;
-    sx.onload=function(){
-      if(sx.status===200){
-        try{
-          var sp=JSON.parse(sx.responseText);
-          if(sp&&Object.keys(sp).length){ _specsOverrides=sp; saveSpecsToStorage(); addSyncLog('Specs loaded from Anbernic','info'); }
-        }catch(e){}
-      }
-    };
-    sx.send();
-  }
-  _pollOnce(url);
-  _pollTimer=setInterval(function(){_pollOnce(url);},3000);
-  document.getElementById('poll-btn').textContent='Stop sync';
-  document.getElementById('poll-btn').classList.replace('btn-ghost','btn-ok');
-}
-
-function stopPolling(){
-  if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}
-  var btn=document.getElementById('poll-btn');
-  if(btn){btn.textContent='Live sync';btn.classList.replace('btn-ok','btn-ghost');}
-}
-
-function _pollOnce(url){
-  var xhr=new XMLHttpRequest();
-  xhr.open('GET',url+'?_='+Date.now(),true); xhr.timeout=5000;
-  xhr.onload=function(){
-    if(xhr.status>=200&&xhr.status<300){
-      try{
-        var raw=JSON.parse(xhr.responseText);
-        var proj = _extractProjectFromEnvelope(raw);
-        if(!proj){
-          // No data for current project on controller — that's OK when first connecting
-          addSyncLog('Controller has no data for project "'+_getProjectId()+'" yet','info');
-          setConnected(true); updateSyncTime(); return;
-        }
-        // Absorb remote activity log entries we don't have yet
-        if(proj._log && Array.isArray(proj._log)){
-          var existingAts = {};
-          _activityLog.forEach(function(e){ existingAts[e.at+'|'+e.by+'|'+e.action]=true; });
-          var newEntries = proj._log.filter(function(e){
-            return !existingAts[e.at+'|'+e.by+'|'+e.action];
-          });
-          if(newEntries.length){
-            _activityLog = _activityLog.concat(newEntries).slice(0, MAX_ACTIVITY);
-            _activityLog.sort(function(a,b){return b.at>a.at?1:-1;});
-            if(document.getElementById('activity-log-body')) renderActivityLog();
-          }
-        }
-        var incoming = proj.devices || [];
-        var pushedBy = proj._pushed_by || '?';
-        var pushedAt = proj._pushed_at ? proj._pushed_at.slice(11,19) : '';
-        // Absorb specs
-        if(proj._specs && !Object.keys(_specsOverrides).length){
-          _specsOverrides=proj._specs; saveSpecsToStorage();
-        }
-        var hash=_remoteHash(incoming);
-        if(hash!==_lastRemoteHash){
-          if(_localDirty){
-            addSyncLog('⚠ Remote changed (by '+pushedBy+' at '+pushedAt+') — merging','warn');
-          } else {
-            addSyncLog('✓ Sync: '+incoming.length+' devices from '+pushedBy+' at '+pushedAt,'ok');
-          }
-          _lastRemoteHash=hash;
-          _mergeWithConflictCheck(devices, incoming);
-        }
-        setConnected(true); updateSyncTime();
-      }catch(e){setConnected(false);addSyncLog('Poll parse error: '+e.message,'err');}
-    }else setConnected(false);
-  };
-  xhr.onerror=function(){setConnected(false);addSyncLog('Controller unreachable','err');};
-  xhr.ontimeout=function(){setConnected(false);addSyncLog('Poll timed out','err');};
-  xhr.send();
-}
-
-function _mergeWithConflictCheck(local,remote){
-  // Merge strategy: device_id is the canonical key.
-  // DEVICE_OWNED fields: remote (controller) always wins — no conflict modal.
-  // LOCAL_OWNED fields: local (webapp) always wins.
-  // New devices from remote: added silently.
-  // Local-only devices: kept as-is.
-  var lById={};
-  local.forEach(function(d){ if(d.device_id) lById[d.device_id]=d; });
-
-  var merged=[], seenLocal={};
-
-  remote.forEach(function(rd){
-    var ld = rd.device_id ? lById[rd.device_id] : null;
-    if(!ld){
-      merged.push(Object.assign({},rd,{_from_device:true}));
-      return;
-    }
-    if(ld.device_id) seenLocal[ld.device_id]=true;
-
-    // Start from remote (device-owned fields: checks, status, serial, pointed, source)
-    var mergedDev = Object.assign({},rd);
-    // Overlay local-owned fields so webapp edits survive
-    LOCAL_OWNED.forEach(function(f){
-      if(ld[f]!==undefined && ld[f]!==null) mergedDev[f]=ld[f];
-    });
-    // Preserve mounted_at timestamp from local if device doesn't have one
-    if(ld.mounted_at && !rd.mounted_at) mergedDev.mounted_at=ld.mounted_at;
-    merged.push(mergedDev);
-  });
-
-  // Keep local-only devices (not yet on controller)
-  local.forEach(function(ld){
-    if(ld.device_id && !seenLocal[ld.device_id]) merged.push(ld);
-  });
-
-  devices=merged; renderTable(); autoSave();
-  _localDirty=false; // Remote is now source of truth after merge
-  var nw=merged.filter(function(d){return d._from_device;}).length;
-  if(nw>0) { showToast('Synced — '+nw+' new device(s) from controller','ok'); _logActivity('merge', '', nw+' new device(s) from rigger', 'rigger'); }
-  addSyncLog('Merged: '+merged.length+' total, '+nw+' new from device'+(nw>0?' ✓':''),'info');
-}
-
-
-
-function setConnected(ok){
-  var dot=document.getElementById('conn-dot'),lbl=document.getElementById('conn-label');
-  if(dot)dot.className='conn-dot '+(ok?'ok':'err');
-  if(!ok&&lbl)lbl.textContent='offline';
-  if(!ok) addSyncLog('Controller unreachable','err');
-}
-function updateSyncTime(){
-  var lbl=document.getElementById('conn-label');
-  var ts=new Date().toLocaleTimeString();
-  if(lbl)lbl.textContent='synced '+ts;
-  addSyncLog('Sync OK at '+ts,'ok');
-}
-function pushToDevice(){
-  if(location.protocol === 'https:') {
-    showToast('Push blocked — open this file locally (not via HTTPS)','err');
-    document.getElementById('https-warn').style.display='flex';
-    return;
-  }
-  var url=getDeviceUrl();
-  if(!url){showToast('Enter device IP first','warn');return;}
-  if(!_serverVersionOk){
-    showToast('Push blocked — server too old. Update main.py first.','err');
-    showVersionWarning('Push is blocked. The server (main.py) on the Anbernic is outdated and will corrupt buildert.json if you push. Update main.py first.');
-    return;
-  }
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.timeout=5000;
-  xhr.onload=function(){
-    if(xhr.status>=200&&xhr.status<300){setConnected(true);_lastRemoteHash=_remoteHash(devices);_localDirty=false;showToast('Pushed '+devices.length+' devices','ok');addSyncLog('Pushed '+devices.length+' devices','ok');}
-    else{setConnected(false);showToast('Push failed: HTTP '+xhr.status,'err');addSyncLog('Push failed: HTTP '+xhr.status,'err');}
-  };
-  xhr.onerror=function(){setConnected(false);showToast('Push failed','err');addSyncLog('Push failed (network)','err');};
-  xhr.ontimeout=function(){setConnected(false);showToast('Push timed out','err');addSyncLog('Push timed out','err');};
-  xhr.send(JSON.stringify(buildPayload()));
-}
+// ── v4.141: the Anbernic controller sync is GONE ─────────────────────
+// Removed here: _pollTimer/_lastRemoteHash, DEVICE_OWNED/LOCAL_OWNED,
+// _remoteHash(), getDeviceUrl(), getBaseUrl(), togglePolling(),
+// startPolling(), stopPolling(), _pollOnce(), _mergeWithConflictCheck(),
+// setConnected(), updateSyncTime() and pushToDevice() — roughly 190 lines
+// that all spoke to http://<device-ip>:9002. The controller is not used any
+// more; the Cloudflare worker (wPush/wPull) is the only sync path.
+//
+// Deliberately NOT removed: addSyncLog()/renderSyncLog() and the 📋 log
+// modal (the worker and Dropbox paths log there too), _localDirty, and
+// _getProjectId() — all still live.
 
 function _updateProjectBadge() {
   var vb = document.getElementById('proj-version-badge');
@@ -6670,13 +6491,12 @@ function shareToMobile() {
 }
 
 function _injectProjectIntoMobile(html) {
-  var ip = (document.getElementById('device-ip')||{}).value || '';
   var payload = {
     _format: 'wtu-project',
     _version: _projectVersion,
     _saved: new Date().toISOString(),
     _saved_by: 'desktop',
-    project: Object.assign({}, _projectMeta, {anbernic_ip: ip}),
+    project: Object.assign({}, _projectMeta),   // v4.141: no more anbernic_ip
     devices: devices,
     spec_overrides: _specsOverrides,
     pack_spares: _packSpares,
@@ -6724,7 +6544,7 @@ function _injectProjectIntoMobile(html) {
 
 var _projectVersion    = 0;   // current local version
 var _projectBaseVersion= 0;   // version when we last loaded from file
-var _projectMeta = {name:'', venue:'', date:'', anbernic_ip:''};
+var _projectMeta = {name:'', venue:'', date:''};   // v4.141: anbernic_ip dropped
 
 // ── v4.135: ONE source of truth for every synced collection ──────────
 // The desktop has six payload builders (live push, dropbox push, file save,
@@ -6817,8 +6637,11 @@ function _pinRenderDesk(){
   var el=document.getElementById('info-pins'); if(!el) return;
   // v4.132: an old worker silently drops contacts/pins on every push —
   // that presents as "doesn't sync". Say it out loud instead.
-  if(typeof window._srvVerNum==='number' && window._srvVerNum>0 && window._srvVerNum<4.32){
-    el.innerHTML='<div style="color:var(--warn);font-size:12px">⚠ Worker v'+window._srvVerNum+' is too old for pins &amp; contacts (needs v4.32+). Deploy the new worker file — until then, every push discards these lists.</div>';
+  // v4.141: reads _workerVerNum (from the worker's own /health) instead of
+  // _srvVerNum, which came from the Anbernic and was therefore either absent
+  // or the wrong machine's number.
+  if(typeof window._workerVerNum==='number' && window._workerVerNum>0 && window._workerVerNum<MIN_WORKER_VERSION){
+    el.innerHTML='<div style="color:var(--warn);font-size:12px">⚠ Worker v'+window._workerVerNum+' is too old for pins &amp; contacts (needs v'+MIN_WORKER_VERSION+'+). Deploy the new worker file — until then, every push discards these lists.</div>';
     return;
   }
   var list=window._infoPins||[];
@@ -7091,8 +6914,7 @@ function _buildProjectPayload() {
     _saved_by: 'desktop',
     _project_id:  _getProjectId(),         // ← worker key, so riggers' links keep working
     _worker_url:  _workerUrl || '',         // ← so opening the file restores the worker
-    project:   Object.assign({}, _projectMeta,
-                 {anbernic_ip: (document.getElementById('device-ip')||{}).value||''}),
+    project:   Object.assign({}, _projectMeta),   // v4.141: no more anbernic_ip
     devices:   devices,
     stages:    _stages,                     // ← stages structure (was missing!)
     shares:    _spShares || [],             // ← per-project shares so links stay valid
@@ -7623,12 +7445,10 @@ function _mergeProjectNoConflict(data) {
     // project, silently creating duplicate names (and, worse, feeding the
     // project-key derivation below).
     var _inMeta = (data && data.project && typeof data.project==='object') ? data.project : {};
-    var _keepIp = _inMeta.anbernic_ip !== undefined ? _inMeta.anbernic_ip : (_projectMeta.anbernic_ip||'');
     var _newMeta = {
       name:  _inMeta.name  !== undefined ? _inMeta.name  : ((data && data._project_name) || ''),
       venue: _inMeta.venue !== undefined ? _inMeta.venue : '',
-      date:  _inMeta.date  !== undefined ? _inMeta.date  : '',
-      anbernic_ip: _keepIp
+      date:  _inMeta.date  !== undefined ? _inMeta.date  : ''
     };
     // preserve any extra custom fields the incoming project carried
     Object.keys(_inMeta).forEach(function(k){ if(!(k in _newMeta)) _newMeta[k]=_inMeta[k]; });
@@ -7638,9 +7458,9 @@ function _mergeProjectNoConflict(data) {
     // rather than waiting for the next list load, or the header keeps showing
     // the previously open project's name.
     try{ _brtSyncLabels(); }catch(e){}
-    var ip = _keepIp;
-    var ipEl = document.getElementById('device-ip');
-    if(ip && ipEl) ipEl.value = ip;
+    // v4.141: an older file may still carry project.anbernic_ip. The loop
+    // above copies it into _newMeta as an unknown extra field and nothing
+    // reads it — harmless, and it disappears on the next save.
   }
   // CRITICAL: Reset project key for new project — each project must have its own worker slot
   // Use saved key from file if present, otherwise derive from project name
@@ -8297,7 +8117,6 @@ async function _dbxPull(){
 }
 
 async function _dbxPush(silent){
-  var ip=(document.getElementById('device-ip')||{}).value||'';
   // Include current node/diagram positions so mobile shows same layout
   var _npRaw = '{}'; try{_npRaw=localStorage.getItem('buildert_node_pos')||'{}';}catch(e){}
   var _dpRaw = '{}'; try{_dpRaw=localStorage.getItem('buildert_diag_pos')||'{}';}catch(e){}
@@ -8307,7 +8126,7 @@ async function _dbxPush(silent){
     _saved:   new Date().toISOString(),
     _saved_by:'desktop',
     _project_id: _projectKey || '',
-    project:  Object.assign({},_projectMeta,{anbernic_ip:ip}),
+    project:  Object.assign({},_projectMeta),   // v4.141: no more anbernic_ip
     devices:  devices,
     spec_overrides: _specsOverrides,
     pack_spares:    _packSpares,
@@ -8485,7 +8304,9 @@ function autoSave(){
       _kpTouch(_projectKey, _projectMeta.name||'');
     }catch(e){ /* localStorage full — worker auto-push still covers us */ }
   },10000);
-  if(_pollTimer){ _autoPush(); }
+  // v4.141: the controller auto-push used to fire here whenever live sync
+  // was running. Gone with the controller — the worker auto-push below is
+  // the only automatic push left.
   if(!_isReceiving){
     clearTimeout(_dbxPushDebounce);
     // Only auto-push to worker if user opted in via the auto-push checkbox
@@ -8527,28 +8348,8 @@ window.addEventListener('beforeunload', function(e){
 });
 var _isReceiving = false; // true while applying pulled data — suppresses push-back
 
-var _pushDebounce=null;
-function _autoPush(){
-  // Debounce rapid edits — wait 800ms after last change before pushing
-  clearTimeout(_pushDebounce);
-  _pushDebounce=setTimeout(function(){
-    var url=getDeviceUrl();
-    if(!url) return;
-    var xhr=new XMLHttpRequest();
-    xhr.open('POST',url,true);
-    xhr.setRequestHeader('Content-Type','application/json');
-    xhr.timeout=4000;
-    xhr.onload=function(){
-      if(xhr.status>=200&&xhr.status<300){
-        setConnected(true);
-        _lastRemoteHash=_remoteHash(devices);
-      } else { setConnected(false); }
-    };
-    xhr.onerror=function(){setConnected(false);};
-    xhr.ontimeout=function(){setConnected(false);};
-    xhr.send(JSON.stringify(buildPayload()));
-  }, 800);
-}
+// v4.141: _autoPush() / _pushDebounce removed — they debounced a POST to the
+// Anbernic controller. The worker equivalent is _dbxPushDebounce above.
 
 var _toastTimer;
 // ── Duplicate device_id guard ────────────────────────────────────────
@@ -8648,7 +8449,7 @@ renderTable = function() {
 
 // ── Specs Editor ─────────────────────────────────────────────────────
 // DEVICE_SPECS is the hardcoded baseline. _specsOverrides holds runtime edits
-// (persisted to localStorage and pushed to controller with _specs key).
+// (persisted to localStorage; travels with the project payload to the worker).
 var _specsOverrides = {};
 var _specsFilter = 'all';
 
@@ -8925,27 +8726,11 @@ function saveSpecs() {
     });
   });
   closeSpecsModal(); renderTable();
-  // Push specs.json to server if connected
-  var base = getBaseUrl();
-  if (base && _serverVersionOk) {
-    var xhr=new XMLHttpRequest();
-    xhr.open('POST', base+'/buildert/specs', true);
-    xhr.setRequestHeader('Content-Type','application/json');
-    xhr.timeout=4000;
-    xhr.onload=function(){
-      if(xhr.status>=200&&xhr.status<300){
-        addSyncLog('Specs saved to Anbernic (buildert_specs.json)','ok');
-        showToast('Specs saved to Anbernic','ok');
-      } else {
-        showToast('Specs saved locally (push failed)','warn');
-      }
-    };
-    xhr.onerror=xhr.ontimeout=function(){ showToast('Specs saved locally only','warn'); };
-    xhr.send(JSON.stringify(_specsOverrides));
-  } else {
-    var n=Object.keys(newOv).length;
-    showToast('Specs saved'+(n?' — '+n+' override(s)':' (no changes)')+' — start sync to push to Anbernic','ok');
-  }
+  // v4.141: specs used to be POSTed to the controller as buildert_specs.json.
+  // They live in localStorage and travel with the project payload to the
+  // worker, so there is nothing to push separately any more.
+  var n=Object.keys(newOv).length;
+  showToast('Specs saved'+(n?' — '+n+' override(s)':' (no changes)'),'ok');
   addSyncLog('Specs updated: '+Object.keys(newOv).length+' model override(s)','info');
 }
 
@@ -8956,13 +8741,13 @@ function resetSpecsToDefaults() {
   renderTable(); showToast('Specs reset to defaults','ok');
 }
 
-// Payload helpers — wrap devices+specs together for push/pull
-
-// ── Multi-project controller envelope ─────────────────────────────────
-// Controller stores: {_schema:'v2', _projects:{id:{devices,stages,_log,_pushed_at,_pushed_by}}}
-// This lets multiple projects coexist on one controller without overwriting each other.
-
-var _controllerEnvelope = {};  // full envelope fetched from controller
+// ── Project id ────────────────────────────────────────────────────────
+// v4.141: this used to sit under a "multi-project controller envelope"
+// heading, together with _controllerEnvelope, buildPayload() and
+// _extractProjectFromEnvelope() — the wrapper the Anbernic controller stored
+// its projects in. All three are removed; the worker has its own per-project
+// slots and its own payload builders (_brtSyncedCollections and friends).
+// _getProjectId() stays: the worker key derivation depends on it.
 
 function _getProjectId() {
   // Per-project key: prefer explicit _projectKey, otherwise derive from the
@@ -8974,41 +8759,6 @@ function _getProjectId() {
   return String(name).toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,32);
 }
 
-function buildPayload() {
-  var pid = _getProjectId();
-  var proj = {
-    devices: devices,
-    stages:  _stages,
-    _project_id:   pid,
-    _project_name: _brtNameForPush(),
-    _pushed_at:    new Date().toISOString(),
-    _pushed_by:    'desktop',
-    _log: _brtActivityForPush().slice(0, 100),  // last 100 entries
-  };
-  if(Object.keys(_specsOverrides).length) proj._specs = _specsOverrides;
-  // Write into the multi-project envelope
-  _controllerEnvelope._schema = 'v2';
-  if(!_controllerEnvelope._projects) _controllerEnvelope._projects = {};
-  _controllerEnvelope._projects[pid] = proj;
-  return _controllerEnvelope;  // push whole envelope
-}
-
-function _extractProjectFromEnvelope(raw) {
-  // Handle both old flat format and new multi-project envelope
-  if(raw && raw._schema === 'v2' && raw._projects) {
-    _controllerEnvelope = raw;
-    var pid = _getProjectId();
-    return raw._projects[pid] || null;
-  }
-  // Old flat format — migrate to envelope
-  _controllerEnvelope = { _schema: 'v2', _projects: {} };
-  if(raw && Array.isArray(raw.devices)) {
-    var oldPid = raw._project_id || 'default';
-    _controllerEnvelope._projects[oldPid] = raw;
-    if(oldPid === _getProjectId()) return raw;
-  }
-  return null;
-}
 
 // ── Activity log ──────────────────────────────────────────────────────
 var _activityLog = [];   // [{at, by, project, action, device_id, detail}]
@@ -12129,13 +11879,9 @@ try{
     var pnn=document.getElementById('proj-notes');if(pnn)pnn.value=_projectMeta.notes;
   }
 }catch(e){}
-var params=new URLSearchParams(location.search);
-if(params.get('ip')){
-  var ipEl=document.getElementById('device-ip');
-  if(ipEl) {ipEl.value=params.get('ip');startPolling();}
-}
-// HTTPS warning banner suppressed — it only concerns Anbernic controller push,
-// which is hidden for now. (Re-enable alongside the Anbernic section if it returns.)
+// v4.141: ?ip=192.168.x.x used to fill the controller IP field and start live
+// sync. Both are gone, and the URLSearchParams it needed went with them (the
+// Dropbox OAuth handler parses its own copy).
 _loadManualPackItems();
 loadSpecsFromStorage();
 _rebuildModelLists();
@@ -12375,9 +12121,8 @@ function bulkDelete() {
 
 // ── Label Printing ────────────────────────────────────────────────────
 function openLabelModal() {
-  var ip = (document.getElementById('device-ip') ? document.getElementById('device-ip').value : '').trim();
-  var urlField = document.getElementById('label-server-url');
-  if (ip && !urlField.value) urlField.value = 'http://' + ip + '/buildert';
+  // v4.141: the label server URL used to be pre-filled from the controller IP.
+  // Type it once in the field; it is remembered there.
   document.getElementById('modal-labels').classList.add('open');
   regenerateLabels();
 }
@@ -13410,6 +13155,7 @@ function wSyncInit(){
   // Worker URL is always loaded; project key is per-file (loaded separately)
   if(_workerUrl){
     _dbxSetStatus('Worker: '+_workerUrl.replace('https://','').split('/')[0],'var(--muted)');
+    checkWorkerVersion();   // v4.141: one /health call, tells us what the worker can do
   }
   // Restore auto-pull / auto-push toggle states (default: both off)
   _autoPullOn = localStorage.getItem('buildert_auto_pull') === '1';
@@ -16794,7 +16540,7 @@ function mgrStartClean(){
   try{
     _projectKey=''; _brtMetaKey='';
     devices=[]; _stages=[]; _currentStageIdx=0;
-    _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
+    _projectMeta={name:'',venue:'',date:''};
     _projectVersion=0; _projectBaseVersion=0;
     window._projectLog=[]; window._xpBonus=null; window._riggerAliases=null;
     _recentFiles=[]; _brtProjCache={list:[],at:0};
@@ -17912,7 +17658,7 @@ async function pmOpenProject(pid){
     var _swMeta=_pmLoadMetaFor(pid)||{};
     _projectMeta={ name:_swMeta.name||'', venue:_swMeta.venue||'', date:_swMeta.date||'',
       client:_swMeta.client||'', city:_swMeta.city||'', date_to:_swMeta.date_to||'',
-      notes:_swMeta.notes||'', status:_swMeta.status||'', anbernic_ip:_projectMeta.anbernic_ip||'' };
+      notes:_swMeta.notes||'', status:_swMeta.status||'' };
     _projectVersion=(_swMeta&&_swMeta.version)||0; _projectBaseVersion=(_swMeta&&_swMeta.base_version)||0;
     _brtMetaKey=String(pid);
     if(typeof _brtSyncLabels==='function') _brtSyncLabels();
@@ -19411,7 +19157,7 @@ function fileNew(){
   document.getElementById('file-menu').style.display='none';
   if(_unsaved && !confirm('Discard unsaved changes?')) return;
   // Full reset
-  _projectMeta={name:'',venue:'',date:'',anbernic_ip:''};
+  _projectMeta={name:'',venue:'',date:''};
   _packSpares=[]; _packShared={toolcase:[],controller:[],office:[],spares:[]}; window._projectLog=[];
   // Clear pack signoffs
   window._packSignoffs = [];
