@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.142</title>
+<title>WTUniverse · Buildert Editor v4.143</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.142</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.143</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -1137,7 +1137,12 @@
     <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Client, designer, producer — fill in what you already know; riggers add the rest from their ℹ️ Info tab on the floor. Synced both ways.</p>
     <div id="proj-contacts" style="margin-bottom:8px"></div>
     <div style="display:flex;gap:6px">
-      <select id="pc-role" style="flex:0 0 150px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
+      <select id="pc-role" onchange="_pcRoleChange()" style="flex:0 0 150px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px 8px;font-size:12px"></select>
+      <!-- v4.143: picking "Other…" reveals this. It used to fire a prompt()
+           from inside _pcAdd(), which gave you nothing to type into on the
+           page and did nothing at all if the browser was suppressing dialogs. -->
+      <input id="pc-role-other" type="text" placeholder="Which role?" style="display:none;flex:0 0 130px;padding:7px 10px;background:var(--bg);border:1px solid #ffd700;color:var(--text);border-radius:5px;font-size:13px"
+             onkeydown="if(event.key==='Enter')_pcAdd()">
       <input id="pc-name" type="text" placeholder="Name" style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-size:13px"
              onkeydown="if(event.key==='Enter')_pcAdd()">
       <input id="pc-phone" type="text" placeholder="Phone (opt.)" style="flex:0 0 130px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;font-family:var(--mono);font-size:12px"
@@ -6168,7 +6173,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.142';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.143';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.32;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -6582,7 +6587,9 @@ function _brtSyncedCollections(){
 // [{id, role, name, phone, note, by, _ts}] + tombstone id list. Union by id
 // on load (newest _ts wins) — worker v4.31 merges the same way, so desktop
 // and any number of phones can add names without stepping on each other.
-var _pcRoles=['Client','Designer','Producer','Production','Stage Manager','LD','Light tech','Sound tech','Video','Barchick','Local crew','Venue tech','Other…'];
+var _PC_OTHER='Other…';   // v4.143: one source, so the option text and the
+                          // check in _pcAdd() cannot drift apart
+var _pcRoles=['Client','Designer','Producer','Production','Stage Manager','LD','Light tech','Sound tech','Video','Barchick','Local crew','Venue tech',_PC_OTHER];
 window._contacts=window._contacts||[];
 window._contactsDeleted=window._contactsDeleted||[];
 function _pcAbsorb(data){
@@ -6887,15 +6894,36 @@ function _pcRender(){
   });
   el.innerHTML=h;
 }
+// v4.143: "Other…" is a real input now, not a prompt(). The old flow checked
+// the name FIRST and returned silently when it was empty, so selecting
+// "Other…" and clicking Add looked like nothing happened — and when it did
+// reach the prompt, a browser with dialogs suppressed returned null and it
+// still silently did nothing. Mobile replaced the same prompt chain with an
+// inline form back in v4.038m; this brings desktop in line.
+function _pcRoleChange(){
+  var sel=document.getElementById('pc-role'), oth=document.getElementById('pc-role-other');
+  if(!sel||!oth) return;
+  if(sel.value===_PC_OTHER){ oth.style.display=''; oth.focus(); }
+  else { oth.style.display='none'; oth.value=''; }
+}
 function _pcAdd(){
-  var role=(document.getElementById('pc-role')||{}).value||'';
+  var sel=document.getElementById('pc-role');
+  var oth=document.getElementById('pc-role-other');
+  var role=(sel&&sel.value)||'';
+  if(role===_PC_OTHER){
+    role=((oth&&oth.value)||'').trim();
+    if(!role){ showToast('Type the role first','warn'); if(oth) oth.focus(); return; }
+  }
   var nm=document.getElementById('pc-name'), ph=document.getElementById('pc-phone');
-  var name=(nm&&nm.value||'').trim(); if(!name){ if(nm)nm.focus(); return; }
-  if(role==='Other…'){ role=prompt('Role:')||''; role=role.trim(); if(!role) return; }
+  var name=(nm&&nm.value||'').trim();
+  if(!name){ showToast('Name is required','warn'); if(nm)nm.focus(); return; }
   var stage=((document.getElementById('pc-stage')||{}).value||'').trim();   // v4.126: '' = whole project
   window._contacts.push({ id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     role:role, name:name, phone:(ph&&ph.value||'').trim(), note:'', stage:stage, by:'desktop', _ts:new Date().toISOString() });
   if(nm)nm.value=''; if(ph)ph.value='';
+  // The custom field is cleared but stays open — adding two "other" roles in
+  // a row is the normal case, and re-picking Other… every time is a chore.
+  if(oth && sel && sel.value===_PC_OTHER) oth.value='';
   _pcRender(); autoSave();
   if(typeof wPush==='function') wPush(true);
 }
