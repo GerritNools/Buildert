@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.144</title>
+<title>WTUniverse · Buildert Editor v4.146</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.144</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.146</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3829,7 +3829,11 @@ var qrcode = function() {
 </div>
 
 <!-- Project Settings Modal -->
-<div class="modal-overlay" id="modal-project" onclick="if(event.target===this)this.classList.remove('open')">
+<!-- v4.145: this used to carry onclick="if(event.target===this)this.classList.remove('open')".
+     One click a few pixels beside the panel and the whole thing shut, taking
+     half-typed worker URLs and tokens with it. There is a Close button at the
+     bottom and Esc works; a stray click on the backdrop now does nothing. -->
+<div class="modal-overlay" id="modal-project">
   <div class="modal" style="max-width:520px">
     <h2>&#128190; Project</h2>
     <label>Show / project name</label>
@@ -3975,7 +3979,9 @@ var qrcode = function() {
 
 
 <!-- Rigger Share Modal -->
-<div class="modal-overlay" id="modal-rigger-share" onclick="if(event.target===this)this.classList.remove('open')">
+<!-- v4.146: backdrop click no longer closes this — a generated share link
+     and its expiry are easy to lose to a stray click. Esc and Close still work. -->
+<div class="modal-overlay" id="modal-rigger-share">
   <div class="modal" style="max-width:560px">
     <h2>&#128279; Share with rigger</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
@@ -6173,8 +6179,8 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.144';   // keep in step with the <title> badge
-var MIN_WORKER_VERSION = 4.32;      // below this the worker drops pins/contacts on push
+var WEBAPP_VERSION     = '4.146';   // keep in step with the <title> badge
+var MIN_WORKER_VERSION = 4.40;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
   if (!_workerUrl) return;
@@ -6571,6 +6577,10 @@ function _brtSyncedCollections(){
     pack_signoffs:        window._packSignoffs||[],
     xp_bonus:             window._xpBonus||{},
     schedule:             (typeof _schedule!=='undefined'&&_schedule)||[],
+    // v4.145: always present, even when empty — the key itself is the signal
+    // to worker v4.40+ that this client handles schedule deletions properly
+    // and may therefore have the union merge instead of wholesale replacement.
+    schedule_deleted:     (window._scheduleDeleted||[]).slice(-200),
     schedulePrev:         (typeof _schedulePrev!=='undefined'&&_schedulePrev)||[],
   };
   // NOTE: _clears deliberately NOT in here. Only the flows that consciously
@@ -7408,6 +7418,13 @@ function _mergeProjectNoConflict(data) {
     data.todos_deleted.forEach(function(id){ if(id&&window._todosDeleted.indexOf(id)<0) window._todosDeleted.push(id); });
   }
   if(Array.isArray(data.schedule)) { _schedule = data.schedule; if(currentTab==='schedule') renderSchedulePanel(); }
+  // v4.145: adopt tombstones from the worker so a delete made on a phone is
+  // not re-pushed from here as a live entry.
+  if(Array.isArray(data.schedule_deleted)){
+    var _seen={}; window._scheduleDeleted=(window._scheduleDeleted||[]).concat(data.schedule_deleted)
+      .filter(function(d){ var id=(typeof d==='string'?d:(d&&d.id)); if(!id||_seen[id])return false; _seen[id]=1; return true; })
+      .slice(-200);
+  }
   try{ _pcAbsorb(data); }catch(e){}   // v4.124: who-is-who contacts
   try{ _pinAbsorb(data); }catch(e){}  // v4.128: info pins
   // (todo dedupe runs inside the todos absorb below)
@@ -8438,7 +8455,14 @@ function showToast(msg,type){
 }
 
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'){closeModal();closeCsvModal();closeSpecsModal();document.getElementById('modal-conflict').classList.remove('open');}
+  if(e.key==='Escape'){
+    closeModal();closeCsvModal();closeSpecsModal();
+    document.getElementById('modal-conflict').classList.remove('open');
+    // v4.145: the backdrop no longer closes Project settings, so Esc has to —
+    // otherwise the Close button would be the only way out.
+    var _mp=document.getElementById('modal-project'); if(_mp)_mp.classList.remove('open');
+    var _rs=document.getElementById('modal-rigger-share'); if(_rs)_rs.classList.remove('open');
+  }
   if(e.ctrlKey&&e.key==='l'){e.preventDefault();openAddModal(TYPE_LASER);}
   if(e.ctrlKey&&e.key==='m'){e.preventDefault();openAddModal(TYPE_SMOKE);}
   if(e.ctrlKey&&e.key==='d'){e.preventDefault();openAddModal(TYPE_DISTRO);}
@@ -13740,7 +13764,10 @@ setInterval(async function(){
 // ═══════════════════════════════════════════════════════════════════
 var _iwRows=[];
 function openImportWizard(){
-  var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000" onclick="if(event.target===this)closeImportWizard()">'
+  // v4.146: no backdrop close. This is a multi-step wizard holding uploaded
+  // backup files and review choices; one click beside it threw all of that
+  // away. _iwEsc already binds Escape, and every step has a Cancel.
+  var html='<div class="modal-overlay open" id="modal-import" style="z-index:1000">'
     +'<div class="modal" style="max-width:min(760px,calc(100vw - 24px));width:100%;box-sizing:border-box;max-height:88vh;overflow-y:auto;overflow-x:hidden">'
     +'<div style="display:flex;align-items:flex-start;gap:10px">'
     +  '<h2 style="margin:0;flex:1">📥 Import wizard</h2>'
@@ -18305,6 +18332,7 @@ async function _wPushImpl(silent){
     info_pins:window._infoPins||[],
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
+    schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares,
@@ -18597,12 +18625,21 @@ function renderSchedulePanel(){
       +'<div style="font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:1px;color:#ffaa44;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:6px">'+_schedDayLabel(d)+(d?' <span style="color:var(--muted);font-weight:400;font-size:11px">'+d+'</span>':'')+'</div>'
       +rows.map(function(e){
         return '<div style="display:flex;align-items:flex-start;gap:12px;padding:8px 10px;border-bottom:1px solid var(--border2)">'
-          +'<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);min-width:52px;padding-top:1px">'+(e.time||'—')+'</span>'
+          // v4.145: an entry with an end time reads as a block, not a point.
+          +'<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);min-width:52px;padding-top:1px;text-align:right">'+(e.time||'—')
+          +(e.end?'<div style="font-size:11px;font-weight:400;color:var(--muted)">→ '+_escHtml(e.end)+'</div>':'')+'</span>'
           +'<span style="flex:1;font-family:var(--cond);font-size:15px">'+_escHtml(e.label||'')
           // v4.121: the note used to be a tiny grey tail squeezed between the
           // label and the buttons — easy to miss and often clipped. It now
           // sits on its own line under the item, marked and readable.
           +(e.note?'<div style="font-size:12px;color:var(--text);opacity:.75;margin-top:3px;padding-left:9px;border-left:2px solid var(--accent);line-height:1.35">'+_escHtml(e.note)+'</div>':'')
+          // v4.146: who last touched this and from where. A phone edit is
+          // called out explicitly — that is the whole point of the trail.
+          +(e.via||e.by?('<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px">'
+              +(e.via==='mobile'?'📱 ':'🖥 ')+_escHtml(e.by||'?')
+              +(e._ts?' · '+_escHtml(String(e._ts).slice(0,16).replace('T',' ')):'')
+              +((e._hist&&e._hist.length)?' · <a href="#" onclick="_schedHist(\''+e.id+'\');return false" style="color:var(--accent)">'+e._hist.length+' change'+(e._hist.length>1?'s':'')+'</a>':'')
+              +'</div>'):'')
           +'</span>'
           +(!_schedShowPrev?('<button onclick="schedEdit(\''+e.id+'\')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">✎</button>'
             +'<button onclick="schedDelete(\''+e.id+'\')" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'):'')
@@ -18623,9 +18660,40 @@ function schedDelete(id){
   // the flag unset, the worker's guardCollections() then treated the empty
   // schedule as "incoming carried nothing, keep what is stored", and the
   // whole day timetable came back on the next pull.
+  // v4.145: worker v4.40 merges the schedule as a union by id, so a delete
+  // only sticks if a tombstone goes with it. Sending the schedule_deleted key
+  // at all is also what tells the worker this client speaks tombstones.
+  window._scheduleDeleted=(window._scheduleDeleted||[]).filter(function(d){
+    return (typeof d==='string'? d : (d&&d.id)) !== id;
+  });
+  window._scheduleDeleted.push({id:id, at:new Date().toISOString()});
   _schedule=(_schedule||[]).filter(function(e){ return e.id!==id; });
   if(!_schedule.length) _brtClearFlag('schedule');
   renderSchedulePanel(); _brtQuickSync();
+}
+// v4.146: the change trail the worker keeps per entry (v4.40+). This is what
+// makes a shifted deadline provable after the fact — for the evaluation, for
+// the hours, and for planning the same show next year.
+function _schedHist(id){
+  var e=(_schedule||[]).find(function(x){return x.id===id;});
+  if(!e||!e._hist||!e._hist.length){ showToast('No changes recorded yet','info'); return; }
+  var rows=e._hist.slice().reverse().map(function(h){
+    return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border2);font-size:12px">'
+      +'<span style="font-family:var(--mono);color:var(--muted);min-width:118px">'+_escHtml(String(h.at||'').slice(0,16).replace('T',' '))+'</span>'
+      +'<span style="flex:1">'+(h.via==='mobile'?'📱 ':'🖥 ')+'<b>'+_escHtml(h.by||'?')+'</b> changed '+_escHtml(h.field||'')
+      +' from <span style="color:var(--muted)">'+_escHtml(h.from||'(empty)')+'</span>'
+      +' to <span style="color:var(--accent)">'+_escHtml(h.to||'(empty)')+'</span></span>'
+      +'</div>';
+  }).join('');
+  var old=document.getElementById('sched-hist'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay open" id="sched-hist" style="z-index:1200">'
+    +'<div class="modal" style="max-width:600px">'
+    +'<h2 style="margin:0 0 4px">🕘 Change history</h2>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">'+_escHtml(e.label||'')+'</div>'
+    +rows
+    +'<div style="margin-top:14px"><button class="btn btn-ghost" onclick="document.getElementById(\'sched-hist\').remove()">Close</button></div>'
+    +'</div></div>');
 }
 function schedAdd(){ _schedOpenModal(null); }
 function schedEdit(id){ _schedOpenModal(id); }
@@ -18647,7 +18715,12 @@ function _schedOpenModal(id){
     +  '<input id="sc-day" type="date" value="'+(e?e.day||'':lastDay)+'" oninput="_scDayEcho()" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px;font-size:13px">'
     +  '<button type="button" onclick="_calOpen(\'sc-day\', this)" title="Pick from calendar" style="background:var(--panel);border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:0 10px;cursor:pointer;font-size:15px">📅</button>'
     +'</div>'
-    +'<input id="sc-time" type="time" value="'+(e?e.time||'':'')+'" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px;font-size:13px">'
+    +'<input id="sc-time" type="time" value="'+(e?e.time||'':'')+'" title="Start" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:7px;font-size:13px">'
+    // v4.145: optional end time. Blank means "no end", which is the normal
+    // case for a moment like Doors; a slot like Lunch or a build window reads
+    // far better as 12:00–13:00 than as two unrelated rows.
+    +'<span style="align-self:center;color:var(--muted);font-family:var(--mono);font-size:13px">→</span>'
+    +'<input id="sc-end" type="time" value="'+(e?e.end||'':'')+'" title="End (optional)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:7px;font-size:13px">'
     +'</div>'
     // v4.121: typing dates is the slowest part of adding a schedule item —
     // one tap for the days you actually use, plus a plain-language echo so
@@ -18670,13 +18743,21 @@ function _schedSave(id){
   var lbl=(document.getElementById('sc-label').value||'').trim(); if(!lbl){ showToast('Give it a name','warn'); return; }
   var day=(document.getElementById('sc-day').value||'');
   var time=(document.getElementById('sc-time').value||'');
+  var end=(document.getElementById('sc-end').value||'');
   var note=(document.getElementById('sc-note').value||'').trim();
+  // v4.145: an end before the start almost always means the slot runs past
+  // midnight, but it just as often means a typo. Say so and let it stand.
+  if(time && end && end < time) showToast('End is before start — kept as is, assuming it runs past midnight','warn');
+  var now=new Date().toISOString();
   if(id){
     var e=(_schedule||[]).find(function(x){return x.id===id;});
-    if(e){ e.label=lbl; e.day=day; e.time=time; e.note=note; }
+    if(e){ e.label=lbl; e.day=day; e.time=time; e.end=end; e.note=note;
+           e.by=_schedWho(); e.via='desktop'; e._ts=now; }
   } else {
     if(!_schedule) _schedule=[];
-    _schedule.push({id:'sc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), day:day, time:time, label:lbl, note:note});
+    _schedule.push({id:'sc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      day:day, time:time, end:end, label:lbl, note:note,
+      by:_schedWho(), via:'desktop', _ts:now});
   window.__schedTouch=1;
   }
   var m=document.getElementById('sched-modal'); if(m) m.remove();
@@ -18716,7 +18797,17 @@ function _todosDedupe(){
   }
 }
 window._todosDeleted = (function(){ try{ return JSON.parse(localStorage.getItem('buildert_todos_deleted')||'[]'); }catch(e){ return []; } })();
-var _schedule = [];      // [{id, day:'YYYY-MM-DD', time:'HH:MM', label, note}] — day timetable
+var _schedule = [];      // [{id, day:'YYYY-MM-DD', time:'HH:MM', end?:'HH:MM', label, note, by, via, _ts, _hist}]
+window._scheduleDeleted = window._scheduleDeleted || [];   // v4.145: [{id,at}]
+
+// Who to credit for a schedule edit. The project register knows the planner's
+// name; fall back to something honest rather than inventing one.
+function _schedWho(){
+  try{
+    return (window._riggerName || (_projectMeta && _projectMeta.planner) ||
+            localStorage.getItem('buildert_user_name') || 'desktop');
+  }catch(e){ return 'desktop'; }
+}
 var _schedulePrev = [];  // last year's schedule (archived by New edition)
 
 function _todosLoad(){
@@ -19093,6 +19184,7 @@ function wPushLayout(){
     info_pins:window._infoPins||[],
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
+    schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares,
@@ -19191,6 +19283,7 @@ function _buildFilePayload(){
     info_pins:window._infoPins||[],
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
+    schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares || [],
