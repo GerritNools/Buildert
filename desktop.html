@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.143</title>
+<title>WTUniverse · Buildert Editor v4.144</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -493,7 +493,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.143</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.144</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -6173,7 +6173,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.143';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.144';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.32;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -18617,8 +18617,16 @@ function schedCopyPrev(){
   _schedShowPrev=false; renderSchedulePanel(); _brtQuickSync();
   showToast('Copied '+_schedule.length+' entries — adjust the dates','ok');
 }
-function schedDelete(id){ _schedule=(_schedule||[]).filter(function(e){return e.id!==id;  if(!(_schedule||[]).length) _brtClearFlag('schedule');
-}); renderSchedulePanel(); _brtQuickSync(); }
+function schedDelete(id){
+  // v4.144: the clear-flag line used to sit AFTER the `return` inside the
+  // filter callback, so it never ran. Deleting the last schedule entry left
+  // the flag unset, the worker's guardCollections() then treated the empty
+  // schedule as "incoming carried nothing, keep what is stored", and the
+  // whole day timetable came back on the next pull.
+  _schedule=(_schedule||[]).filter(function(e){ return e.id!==id; });
+  if(!_schedule.length) _brtClearFlag('schedule');
+  renderSchedulePanel(); _brtQuickSync();
+}
 function schedAdd(){ _schedOpenModal(null); }
 function schedEdit(id){ _schedOpenModal(id); }
 function _schedOpenModal(id){
