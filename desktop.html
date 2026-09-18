@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.146</title>
+<title>WTUniverse · Buildert Editor v4.147</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -274,6 +274,21 @@
   .conflict-hint{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;}
 
   /* Toast */
+  /* ── Clearance border (v4.147) ─────────────────────────────────────
+     Green when the project manager gave the day's go-ahead, amber when nobody
+     has, red when someone on the crew stopped work. Faded and slowly breathing
+     when we are out of touch with the worker, because then the colour is the
+     last one we heard rather than the one that is true right now. */
+  #safety-frame{position:fixed;inset:0;z-index:9500;pointer-events:none;
+    border:0 solid transparent;transition:border-color .35s,opacity .6s,border-width .25s;}
+  #safety-frame.on{border-width:6px;}
+  #safety-frame.s-clear{border-color:#2ecc71;box-shadow:inset 0 0 16px rgba(46,204,113,.22);}
+  #safety-frame.s-hold{border-color:#ff9f1a;box-shadow:inset 0 0 16px rgba(255,159,26,.20);}
+  #safety-frame.s-emerg{border-color:#ff2d2d;box-shadow:inset 0 0 26px rgba(255,45,45,.42);
+    animation:safetyPulse 1s ease-in-out infinite;}
+  #safety-frame.stale{opacity:.45;animation:safetyFade 3.2s ease-in-out infinite;}
+  @keyframes safetyPulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @keyframes safetyFade{0%,100%{opacity:.5}50%{opacity:.22}}
   #toast{position:fixed;top:24px;right:24px;z-index:9999;background:var(--surface);
     border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:6px;
     font-family:var(--mono);font-size:13px;font-weight:600;transform:translateY(-80px);opacity:0;
@@ -472,6 +487,9 @@
 </style>
 </head>
 <body style="background:#0a0c0f;color:#c8cdd8">
+<!-- v4.147: clearance frame over every page; never intercepts clicks. -->
+<div id="safety-frame"></div>
+
 
 <header>
   <div class="logo" style="font-size:16px;letter-spacing:2px;flex-shrink:0;display:inline-flex;align-items:center;gap:7px"><span style="font-size:22px;line-height:0"><svg viewBox="0 0 100 100" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg" aria-label="Buildert"><defs><linearGradient id="bl_g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef4ff"/><stop offset="1" stop-color="#0a6fb0"/></linearGradient></defs><line x1="22" y1="30" x2="78" y2="30" stroke="#e8eef6" stroke-width="5" stroke-linecap="round"/><line x1="50" y1="33" x2="50" y2="76" stroke="#19b3ff" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="30" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="33" x2="70" y2="76" stroke="url(#bl_g)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="30" r="8" fill="#fff"/></svg></span>Buildert</div>
@@ -493,7 +511,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.146</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.147</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -540,6 +558,13 @@
          through the Cloudflare worker. The 📋 sync log button lived inside
          that section and is kept here, because addSyncLog() is still the
          shared log for worker/Dropbox sync. -->
+
+    <!-- v4.147: clearance at a glance, and the way in to the controls. -->
+    <div onclick="_safetyPanel()" title="Clearance / emergency"
+         style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 9px;border:1px solid var(--border);border-radius:7px;margin-right:6px">
+      <span style="font-size:13px">🛟</span>
+      <span id="safety-chip" style="font-family:var(--mono);font-size:11px;letter-spacing:.5px">⏸ NO CLEARANCE</span>
+    </div>
 
     <!-- Cloudflare worker section -->
     <button class="btn btn-ghost" onclick="wPush(false)" title="Push to Cloudflare worker" style="font-size:12px">&#9729; Cloud push</button>
@@ -6179,8 +6204,8 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.146';   // keep in step with the <title> badge
-var MIN_WORKER_VERSION = 4.40;      // below this the worker drops pins/contacts on push
+var WEBAPP_VERSION     = '4.147';   // keep in step with the <title> badge
+var MIN_WORKER_VERSION = 4.42;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
   if (!_workerUrl) return;
@@ -6469,6 +6494,140 @@ function modalDeleteDevice() {
 // modal (the worker and Dropbox paths log there too), _localDirty, and
 // _getProjectId() — all still live.
 
+// ── Clearance / emergency (v4.147) ──────────────────────────────────
+// The desktop is the project manager's seat, so this is where the daily
+// go-ahead is given — typically after ringing the local airfield, which a
+// laser show often requires. Any crew member can stop work from a phone; only
+// here can someone else's stop be stood down, and that is on purpose.
+//
+// This paints a border and sends notifications. It is not an interlock and
+// does not switch anything off. The hardware e-stop remains the e-stop.
+window._safety = window._safety || null;
+function _safetyOn(){ try{ return localStorage.getItem('brt_safety_border')!=='0'; }catch(e){ return true; } }
+function _safetyToday(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function _safetyState(){
+  var s=window._safety;
+  if(!s||!s.state) return 'hold';
+  if(s.state==='emergency') return 'emergency';
+  // Clearance is granted for a day and lapses by itself at midnight.
+  if(s.state==='clear') return (s.day===_safetyToday())?'clear':'hold';
+  return 'hold';
+}
+function _safetyStale(){
+  if(typeof navigator!=='undefined' && navigator.onLine===false) return true;
+  return (Date.now()-(window._safetyHeard||0)) > 45000;
+}
+function _safetyPaint(){
+  var f=document.getElementById('safety-frame'); if(!f) return;
+  if(!_safetyOn()){ f.className=''; }
+  else {
+    var st=_safetyState();
+    f.className='on '+(st==='clear'?'s-clear':(st==='emergency'?'s-emerg':'s-hold'))+(_safetyStale()?' stale':'');
+  }
+  var chip=document.getElementById('safety-chip');
+  if(chip){
+    var st2=_safetyState(), s=window._safety||{};
+    chip.textContent=(st2==='clear'?'✅ CLEARED':(st2==='emergency'?'🛑 STOPPED':'⏸ NO CLEARANCE'))+(s.by?' · '+s.by:'');
+    chip.style.color=(st2==='clear'?'#2ecc71':(st2==='emergency'?'#ff2d2d':'#ff9f1a'));
+    chip.title=(s.note||'')+(s.at?'  ('+String(s.at).slice(0,16).replace('T',' ')+')':'');
+  }
+}
+setInterval(_safetyPaint, 5000);
+
+function _safetyWho(){
+  try{ return (window._riggerName || localStorage.getItem('buildert_user_name') || 'desktop'); }
+  catch(e){ return 'desktop'; }
+}
+function _safetyAdopt(inc){
+  if(!inc||typeof inc!=='object') return;
+  window._safetyHeard=Date.now();
+  var cur=window._safety;
+  // Mirror of the worker rule: a stale non-emergency never lowers a live one.
+  if(cur && cur.state==='emergency' && inc.state!=='emergency' && !inc.clears_emergency
+     && String(inc.at||'')<=String(cur.at||'')){ _safetyPaint(); return; }
+  var changed=!cur||cur.state!==inc.state||cur.at!==inc.at;
+  window._safety=inc;
+  if(changed){
+    _safetyPaint();
+    var st=_safetyState();
+    if(st==='emergency'){
+      showToast('🛑 '+(inc.by||'Someone')+' STOPPED WORK'+(inc.note?' — '+inc.note:''),'danger');
+      try{ if(window.Notification && Notification.permission==='granted')
+             new Notification('🛑 WORK STOPPED',{body:(inc.by||'Someone')+': '+(inc.note||'')}); }catch(e){}
+    } else if(st==='clear') showToast('✅ Clearance given by '+(inc.by||'?'),'ok');
+  } else _safetyPaint();
+}
+function _safetySet(state, note, clearsEmergency){
+  var now=new Date().toISOString(), who=_safetyWho();
+  var entry={ state:state, day:_safetyToday(), by:who, via:'desktop', at:now, note:note||'',
+    hist:((window._safety||{}).hist||[]).concat([{at:now,by:who,via:'desktop',state:state,note:note||''}]).slice(-40) };
+  if(clearsEmergency) entry.clears_emergency=true;
+  window._safety=entry; window._safetyHeard=Date.now();
+  _safetyPaint();
+  if(typeof wPush==='function') wPush(true);
+  if(typeof _brtQuickSync==='function') _brtQuickSync();
+}
+function _safetyGrant(){
+  var note=prompt('Clearance note (e.g. "airfield called 08:40, cleared until 02:00")')||'';
+  if(note===null) return;
+  _safetySet('clear', note.trim());
+  showToast('✅ Clearance given for today','ok');
+}
+function _safetyWithdraw(){
+  if(!confirm('Withdraw clearance for today?')) return;
+  _safetySet('hold','');
+  showToast('⏸ Clearance withdrawn','warn');
+}
+function _safetyStop(){
+  var note=prompt('Stop work — what is wrong?')||'';
+  if(note===null) return;
+  _safetySet('emergency', note.trim());
+  showToast('🛑 Work stopped — every phone has been told','danger');
+}
+function _safetyStandDown(){
+  var s=window._safety||{};
+  if(!confirm('Stand down the stop raised by '+(s.by||'?')+'?\n\n'
+    +(s.note?('Reason given: '+s.note+'\n\n'):'')
+    +'Only do this once you know the situation is actually resolved. '
+    +'It is recorded against your name.')) return;
+  _safetySet('hold','stood down by '+_safetyWho(), true);
+  showToast('Stop stood down — clearance is NOT restored, grant it again when ready','warn');
+}
+function _safetyPanel(){
+  var s=window._safety||{}, st=_safetyState();
+  var rows=((s.hist)||[]).slice().reverse().slice(0,20).map(function(h){
+    return '<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2);font-size:12px">'
+      +'<span style="font-family:var(--mono);color:var(--muted);min-width:118px">'+_escHtml(String(h.at||'').slice(0,16).replace('T',' '))+'</span>'
+      +'<span style="flex:1">'+(h.via==='mobile'?'📱 ':'🖥 ')+'<b>'+_escHtml(h.by||'?')+'</b> → '+_escHtml(h.state||'')
+      +(h.note?' <span style="color:var(--muted)">'+_escHtml(h.note)+'</span>':'')+'</span></div>';
+  }).join('') || '<div style="color:var(--muted);font-size:12px">Nothing recorded yet.</div>';
+  var old=document.getElementById('safety-modal'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay open" id="safety-modal" style="z-index:1300">'
+    +'<div class="modal" style="max-width:620px">'
+    +'<h2 style="margin:0 0 10px">🛟 Clearance &amp; emergency</h2>'
+    +'<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">'
+    +'<div style="font-size:17px;font-weight:800;color:'+(st==='clear'?'#2ecc71':(st==='emergency'?'#ff2d2d':'#ff9f1a'))+'">'
+      +(st==='clear'?'✅ Cleared for today':(st==='emergency'?'🛑 Work stopped':'⏸ No clearance today'))+'</div>'
+    +(s.by?'<div style="font-size:12.5px;color:var(--muted);margin-top:4px">by '+_escHtml(s.by)+(s.via==='mobile'?' 📱':' 🖥')
+      +(s.at?' · '+_escHtml(String(s.at).slice(0,16).replace('T',' ')):'')+'</div>':'')
+    +(s.note?'<div style="font-size:13px;margin-top:6px">'+_escHtml(s.note)+'</div>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+    +(st==='emergency'
+       ? '<button class="btn" onclick="_safetyStandDown();document.getElementById(\'safety-modal\').remove()" style="background:var(--warn);color:#000">Stand down the stop</button>'
+       : '<button class="btn btn-ok" onclick="_safetyGrant();document.getElementById(\'safety-modal\').remove()">✅ Give clearance for today</button>'
+         +(st==='clear'?'<button class="btn btn-ghost" onclick="_safetyWithdraw();document.getElementById(\'safety-modal\').remove()">⏸ Withdraw</button>':'')
+         +'<button class="btn" onclick="_safetyStop();document.getElementById(\'safety-modal\').remove()" style="background:var(--danger);color:#fff">🛑 Stop work</button>')
+    +'</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:12px">'
+    +'<input type="checkbox" '+(_safetyOn()?'checked':'')+' onchange="try{localStorage.setItem(\'brt_safety_border\',this.checked?\'1\':\'0\')}catch(e){};_safetyPaint()"> Show the border around the app</label>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">This signals people. It does not switch anything off — the hardware e-stop is still the e-stop.</div>'
+    +'<h3 style="margin:10px 0 4px;font-size:13px">History</h3>'+rows
+    +'<div style="margin-top:14px"><button class="btn btn-ghost" onclick="document.getElementById(\'safety-modal\').remove()">Close</button></div>'
+    +'</div></div>');
+}
+
 function _updateProjectBadge() {
   var vb = document.getElementById('proj-version-badge');
   var mv = document.getElementById('modal-ver-display');
@@ -6581,6 +6740,7 @@ function _brtSyncedCollections(){
     // to worker v4.40+ that this client handles schedule deletions properly
     // and may therefore have the union merge instead of wholesale replacement.
     schedule_deleted:     (window._scheduleDeleted||[]).slice(-200),
+    safety:               (window._safety||undefined),   // v4.147: clearance / emergency
     schedulePrev:         (typeof _schedulePrev!=='undefined'&&_schedulePrev)||[],
   };
   // NOTE: _clears deliberately NOT in here. Only the flows that consciously
@@ -7417,6 +7577,7 @@ function _mergeProjectNoConflict(data) {
     window._todosDeleted=window._todosDeleted||[];
     data.todos_deleted.forEach(function(id){ if(id&&window._todosDeleted.indexOf(id)<0) window._todosDeleted.push(id); });
   }
+  if(data.safety) _safetyAdopt(data.safety);   // v4.147: clearance / emergency
   if(Array.isArray(data.schedule)) { _schedule = data.schedule; if(currentTab==='schedule') renderSchedulePanel(); }
   // v4.145: adopt tombstones from the worker so a delete made on a phone is
   // not re-pushed from here as a live entry.
@@ -18333,6 +18494,7 @@ async function _wPushImpl(silent){
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
+    safety:(window._safety||undefined),                           // v4.147
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares,
@@ -19185,6 +19347,7 @@ function wPushLayout(){
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
+    safety:(window._safety||undefined),                           // v4.147
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares,
@@ -19284,6 +19447,7 @@ function _buildFilePayload(){
     info_pins_deleted:(window._infoPinsDeleted||[]).slice(-200),
     schedule:_schedule||[],
     schedule_deleted:(window._scheduleDeleted||[]).slice(-200),   // v4.145: tombstone-aware flag
+    safety:(window._safety||undefined),                           // v4.147
     _clears:window._brtClears||[],
     schedulePrev:_schedulePrev||[],
     shares:_spShares || [],
