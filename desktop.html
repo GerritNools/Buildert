@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.149</title>
+<title>WTUniverse · Buildert Editor v4.150</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -511,7 +511,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.149</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.150</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3887,13 +3887,18 @@ var qrcode = function() {
     <!-- v4.132: exact location. Venue names rarely geocode well from text —
          with pinned coordinates, weather and Navigate hit the actual site
          (festival field, harbour pier), on desktop AND every phone. -->
-    <label>Location <span style="font-size:10px;color:var(--muted)">— paste "lat, lon" or a Google Maps link, or use the buttons</span></label>
+    <!-- v4.150: 🗺 Map leads, because dragging a crosshair onto the load-in gate
+         is both faster and harder to get wrong than any of the other routes. -->
+    <label>Location <span style="font-size:10px;color:var(--muted)">— the exact spot: load-in gate, festival field, pier</span></label>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="btn" style="background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;font-size:12px;padding:7px 14px" onclick="_pinMap('venue')">🗺 Pick on map</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Search the venue and city, then choose from the results" onclick="_pinLookup('venue')">🔎 Search</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Use this computer's position — handy when you're at the venue" onclick="_pinHere('venue')">📍 Here</button>
+    </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="proj-latlon" type="text" placeholder="52.3702, 4.8952 or https://maps.google.com/…"
+      <input id="proj-latlon" type="text" placeholder="…or paste coordinates or a Maps link"
              style="flex:1;margin-bottom:0;font-family:var(--mono);font-size:12px"
-             onchange="_locParse(this.value)">
-      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Look up venue + city (OpenStreetMap)" onclick="_locLookup()">🔎 Lookup</button>
-      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Use this computer's position — handy when you're at the venue" onclick="_locHere()">📍 Here</button>
+             onchange="_pinParse('venue',this.value)">
     </div>
     <div id="proj-latlon-msg" style="font-size:10px;color:var(--muted);margin:-4px 0 8px;min-height:13px"></div>
 
@@ -3905,11 +3910,14 @@ var qrcode = function() {
     <label>Crew hotel <span style="font-size:10px;color:var(--muted)">— name and address; riggers get a 🏨 navigate button</span></label>
     <input id="proj-hotel" type="text" placeholder="Hotel Casa, Eerste Ringdijkstraat 4, Amsterdam"
            oninput="_projectMeta.hotel=this.value.trim();_persistProjectMeta()">
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="btn" style="background:#ffb347;color:#000;border-color:#ffb347;font-weight:700;font-size:12px;padding:7px 14px" onclick="_pinMap('hotel')">🗺 Pick on map</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Search the hotel address, then choose from the results" onclick="_pinLookup('hotel')">🔎 Search</button>
+    </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="proj-hotel-latlon" type="text" placeholder="52.3702, 4.8952 or a Maps link (optional)"
+      <input id="proj-hotel-latlon" type="text" placeholder="…or paste coordinates or a Maps link"
              style="flex:1;margin-bottom:0;font-family:var(--mono);font-size:12px"
-             onchange="_hotelParse(this.value)">
-      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Look up the hotel address (OpenStreetMap)" onclick="_hotelLookup()">🔎 Lookup</button>
+             onchange="_pinParse('hotel',this.value)">
     </div>
     <div id="proj-hotel-msg" style="font-size:10px;color:var(--muted);margin:-4px 0 8px;min-height:13px"></div>
 
@@ -6224,7 +6232,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.149';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.150';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.42;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -6873,86 +6881,331 @@ function _pinRenderDesk(){
 // print-styled window. The browser's print dialog turns it into the PDF
 // (Save as PDF) — no libraries, same pattern as the mobile pack print.
 // ── Venue & weather in the Info tab (v4.131, mirrors the phones) ─────
-// ── v4.132: exact project location ───────────────────────────────────
-function _locSet(lat,lon,how){
-  _projectMeta.lat=+(+lat).toFixed(5); _projectMeta.lon=+(+lon).toFixed(5);
-  _persistProjectMeta(); autoSave();
-  try{ localStorage.removeItem('brt_wx_desk_'+(_projectKey||'')); }catch(e){}
-  var i=document.getElementById('proj-latlon'); if(i) i.value=_projectMeta.lat+', '+_projectMeta.lon;
-  var m=document.getElementById('proj-latlon-msg'); if(m) m.textContent='📍 pinned ('+how+') — weather & Navigate use this exact spot, phones included.';
-  if(typeof wPush==='function') wPush(true);
-  _infoWeather();
+// ── Map picker (v4.150 / v4.069m) ───────────────────────────────────
+// Drop a pin by looking at it. Typing coordinates and trusting a geocoder's
+// first guess is where the mistakes came from — a festival field, a dock, a
+// backstage gate all sit hundreds of metres from whatever the address says.
+//
+// Written by hand rather than pulling in Leaflet: these files ship as one
+// self-contained page and stay that way. It is ~120 lines of Web Mercator —
+// tiles are plain <img> in a grid, dragging moves the grid, and the crosshair
+// in the middle IS the answer, so there is no marker state to keep in sync.
+// Tiles come from OpenStreetMap, which needs a network; everything else works
+// offline, including reading back a pin that was set earlier.
+var _mapS=null;
+function _lon2x(lon,z){ return (lon+180)/360*Math.pow(2,z); }
+function _lat2y(lat,z){ var r=lat*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
+function _x2lon(x,z){ return x/Math.pow(2,z)*360-180; }
+function _y2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
+function _mapDraw(){
+  var s=_mapS; if(!s) return;
+  var box=document.getElementById('mp-canvas'); if(!box) return;
+  var W=box.clientWidth||320, H=box.clientHeight||320, T=256;
+  var cx=_lon2x(s.lon,s.z)*T, cy=_lat2y(s.lat,s.z)*T;
+  var left=cx-W/2, top=cy-H/2;
+  var x0=Math.floor(left/T), y0=Math.floor(top/T);
+  var x1=Math.floor((left+W-1)/T), y1=Math.floor((top+H-1)/T);
+  var n=Math.pow(2,s.z), html='';
+  for(var x=x0;x<=x1;x++){
+    for(var y=y0;y<=y1;y++){
+      if(y<0||y>=n) continue;                 // above the pole / below it: no tile exists
+      var tx=((x%n)+n)%n;                     // wrap around the date line
+      html+='<img src="https://tile.openstreetmap.org/'+s.z+'/'+tx+'/'+y+'.png" draggable="false" alt="" '
+        +'style="position:absolute;width:'+T+'px;height:'+T+'px;left:'+Math.round(x*T-left)+'px;top:'+Math.round(y*T-top)+'px;'
+        +'-webkit-user-select:none;user-select:none;pointer-events:none">';
+    }
+  }
+  box.innerHTML=html;
+  var c=document.getElementById('mp-coords');
+  if(c) c.textContent=s.lat.toFixed(5)+', '+s.lon.toFixed(5)+'   ·   zoom '+s.z;
 }
-function _locParse(v){
-  v=String(v||'').trim();
-  var m=document.getElementById('proj-latlon-msg');
-  if(!v){ delete _projectMeta.lat; delete _projectMeta.lon; _persistProjectMeta(); autoSave(); if(m) m.textContent='Location cleared — back to city-level weather.'; return; }
-  // Google Maps link: …@52.37,4.89,15z…  or  ?q=52.37,4.89  /  plain "52.37, 4.89"
-  var mt=/@(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v) || /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v)
-       || /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/.exec(v);
-  if(mt && Math.abs(+mt[1])<=90 && Math.abs(+mt[2])<=180){ _locSet(mt[1],mt[2],'pasted'); }
-  else if(m){ m.textContent='Couldn\u2019t read coordinates from that — expected "lat, lon" or a Maps link containing @lat,lon.'; }
+function _mapPanBy(dx,dy){
+  var s=_mapS; if(!s) return;
+  var T=256, cx=_lon2x(s.lon,s.z)*T-dx, cy=_lat2y(s.lat,s.z)*T-dy;
+  s.lon=_x2lon(cx/T,s.z); s.lat=Math.max(-85,Math.min(85,_y2lat(cy/T,s.z)));
+  _mapDraw();
 }
-async function _locLookup(){
-  var m=document.getElementById('proj-latlon-msg');
-  var q=[_projectMeta.venue,_projectMeta.city].filter(Boolean).join(', ');
-  if(!q){ if(m) m.textContent='Fill in venue and/or city first.'; return; }
-  if(m) m.textContent='Looking up "'+q+'"…';
+function _mapZoom(d){
+  var s=_mapS; if(!s) return;
+  s.z=Math.max(2,Math.min(19,s.z+d));
+  _mapDraw();
+}
+function _mapDragStart(e){
+  var s=_mapS; if(!s) return;
+  var p=(e.touches&&e.touches[0])||e;
+  s.drag={x:p.clientX,y:p.clientY};
+}
+function _mapDragMove(e){
+  var s=_mapS; if(!s||!s.drag) return;
+  var p=(e.touches&&e.touches[0])||e;
+  _mapPanBy(p.clientX-s.drag.x, p.clientY-s.drag.y);
+  s.drag={x:p.clientX,y:p.clientY};
+  if(e.cancelable) e.preventDefault();
+}
+function _mapDragEnd(){ if(_mapS) _mapS.drag=null; }
+// Search inside the picker. Results are a LIST you choose from — the old
+// "take hit [0] and hope" is exactly how a pin ends up in the wrong town.
+async function _mapSearch(){
+  var q=(document.getElementById('mp-q')||{}).value||'';
+  var box=document.getElementById('mp-results'); if(!box) return;
+  q=q.trim(); if(!q){ box.innerHTML=''; return; }
+  box.innerHTML='<div style="padding:8px;color:#888;font-size:12px">Searching…</div>';
   try{
-    // Nominatim (OpenStreetMap): venue-level hits, free, attribution in title
-    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=6&q='+encodeURIComponent(q));
     var d=await r.json();
-    if(d && d[0]){ _locSet(d[0].lat, d[0].lon, 'OpenStreetMap: '+(d[0].display_name||'').split(',').slice(0,2).join(',')); }
-    else if(m){ m.textContent='No hit for "'+q+'" — try pasting coordinates or a Maps link instead.'; }
-  }catch(e){ if(m) m.textContent='Lookup failed (offline?).'; }
+    if(!d||!d.length){ box.innerHTML='<div style="padding:8px;color:#888;font-size:12px">Nothing found. Try the town on its own, then drag the map to the exact spot.</div>'; return; }
+    box.innerHTML=d.map(function(h,i){
+      return '<div onclick="_mapGoto('+h.lat+','+h.lon+')" style="padding:8px 9px;border-bottom:1px solid rgba(128,128,128,.25);cursor:pointer;font-size:12.5px;line-height:1.35">'
+        +String(h.display_name||'').replace(/</g,'&lt;')+'</div>';
+    }).join('');
+  }catch(e){ box.innerHTML='<div style="padding:8px;color:#888;font-size:12px">Search failed — no connection?</div>'; }
 }
-// ── v4.148: the crew hotel ───────────────────────────────────────────
-// Same shape as the venue location above, kept deliberately separate: a hotel
-// is not a second venue and must never end up feeding the weather lookup.
-function _hotelSet(lat,lon,how){
-  _projectMeta.hotel_lat=+(+lat).toFixed(5); _projectMeta.hotel_lon=+(+lon).toFixed(5);
-  _persistProjectMeta(); autoSave();
-  var i=document.getElementById('proj-hotel-latlon');
-  if(i) i.value=_projectMeta.hotel_lat+', '+_projectMeta.hotel_lon;
-  var m=document.getElementById('proj-hotel-msg');
-  if(m) m.textContent='🏨 pinned ('+how+') — phones can now offer Uber and Lyft to the hotel, not just the map apps.';
-  if(typeof wPush==='function') wPush(true);
+function _mapGoto(lat,lon){
+  if(!_mapS) return;
+  _mapS.lat=+lat; _mapS.lon=+lon;
+  if(_mapS.z<16) _mapS.z=17;               // a hit is a building, so show it like one
+  var b=document.getElementById('mp-results'); if(b) b.innerHTML='';
+  _mapDraw();
 }
-function _hotelParse(v){
-  v=String(v||'').trim();
-  var m=document.getElementById('proj-hotel-msg');
-  if(!v){ delete _projectMeta.hotel_lat; delete _projectMeta.hotel_lon; _persistProjectMeta(); autoSave();
-          if(m) m.textContent='Hotel pin cleared — the 🏨 button still works, by address.'; return; }
-  var mt=/@(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v) || /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v)
-       || /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/.exec(v);
-  if(mt && Math.abs(+mt[1])<=90 && Math.abs(+mt[2])<=180){ _hotelSet(mt[1],mt[2],'pasted'); }
-  else if(m){ m.textContent='Couldn\u2019t read coordinates from that — expected "lat, lon" or a Maps link containing @lat,lon.'; }
+function _mapClose(){
+  var o=document.getElementById('mp-ovl'); if(o) o.remove();
+  _mapS=null;
 }
-async function _hotelLookup(){
-  var m=document.getElementById('proj-hotel-msg');
-  var q=(_projectMeta.hotel||'').trim();
-  if(!q){ if(m) m.textContent='Fill in the hotel name and address first.'; return; }
-  // A bare hotel name geocodes badly, so the city is appended when the text
-  // does not already carry one.
-  if(_projectMeta.city && q.toLowerCase().indexOf(String(_projectMeta.city).toLowerCase())<0) q+=', '+_projectMeta.city;
-  if(m) m.textContent='Looking up "'+q+'"…';
-  try{
-    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
-    var d=await r.json();
-    if(d && d[0]) _hotelSet(d[0].lat, d[0].lon, 'OpenStreetMap: '+(d[0].display_name||'').split(',').slice(0,2).join(','));
-    else if(m) m.textContent='No hit for "'+q+'" — paste coordinates or a Maps link instead.';
-  }catch(e){ if(m) m.textContent='Lookup failed (offline?).'; }
+function _mapConfirm(){
+  var s=_mapS; if(!s) return;
+  var cb=s.onPick, lat=s.lat, lon=s.lon;
+  _mapClose();
+  if(cb) cb(+lat.toFixed(6), +lon.toFixed(6));
+}
+// opts: {lat, lon, zoom, title, hint, search, onPick}
+function _mapOpen(opts){
+  opts=opts||{};
+  var hasStart=(isFinite(opts.lat)&&isFinite(opts.lon));
+  _mapS={ lat: hasStart?+opts.lat:52.3702, lon: hasStart?+opts.lon:4.8952,
+          z: hasStart?(opts.zoom||17):5, onPick:opts.onPick, drag:null };
+  var old=document.getElementById('mp-ovl'); if(old) old.remove();
+  var o=document.createElement('div');
+  o.id='mp-ovl';
+  o.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.88);display:flex;'
+    +'align-items:center;justify-content:center;'
+    +'padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px)';
+  o.innerHTML=
+     '<div style="width:100%;max-width:640px;background:#14171d;border:1px solid #333a47;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;max-height:92vh">'
+    +'<div style="padding:11px 13px 8px">'
+    +  '<div style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:17px;color:#fff">'+(opts.title||'📍 Pick the spot')+'</div>'
+    +  '<div style="font-size:11.5px;color:#aab;margin-top:2px">'+(opts.hint||'Drag the map so the crosshair sits on the exact spot.')+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;padding:0 13px 9px">'
+    +  '<input id="mp-q" placeholder="Search an address or place" value="'+String(opts.search||'').replace(/"/g,'&quot;')+'" '
+    +   'style="flex:1;background:#0c0e12;border:1px solid #333a47;color:#fff;border-radius:8px;padding:9px 11px;font-size:14px" '
+    +   'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mapSearch();}">'
+    +  '<button onclick="_mapSearch()" style="background:#00d4ff;color:#000;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer">Find</button>'
+    +'</div>'
+    +'<div id="mp-results" style="max-height:130px;overflow:auto;margin:0 13px;color:#dde"></div>'
+    +'<div style="position:relative;margin:9px 13px 0;border-radius:10px;overflow:hidden;border:1px solid #333a47">'
+    +  '<div id="mp-canvas" style="position:relative;height:340px;background:#20242c;overflow:hidden;cursor:grab;touch-action:none"></div>'
+    // The crosshair never moves. The map moves under it, which is why there is
+    // no marker to drag out of sync with what gets saved.
+    +  '<div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">'
+    +    '<svg width="46" height="46" viewBox="0 0 46 46" style="filter:drop-shadow(0 0 3px rgba(0,0,0,.9))">'
+    +      '<circle cx="23" cy="23" r="9" fill="none" stroke="#ff3b3b" stroke-width="2.5"/>'
+    +      '<line x1="23" y1="0" x2="23" y2="13" stroke="#ff3b3b" stroke-width="2.5"/>'
+    +      '<line x1="23" y1="33" x2="23" y2="46" stroke="#ff3b3b" stroke-width="2.5"/>'
+    +      '<line x1="0" y1="23" x2="13" y2="23" stroke="#ff3b3b" stroke-width="2.5"/>'
+    +      '<line x1="33" y1="23" x2="46" y2="23" stroke="#ff3b3b" stroke-width="2.5"/>'
+    +      '<circle cx="23" cy="23" r="1.6" fill="#ff3b3b"/>'
+    +    '</svg></div>'
+    +  '<div style="position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px">'
+    +    '<button onclick="_mapZoom(1)" style="width:38px;height:38px;font-size:21px;line-height:1;background:rgba(10,12,16,.85);color:#fff;border:1px solid #444c5c;border-radius:9px;cursor:pointer">+</button>'
+    +    '<button onclick="_mapZoom(-1)" style="width:38px;height:38px;font-size:21px;line-height:1;background:rgba(10,12,16,.85);color:#fff;border:1px solid #444c5c;border-radius:9px;cursor:pointer">−</button>'
+    +  '</div>'
+    +  '<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.62);color:#cfd6e2;font-family:Share Tech Mono,monospace;font-size:10.5px;padding:3px 8px;display:flex;gap:10px">'
+    +    '<span id="mp-coords" style="flex:1"></span><span>© OpenStreetMap</span></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;padding:11px 13px calc(env(safe-area-inset-bottom,0px) + 13px)">'
+    +  '<button onclick="_mapUseHere()" style="background:transparent;color:#00d4ff;border:1px solid #00d4ff;border-radius:10px;padding:12px 14px;font-size:14px;cursor:pointer" title="Centre on this device">📍 Here</button>'
+    +  '<button onclick="_mapConfirm()" style="flex:1;background:#3ddc84;color:#000;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:800;cursor:pointer">Use this spot</button>'
+    +  '<button onclick="_mapClose()" style="background:#20242c;color:#fff;border:1px solid #333a47;border-radius:10px;padding:12px 16px;font-size:14px;cursor:pointer">Cancel</button>'
+    +'</div></div>';
+  document.body.appendChild(o);
+  var box=document.getElementById('mp-canvas');
+  box.addEventListener('mousedown',_mapDragStart);
+  box.addEventListener('touchstart',_mapDragStart,{passive:true});
+  window.addEventListener('mousemove',_mapDragMove);
+  box.addEventListener('touchmove',_mapDragMove,{passive:false});
+  window.addEventListener('mouseup',_mapDragEnd);
+  box.addEventListener('touchend',_mapDragEnd);
+  box.addEventListener('wheel',function(e){ e.preventDefault(); _mapZoom(e.deltaY<0?1:-1); },{passive:false});
+  box.addEventListener('dblclick',function(e){ e.preventDefault(); _mapZoom(1); });
+  _mapDraw();
+  // No pin yet and an address to work from: run the search straight away, so
+  // the map opens somewhere useful instead of over the North Sea.
+  if(!hasStart && opts.search) setTimeout(_mapSearch, 120);
+}
+function _mapUseHere(){
+  if(!navigator.geolocation){ return; }
+  navigator.geolocation.getCurrentPosition(function(p){
+    _mapGoto(p.coords.latitude,p.coords.longitude);
+  },function(){},{enableHighAccuracy:true,timeout:10000});
 }
 
-function _locHere(){
-  var m=document.getElementById('proj-latlon-msg');
-  if(!navigator.geolocation){ if(m) m.textContent='No geolocation in this browser.'; return; }
-  if(m) m.textContent='Getting position…';
+// ── Coordinate parsing (v4.150 / v4.069m) ───────────────────────────
+// The old parser understood three shapes and silently refused everything else,
+// which is most of what people actually paste. The worst case was the Google
+// Maps SHARE button: it hands out maps.app.goo.gl/… with no coordinates in it
+// at all, so pasting it could never work and the app just said "couldn't read
+// that". A short link cannot be resolved from here — following the redirect is
+// blocked by CORS — so it now gets its own instruction instead of a shrug.
+function _geoParse(v){
+  v=String(v||'').trim();
+  if(!v) return {empty:true};
+
+  // Short links carry no coordinates. Say what to do rather than what failed.
+  if(/(maps\.app\.goo\.gl|goo\.gl\/maps|\/url\?)/i.test(v)){
+    return {error:'That is a Google share link — it holds no coordinates. Open it once in a browser, '
+      +'then copy the FULL address bar (the one with @lat,lon in it) and paste that. Or use 🗺 Map and drag the crosshair.'};
+  }
+
+  var m, lat, lon, how='pasted';
+
+  // Google place data: !3d<lat>!4d<lon> is the PLACE, while @lat,lon is only
+  // where the camera happened to be, so this is tried first.
+  if((m=/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/.exec(v))){ lat=+m[1]; lon=+m[2]; how='Google place'; }
+  // OpenStreetMap: #map=zoom/lat/lon
+  else if((m=/#map=\d+\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)/.exec(v))){ lat=+m[1]; lon=+m[2]; how='OpenStreetMap link'; }
+  // Google camera, Apple/Waze ll=, generic q=/query=/daddr=/destination=
+  else if((m=/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(v))){ lat=+m[1]; lon=+m[2]; how='Maps link'; }
+  else if((m=/[?&#](?:ll|q|query|daddr|destination|sll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i.exec(v))){ lat=+m[1]; lon=+m[2]; how='Maps link'; }
+  // .../dir//39.936,-82.401
+  else if((m=/\/(-?\d+\.\d+),(-?\d+\.\d+)(?:[/?#]|$)/.exec(v))){ lat=+m[1]; lon=+m[2]; how='Maps link'; }
+  // Degrees/minutes/seconds, the format a phone's compass app shows
+  else if((m=/(\d+)[°º]\s*(\d+)['′]\s*([\d.]+)["″]?\s*([NSns])[, ]+\s*(\d+)[°º]\s*(\d+)['′]\s*([\d.]+)["″]?\s*([EWew])/.exec(v))){
+    lat=(+m[1]+ +m[2]/60 + +m[3]/3600)*(/[Ss]/.test(m[4])?-1:1);
+    lon=(+m[5]+ +m[6]/60 + +m[7]/3600)*(/[Ww]/.test(m[8])?-1:1);
+    how='degrees/minutes/seconds';
+  }
+  // Decimal with a hemisphere letter: 39.936N, 82.401W
+  else if((m=/^(-?\d+(?:\.\d+)?)\s*([NSns])[,; ]+\s*(-?\d+(?:\.\d+)?)\s*([EWew])$/.exec(v))){
+    lat=+m[1]*(/[Ss]/.test(m[2])?-1:1); lon=+m[3]*(/[Ww]/.test(m[4])?-1:1); how='pasted';
+  }
+  // Plain pair, separated by comma, semicolon or whitespace
+  else if((m=/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/.exec(v))){ lat=+m[1]; lon=+m[2]; }
+  else {
+    return {error:'Could not read a location from that. Paste "lat, lon", a Maps link with @lat,lon in it, '
+      +'or press 🗺 Map and drag the crosshair to the spot.'};
+  }
+
+  if(!isFinite(lat)||!isFinite(lon)) return {error:'Those numbers did not parse as a location.'};
+  if(Math.abs(lat)>90)  return {error:'Latitude '+lat+' is outside -90…90 — the two numbers may be swapped.'};
+  if(Math.abs(lon)>180) return {error:'Longitude '+lon+' is outside -180…180 — the two numbers may be swapped.'};
+  // 0,0 is in the Atlantic. It is almost always an empty field, not a venue.
+  if(lat===0&&lon===0) return {error:'0, 0 is in the ocean off Africa — that is usually an empty field rather than a place.'};
+  return {lat:lat, lon:lon, how:how};
+}
+
+// ── One implementation for both pins (v4.150) ───────────────────────
+// Venue and hotel had a copy each of set/parse/lookup. They had already begun
+// to drift, and every fix had to be made twice. One config, one code path.
+var _PIN={
+  venue:{ latK:'lat',       lonK:'lon',       inp:'proj-latlon',       msg:'proj-latlon-msg',
+          label:'Venue', search:function(){ return [_projectMeta.venue,_projectMeta.city].filter(Boolean).join(', '); } },
+  hotel:{ latK:'hotel_lat', lonK:'hotel_lon', inp:'proj-hotel-latlon', msg:'proj-hotel-msg',
+          label:'Hotel', search:function(){
+            var q=(_projectMeta.hotel||'').trim();
+            // A bare hotel name geocodes badly; add the city when it is missing.
+            if(q && _projectMeta.city && q.toLowerCase().indexOf(String(_projectMeta.city).toLowerCase())<0) q+=', '+_projectMeta.city;
+            return q; } }
+};
+function _pinMsg(kind,html){ var e=document.getElementById(_PIN[kind].msg); if(e) e.innerHTML=html; }
+function _pinSet(kind,lat,lon,how){
+  var c=_PIN[kind];
+  _projectMeta[c.latK]=+(+lat).toFixed(6); _projectMeta[c.lonK]=+(+lon).toFixed(6);
+  _projectMeta._pin_ts=new Date().toISOString();   // v4.150: worker v4.43 keeps the newer pin
+  _persistProjectMeta(); autoSave();
+  if(kind==='venue'){ try{ localStorage.removeItem('brt_wx_desk_'+(_projectKey||'')); }catch(e){} }
+  var i=document.getElementById(c.inp);
+  if(i) i.value=_projectMeta[c.latK]+', '+_projectMeta[c.lonK];
+  _pinShow(kind, '📍 Pinned'+(how?' ('+_escHtml(how)+')':'')+' — ');
+  if(typeof wPush==='function') wPush(true);
+  if(kind==='venue' && typeof _infoWeather==='function') _infoWeather();
+  if(typeof _infoWeather==='function') _infoWeather();   // refreshes the Navigate/Hotel buttons
+}
+// Every pinned state ends with a link that opens the spot in Google Maps.
+// Checking the pin was the missing half of the workflow: you could set one and
+// have no quick way to see whether it landed in the right field.
+function _pinShow(kind,prefix){
+  var c=_PIN[kind], la=_projectMeta[c.latK], lo=_projectMeta[c.lonK];
+  if(!(isFinite(la)&&isFinite(lo))){ _pinMsg(kind,'Not pinned yet.'); return; }
+  _pinMsg(kind, (prefix||'📍 Pinned — ')
+    +'<a href="https://www.google.com/maps/search/?api=1&query='+la+','+lo+'" target="_blank" rel="noopener" '
+    +'style="color:var(--accent)">check on Google Maps ↗</a>'
+    +' &nbsp;·&nbsp; <a href="#" onclick="_pinMap(\''+kind+'\');return false" style="color:var(--accent)">correct on the map</a>');
+}
+function _pinClear(kind){
+  var c=_PIN[kind];
+  delete _projectMeta[c.latK]; delete _projectMeta[c.lonK];
+  _projectMeta._pin_ts=new Date().toISOString();   // clearing is an edit too
+  _persistProjectMeta(); autoSave();
+  var i=document.getElementById(c.inp); if(i) i.value='';
+  _pinMsg(kind,'Pin cleared.');
+  if(typeof wPush==='function') wPush(true);
+}
+function _pinParse(kind,v){
+  var r=_geoParse(v);
+  if(r.empty){ _pinClear(kind); return; }
+  if(r.error){ _pinMsg(kind,'<span style="color:var(--warn)">'+_escHtml(r.error)+'</span>'); return; }
+  _pinSet(kind,r.lat,r.lon,r.how);
+}
+function _pinMap(kind){
+  var c=_PIN[kind];
+  _mapOpen({
+    lat:_projectMeta[c.latK], lon:_projectMeta[c.lonK],
+    title:(kind==='hotel'?'🏨 Where is the hotel?':'📍 Where is the venue?'),
+    hint:'Drag the map so the crosshair sits on the exact spot — the gate you load in through, not the postcode.',
+    search:c.search(),
+    onPick:function(lat,lon){ _pinSet(kind,lat,lon,'map'); }
+  });
+}
+// Search results are a LIST. Taking hit [0] on trust is how a pin ends up in
+// the wrong town with nothing on screen to say so.
+async function _pinLookup(kind){
+  var c=_PIN[kind], q=c.search();
+  if(!q){ _pinMsg(kind,'<span style="color:var(--warn)">Fill in the '+(kind==='hotel'?'hotel':'venue and/or city')+' first.</span>'); return; }
+  _pinMsg(kind,'Looking up "'+_escHtml(q)+'"…');
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=6&q='+encodeURIComponent(q));
+    var d=await r.json();
+    if(!d||!d.length){ _pinMsg(kind,'<span style="color:var(--warn)">No hit for "'+_escHtml(q)+'". Try just the town, then press 🗺 Map and drag to the spot.</span>'); return; }
+    window['_pinHits_'+kind]=d;
+    _pinMsg(kind,'<div style="margin:4px 0 2px">'+d.length+' match'+(d.length>1?'es':'')+' — pick the right one:</div>'
+      +d.map(function(h,i){
+        return '<div onclick="_pinPick(\''+kind+'\','+i+')" style="padding:5px 7px;margin-bottom:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:11px;line-height:1.4">'
+          +_escHtml(h.display_name||'')+'</div>';
+      }).join(''));
+  }catch(e){ _pinMsg(kind,'<span style="color:var(--warn)">Lookup failed (offline?).</span>'); }
+}
+function _pinPick(kind,i){
+  var d=window['_pinHits_'+kind]||[];
+  var h=d[i]; if(!h) return;
+  _pinSet(kind,h.lat,h.lon,'chosen from search');
+}
+function _pinHere(kind){
+  if(!navigator.geolocation){ _pinMsg(kind,'No geolocation in this browser.'); return; }
+  _pinMsg(kind,'Getting position…');
   navigator.geolocation.getCurrentPosition(
-    function(pos){ _locSet(pos.coords.latitude, pos.coords.longitude, 'this device'); },
-    function(err){ if(m) m.textContent='Position refused: '+err.message; },
+    function(pos){ _pinSet(kind,pos.coords.latitude,pos.coords.longitude,'this device'); },
+    function(err){ _pinMsg(kind,'<span style="color:var(--warn)">Position refused: '+_escHtml(err.message)+'</span>'); },
     { enableHighAccuracy:true, timeout:10000 });
 }
+// Names kept so older call sites and inline handlers keep working.
+function _locSet(lat,lon,how){ _pinSet('venue',lat,lon,how); }
+function _locParse(v){ _pinParse('venue',v); }
+function _locLookup(){ _pinLookup('venue'); }
+function _locHere(){ _pinHere('venue'); }
+function _hotelSet(lat,lon,how){ _pinSet('hotel',lat,lon,how); }
+function _hotelParse(v){ _pinParse('hotel',v); }
+function _hotelLookup(){ _pinLookup('hotel'); }
+
 // ── Navigate: pick your app (v4.149, mirrors the phones) ────────────
 // Same three rules as mobile: Uber and Lyft need a lat/lon and say so when
 // there isn't one, Apple Maps is only useful on Apple hardware, and the last
@@ -8044,7 +8297,7 @@ function _persistProjectMeta() {
       // survived only as long as the tab stayed open — on reload it came back
       // empty and waited for a worker pull to refill it, which reads as
       // "my pin disappeared". The hotel fields are here for the same reason.
-      lat: _projectMeta.lat, lon: _projectMeta.lon,
+      lat: _projectMeta.lat, lon: _projectMeta.lon, _pin_ts: _projectMeta._pin_ts||'',
       hotel: _projectMeta.hotel||'',
       hotel_lat: _projectMeta.hotel_lat, hotel_lon: _projectMeta.hotel_lon,
       version: _projectVersion, base_version: _projectBaseVersion
@@ -12247,6 +12500,7 @@ try{
     _projectMeta.date_to=_pmd.date_to||'';_projectMeta.notes=_pmd.notes||'';
     _projectMeta.status=_pmd.status||'';
     // v4.148: read back what _persistProjectMeta now stores.
+    if(_pmd._pin_ts) _projectMeta._pin_ts=_pmd._pin_ts;
     if(isFinite(_pmd.lat)&&isFinite(_pmd.lon)){ _projectMeta.lat=_pmd.lat; _projectMeta.lon=_pmd.lon; }
     _projectMeta.hotel=_pmd.hotel||'';
     if(isFinite(_pmd.hotel_lat)&&isFinite(_pmd.hotel_lon)){ _projectMeta.hotel_lat=_pmd.hotel_lat; _projectMeta.hotel_lon=_pmd.hotel_lon; }
@@ -12312,6 +12566,8 @@ _renderStageBar();
   try{ var li=document.getElementById('proj-latlon'); if(li&&isFinite(_projectMeta.lat)&&isFinite(_projectMeta.lon)) li.value=_projectMeta.lat+', '+_projectMeta.lon; }catch(e){}
   try{ var hi=document.getElementById('proj-hotel'); if(hi) hi.value=_projectMeta.hotel||''; }catch(e){}   // v4.148
   try{ var hl=document.getElementById('proj-hotel-latlon'); if(hl&&isFinite(_projectMeta.hotel_lat)&&isFinite(_projectMeta.hotel_lon)) hl.value=_projectMeta.hotel_lat+', '+_projectMeta.hotel_lon; }catch(e){}
+  // v4.150: paint the "check on Google Maps" line for whatever is already pinned.
+  try{ _pinShow('venue'); _pinShow('hotel'); }catch(e){}
   // v4.121: a stored binding to 'default' is always an accident from old
   // versions — auto-loading it was pure confusion. Unbind; if a real
   // 'default' slot holds data it is still visible in the Manager to rescue.
