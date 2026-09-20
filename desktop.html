@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.147</title>
+<title>WTUniverse · Buildert Editor v4.148</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -511,7 +511,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.147</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.148</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -3893,6 +3893,23 @@ var qrcode = function() {
       <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Use this computer's position — handy when you're at the venue" onclick="_locHere()">📍 Here</button>
     </div>
     <div id="proj-latlon-msg" style="font-size:10px;color:var(--muted);margin:-4px 0 8px;min-height:13px"></div>
+
+    <!-- v4.148: crew hotel. Second only to the venue in how often it gets
+         asked for at 3am, and until now it lived in someone's chat history.
+         Pinned coordinates matter more here than for the venue: Uber and Lyft
+         deep links take a lat/lon, not a hotel name, so without them the
+         phone can only offer the map apps. -->
+    <label>Crew hotel <span style="font-size:10px;color:var(--muted)">— name and address; riggers get a 🏨 navigate button</span></label>
+    <input id="proj-hotel" type="text" placeholder="Hotel Casa, Eerste Ringdijkstraat 4, Amsterdam"
+           oninput="_projectMeta.hotel=this.value.trim();_persistProjectMeta()">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="proj-hotel-latlon" type="text" placeholder="52.3702, 4.8952 or a Maps link (optional)"
+             style="flex:1;margin-bottom:0;font-family:var(--mono);font-size:12px"
+             onchange="_hotelParse(this.value)">
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Look up the hotel address (OpenStreetMap)" onclick="_hotelLookup()">🔎 Lookup</button>
+    </div>
+    <div id="proj-hotel-msg" style="font-size:10px;color:var(--muted);margin:-4px 0 8px;min-height:13px"></div>
+
     <div style="display:flex;gap:8px">
       <div style="flex:1"><label>Show date — from</label>
         <input id="proj-date" type="date" style="width:100%;box-sizing:border-box"
@@ -6204,7 +6221,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.147';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.148';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.42;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -6886,6 +6903,44 @@ async function _locLookup(){
     else if(m){ m.textContent='No hit for "'+q+'" — try pasting coordinates or a Maps link instead.'; }
   }catch(e){ if(m) m.textContent='Lookup failed (offline?).'; }
 }
+// ── v4.148: the crew hotel ───────────────────────────────────────────
+// Same shape as the venue location above, kept deliberately separate: a hotel
+// is not a second venue and must never end up feeding the weather lookup.
+function _hotelSet(lat,lon,how){
+  _projectMeta.hotel_lat=+(+lat).toFixed(5); _projectMeta.hotel_lon=+(+lon).toFixed(5);
+  _persistProjectMeta(); autoSave();
+  var i=document.getElementById('proj-hotel-latlon');
+  if(i) i.value=_projectMeta.hotel_lat+', '+_projectMeta.hotel_lon;
+  var m=document.getElementById('proj-hotel-msg');
+  if(m) m.textContent='🏨 pinned ('+how+') — phones can now offer Uber and Lyft to the hotel, not just the map apps.';
+  if(typeof wPush==='function') wPush(true);
+}
+function _hotelParse(v){
+  v=String(v||'').trim();
+  var m=document.getElementById('proj-hotel-msg');
+  if(!v){ delete _projectMeta.hotel_lat; delete _projectMeta.hotel_lon; _persistProjectMeta(); autoSave();
+          if(m) m.textContent='Hotel pin cleared — the 🏨 button still works, by address.'; return; }
+  var mt=/@(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v) || /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/.exec(v)
+       || /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/.exec(v);
+  if(mt && Math.abs(+mt[1])<=90 && Math.abs(+mt[2])<=180){ _hotelSet(mt[1],mt[2],'pasted'); }
+  else if(m){ m.textContent='Couldn\u2019t read coordinates from that — expected "lat, lon" or a Maps link containing @lat,lon.'; }
+}
+async function _hotelLookup(){
+  var m=document.getElementById('proj-hotel-msg');
+  var q=(_projectMeta.hotel||'').trim();
+  if(!q){ if(m) m.textContent='Fill in the hotel name and address first.'; return; }
+  // A bare hotel name geocodes badly, so the city is appended when the text
+  // does not already carry one.
+  if(_projectMeta.city && q.toLowerCase().indexOf(String(_projectMeta.city).toLowerCase())<0) q+=', '+_projectMeta.city;
+  if(m) m.textContent='Looking up "'+q+'"…';
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    var d=await r.json();
+    if(d && d[0]) _hotelSet(d[0].lat, d[0].lon, 'OpenStreetMap: '+(d[0].display_name||'').split(',').slice(0,2).join(','));
+    else if(m) m.textContent='No hit for "'+q+'" — paste coordinates or a Maps link instead.';
+  }catch(e){ if(m) m.textContent='Lookup failed (offline?).'; }
+}
+
 function _locHere(){
   var m=document.getElementById('proj-latlon-msg');
   if(!navigator.geolocation){ if(m) m.textContent='No geolocation in this browser.'; return; }
@@ -7453,7 +7508,8 @@ function _mergeProjectNoConflict(data) {
         _persistProjectMeta();
         try{ if(_projectMeta.name) _kpTouch(_projectKey, _projectMeta.name); }catch(e){}
         [['proj-name','name'],['proj-venue','venue'],['proj-city','city'],['proj-date','date'],
-         ['proj-date-to','date_to'],['proj-notes','notes'],['proj-client','client']].forEach(function(pair){
+         ['proj-date-to','date_to'],['proj-notes','notes'],['proj-client','client'],
+   ['proj-hotel','hotel']].forEach(function(pair){
           var el=document.getElementById(pair[0]); if(el) el.value=_projectMeta[pair[1]]||'';
         });
         try{ _brtSyncLabels(); }catch(e){}
@@ -7884,6 +7940,13 @@ function _persistProjectMeta() {
       client: _projectMeta.client||'', city: _projectMeta.city||'',
       date_to: _projectMeta.date_to||'', notes: _projectMeta.notes||'',
       status: _projectMeta.status||'',
+      // v4.148: lat/lon were NOT in this list, so a pinned venue location
+      // survived only as long as the tab stayed open — on reload it came back
+      // empty and waited for a worker pull to refill it, which reads as
+      // "my pin disappeared". The hotel fields are here for the same reason.
+      lat: _projectMeta.lat, lon: _projectMeta.lon,
+      hotel: _projectMeta.hotel||'',
+      hotel_lat: _projectMeta.hotel_lat, hotel_lon: _projectMeta.hotel_lon,
       version: _projectVersion, base_version: _projectBaseVersion
     }));
     // The legacy global key must not linger — anything still reading it would
@@ -12083,6 +12146,10 @@ try{
     _projectMeta.client=_pmd.client||'';_projectMeta.city=_pmd.city||'';
     _projectMeta.date_to=_pmd.date_to||'';_projectMeta.notes=_pmd.notes||'';
     _projectMeta.status=_pmd.status||'';
+    // v4.148: read back what _persistProjectMeta now stores.
+    if(isFinite(_pmd.lat)&&isFinite(_pmd.lon)){ _projectMeta.lat=_pmd.lat; _projectMeta.lon=_pmd.lon; }
+    _projectMeta.hotel=_pmd.hotel||'';
+    if(isFinite(_pmd.hotel_lat)&&isFinite(_pmd.hotel_lon)){ _projectMeta.hotel_lat=_pmd.hotel_lat; _projectMeta.hotel_lon=_pmd.hotel_lon; }
     _projectVersion=_pmd.version||0;_projectBaseVersion=_pmd.base_version||0;
     var pni=document.getElementById('proj-name');var pvi=document.getElementById('proj-venue');var pdi=document.getElementById('proj-date');
     if(pni)pni.value=_projectMeta.name;if(pvi)pvi.value=_projectMeta.venue;if(pdi)pdi.value=_projectMeta.date;
@@ -12143,6 +12210,8 @@ _renderStageBar();
   // v4.123: mobile app URL (where invite/share links open) is now a visible setting
   try{ var mi=document.getElementById('mobile-url-inp'); if(mi) mi.value=(localStorage.getItem('buildert_mobile_url')||'').trim(); }catch(e){}
   try{ var li=document.getElementById('proj-latlon'); if(li&&isFinite(_projectMeta.lat)&&isFinite(_projectMeta.lon)) li.value=_projectMeta.lat+', '+_projectMeta.lon; }catch(e){}
+  try{ var hi=document.getElementById('proj-hotel'); if(hi) hi.value=_projectMeta.hotel||''; }catch(e){}   // v4.148
+  try{ var hl=document.getElementById('proj-hotel-latlon'); if(hl&&isFinite(_projectMeta.hotel_lat)&&isFinite(_projectMeta.hotel_lon)) hl.value=_projectMeta.hotel_lat+', '+_projectMeta.hotel_lon; }catch(e){}
   // v4.121: a stored binding to 'default' is always an accident from old
   // versions — auto-loading it was pure confusion. Unbind; if a real
   // 'default' slot holds data it is still visible in the Manager to rescue.
@@ -15512,7 +15581,8 @@ async function _pwzCreate(){
   // 4. Reflect everywhere
   var kd=document.getElementById('proj-key-display'); if(kd) kd.textContent=slot;
   [['proj-name','name'],['proj-venue','venue'],['proj-city','city'],['proj-date','date'],
-   ['proj-date-to','date_to'],['proj-notes','notes'],['proj-client','client']].forEach(function(p){
+   ['proj-date-to','date_to'],['proj-notes','notes'],['proj-client','client'],
+   ['proj-hotel','hotel']].forEach(function(p){
     var el=document.getElementById(p[0]); if(el) el.value=_projectMeta[p[1]]||'';
   });
   try{ _brtSyncLabels(); }catch(e){}
