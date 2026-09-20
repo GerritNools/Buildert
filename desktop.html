@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.148</title>
+<title>WTUniverse · Buildert Editor v4.149</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -511,7 +511,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.148</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.149</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -1146,7 +1146,10 @@
         <div style="font-family:var(--cond);font-weight:900;font-size:15px" id="info-venue-name"></div>
         <div style="font-size:12px;color:var(--muted)" id="info-venue-city"></div>
       </div>
-      <a id="info-venue-nav" href="#" target="_blank" rel="noopener" class="btn btn-ghost" style="text-decoration:none;font-size:12px;padding:7px 14px">🧭 Navigate</a>
+      <!-- v4.149: these were a bare Google Maps link. Both open the app chooser
+           now, and the hotel only appears once the planner has set one. -->
+      <button id="info-venue-nav" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="_navSheet('venue')">🧭 Navigate</button>
+      <button id="info-hotel-nav" class="btn btn-ghost" style="display:none;font-size:12px;padding:7px 14px;border-color:#ffb347;color:#ffb347" onclick="_navSheet('hotel')">🏨 Hotel</button>
     </div>
     <div id="info-wx" style="margin-top:10px;border-top:1px solid var(--border2);padding-top:8px;font-size:12px;color:var(--muted)"></div>
   </div>
@@ -6221,7 +6224,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.148';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.149';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.42;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -6950,16 +6953,113 @@ function _locHere(){
     function(err){ if(m) m.textContent='Position refused: '+err.message; },
     { enableHighAccuracy:true, timeout:10000 });
 }
+// ── Navigate: pick your app (v4.149, mirrors the phones) ────────────
+// Same three rules as mobile: Uber and Lyft need a lat/lon and say so when
+// there isn't one, Apple Maps is only useful on Apple hardware, and the last
+// app used floats to the top.
+function _navLinks(dest){
+  var hasLL=(isFinite(dest.lat)&&isFinite(dest.lon));
+  var ll=hasLL?(dest.lat+','+dest.lon):'';
+  var q=encodeURIComponent(hasLL?ll:(dest.label||''));
+  var isApple=/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent||'');
+  var out=[];
+  out.push({ id:'gmaps', icon:'🗺', name:'Google Maps',
+    url:'https://www.google.com/maps/dir/?api=1&destination='+q });
+  out.push({ id:'waze', icon:'🚗', name:'Waze',
+    url: hasLL ? ('https://waze.com/ul?ll='+encodeURIComponent(ll)+'&navigate=yes')
+               : ('https://waze.com/ul?q='+q+'&navigate=yes') });
+  if(isApple) out.push({ id:'apple', icon:'🧭', name:'Apple Maps', url:'https://maps.apple.com/?daddr='+q+'&dirflg=d' });
+  out.push({ id:'uber', icon:'🚕', name:'Uber',
+    url: hasLL ? ('https://m.uber.com/ul/?action=setPickup&pickup=my_location'
+        +'&dropoff[latitude]='+encodeURIComponent(dest.lat)
+        +'&dropoff[longitude]='+encodeURIComponent(dest.lon)
+        +'&dropoff[nickname]='+encodeURIComponent(dest.label||'destination')) : '',
+    needsPin:!hasLL });
+  out.push({ id:'lyft', icon:'🚖', name:'Lyft',
+    url: hasLL ? ('https://lyft.com/ride?id=lyft'
+        +'&destination[latitude]='+encodeURIComponent(dest.lat)
+        +'&destination[longitude]='+encodeURIComponent(dest.lon)) : '',
+    needsPin:!hasLL });
+  if(!isApple) out.push({ id:'apple', icon:'🧭', name:'Apple Maps',
+    url:'https://maps.apple.com/?daddr='+q+'&dirflg=d', note:'opens in a browser here' });
+  return out;
+}
+var _navApps=[];
+function _navGo(i){
+  var a=_navApps[i]; if(!a||!a.url) return;
+  try{ localStorage.setItem('brt_nav_app', a.id||''); }catch(e){}
+  var m=document.getElementById('nav-modal'); if(m) m.remove();
+  window.open(a.url,'_blank','noopener');
+}
+function _navSheet(which){
+  var pm=_projectMeta||{};
+  var dest, title;
+  if(which==='hotel'){
+    dest={ lat:pm.hotel_lat, lon:pm.hotel_lon, label:String(pm.hotel||'').trim() };
+    title='🏨 To the hotel';
+  } else {
+    dest={ lat:pm.lat, lon:pm.lon, label:[pm.venue,pm.city].filter(Boolean).join(', ') };
+    title='🧭 To the venue';
+  }
+  if(!isFinite(dest.lat) && !dest.label){
+    showToast(which==='hotel'?'No hotel set — add it in ⚙ Settings':'No venue set — add it in ⚙ Settings','warn');
+    return;
+  }
+  var pref=''; try{ pref=localStorage.getItem('brt_nav_app')||''; }catch(e){}
+  var apps=_navLinks(dest);
+  apps.sort(function(a,b){ return (b.id===pref?1:0)-(a.id===pref?1:0); });
+  _navApps=apps;
+  var rows=apps.map(function(a,idx){
+    if(a.needsPin){
+      return '<div style="display:flex;align-items:center;gap:14px;padding:11px 8px;border-bottom:1px solid var(--border2);opacity:.45">'
+        +'<span style="font-size:20px;width:26px;text-align:center">'+a.icon+'</span>'
+        +'<span style="flex:1"><b>'+_escHtml(a.name)+'</b>'
+        +'<small style="display:block;font-size:11px;color:var(--muted)">Needs a pinned location — set it in ⚙ Settings</small></span></div>';
+    }
+    return '<div onclick="_navGo('+idx+')" style="display:flex;align-items:center;gap:14px;padding:11px 8px;'
+      +'border-bottom:1px solid var(--border2);cursor:pointer">'
+      +'<span style="font-size:20px;width:26px;text-align:center">'+a.icon+'</span>'
+      +'<span style="flex:1"><b>'+_escHtml(a.name)+'</b>'
+      +(a.note?'<small style="display:block;font-size:11px;color:var(--muted)">'+_escHtml(a.note)+'</small>':'')
+      +(a.id===pref?'<small style="display:block;font-size:11px;color:var(--accent)">last used</small>':'')
+      +'</span><span style="color:var(--muted);font-family:var(--mono)">›</span></div>';
+  }).join('');
+  var old=document.getElementById('nav-modal'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay open" id="nav-modal" style="z-index:1300">'
+    +'<div class="modal" style="max-width:420px">'
+    +'<h2 style="margin:0 0 2px">'+title+'</h2>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px;word-break:break-word">'+_escHtml(dest.label||'')+'</div>'
+    +rows
+    +'<div style="margin-top:14px"><button class="btn btn-ghost" onclick="document.getElementById(\'nav-modal\').remove()">Cancel</button></div>'
+    +'</div></div>');
+}
+
 async function _infoWeather(){
   var pm=_projectMeta||{};
   var card=document.getElementById('info-venue-card'); if(!card) return;
   var addr=[pm.venue,pm.city].filter(Boolean).join(', ');
-  if(!addr){ card.style.display='none'; return; }
+  // v4.149: the whole card used to vanish without a venue, which would have
+  // hidden the hotel button along with it. A hotel is reason enough to show it.
+  var hasHotel=!!(pm.hotel&&String(pm.hotel).trim());
+  if(!addr && !hasHotel){ card.style.display='none'; return; }
   card.style.display='block';
+  var _hb0=document.getElementById('info-hotel-nav');
+  if(_hb0) _hb0.style.display=hasHotel?'':'none';
+  var _vb0=document.getElementById('info-venue-nav');
+  if(_vb0) _vb0.style.display=addr?'':'none';
+  if(!addr){
+    document.getElementById('info-venue-name').textContent=pm.hotel||'';
+    document.getElementById('info-venue-city').textContent='No venue set — hotel only';
+    var _w0=document.getElementById('info-wx'); if(_w0) _w0.textContent='';
+    return;
+  }
   document.getElementById('info-venue-name').textContent=pm.venue||pm.city||'';
   document.getElementById('info-venue-city').textContent=(pm.venue&&pm.city)?pm.city:'';
-  document.getElementById('info-venue-nav').href='https://www.google.com/maps/search/?api=1&query='
-    +encodeURIComponent((isFinite(pm.lat)&&isFinite(pm.lon))?(pm.lat+','+pm.lon):addr);
+  // v4.149: the Navigate button is a button now, wired to _navSheet(); nothing
+  // to set here beyond showing the hotel one when there is a hotel to go to.
+  var _hb=document.getElementById('info-hotel-nav');
+  if(_hb) _hb.style.display=(pm.hotel&&String(pm.hotel).trim())?'':'none';
   var el=document.getElementById('info-wx');
   el.textContent='Loading weather…';
   try{
