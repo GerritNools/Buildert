@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0c0f'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='%2300d4ff'>B</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WTUniverse · Buildert Editor v4.150</title>
+<title>WTUniverse · Buildert Editor v4.152</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@400;700;900&display=swap');
@@ -511,7 +511,7 @@
       style="color:#ffd700;font-weight:900;font-size:14px;cursor:pointer">⭐</div>
     <div style="line-height:1.1">
       <div onclick="openFeedbackModal()" title="Click to report a bug, idea or comment"
-        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.150</div>
+        style="color:#3ddc84;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer">v4.152</div>
       <div id="hdr-version" style="color:var(--muted);font-size:9px"></div>
     </div>
   </div>
@@ -1148,7 +1148,7 @@
       </div>
       <!-- v4.149: these were a bare Google Maps link. Both open the app chooser
            now, and the hotel only appears once the planner has set one. -->
-      <button id="info-venue-nav" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="_navSheet('venue')">🧭 Navigate</button>
+      <button id="info-venue-nav" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="_navSheet('venue')">📍 Venue</button>
       <button id="info-hotel-nav" class="btn btn-ghost" style="display:none;font-size:12px;padding:7px 14px;border-color:#ffb347;color:#ffb347" onclick="_navSheet('hotel')">🏨 Hotel</button>
     </div>
     <div id="info-wx" style="margin-top:10px;border-top:1px solid var(--border2);padding-top:8px;font-size:12px;color:var(--muted)"></div>
@@ -3526,7 +3526,7 @@ var qrcode = function() {
 </script>
 <script>document.getElementById('sp-expiry').onchange=function(){document.getElementById('sp-expiry-date').style.display=this.value==='date'?'inline-block':'none';};</script>
 
-        <input id="sp-app-url" type="url" placeholder="https://gerritnools.github.io/Buildert/"
+        <input id="sp-app-url" type="url" placeholder="https://your-worker.workers.dev/app/"
                oninput="spUpdateLink()" style="margin-bottom:10px">
 
         <!-- Stage permissions -->
@@ -3946,7 +3946,7 @@ var qrcode = function() {
            value="https://buildert.untitledtechnologies.workers.dev"
            style="font-family:var(--mono);font-size:12px;margin-bottom:8px">
     <label style="font-size:11px;margin-top:2px;display:block;color:var(--muted)">Mobile app URL <span style="font-size:10px">— where invite &amp; share links open (the deployed rigger app)</span></label>
-    <input id="mobile-url-inp" type="url" placeholder="https://gerritnools.github.io/Buildert/index.html"
+    <input id="mobile-url-inp" type="url" placeholder="leave empty — defaults to <worker>/app/"
            style="font-family:var(--mono);font-size:12px;margin-bottom:8px"
            onchange="try{localStorage.setItem('buildert_mobile_url',this.value.trim());}catch(e){}">
     <details style="margin-bottom:8px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">Legacy access token (pre-accounts)</summary>
@@ -4003,7 +4003,7 @@ var qrcode = function() {
         &#128279; Connect Dropbox (via browser)
       </button>
       <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;line-height:1.7">
-        Requires HTTPS (GitHub Pages). For local use, paste a token below.
+        Needs an https:// page — Dropbox’s browser sign-in cannot redirect back to a local file. Opening Buildert from your computer? Paste a token below instead.
       </div>
       <details style="margin-bottom:12px">
         <summary style="font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:6px">
@@ -4046,8 +4046,8 @@ var qrcode = function() {
     <input id="share-rigger-name" type="text" placeholder="Jan" autocomplete="off"
            oninput="updateRiggerLink()" style="font-size:18px;font-family:var(--cond);font-weight:700;letter-spacing:2px">
 
-    <label>Mobile app URL <span style="color:var(--muted);font-size:10px">— your GitHub Pages URL</span></label>
-    <input id="share-app-url" type="url" placeholder="https://yourusername.github.io/buildert/"
+    <label>Mobile app URL <span style="color:var(--muted);font-size:10px">— leave empty to use the worker’s own /app/</span></label>
+    <input id="share-app-url" type="url" placeholder="leave empty — defaults to <worker>/app/"
            oninput="updateRiggerLink()">
 
     <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;
@@ -6232,7 +6232,7 @@ function exportCsv() {
 //
 // Now it asks the worker itself. GET <worker>/health returns
 // {version:'4.39', schema:'v2', …} — the only version that matters here.
-var WEBAPP_VERSION     = '4.150';   // keep in step with the <title> badge
+var WEBAPP_VERSION     = '4.152';   // keep in step with the <title> badge
 var MIN_WORKER_VERSION = 4.42;      // below this the worker drops pins/contacts on push
 
 function checkWorkerVersion() {
@@ -6654,6 +6654,20 @@ function _safetyPanel(){
     +'<h3 style="margin:10px 0 4px;font-size:13px">History</h3>'+rows
     +'<div style="margin-top:14px"><button class="btn btn-ghost" onclick="document.getElementById(\'safety-modal\').remove()">Close</button></div>'
     +'</div></div>');
+}
+
+// ── Where the rigger app lives (v4.152) ─────────────────────────────
+// This used to fall back to a hard-coded GitHub Pages URL in three places. The
+// app is published to the worker now (Manager → 📱 App hosting), so the worker
+// is the honest default: delete the GitHub repo and share links keep working.
+// An explicitly configured URL still wins, for anyone hosting it elsewhere.
+function _mobileAppUrl(){
+  var set=(localStorage.getItem('buildert_mobile_url')||'').trim();
+  if(set) return set;
+  var w=(_workerUrl||'').trim().replace(/\/$/,'');
+  if(w) return w+'/app/';
+  return '';   // nothing configured and no worker — callers say so rather than
+               // building a link to a repo that may not exist any more.
 }
 
 function _updateProjectBadge() {
@@ -14716,7 +14730,8 @@ async function _mgrResetPassword(uid){
   if(r.status!==200 || !r.data || !r.data.code){
     showToast((r.data&&r.data.error)||'Could not create reset link','danger'); return;
   }
-  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var base=_mobileAppUrl();
+  if(!base){ showToast('No mobile app URL — publish the app (Manager → 📱 App hosting) or set the URL in Settings','warn'); return; }
   var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
   var box=document.createElement('div');
   box.className='modal-overlay open'; box.id='mgr-reset-modal'; box.style.zIndex='1000';
@@ -15968,7 +15983,8 @@ async function _pwzCreate(){
       var vr=await _mgrApi('POST','/accounts/invite',{email:invList[iv].email,name:invList[iv].name||'',pid:slot,role:invList[iv].role||'edit',direct:true});
       if(vr.status===200&&vr.data&&vr.data.granted){ crewOk++; crewIds.push(vr.data.user_id); continue; }   // v4.123: existing account → no link
       if(vr.status===200&&vr.data&&vr.data.code){
-        var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+        var base=_mobileAppUrl();
+  if(!base){ showToast('No mobile app URL — publish the app (Manager → 📱 App hosting) or set the URL in Settings','warn'); return; }
         invDone.push({who:invList[iv].name||invList[iv].email, email:invList[iv].email,
           link:base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(vr.data.code)});
       }
@@ -17442,7 +17458,8 @@ async function _mgrResendInvite(id){
     showToast((r.data&&r.data.error)||'Could not create new link','danger'); return;
   }
   await _mgrRevokeInvite(id,true);   // silent revoke of the superseded link
-  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var base=_mobileAppUrl();
+  if(!base){ showToast('No mobile app URL — publish the app (Manager → 📱 App hosting) or set the URL in Settings','warn'); return; }
   var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
   var box=document.createElement('div');
   box.className='modal-overlay open'; box.id='mgr-resend-modal'; box.style.zIndex='1000';
@@ -17882,7 +17899,8 @@ async function _mgrDoInvite(){
   if(r.status!==200 || !r.data || !r.data.code){
     res.innerHTML='<span style="color:var(--danger);font-size:12px">'+_escHtml((r.data&&r.data.error)||('Failed '+r.status))+'</span>'; return;
   }
-  var base=(localStorage.getItem('buildert_mobile_url')||'').trim() || 'https://gerritnools.github.io/Buildert/index.html';
+  var base=_mobileAppUrl();
+  if(!base){ showToast('No mobile app URL — publish the app (Manager → 📱 App hosting) or set the URL in Settings','warn'); return; }
   var link=base+'?worker='+encodeURIComponent(_workerUrl)+'&redeem='+encodeURIComponent(r.data.code);
   res.innerHTML =
     '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">'
@@ -19027,7 +19045,9 @@ function wGenNewKey(){
 function _updateWorkerLinkPreview(){
   var el=document.getElementById('worker-link-preview');
   if(!el)return;
-  var appUrl=localStorage.getItem('wtu_share_app_url')||'https://gerritnools.github.io/Buildert/';
+  // v4.152: last hard-coded GitHub URL — same treatment as the others.
+  var appUrl=(localStorage.getItem('wtu_share_app_url')||'').trim()||_mobileAppUrl();
+  if(!appUrl){ el.textContent='Publish the app (Manager → 📱 App hosting) to get a share link.'; return; }
   if(_workerUrl&&_projectKey){
     el.textContent=appUrl.replace(/\/$/,'')+'/?project='+_projectKey+'&w='+encodeURIComponent(_workerUrl)+(_workerToken?'&token='+encodeURIComponent(_workerToken):'');
   }
